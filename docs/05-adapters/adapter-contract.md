@@ -108,3 +108,8 @@ event boundary. It runs in plan mode, requests the product sandbox, requires an
 explicit accepted suggestion, and fails a bounded marker if any tool-use event
 appears. It likewise advertises no steer, interrupt, or durable submission
 idempotency. See the [Gemini experiment](gemini-cli.md).
+
+All three suggestion paths share the reference coordinator's durable admission
+claim. Confirmation is kind-specific and persists only an allowlisted evidence
+projection. See the
+[multi-product conformance guide](../06-guides/multi-product-admission-conformance.md).

@@ -81,4 +81,5 @@ The 2026-08-20 live prompt attempt reached the real Kimi ACP path but was
 blocked by the account's billing-cycle quota. A later real no-model run created,
 listed, deleted, and proved absence of one exact session. The deterministic
 fake-agent session reload, permission-denial and delivery behavior also passed.
-See the [smoke evidence](../09-reviews/2026-08-20-kimi-code-smoke.md).
+The stacked multi-product matrix runs this same admission claim beside Codex and
+Gemini. See the [smoke evidence](../09-reviews/2026-08-20-kimi-code-smoke.md).

@@ -26,7 +26,7 @@ maintainer organization.
 | Area | Current evidence | Status |
 |---|---|---|
 | Research and problem framing | Codex deep dive, community signals, ecosystem comparison, ADRs | Established |
-| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 90 unit tests | Executable draft |
+| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 94 unit/subtests | Executable draft |
 | Local binding | Schema-validated JSON-RPC, transport-derived principals, typed errors | Executable local reference |
 | Local persistence | SQLite registry, proposals, grants, summaries, mailbox, claims, receipts, reconciliation, replay, audit, retention tombstones | Experimental |
 | Safety boundary | Authenticated authorship checks, effective-grant decisions, revocation, CAS | Executable local policy |
@@ -37,6 +37,7 @@ maintainer organization.
 | Codex live model behavior | Exact marker, persisted resume, and cleanup script prepared | Gated, not run |
 | Gemini CLI headless | Official package 0.56.0 integrity, required flags, isolated-home cleanup | Real no-model preflight passed |
 | Gemini live model behavior | Exact marker script requires explicit provider key | Not authorized, not run |
+| Multi-product admission | One mailbox/acceptance/claim/evidence path across ACP, Codex, and Gemini fakes | Stacked deterministic candidate |
 | Independent review | Three internal lanes complete; external reviewer packet and public template published | Awaiting two external verdicts |
 | Production authentication | Local static-token reference; no TLS/OAuth verifier supplied | Host integration required |
 | OS isolation | No child-process sandbox supplied by ThreadMesh | Not implemented |
@@ -99,9 +100,10 @@ GitHub is authoritative for milestone closure.
 
 ### M2 — First real adapters
 
-- 3 issues open: Codex App Server [#36](https://github.com/fyaic/threadmesh/issues/36),
+- 4 issues open: Codex App Server [#36](https://github.com/fyaic/threadmesh/issues/36),
   Kimi ACP hardening [#37](https://github.com/fyaic/threadmesh/issues/37), and a
-  materially different third harness [#38](https://github.com/fyaic/threadmesh/issues/38).
+  materially different third harness [#38](https://github.com/fyaic/threadmesh/issues/38),
+  plus shared multi-product admission [#42](https://github.com/fyaic/threadmesh/issues/42).
 - Draft [#39](https://github.com/fyaic/threadmesh/pull/39) contains the Codex
   candidate and is stacked on retention Draft #35.
 - Draft [#40](https://github.com/fyaic/threadmesh/pull/40) contains the Kimi
@@ -119,6 +121,9 @@ GitHub is authoritative for milestone closure.
   Copilot assignability checks returned unavailable. The official pinned package
   passes a no-model version/flag/integrity probe and its fake-product matrix;
   no Google account or API key was inferred or created.
+- The next stacked candidate removes the coordinator's ACP-only admission
+  assumption. ACP, Codex, and Gemini now consume the same claimed envelope and
+  admission projection, then confirm with strict kind-specific evidence.
 - Codex `0.145.0` does not persist an empty thread before its first turn. The
   live script therefore keeps create plus first accepted turn on one connection,
   then separately verifies resume and exact-thread deletion.
@@ -175,6 +180,9 @@ can:
 26. probe the official pinned Gemini CLI package without a model turn, isolate
     its home, validate a non-ACP stream-json adapter, and refuse unaccepted or
     tool-using marker scenarios.
+27. run the same receiver-accepted suggestion through one durable admission
+    claim across ACP, Codex, and Gemini fake products, rejecting cross-kind or
+    mismatched evidence and storing only bounded audit projections.
 
 It does not prove autonomous task discovery, useful model behavior, native
 provider-role isolation, exactly-once external effects, production remote

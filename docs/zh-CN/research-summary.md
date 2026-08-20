@@ -161,13 +161,16 @@ ThreadMesh 不应该再造一个 agent framework、工作流引擎或消息队�
 4. typed interruption result 与签名 verification attestation 已完成；
 5. M1 的 storage、expiry、policy、dispatcher、event/inspector、双 mock matrix
    与 retention purge 已形成七层 stacked Draft PR；加上三条 adapter 路径后，
-   90 个单元测试全部通过；
+   94 个单元/子测试全部通过；
 6. Codex App Server adapter 候选已完成 deterministic JSONL matrix，并对本机
    CLI `0.145.0` 完成无模型真实预检；空 thread 在首个 turn 前不会形成可恢复
    rollout，这一限制已进入证据文档；
 7. Gemini CLI headless `stream-json` 已被选为第三种非 ACP harness，真实无模型
    版本/能力预检通过，模型执行等待显式 provider key 授权；当前仍等待两份
    independent review，随后顺序合并并运行三种产品的 A-to-B 场景和干扰评估。
+8. 三种 adapter 已通过同一条 deterministic mailbox acceptance、durable
+   admission claim、kind-specific evidence 和 context-admitted 审计矩阵；真实
+   产品运行将复用这条路径，而不是另建 smoke-only 捷径。
 
 详见[当前项目状态](../10-planning/project-status.md)与
 [主线计划](../10-planning/mainline-plan.md)。

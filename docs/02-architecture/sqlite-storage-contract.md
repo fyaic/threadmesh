@@ -67,7 +67,7 @@ state transition at a time while WAL readers continue.
 | Delivery failure | legal delivery transition, bounded reason, and `delivery-failed` audit event |
 | Grant revocation | grant timestamp plus eligible queued state-changing decision revocation and audit events |
 | Mailbox acknowledgement | exact claim transition plus receiver decision and its audit event |
-| Context admission | exact admission-token transition, disposition CAS, context-admitted audit event |
+| Context admission | exact admission-token transition, kind-specific adapter evidence projection, disposition CAS, context-admitted audit event |
 | Native receipt | exact receipt storage, disposition CAS to adapter-submitted, audit event |
 | Unknown-outcome reconciliation | submission resolution and audit event; confirmed-submitted reuses native receipt boundary |
 | Task rotation | retire previous incarnation and metadata revision, register next incarnation |

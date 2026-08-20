@@ -27,6 +27,8 @@ incarnation 轮换和两类 mock harness 都有自动化测试。
 - Gemini CLI `0.56.0` 已被选为第三种非 ACP headless harness；官方固定版本、
   registry integrity、stream-json/plan/sandbox 能力和隔离 home 清理预检通过，
   但尚未获得 provider key 授权，因此模型调用是 `not-run`。
+- ACP、Codex、Gemini 已在同一个 deterministic matrix 中复用 mailbox acceptance、
+  durable admission claim 和各自严格的 evidence confirmation，不再绕过 coordinator。
 
 M1 已形成存储迁移、过期审计、默认拒绝 policy、crash-safe dispatcher，以及
 可重启事件游标、权限化 provenance inspector 和两类 mock harness 行为矩阵的

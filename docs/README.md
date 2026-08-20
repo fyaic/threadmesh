@@ -21,13 +21,14 @@ The documentation is organized from intent to implementation. New readers should
 15. [Threat model](04-safety/threat-model.md)
 16. [Adapter contract](05-adapters/adapter-contract.md)
 17. [Mock harness conformance kit](06-guides/mock-harness-conformance.md)
-18. [Design reviews](09-reviews/README.md)
-19. [Codex App Server experiment](05-adapters/codex-app-server.md)
-20. [Codex App Server preflight](09-reviews/2026-08-20-codex-app-server-preflight.md)
-21. [Gemini CLI experiment](05-adapters/gemini-cli.md)
-22. [Third-harness selection](09-reviews/2026-08-20-third-harness-selection.md)
-23. [M0 external reviewer packet](09-reviews/m0-external-reviewer-packet.md)
-24. [Mainline plan](10-planning/mainline-plan.md)
+18. [Multi-product admission conformance](06-guides/multi-product-admission-conformance.md)
+19. [Design reviews](09-reviews/README.md)
+20. [Codex App Server experiment](05-adapters/codex-app-server.md)
+21. [Codex App Server preflight](09-reviews/2026-08-20-codex-app-server-preflight.md)
+22. [Gemini CLI experiment](05-adapters/gemini-cli.md)
+23. [Third-harness selection](09-reviews/2026-08-20-third-harness-selection.md)
+24. [M0 external reviewer packet](09-reviews/m0-external-reviewer-packet.md)
+25. [Mainline plan](10-planning/mainline-plan.md)
 
 ## Directory guide
 

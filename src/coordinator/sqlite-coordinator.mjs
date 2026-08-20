@@ -173,6 +173,78 @@ function nowIso(clock) {
   return new Date(clock()).toISOString();
 }
 
+function assertContextAdapterRef(adapterRef) {
+  const commonValid =
+    adapterRef &&
+    typeof adapterRef === "object" &&
+    typeof adapterRef.snapshotDigest === "string";
+  const kindValid =
+    (adapterRef?.kind === "acp-session" && typeof adapterRef.sessionId === "string") ||
+    (adapterRef?.kind === "codex-app-server" && typeof adapterRef.threadId === "string") ||
+    (adapterRef?.kind === "gemini-headless" && typeof adapterRef.sessionId === "string");
+  if (!commonValid || !kindValid) {
+    throw codedError("threadmesh_target_adapter_ref_invalid");
+  }
+  return adapterRef;
+}
+
+function projectContextAdapterEvidence(adapterRef, adapterEvidence) {
+  let projection;
+  if (adapterRef.kind === "acp-session") {
+    projection = {
+      kind: adapterRef.kind,
+      sessionId: adapterEvidence?.sessionId,
+      snapshotDigest: adapterEvidence?.snapshotDigest,
+      stopReason: adapterEvidence?.stopReason,
+    };
+    if (
+      projection.sessionId !== adapterRef.sessionId ||
+      projection.snapshotDigest !== adapterRef.snapshotDigest ||
+      projection.stopReason !== "end_turn"
+    ) {
+      throw codedError("threadmesh_adapter_evidence_mismatch");
+    }
+    return projection;
+  }
+  if (adapterRef.kind === "codex-app-server") {
+    projection = {
+      kind: adapterRef.kind,
+      threadId: adapterEvidence?.threadId,
+      turnId: adapterEvidence?.turnId,
+      turnStatus: adapterEvidence?.turnStatus,
+      snapshotDigest: adapterEvidence?.snapshotDigest,
+    };
+    if (
+      projection.threadId !== adapterRef.threadId ||
+      typeof projection.turnId !== "string" ||
+      projection.turnStatus !== "completed" ||
+      projection.snapshotDigest !== adapterRef.snapshotDigest
+    ) {
+      throw codedError("threadmesh_adapter_evidence_mismatch");
+    }
+    return projection;
+  }
+  if (adapterRef.kind === "gemini-headless") {
+    projection = {
+      kind: adapterRef.kind,
+      sessionId: adapterEvidence?.sessionId,
+      snapshotDigest: adapterEvidence?.snapshotDigest,
+      exitCode: adapterEvidence?.exitCode,
+      toolUseCount: adapterEvidence?.toolUseCount,
+    };
+    if (
+      projection.sessionId !== adapterRef.sessionId ||
+      projection.snapshotDigest !== adapterRef.snapshotDigest ||
+      projection.exitCode !== 0 ||
+      projection.toolUseCount !== 0
+    ) {
+      throw codedError("threadmesh_adapter_evidence_mismatch");
+    }
+    return projection;
+  }
+  throw codedError("threadmesh_target_adapter_ref_invalid");
+}
+
 function assertControlPlanePrincipal(principal) {
   if (
     !principal ||
@@ -1698,14 +1770,7 @@ export class SqliteCoordinator {
       if (!task?.adapter_ref_json) {
         throw codedError("threadmesh_target_adapter_not_bound");
       }
-      const adapterRef = JSON.parse(task.adapter_ref_json);
-      if (
-        adapterRef.kind !== "acp-session" ||
-        typeof adapterRef.sessionId !== "string" ||
-        typeof adapterRef.snapshotDigest !== "string"
-      ) {
-        throw codedError("threadmesh_target_adapter_ref_invalid");
-      }
+      const adapterRef = assertContextAdapterRef(JSON.parse(task.adapter_ref_json));
       const nonce = randomUUID();
       const adapterRefDigest = sha256Digest(adapterRef);
       const admissionToken = this.#admissionToken(
@@ -1742,9 +1807,16 @@ export class SqliteCoordinator {
         { admissionToken, adapterRefDigest, grantId: row.grant_id, grantVersion: row.grant_version },
       );
       const envelope = JSON.parse(row.envelope_json);
+      const admission = {
+        decision: "accepted",
+        receiverIncarnationId: envelope.target.incarnationId,
+        revision: expectedRevision,
+      };
       return {
         admissionToken,
         adapterRef,
+        envelope,
+        admission,
         revision: expectedRevision,
         rendering: `THREADMESH_UNTRUSTED_PEER_CONTEXT_JSON_V1\n${canonicalJson({
           type: "threadmesh.peer-suggestion",
@@ -1796,14 +1868,11 @@ export class SqliteCoordinator {
       ) {
         throw codedError("threadmesh_revision_or_state_conflict");
       }
-      const adapterRef = JSON.parse(claim.adapter_ref_json);
-      if (
-        adapterEvidence?.sessionId !== adapterRef.sessionId ||
-        adapterEvidence?.snapshotDigest !== adapterRef.snapshotDigest ||
-        adapterEvidence?.stopReason !== "end_turn"
-      ) {
-        throw codedError("threadmesh_adapter_evidence_mismatch");
-      }
+      const adapterRef = assertContextAdapterRef(JSON.parse(claim.adapter_ref_json));
+      const projectedAdapterEvidence = projectContextAdapterEvidence(
+        adapterRef,
+        adapterEvidence,
+      );
       const result = this.db
         .prepare(
           `UPDATE dispositions SET revision = revision + 1,
@@ -1827,7 +1896,7 @@ export class SqliteCoordinator {
       const disposition = this.#getDisposition(senderIncarnationId, messageId);
       this.#audit(senderIncarnationId, messageId, "context-admitted", disposition.revision, {
         admissionToken,
-        adapterEvidence: adapterEvidence ?? null,
+        adapterEvidence: projectedAdapterEvidence,
       });
       return disposition;
     }).immediate();

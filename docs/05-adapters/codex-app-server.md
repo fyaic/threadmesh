@@ -92,7 +92,8 @@ evidence and the gate are recorded in the
 ## Remaining boundaries
 
 - Admission arguments are trusted-process evidence until wired to the merged
-  coordinator claim/receipt state machine.
+  coordinator claim/receipt state machine. The stacked multi-product candidate
+  now supplies that wiring and deterministic evidence; merge remains gated.
 - No OS container or process sandbox is supplied.
 - The first real model marker and existing-receiver A-to-B scenario remain
   gated by M0 review and the M1 stack.

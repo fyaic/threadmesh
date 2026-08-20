@@ -79,6 +79,10 @@ Gemini CLI headless `stream-json` is selected as the materially different third
 harness. Its pinned official package and no-model capability preflight pass;
 the checklist remains open until an explicitly authorized real model executes
 the shared scenario.
+A stacked conformance slice now removes the coordinator's ACP-only admission
+assumption and executes the same accepted suggestion across ACP, Codex, and
+Gemini fake products with kind-specific evidence. Real products remain required
+for M2 exit.
 
 Exit: the same scenario runs across at least two different harness families.
 

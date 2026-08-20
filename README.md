@@ -130,6 +130,8 @@ The implementation is deliberately narrower than the product vision:
 - Gemini CLI `0.56.0` is selected as the materially different non-ACP headless
   harness; its official pinned package and isolated no-model preflight pass,
   while model execution awaits an explicitly authorized provider key;
+- a common deterministic matrix now takes the same accepted mailbox suggestion
+  through ACP, Codex, and Gemini admission claims and kind-specific evidence;
 - Kimi Code ACP initialization and exact create/list/delete/absence lifecycle
   passed against the real product, while the earlier model-turn marker remains
   blocked by account quota and is not counted as a pass.

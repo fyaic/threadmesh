@@ -69,4 +69,6 @@ GEMINI_API_KEY=... npm run smoke:gemini:live
 ```
 
 No API key has been authorized for this project, so the live result remains
-`not-run`. See the [selection and preflight evidence](../09-reviews/2026-08-20-third-harness-selection.md).
+`not-run`. A stacked deterministic test now runs the same coordinator admission
+claim through ACP, Codex, and Gemini. See the
+[selection and preflight evidence](../09-reviews/2026-08-20-third-harness-selection.md).

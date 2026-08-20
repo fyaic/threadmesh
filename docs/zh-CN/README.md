@@ -57,6 +57,8 @@ ThreadMesh 并不赋予 agent 任意修改其他 session 的权力。它提供�
 - Gemini CLI `0.56.0` 被选为第三种非 ACP harness，固定官方包的 integrity、
   headless stream-json/plan/sandbox 表面与隔离 home 清理均已真实预检；没有
   provider key 授权，所以模型调用仍为 `not-run`；
+- ACP、Codex、Gemini 的 fake product 已通过同一条 mailbox accepted → durable
+  admission claim → kind-specific evidence → context-admitted 矩阵；
 - M0 只剩独立外部 review；
 - 下一步等待独立 review 与堆叠变更合并，在 `main` 重验后执行 Codex、Kimi
   及 Gemini 的同场景真实产品验证；

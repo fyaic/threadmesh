@@ -163,8 +163,9 @@ validation becomes the next evidence workstream.
 
 ### 7. Complete real product validation
 
-Status: M2 issues [#36](https://github.com/fyaic/threadmesh/issues/36)–
-[#38](https://github.com/fyaic/threadmesh/issues/38) are open. The first Codex
+Status: M2 adapter issues [#36](https://github.com/fyaic/threadmesh/issues/36)–
+[#38](https://github.com/fyaic/threadmesh/issues/38) plus shared-admission
+[#42](https://github.com/fyaic/threadmesh/issues/42) are open. The first Codex
 App Server candidate is implemented as a stack above M1 and its no-model
 preflight passes against CLI `0.145.0` in Draft
 [#39](https://github.com/fyaic/threadmesh/pull/39). The live first turn remains
@@ -176,6 +177,9 @@ Gemini CLI headless `stream-json` is selected for #38; its pinned package and
 isolated no-model preflight pass, while model execution waits for explicit
 provider credential authorization in Draft
 [#41](https://github.com/fyaic/threadmesh/pull/41).
+A further stacked slice generalizes the coordinator's admission claim and exact
+evidence confirmation across all three adapter kinds; this is deterministic
+preparation, not a substitute for the post-gate real model run.
 
 After M0 closes and the M1 stack is merged and revalidated:
 
@@ -186,6 +190,8 @@ After M0 closes and the M1 stack is merged and revalidated:
 - harden the generic ACP/subprocess adapter and rerun Kimi when quota permits;
 - merge the selected Gemini CLI non-ACP headless adapter, then run it only with
   an explicitly authorized provider credential;
+- keep every live product on the common mailbox acceptance, durable admission
+  claim, kind-specific evidence, and context-admitted audit path;
 - run the same envelope, acceptance, provenance, restart, and cleanup assertions
   against at least two harness families;
 - measure useful coordination and interference cost before enabling proactive
