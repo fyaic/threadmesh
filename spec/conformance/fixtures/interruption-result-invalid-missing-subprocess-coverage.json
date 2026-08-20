@@ -1,0 +1,19 @@
+{
+  "specVersion": "0.0-draft",
+  "interruptionId": "int_missing01",
+  "messageId": "msg_interrupt01",
+  "receiver": {
+    "taskId": "task_validation",
+    "incarnationId": "inc_validation01"
+  },
+  "requestedAt": "2026-08-20T09:00:00Z",
+  "results": {
+    "modelTurn": {
+      "targetId": "turn-10",
+      "state": "requested",
+      "observedAt": "2026-08-20T09:00:01Z"
+    },
+    "toolCalls": { "enumeration": "complete", "targets": [] }
+  },
+  "updatedAt": "2026-08-20T09:00:01Z"
+}

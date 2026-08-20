@@ -31,6 +31,7 @@ export const KIMI_THREADMESH_CAPABILITIES = Object.freeze({
     dispositionCallbacks: false,
     structuredGateResponses: "none",
     durableSubmissionIdempotency: "none",
+    typedInterruptionResults: false,
   },
 });
 

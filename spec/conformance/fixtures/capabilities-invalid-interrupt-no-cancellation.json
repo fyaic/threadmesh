@@ -16,6 +16,7 @@
     "provenanceRendering": "none",
     "dispositionCallbacks": false,
     "structuredGateResponses": "none",
-    "durableSubmissionIdempotency": "stable-key"
+    "durableSubmissionIdempotency": "stable-key",
+    "typedInterruptionResults": true
   }
 }

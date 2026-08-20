@@ -70,7 +70,16 @@ effect-observed → externally-verified
 `adapter-submitted` proves only that a native harness operation accepted the
 request. `context-admitted` proves only that authorized peer content entered a
 model-visible rendering. Neither proves that the model followed the advice.
-`externally-verified` requires evidence references.
+`externally-verified` requires evidence references plus at least one signed,
+trusted verification attestation whose subject matches the disposition message
+and receiver. An ordinary adapter receipt or evidence URI remains
+`effect-observed` or evidence-referenced; it cannot self-upgrade to independent
+verification.
+
+Verification consumers MUST recompute the canonical signed-payload digest,
+resolve the proof key through an operator-configured trust anchor, verify the
+signature, and enforce the recorded trust-policy decision. The attestation's
+own key ID is a lookup key, not a trust grant.
 
 ## Durable adapter submission
 

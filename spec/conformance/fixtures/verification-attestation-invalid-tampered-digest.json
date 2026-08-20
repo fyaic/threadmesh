@@ -1,0 +1,35 @@
+{
+  "specVersion": "0.0-draft",
+  "attestationId": "att_tampered01",
+  "verifier": {
+    "actorType": "service",
+    "actorId": "verifier.example",
+    "authenticationId": "authn_verifier01",
+    "trustDomain": "https://verifier.example"
+  },
+  "subject": {
+    "messageId": "msg_suggest01",
+    "senderIncarnationId": "inc_sender_validation01",
+    "receiver": {
+      "taskId": "task_validation",
+      "incarnationId": "inc_validation01"
+    },
+    "claimType": "external-effect",
+    "claimDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "method": "direct-resource-query",
+  "evidenceDigest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+  "verifiedAt": "2026-08-20T09:02:00Z",
+  "trustPolicy": {
+    "policyId": "threadmesh://policy/trusted-verifiers/v1",
+    "decisionId": "decision_verifier01",
+    "decision": "trusted",
+    "decidedAt": "2026-08-20T09:02:00Z"
+  },
+  "signedPayloadDigest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "proof": {
+    "algorithm": "ed25519",
+    "keyId": "https://verifier.example/keys/2026-08",
+    "signature": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+  }
+}

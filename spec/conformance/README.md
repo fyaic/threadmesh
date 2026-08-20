@@ -26,6 +26,14 @@ The negative cases are security properties, not malformed examples to copy:
 - adapter receipts require the pre-call unknown boundary, and observed effects
   cannot precede adapter submission;
 - context admission cannot coexist with receiver rejection;
+- interruption results cover model turns, tool calls, and subprocesses without
+  an umbrella success;
+- arbitrary evidence, adapter-forged attestations, tampered digests, and invalid
+  signatures cannot produce external verification;
 - terminal state machines cannot silently regress.
+
+The verification fixtures include a pinned Ed25519 public key. The validator
+recomputes the canonical signed-payload digest and verifies a real signature;
+the key remains conformance-only and is not a production trust anchor.
 
 Run all checks from the repository root with `npm test`.

@@ -20,12 +20,12 @@ snapshot and ordered workstreams.
 - [x] Define crash-safe receipts, unknown-outcome reconciliation, disposition
   CAS, and durable harness-idempotency gating
   ([#19](https://github.com/fyaic/threadmesh/issues/19)).
-- [ ] Define typed interruption results and authenticated verification
+- [x] Define typed interruption results and authenticated verification
   attestations ([#16](https://github.com/fyaic/threadmesh/issues/16)).
 - [x] Enforce summary, relationship, disposition, and capability coherence (#18).
 - [ ] Accept two independent design reviews.
 
-Current accounting: 9 milestone issues closed and 2 open. The internal reviews
+Current accounting: 10 milestone issues closed and 1 open. The internal reviews
 approved the conservative experimental prototype after fixes, but they do not
 satisfy [#7](https://github.com/fyaic/threadmesh/issues/7).
 

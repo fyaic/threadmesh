@@ -35,5 +35,6 @@ ThreadMesh 的核心安全假设是：**Agent A 认为某条消息有帮助，�
 现有 SQLite/JSON-RPC/ACP 路径已经验证：请求体不能注入 principal、静态 token
 由 host 映射为认证身份、agent proposal 与 owner/policy effective grant 分离、
 revocation 会隔离 queued content，并支持 CAS、mailbox claim/ack 与 admission
-claim。它仍没有生产级网络凭据验证、签名 verification attestation、OS sandbox
-或真实 interrupt 能力。
+claim。规范已经定义按目标拆分的 interruption result 和签名 verification
+attestation，conformance kit 会用固定 Ed25519 信任锚做真实验签；本地原型仍
+没有生产级网络凭据与 trust store、OS sandbox 或真实 interrupt 能力。

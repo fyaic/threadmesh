@@ -1,0 +1,8 @@
+{
+  "keyId": "https://verifier.example/keys/2026-08",
+  "algorithm": "ed25519",
+  "actorId": "verifier.example",
+  "trustDomain": "https://verifier.example",
+  "policyId": "threadmesh://policy/trusted-verifiers/v1",
+  "publicKeyPem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEARAm0fFqBscj2CVMevgBvs47+qutcqHz7L9apNsePGCQ=\n-----END PUBLIC KEY-----\n"
+}

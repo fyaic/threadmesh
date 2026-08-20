@@ -1,0 +1,51 @@
+{
+  "specVersion": "0.0-draft",
+  "interruptionId": "int_partial01",
+  "messageId": "msg_interrupt01",
+  "receiver": {
+    "taskId": "task_validation",
+    "incarnationId": "inc_validation01"
+  },
+  "freshness": {
+    "expectedRunId": "run-validation-10",
+    "expectedObjectiveVersion": 4
+  },
+  "requestedAt": "2026-08-20T09:00:00Z",
+  "results": {
+    "modelTurn": {
+      "targetId": "turn-10",
+      "state": "cancelled",
+      "observedAt": "2026-08-20T09:00:01Z",
+      "reasonCode": "accepted"
+    },
+    "toolCalls": {
+      "enumeration": "complete",
+      "targets": [
+        {
+          "targetId": "tool-call-20",
+          "state": "cancelled",
+          "observedAt": "2026-08-20T09:00:01Z",
+          "reasonCode": "accepted"
+        },
+        {
+          "targetId": "tool-call-21",
+          "state": "not-cancellable",
+          "observedAt": "2026-08-20T09:00:01Z",
+          "reasonCode": "other"
+        }
+      ]
+    },
+    "subprocesses": {
+      "enumeration": "complete",
+      "targets": [
+        {
+          "targetId": "process-501",
+          "state": "denied",
+          "observedAt": "2026-08-20T09:00:01Z",
+          "reasonCode": "policy-denied"
+        }
+      ]
+    }
+  },
+  "updatedAt": "2026-08-20T09:00:01Z"
+}

@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://threadmesh.dev/spec/0.0-draft/verification-attestation.schema.json",
+  "title": "ThreadMesh signed verification attestation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "specVersion",
+    "attestationId",
+    "verifier",
+    "subject",
+    "method",
+    "evidenceDigest",
+    "verifiedAt",
+    "trustPolicy",
+    "signedPayloadDigest",
+    "proof"
+  ],
+  "properties": {
+    "specVersion": { "const": "0.0-draft" },
+    "attestationId": {
+      "type": "string",
+      "pattern": "^att_[A-Za-z0-9][A-Za-z0-9._:-]{6,196}$"
+    },
+    "verifier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["actorType", "actorId", "authenticationId", "trustDomain"],
+      "properties": {
+        "actorType": { "enum": ["user", "service", "policy"] },
+        "actorId": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "authenticationId": {
+          "type": "string",
+          "pattern": "^authn_[A-Za-z0-9][A-Za-z0-9._:-]{4,190}$"
+        },
+        "trustDomain": { "type": "string", "minLength": 1, "maxLength": 500 }
+      }
+    },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "messageId",
+        "senderIncarnationId",
+        "receiver",
+        "claimType",
+        "claimDigest"
+      ],
+      "properties": {
+        "messageId": {
+          "type": "string",
+          "pattern": "^msg_[A-Za-z0-9][A-Za-z0-9._:-]{6,196}$"
+        },
+        "senderIncarnationId": {
+          "type": "string",
+          "pattern": "^inc_[A-Za-z0-9][A-Za-z0-9._:-]{6,196}$"
+        },
+        "receiver": {
+          "$ref": "https://threadmesh.dev/spec/0.0-draft/types.schema.json#/$defs/taskRef"
+        },
+        "claimType": {
+          "enum": [
+            "external-effect",
+            "interruption-target-state",
+            "artifact-state",
+            "resource-state"
+          ]
+        },
+        "claimDigest": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        }
+      }
+    },
+    "method": {
+      "enum": [
+        "direct-resource-query",
+        "provider-signed-receipt",
+        "independent-reproduction",
+        "operator-review"
+      ]
+    },
+    "evidenceDigest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "verifiedAt": { "type": "string", "format": "date-time" },
+    "trustPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["policyId", "decisionId", "decision", "decidedAt"],
+      "properties": {
+        "policyId": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "decisionId": {
+          "type": "string",
+          "pattern": "^decision_[A-Za-z0-9][A-Za-z0-9._:-]{4,190}$"
+        },
+        "decision": { "enum": ["trusted", "rejected"] },
+        "decidedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "signedPayloadDigest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "proof": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "keyId", "signature"],
+      "properties": {
+        "algorithm": { "enum": ["ed25519", "ecdsa-p256-sha256"] },
+        "keyId": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "signature": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{43,512}$"
+        }
+      }
+    }
+  }
+}

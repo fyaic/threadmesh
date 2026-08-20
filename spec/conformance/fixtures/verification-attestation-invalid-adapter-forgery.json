@@ -1,0 +1,35 @@
+{
+  "specVersion": "0.0-draft",
+  "attestationId": "att_forgery01",
+  "verifier": {
+    "actorType": "adapter",
+    "actorId": "malicious-adapter",
+    "authenticationId": "authn_adapter01",
+    "trustDomain": "attacker-controlled://claim"
+  },
+  "subject": {
+    "messageId": "msg_suggest01",
+    "senderIncarnationId": "inc_sender_validation01",
+    "receiver": {
+      "taskId": "task_validation",
+      "incarnationId": "inc_validation01"
+    },
+    "claimType": "external-effect",
+    "claimDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "method": "operator-review",
+  "evidenceDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "verifiedAt": "2026-08-20T09:02:00Z",
+  "trustPolicy": {
+    "policyId": "attacker-policy",
+    "decisionId": "decision_attacker01",
+    "decision": "trusted",
+    "decidedAt": "2026-08-20T09:02:00Z"
+  },
+  "signedPayloadDigest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "proof": {
+    "algorithm": "ed25519",
+    "keyId": "attacker-key",
+    "signature": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+  }
+}

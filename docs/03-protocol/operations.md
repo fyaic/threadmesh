@@ -113,7 +113,17 @@ permit a fresh attempt.
 ### `messages.recordOutcome`
 
 Records an observed effect, externally verified outcome, or adapter failure.
-External verification requires evidence references.
+External verification requires evidence references and signed verification
+attestations. The verifier authentication event, claim subject and digest,
+method, evidence digest, verification time, trust-policy decision, key ID and
+signature are mandatory. Ordinary task or adapter principals may record an
+observation but cannot issue an external-verification attestation.
+
+### `messages.recordInterruptionResult`
+
+Records model-turn, tool-call, and subprocess cancellation results per target.
+Every target uses a typed state and tool/process coverage is explicit. No
+portable operation returns one umbrella interrupt-success value.
 
 ## Waiting
 

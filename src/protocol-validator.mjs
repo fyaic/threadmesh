@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { createPublicKey, verify } from "node:crypto";
 import { fileURLToPath } from "node:url";
 
 import Ajv2020 from "ajv/dist/2020.js";
@@ -35,6 +36,14 @@ const validators = new Map([
   [
     "adapter-submission",
     "https://threadmesh.dev/spec/0.0-draft/adapter-submission.schema.json",
+  ],
+  [
+    "interruption-result",
+    "https://threadmesh.dev/spec/0.0-draft/interruption-result.schema.json",
+  ],
+  [
+    "verification-attestation",
+    "https://threadmesh.dev/spec/0.0-draft/verification-attestation.schema.json",
   ],
   ["jsonrpc", "https://threadmesh.dev/spec/0.0-draft/jsonrpc.schema.json"],
   [
@@ -119,6 +128,32 @@ export function assertProtocolObject(kind, value) {
     }
   }
 
+  if (
+    kind === "verification-attestation" &&
+    value.signedPayloadDigest !== verificationAttestationDigest(value)
+  ) {
+    throw codedError(
+      "threadmesh_verification_attestation_invalid",
+      "signed payload digest mismatch",
+    );
+  }
+
+  if (kind === "disposition" && value.outcome.state === "externally-verified") {
+    for (const attestation of value.outcome.verificationAttestations) {
+      if (
+        attestation.signedPayloadDigest !== verificationAttestationDigest(attestation) ||
+        attestation.subject.messageId !== value.messageId ||
+        attestation.subject.receiver.taskId !== value.receiver.taskId ||
+        attestation.subject.receiver.incarnationId !== value.receiver.incarnationId
+      ) {
+        throw codedError(
+          "threadmesh_disposition_invalid",
+          "verification attestation digest or subject mismatch",
+        );
+      }
+    }
+  }
+
   return value;
 }
 
@@ -143,6 +178,56 @@ export function grantAuthorizationDigest(grant) {
     },
     authorization,
   });
+}
+
+export function verificationAttestationDigest(attestation) {
+  const {
+    signedPayloadDigest: _signedPayloadDigest,
+    proof: _proof,
+    ...signedPayload
+  } = attestation;
+  return sha256Digest(signedPayload);
+}
+
+export function verifyVerificationAttestation(attestation, trustAnchor) {
+  assertProtocolObject("verification-attestation", attestation);
+  if (
+    !trustAnchor ||
+    trustAnchor.keyId !== attestation.proof.keyId ||
+    trustAnchor.algorithm !== attestation.proof.algorithm ||
+    trustAnchor.actorId !== attestation.verifier.actorId ||
+    trustAnchor.trustDomain !== attestation.verifier.trustDomain ||
+    trustAnchor.policyId !== attestation.trustPolicy.policyId ||
+    attestation.trustPolicy.decision !== "trusted"
+  ) {
+    throw codedError("threadmesh_verification_trust_denied");
+  }
+  const algorithm = attestation.proof.algorithm === "ed25519" ? null : "sha256";
+  const verified = verify(
+    algorithm,
+    Buffer.from(attestation.signedPayloadDigest, "utf8"),
+    createPublicKey(trustAnchor.publicKeyPem),
+    Buffer.from(attestation.proof.signature, "base64url"),
+  );
+  if (!verified) throw codedError("threadmesh_verification_proof_invalid");
+  return attestation;
+}
+
+export function verifyExternallyVerifiedDisposition(disposition, trustAnchors) {
+  assertProtocolObject("disposition", disposition);
+  if (disposition.outcome.state !== "externally-verified") {
+    throw codedError("threadmesh_disposition_not_externally_verified");
+  }
+  if (!Array.isArray(trustAnchors)) {
+    throw codedError("threadmesh_verification_trust_denied");
+  }
+  for (const attestation of disposition.outcome.verificationAttestations) {
+    const trustAnchor = trustAnchors.find(
+      (candidate) => candidate.keyId === attestation.proof.keyId,
+    );
+    verifyVerificationAttestation(attestation, trustAnchor);
+  }
+  return disposition;
 }
 
 export function codedError(code, detail) {
