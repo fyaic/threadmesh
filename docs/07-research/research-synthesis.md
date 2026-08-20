@@ -120,7 +120,12 @@ A harness adapter should prove:
 
 ## Recommended MVP
 
-### Phase R0: research baseline — now
+> Historical research recommendation. The repository has since implemented a
+> narrower SQLite/ACP prototype. Current milestone accounting and execution
+> order live in the [project status](../10-planning/project-status.md) and
+> [mainline plan](../10-planning/mainline-plan.md).
+
+### Phase R0: research baseline
 
 - Maintain the evidence-separated Codex deep dive.
 - Track adjacent protocol changes and license constraints.

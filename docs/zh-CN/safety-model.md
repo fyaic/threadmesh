@@ -29,3 +29,10 @@ ThreadMesh 的核心安全假设是：**Agent A 认为某条消息有帮助，�
 - adapter 把不支持的语义偷偷降级；
 - 审计日志复制并泄露私有 prompt；
 - 多 agent 同时修改同一资源造成竞态。
+
+## 当前实现边界
+
+现有 SQLite/ACP 原型只在单用户、可信进程内验证了 owner-scoped grant、
+revocation、CAS、单次 admission claim、来源 JSON 封装和 ACP permission deny。
+它没有网络认证、签名 attestation、OS sandbox 或真实 interrupt 能力；这些限制
+不是可选优化，而是 M0 尚未完成的规范工作。

@@ -2,7 +2,7 @@
 
 **A safe coordination layer for proactive agents across tasks and harnesses.**
 
-[简体中文](README.zh-CN.md) · [Documentation](docs/README.md) · [Protocol draft](spec/README.md) · [Roadmap](ROADMAP.md)
+[简体中文](README.zh-CN.md) · [Documentation](docs/README.md) · [Current status](docs/10-planning/project-status.md) · [Protocol draft](spec/README.md) · [Roadmap](ROADMAP.md)
 
 > Status: pre-alpha. The protocol is not stable; an experimental SQLite
 > coordinator and ACP adapter exist for conformance work, but no production
@@ -17,6 +17,7 @@ New: [Codex implementation deep dive](docs/07-research/codex-orchestration-deep-
 [ecosystem landscape](docs/07-research/ecosystem-landscape.md) ·
 [design reviews](docs/09-reviews/README.md) ·
 [Kimi Code smoke evidence](docs/09-reviews/2026-08-20-kimi-code-smoke.md) ·
+[mainline plan](docs/10-planning/mainline-plan.md) ·
 [中文调研摘要](docs/zh-CN/research-summary.md)
 
 ThreadMesh explores a specific capability: an agent notices that another running task matters to its goal and proactively coordinates with it. The hard part is not message transport. The hard part is letting agents discover dependencies, communicate intent, and revise plans **without silently taking ownership of another task's context**.
@@ -84,6 +85,7 @@ docs/
   07-research/       Prior art and open research questions
   08-decisions/      Architecture Decision Records
   09-reviews/        Reviewer evidence and smoke-test limitations
+  10-planning/       Current project status and mainline execution plan
   zh-CN/             Chinese project overview
 spec/
   schema/            Machine-readable draft schemas
@@ -93,18 +95,28 @@ src/
 test/                Behavioral and conformance tests
 ```
 
-## Current milestone
+## Current progress
 
-Milestone 0 is a reviewable protocol draft and adapter boundary. The first implementation milestone will include:
+The repository now contains an executable `0.0-draft` specification and a
+reviewed experimental path through SQLite and ACP. Pull request
+[#20](https://github.com/fyaic/threadmesh/pull/20) added durable task and message
+state, owner-scoped grants, idempotency and CAS, single-use admission claims, a
+registered-session ACP adapter, and 19 behavioral tests.
 
-- a local task registry and durable mailbox;
-- a reference TypeScript coordinator;
-- a Codex App Server adapter;
-- a generic JSON-RPC adapter example;
-- conformance tests for freshness, permissions, and delivery semantics;
-- an inspector that renders provenance and task relationships.
+The implementation is deliberately narrower than the product vision:
 
-See [ROADMAP.md](ROADMAP.md) for sequencing and exit criteria.
+- M0 has 5 closed and 6 open issues;
+- authenticated transport, normative reconciliation, coherent capability
+  constraints, typed interruption/verification, and external review remain open;
+- M1 has partial prototype evidence, but all six acceptance issues remain open;
+- Kimi Code ACP initialization passed, while the real model-turn marker test is
+  blocked by account quota and is not counted as a pass.
+
+The mainline is now protocol stabilization (#18, #15/#17, #19, #16), followed
+by independent M0 review (#7) and completion of the local M1 coordinator. See
+the [project status](docs/10-planning/project-status.md),
+[mainline plan](docs/10-planning/mainline-plan.md), and
+[roadmap](ROADMAP.md).
 
 ## Non-goals
 

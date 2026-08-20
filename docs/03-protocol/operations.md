@@ -2,6 +2,24 @@
 
 > Draft normative document. Method names are transport-neutral logical operations.
 
+This document describes the intended portable surface. The SQLite prototype
+does not constitute a transport binding. Registration, mailbox reads,
+authenticated operation context, request/response schemas, and typed errors are
+tracked in [#17](https://github.com/fyaic/threadmesh/issues/17).
+
+## Task registration
+
+### `tasks.register`
+
+Registers a task incarnation, owner scope, harness identity, capabilities, and
+adapter-local reference. The normative identity proof, attach flow, and
+incarnation-rotation semantics are not yet defined.
+
+### `tasks.publishSummary`
+
+Publishes a privacy-bounded summary for relationship-scoped discovery. Summary
+visibility MUST remain constrained by the current effective grant.
+
 ## Discovery
 
 ### `tasks.listRelated`
@@ -13,6 +31,13 @@ Returns minimal summaries for tasks connected by visible relationship or depende
 Returns task state, objective summary, freshness information, and advertised capabilities. Full message history is outside the core operation.
 
 ## Coordination
+
+### `mailbox.listPending`
+
+Returns receiver-owned, currently authorized pending messages using an opaque
+cursor. The portable claim, acknowledgement, expiry, and restart behavior is
+not yet specified; the experimental coordinator provides only an in-process
+method.
 
 ### `messages.send`
 
@@ -32,6 +57,10 @@ there is no bare `applied` disposition.
 
 Records a substantiated delivery transition such as durable receipt,
 notification, context admission, or native adapter submission.
+
+An external effect MUST NOT be retried automatically when a durable claim or
+receipt exists but its outcome is unknown. The receipt and reconciliation model
+is tracked in [#19](https://github.com/fyaic/threadmesh/issues/19).
 
 ### `messages.recordOutcome`
 
@@ -57,3 +86,17 @@ Creates or updates an authorized relationship. Only an appropriate owner or poli
 ### `relationships.revoke`
 
 Revokes future authority. Queued, unapplied state-changing messages MUST be re-evaluated after revocation.
+
+## Experimental implementation mapping
+
+| Portable concern | Current in-process method | Limitation |
+|---|---|---|
+| Task registration | `registerTask` | Trusted principal injection, no attach/rotation binding |
+| Task resolution | `getTask` | No relationship-scoped summary projection |
+| Grant install/revoke | `installGrant`, `revokeGrant` | Owner checks are local, not transport-authenticated |
+| Envelope send | `submit` | Suggestion-focused prototype |
+| Mailbox read | `listPending` | No published wire schema |
+| Receiver decision | `respond` | Subset of normative disposition states |
+| External dispatch claim | `prepareContextAdmission` | ACP-specific adapter reference |
+| Delivery confirmation | `confirmContextAdmission` | Trusted process evidence, not signed attestation |
+| Disposition/audit read | `getDisposition`, `auditEvents` | No cursor event stream or redaction projection |

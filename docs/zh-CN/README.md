@@ -9,9 +9,11 @@ ThreadMesh 是一个面向多种 agent harness 的安全主动协调层。它让
 1. [愿景](vision.md)
 2. [安全模型](safety-model.md)
 3. [Codex 主动跨任务协调调研摘要](research-summary.md)
-4. [英文文档总览](../README.md)
-5. [英文协议草案](../03-protocol/README.md)
-6. [路线图](../../ROADMAP.md)
+4. [当前项目状态](../10-planning/project-status.md)
+5. [后续主线计划](../10-planning/mainline-plan.md)
+6. [英文文档总览](../README.md)
+7. [英文协议草案](../03-protocol/README.md)
+8. [路线图](../../ROADMAP.md)
 
 ## 一句话理解
 
@@ -23,3 +25,13 @@ ThreadMesh 并不赋予 agent 任意修改其他 session 的权力。它提供�
 ```
 
 项目首先关注单一用户或团队内部、多种本地 harness 之间的协作。跨用户、开放网络发现和 agent 市场不在初始范围内。
+
+## 进度说明
+
+当前仓库已从纯文档研究进入实验原型阶段，但规范进度仍落后于代码：
+
+- SQLite/ACP suggestion 路径已有自动化测试；
+- Kimi ACP 握手通过，真实模型调用仍受额度阻塞；
+- M0 的认证、binding、一致性、reconciliation、interrupt/verification 和
+  外部 review 尚未完成；
+- 在 M0 稳定前，不把更多 live adapter 当作主线完成度。

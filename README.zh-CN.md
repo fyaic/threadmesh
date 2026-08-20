@@ -2,9 +2,29 @@
 
 **面向不同 agent harness 的安全、主动任务协调层。**
 
-[English](README.md) · [中文文档入口](docs/zh-CN/README.md) · [协议草案](spec/README.md) · [路线图](ROADMAP.md)
+[English](README.md) · [中文文档入口](docs/zh-CN/README.md) · [当前进度](docs/10-planning/project-status.md) · [协议草案](spec/README.md) · [路线图](ROADMAP.md)
 
-> 当前状态：文档优先、pre-alpha。协议尚未稳定，也还没有可用于生产的 adapter。
+> 当前状态：pre-alpha。仓库已包含可执行协议草案、SQLite coordinator
+> 实验原型和 ACP adapter，但协议尚未稳定，也没有可用于生产的 adapter。
+
+## 当前进度
+
+PR [#20](https://github.com/fyaic/threadmesh/pull/20) 已合并一条经过三路内部
+review 的实验链路：任务注册、持久 mailbox、relationship grant、CAS、单次
+admission claim、ACP session reload、来源封装和审计记录均有自动化测试。
+
+当前不能把它称为跨 harness 产品能力：
+
+- M0 仍有 #7、#15–#19 六个开放 issue；
+- principal 仍是可信进程注入，不是网络认证；
+- ACP 中的 peer 内容仍通过普通 prompt surface；
+- steer/interrupt 未启用；
+- Kimi ACP 握手已通过，但真实模型调用因账户额度被阻塞，未计为成功。
+
+后续主线是先稳定 schema、authority/transport binding、crash
+reconciliation 和 interruption/verification，再完成外部 review 与 M1 本地
+coordinator。详见[项目状态](docs/10-planning/project-status.md)和
+[主线计划](docs/10-planning/mainline-plan.md)。
 
 ThreadMesh 关注一种具体能力：Agent A 在执行过程中发现 Agent B 的任务与自己的目标存在依赖，于是主动发起通知、建议、纠偏或停止请求。
 

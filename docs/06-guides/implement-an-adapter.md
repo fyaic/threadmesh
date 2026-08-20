@@ -1,6 +1,9 @@
 # Implement an adapter
 
-This guide describes the intended implementation sequence. Concrete SDK code will follow in M1.
+This guide describes the intended implementation sequence. A concrete but
+experimental ACP implementation now lives in
+[`src/adapters/acp-stdio.mjs`](../../src/adapters/acp-stdio.mjs); it is evidence,
+not a production compatibility claim.
 
 For a deliberately conservative ACP example, see the
 [Kimi Code experiment](../05-adapters/kimi-code.md) and its
@@ -35,6 +38,12 @@ Bind `steer` and `interrupt` to a local run and objective version. Fail closed o
 Return separate delivery, receiver-decision, context-admission,
 adapter-submission, and outcome events. Report partial cancellation honestly.
 
+For external model-visible dispatch, durably claim the message before invoking
+the harness. Bind the claim to message revision, grant version, and the resolved
+adapter reference. Confirm it only with matching adapter evidence. If the
+process crashes while the claim is in flight, reconcile rather than blindly
+redeliver.
+
 ## 8. Run conformance scenarios
 
 At minimum test:
@@ -49,3 +58,7 @@ At minimum test:
 - provenance preservation;
 - unsupported intent;
 - repeated interruption rate limit.
+
+The checked-in ACP fixture additionally tests persistent session reload,
+rejection of unknown sessions, historical replay isolation, permission denial,
+timeout escalation, and crash-safe duplicate admission claims.

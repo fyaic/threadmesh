@@ -68,3 +68,16 @@ normative schemas still require follow-up.
 
 Resolve the three P1 findings in normative text and conformance cases, then
 repeat the crash, conflict, and concurrent-update review.
+
+## Prototype follow-up
+
+After the initial review, pull request
+[#20](https://github.com/fyaic/threadmesh/pull/20) added canonical envelope
+digests, same-ID conflict rejection, expected-revision CAS, highest-version
+grant semantics, persistent single-use admission claims, restart tests, and an
+explicit revocation linearization boundary. The reviewer approved that
+conservative experimental prototype after re-review.
+
+The approval does not close the normative receipt, `outcome-unknown`,
+cross-state invariant, or transport-idempotency work in
+[#19](https://github.com/fyaic/threadmesh/issues/19).
