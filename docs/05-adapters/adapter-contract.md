@@ -34,6 +34,16 @@ Capabilities include:
 - provenance roles;
 - disposition callbacks.
 
+Capability combinations are fail-closed. In particular:
+
+- `steer` requires task incarnation, objective freshness, and `active-steer`;
+- `interrupt` requires task incarnation, `interrupt-request`, and at least one
+  real cancellation target;
+- `wake-idle` requires the idle-wake feature;
+- model-visible context admission requires `suggest` plus model-visible
+  provenance;
+- an active delivery mode cannot be advertised without its matching intent.
+
 The draft schema is in [`spec/schema/threadmesh-capabilities.schema.json`](../../spec/schema/threadmesh-capabilities.schema.json).
 
 The checked-in Kimi ACP profile intentionally advertises only `suggest` with

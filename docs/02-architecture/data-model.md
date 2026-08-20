@@ -46,6 +46,25 @@ Relationship
   expires_at?
 ```
 
+The canonical `relationshipType` vocabulary is directional from source to
+target: `supervisor`, `parent`, `child`, `peer`, `dependency`, or `observer`.
+Ownership is stored separately. Bidirectional peer authority requires one grant
+in each direction.
+
+## Task summary projection
+
+```text
+TaskSummaryProjection
+  relationship_id
+  grant_id
+  grant_version
+  summary_visibility { state-only | coordination | objective-hint }
+```
+
+The projection is part of the signed or authenticated read context in a future
+binding. A consumer reauthorizes it against the current effective grant before
+returning relationship-scoped fields.
+
 ## Coordination envelope
 
 ```text

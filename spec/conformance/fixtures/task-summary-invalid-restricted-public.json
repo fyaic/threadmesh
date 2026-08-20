@@ -1,0 +1,25 @@
+{
+  "specVersion": "0.0-draft",
+  "summaryId": "sum_restricted_public",
+  "summaryVersion": 1,
+  "task": {
+    "taskId": "task_restricted",
+    "incarnationId": "inc_restricted01"
+  },
+  "projection": {
+    "relationshipId": "rel_public_restricted",
+    "grantId": "grant_public_restricted",
+    "grantVersion": 1,
+    "summaryVisibility": "state-only"
+  },
+  "state": "running",
+  "coordination": {
+    "intents": ["notify"],
+    "deliveryModes": ["side-channel"]
+  },
+  "sensitivity": "restricted",
+  "audience": {
+    "visibility": "public"
+  },
+  "updatedAt": "2026-08-20T09:00:00Z"
+}

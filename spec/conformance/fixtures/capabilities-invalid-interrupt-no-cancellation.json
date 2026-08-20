@@ -1,0 +1,20 @@
+{
+  "specVersion": "0.0-draft",
+  "adapterName": "unsafe-interrupt-adapter",
+  "adapterVersion": "0.0.1",
+  "intents": ["interrupt"],
+  "deliveryModes": ["interrupt-request"],
+  "features": {
+    "relatedTaskDiscovery": "none",
+    "taskIncarnation": true,
+    "objectiveVersioning": false,
+    "checkpointEvents": false,
+    "idleWake": false,
+    "modelTurnCancellation": false,
+    "subprocessCancellation": false,
+    "contextAdmission": "none",
+    "provenanceRendering": "none",
+    "dispositionCallbacks": false,
+    "structuredGateResponses": "none"
+  }
+}

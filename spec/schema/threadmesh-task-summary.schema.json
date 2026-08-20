@@ -9,6 +9,7 @@
     "summaryId",
     "summaryVersion",
     "task",
+    "projection",
     "state",
     "coordination",
     "sensitivity",
@@ -24,6 +25,30 @@
     "summaryVersion": { "type": "integer", "minimum": 0 },
     "task": {
       "$ref": "https://threadmesh.dev/spec/0.0-draft/types.schema.json#/$defs/taskRef"
+    },
+    "projection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "relationshipId",
+        "grantId",
+        "grantVersion",
+        "summaryVisibility"
+      ],
+      "properties": {
+        "relationshipId": {
+          "type": "string",
+          "pattern": "^rel_[A-Za-z0-9][A-Za-z0-9._:-]{2,196}$"
+        },
+        "grantId": {
+          "type": "string",
+          "pattern": "^grant_[A-Za-z0-9][A-Za-z0-9._:-]{4,194}$"
+        },
+        "grantVersion": { "type": "integer", "minimum": 0 },
+        "summaryVisibility": {
+          "enum": ["state-only", "coordination", "objective-hint"]
+        }
+      }
     },
     "state": {
       "enum": [
@@ -107,10 +132,186 @@
           "then": {
             "properties": { "relationshipIds": true },
             "required": ["relationshipIds"]
+          },
+          "else": {
+            "properties": { "relationshipIds": false }
           }
         }
       ]
     },
     "updatedAt": { "type": "string", "format": "date-time" }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "sensitivity": { "const": "restricted" } },
+        "required": ["sensitivity"]
+      },
+      "then": {
+        "properties": {
+          "audience": {
+            "properties": { "visibility": { "const": "owner-only" } }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "sensitivity": { "const": "relationship-scoped" } },
+        "required": ["sensitivity"]
+      },
+      "then": {
+        "properties": {
+          "audience": {
+            "properties": {
+              "visibility": { "enum": ["relationship-scoped", "owner-only"] }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "audience": {
+            "properties": { "visibility": { "const": "public" } },
+            "required": ["visibility"]
+          }
+        },
+        "required": ["audience"]
+      },
+      "then": {
+        "properties": { "sensitivity": { "const": "public-metadata" } }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "projection": {
+            "properties": { "summaryVisibility": { "const": "state-only" } },
+            "required": ["summaryVisibility"]
+          }
+        },
+        "required": ["projection"]
+      },
+      "then": {
+        "properties": {
+          "objective": false,
+          "blockerHint": false,
+          "dependencyHints": false
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "projection": {
+            "properties": { "summaryVisibility": { "const": "coordination" } },
+            "required": ["summaryVisibility"]
+          }
+        },
+        "required": ["projection"]
+      },
+      "then": { "properties": { "objective": false } }
+    },
+    {
+      "if": {
+        "properties": {
+          "coordination": {
+            "properties": { "intents": { "contains": { "const": "notify" } } }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "coordination": {
+            "properties": {
+              "deliveryModes": {
+                "contains": { "enum": ["store-only", "side-channel"] }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "coordination": {
+            "properties": { "intents": { "contains": { "const": "suggest" } } }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "coordination": {
+            "properties": {
+              "deliveryModes": {
+                "contains": {
+                  "enum": [
+                    "store-only",
+                    "side-channel",
+                    "checkpoint-offer",
+                    "wake-idle"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "coordination": {
+            "properties": { "deliveryModes": { "contains": { "const": "active-steer" } } }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "coordination": {
+            "properties": { "intents": { "contains": { "const": "steer" } } }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "coordination": {
+            "properties": { "deliveryModes": { "contains": { "const": "interrupt-request" } } }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "coordination": {
+            "properties": { "intents": { "contains": { "const": "interrupt" } } }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "coordination": {
+            "properties": {
+              "deliveryModes": {
+                "contains": { "enum": ["checkpoint-offer", "wake-idle"] }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "coordination": {
+            "properties": { "intents": { "contains": { "const": "suggest" } } }
+          }
+        }
+      }
+    }
+  ]
 }

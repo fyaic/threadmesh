@@ -1,0 +1,30 @@
+{
+  "specVersion": "0.0-draft",
+  "summaryId": "sum_coord_leak01",
+  "summaryVersion": 1,
+  "task": {
+    "taskId": "task_coord_leak",
+    "incarnationId": "inc_coord_leak01"
+  },
+  "projection": {
+    "relationshipId": "rel_coord_only01",
+    "grantId": "grant_coord_only01",
+    "grantVersion": 1,
+    "summaryVisibility": "coordination"
+  },
+  "state": "waiting",
+  "objective": {
+    "hint": "This objective exceeds a coordination-only grant.",
+    "version": 2
+  },
+  "coordination": {
+    "intents": ["suggest"],
+    "deliveryModes": ["checkpoint-offer"]
+  },
+  "sensitivity": "relationship-scoped",
+  "audience": {
+    "visibility": "relationship-scoped",
+    "relationshipIds": ["rel_coord_only01"]
+  },
+  "updatedAt": "2026-08-20T09:00:00Z"
+}

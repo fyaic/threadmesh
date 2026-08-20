@@ -75,5 +75,162 @@
         "structuredGateResponses": { "const": "none" }
       }
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "intents": { "contains": { "const": "notify" } } }
+      },
+      "then": {
+        "properties": {
+          "deliveryModes": {
+            "contains": { "enum": ["store-only", "side-channel"] }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "intents": { "contains": { "const": "suggest" } } }
+      },
+      "then": {
+        "properties": {
+          "deliveryModes": {
+            "contains": {
+              "enum": [
+                "store-only",
+                "side-channel",
+                "checkpoint-offer",
+                "wake-idle"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "intents": { "contains": { "const": "steer" } } }
+      },
+      "then": {
+        "properties": {
+          "deliveryModes": { "contains": { "const": "active-steer" } },
+          "features": {
+            "properties": {
+              "taskIncarnation": { "const": true },
+              "objectiveVersioning": { "const": true }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "intents": { "contains": { "const": "interrupt" } } }
+      },
+      "then": {
+        "properties": {
+          "deliveryModes": { "contains": { "const": "interrupt-request" } },
+          "features": {
+            "properties": { "taskIncarnation": { "const": true } },
+            "anyOf": [
+              {
+                "properties": { "modelTurnCancellation": { "const": true } }
+              },
+              {
+                "properties": { "subprocessCancellation": { "const": true } }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "deliveryModes": { "contains": { "const": "active-steer" } } }
+      },
+      "then": {
+        "properties": { "intents": { "contains": { "const": "steer" } } }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "deliveryModes": { "contains": { "const": "interrupt-request" } }
+        }
+      },
+      "then": {
+        "properties": { "intents": { "contains": { "const": "interrupt" } } }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "deliveryModes": {
+            "contains": { "enum": ["checkpoint-offer", "wake-idle"] }
+          }
+        }
+      },
+      "then": {
+        "properties": { "intents": { "contains": { "const": "suggest" } } }
+      }
+    },
+    {
+      "if": {
+        "properties": { "deliveryModes": { "contains": { "const": "wake-idle" } } }
+      },
+      "then": {
+        "properties": {
+          "features": { "properties": { "idleWake": { "const": true } } }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "features": { "properties": { "idleWake": { "const": true } } } }
+      },
+      "then": {
+        "properties": {
+          "deliveryModes": { "contains": { "const": "wake-idle" } }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "features": {
+            "properties": {
+              "contextAdmission": { "enum": ["receiver-mediated", "native"] }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "intents": { "contains": { "const": "suggest" } },
+          "features": {
+            "properties": {
+              "provenanceRendering": { "const": "model-visible" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "features": {
+            "properties": {
+              "relatedTaskDiscovery": { "const": "relationship-scoped" }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "features": { "properties": { "taskIncarnation": { "const": true } } }
+        }
+      }
+    }
+  ]
 }

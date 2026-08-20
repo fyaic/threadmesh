@@ -3,7 +3,8 @@
 ## In scope
 
 - Task identity and privacy-preserving discovery.
-- Relationship types between user, parent, child, peer, and supervisor tasks.
+- Directional `supervisor`, `parent`, `child`, `peer`, `dependency`, and
+  `observer` relationship grants; user ownership remains a control-plane property.
 - Coordination intents and their expected receiver behavior.
 - Capability negotiation between harness adapters.
 - Message envelopes, acknowledgements, expiry, replay protection, and freshness.

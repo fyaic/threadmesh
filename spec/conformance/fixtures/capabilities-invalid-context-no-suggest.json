@@ -1,0 +1,20 @@
+{
+  "specVersion": "0.0-draft",
+  "adapterName": "context-without-suggest",
+  "adapterVersion": "0.0.1",
+  "intents": ["notify"],
+  "deliveryModes": ["side-channel"],
+  "features": {
+    "relatedTaskDiscovery": "none",
+    "taskIncarnation": true,
+    "objectiveVersioning": false,
+    "checkpointEvents": false,
+    "idleWake": false,
+    "modelTurnCancellation": false,
+    "subprocessCancellation": false,
+    "contextAdmission": "native",
+    "provenanceRendering": "model-visible",
+    "dispositionCallbacks": false,
+    "structuredGateResponses": "none"
+  }
+}

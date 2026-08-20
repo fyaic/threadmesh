@@ -2,21 +2,30 @@
 
 ThreadMesh authorization begins with explicit relationships rather than semantic similarity alone.
 
-## Relationship types
+## Canonical relationship types
 
-| Relationship | Description | Safe default |
+Relationship grants are directional from `source` to `target`. Ownership is a
+control-plane property, not a task-to-task relationship type. Absence of a
+grant means unrelated and provides no discovery or delivery authority.
+
+| `relationshipType` | Directional meaning | Maximum safe default |
 |---|---|---|
-| `owns` | A user or principal owns the target task | Full control subject to platform policy |
-| `supervises` | Sender was explicitly granted oversight | Configured steer/interrupt authority |
-| `parent-of` | Sender created the delegated target | Notify, suggest, and scoped steer |
-| `child-of` | Sender is delegated by the target | Notify and suggest upward |
-| `peer-of` | Tasks share a declared goal or dependency | Notify and suggest only |
-| `observes` | Sender can read minimal task status | No write authority |
-| `unrelated` | No declared relationship | No discovery or delivery |
+| `supervisor` | Source supervises target under an explicit grant | Policy-scoped steer/interrupt |
+| `parent` | Source delegated the target task | Notify, suggest, and policy-scoped steer |
+| `child` | Source was delegated by target | Notify and suggest only |
+| `peer` | Source and target are declared peers | Notify and suggest only |
+| `dependency` | Source depends on target | Notify and suggest only |
+| `observer` | Source observes target | Store-only or side-channel notify |
+
+`peer` describes symmetric authority expectations, but grants remain
+directional. Bidirectional peer communication requires one effective grant in
+each direction.
 
 ## Dependency edges
 
-Relationships express authority; dependency edges express work causality. A task may be:
+Relationship grants express authority. Dependency records express work
+causality; a `dependency` grant is only the bounded communication authority from
+the dependent source toward the target. A task may be:
 
 - blocked by another task;
 - supplying an artifact to another task;

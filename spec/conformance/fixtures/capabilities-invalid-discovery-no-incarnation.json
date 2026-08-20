@@ -1,0 +1,20 @@
+{
+  "specVersion": "0.0-draft",
+  "adapterName": "discovery-without-incarnation",
+  "adapterVersion": "0.0.1",
+  "intents": ["notify"],
+  "deliveryModes": ["store-only"],
+  "features": {
+    "relatedTaskDiscovery": "relationship-scoped",
+    "taskIncarnation": false,
+    "objectiveVersioning": false,
+    "checkpointEvents": false,
+    "idleWake": false,
+    "modelTurnCancellation": false,
+    "subprocessCancellation": false,
+    "contextAdmission": "none",
+    "provenanceRendering": "none",
+    "dispositionCallbacks": false,
+    "structuredGateResponses": "none"
+  }
+}

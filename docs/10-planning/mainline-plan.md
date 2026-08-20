@@ -13,6 +13,11 @@ additional live adapters are evidence work, not the mainline.
 
 Primary issue: [#18](https://github.com/fyaic/threadmesh/issues/18).
 
+Status: completed in the M0 coherence change. The draft now binds task-summary
+projections to grant versions, constrains relationship direction, decision
+reasons, intent/mode pairs, freshness, wake, and cancellation declarations, and
+includes focused negative fixtures.
+
 - define one directional relationship vocabulary;
 - reject restricted-public summaries;
 - constrain decision/reason combinations;
@@ -105,12 +110,11 @@ After M0 closes and M1 has an observable coordinator:
 
 Keep each change independently reviewable:
 
-1. `spec: enforce summary, relationship, disposition, and capability coherence`
-2. `spec: publish authenticated task and mailbox operation binding`
-3. `spec: define receipts, in-flight claims, and outcome reconciliation`
-4. `spec: add interruption results and verification attestations`
-5. `docs: publish the external M0 reviewer packet`
-6. `feat: complete the M1 storage and migration contract`
+1. `spec: publish authenticated task and mailbox operation binding`
+2. `spec: define receipts, in-flight claims, and outcome reconciliation`
+3. `spec: add interruption results and verification attestations`
+4. `docs: publish the external M0 reviewer packet`
+5. `feat: complete the M1 storage and migration contract`
 
 ## Mainline guardrails
 

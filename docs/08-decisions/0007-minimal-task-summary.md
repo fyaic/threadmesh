@@ -26,6 +26,11 @@ ThreadMesh task summaries contain only typed, independently disclosable fields:
 - optional blocker or dependency hints;
 - sensitivity and audience scope.
 
+Every emitted summary also binds its projection to one `relationshipId`,
+`grantId`, `grantVersion`, and effective `summaryVisibility`. A state-only grant
+cannot project blocker, dependency, or objective fields; a coordination grant
+cannot project the objective; objective hints require `objective-hint`.
+
 The summary schema excludes raw prompt, full history, filesystem paths, secret
 material, and arbitrary extension properties by default.
 
@@ -42,6 +47,9 @@ relationship-scoped rather than global enumeration.
 - Extensions require an explicit namespaced mechanism in a later protocol
   revision rather than arbitrary JSON properties.
 - Conformance fixtures can assert that private fields are rejected.
+- Readers must reauthorize the bound grant/version before returning a
+  relationship-scoped summary; a syntactically valid stale projection is not
+  sufficient authority.
 
 ## Rejected alternatives
 
