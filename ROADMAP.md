@@ -17,13 +17,15 @@ snapshot and ordered workstreams.
 - [x] Publish authenticated authority and executable operation bindings
   ([#15](https://github.com/fyaic/threadmesh/issues/15),
   [#17](https://github.com/fyaic/threadmesh/issues/17)).
-- [ ] Resolve remaining normative review blockers
-  [#16](https://github.com/fyaic/threadmesh/issues/16) and
-  [#19](https://github.com/fyaic/threadmesh/issues/19).
+- [x] Define crash-safe receipts, unknown-outcome reconciliation, disposition
+  CAS, and durable harness-idempotency gating
+  ([#19](https://github.com/fyaic/threadmesh/issues/19)).
+- [ ] Define typed interruption results and authenticated verification
+  attestations ([#16](https://github.com/fyaic/threadmesh/issues/16)).
 - [x] Enforce summary, relationship, disposition, and capability coherence (#18).
 - [ ] Accept two independent design reviews.
 
-Current accounting: 8 milestone issues closed and 3 open. The internal reviews
+Current accounting: 9 milestone issues closed and 2 open. The internal reviews
 approved the conservative experimental prototype after fixes, but they do not
 satisfy [#7](https://github.com/fyaic/threadmesh/issues/7).
 

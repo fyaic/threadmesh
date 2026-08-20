@@ -15,6 +15,7 @@ This directory contains machine-readable artifacts for the pre-alpha protocol.
 - [`threadmesh-auth-context.schema.json`](schema/threadmesh-auth-context.schema.json) — transport-authenticated operation identity.
 - [`threadmesh-relationship-proposal.schema.json`](schema/threadmesh-relationship-proposal.schema.json) — non-authoritative agent proposal.
 - [`threadmesh-jsonrpc.schema.json`](schema/threadmesh-jsonrpc.schema.json) — JSON-RPC requests, success responses, and typed errors.
+- [`threadmesh-adapter-submission.schema.json`](schema/threadmesh-adapter-submission.schema.json) — crash-safe native submission, receipt, and reconciliation record.
 
 The schemas are exploratory and use the version label `0.0-draft`. They are not a compatibility promise.
 
@@ -35,7 +36,6 @@ fixture, checks envelope chronology, and evaluates the draft state machines.
 
 ## Planned additions
 
-- durable receipts and outcome-unknown reconciliation;
 - typed interruption results and verification attestations;
 - additional live adapter behavior profiles.
 

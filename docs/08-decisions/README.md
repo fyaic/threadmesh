@@ -11,5 +11,6 @@ ADRs capture durable decisions that constrain the protocol or implementation.
 | [0005](0005-task-incarnation-and-freshness.md) | Bind messages to task incarnation and state-changing requests to freshness | Accepted |
 | [0006](0006-provider-neutral-provenance.md) | Keep the core envelope provider-neutral and structured gates isolated | Accepted |
 | [0007](0007-minimal-task-summary.md) | Publish minimal relationship-scoped task summaries | Accepted |
+| [0008](0008-outcome-unknown-before-external-dispatch.md) | Persist outcome unknown before external dispatch and reconcile before retry | Accepted |
 
 New ADRs should include context, decision, consequences, rejected alternatives, and status.

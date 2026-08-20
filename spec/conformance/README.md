@@ -21,6 +21,11 @@ The negative cases are security properties, not malformed examples to copy:
   operation principal;
 - proposals remain non-authoritative and effective grant decision digests must
   match canonical authorization content;
+- steer and interrupt declarations require durable native submission
+  idempotency;
+- adapter receipts require the pre-call unknown boundary, and observed effects
+  cannot precede adapter submission;
+- context admission cannot coexist with receiver rejection;
 - terminal state machines cannot silently regress.
 
 Run all checks from the repository root with `npm test`.

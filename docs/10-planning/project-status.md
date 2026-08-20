@@ -1,8 +1,8 @@
 # Project status
 
-> Snapshot: 2026-08-20, including the authenticated authority and executable
-> operation binding for [#15](https://github.com/fyaic/threadmesh/issues/15)
-> and [#17](https://github.com/fyaic/threadmesh/issues/17).
+> Snapshot: 2026-08-20, including authenticated operations and crash-safe
+> adapter submission reconciliation for
+> [#19](https://github.com/fyaic/threadmesh/issues/19).
 
 ## Executive summary
 
@@ -15,17 +15,17 @@ ACP endpoint.
 
 The implementation is not a production coordinator and does not establish
 cross-product interoperability. Normative M0 remains open because typed
-interruption and verification results, crash reconciliation, and two
-independent external reviews are unfinished.
+interruption and verification results and two independent external reviews are
+unfinished.
 
 ## Evidence ledger
 
 | Area | Current evidence | Status |
 |---|---|---|
 | Research and problem framing | Codex deep dive, community signals, ecosystem comparison, ADRs | Established |
-| Protocol draft | 11 JSON Schemas, 38 positive/negative cases, 7 transition cases, 26 unit tests | Executable draft |
+| Protocol draft | 12 JSON Schemas, 44 positive/negative cases, 7 transition cases, 32 unit tests | Executable draft |
 | Local binding | Schema-validated JSON-RPC, transport-derived principals, typed errors | Executable local reference |
-| Local persistence | SQLite registry, proposals, grants, summaries, mailbox, claims, replay, audit | Experimental |
+| Local persistence | SQLite registry, proposals, grants, summaries, mailbox, claims, submission receipts, reconciliation, replay, audit | Experimental |
 | Safety boundary | Authenticated authorship checks, effective-grant decisions, revocation, CAS | Executable local policy |
 | ACP adapter | ACP v1 initialize, session create/load, prompt aggregation, permission denial, timeout cleanup | Experimental |
 | Kimi Code | CLI 0.36.1 handshake and capability snapshot | Handshake verified |
@@ -42,18 +42,17 @@ GitHub is authoritative for milestone closure.
 
 ### M0 — Foundation and protocol draft
 
-- 8 issues closed, including coherence and authenticated binding issues
+- 9 issues closed, including coherence, authenticated binding, and crash-safety issues
   [#15](https://github.com/fyaic/threadmesh/issues/15),
-  [#17](https://github.com/fyaic/threadmesh/issues/17), and
-  [#18](https://github.com/fyaic/threadmesh/issues/18).
-- 3 issues open: [#7](https://github.com/fyaic/threadmesh/issues/7),
-  [#16](https://github.com/fyaic/threadmesh/issues/16), and
+  [#17](https://github.com/fyaic/threadmesh/issues/17),
+  [#18](https://github.com/fyaic/threadmesh/issues/18), and
   [#19](https://github.com/fyaic/threadmesh/issues/19).
+- 2 issues open: [#7](https://github.com/fyaic/threadmesh/issues/7) and
+  [#16](https://github.com/fyaic/threadmesh/issues/16).
 - Internal review findings have prototype mitigations, but their normative
   acceptance criteria remain open.
-- Exit is blocked by reconciliation, interruption/verification, and two
-  independent reviews, including at least one outside the maintainer
-  organization.
+- Exit is blocked by interruption/verification and two independent reviews,
+  including at least one outside the maintainer organization.
 
 ### M1 — Local reference coordinator
 
@@ -77,11 +76,17 @@ can:
 5. quarantine revoked content, then claim and acknowledge authorized mailbox work;
 6. publish and reauthorize grant-projected summaries;
 7. recover two public-path mock harness profiles after SQLite restart;
-8. create one durable adapter admission claim bound to grant and evidence;
-9. load the registered ACP session without mixing historical replay into the
+8. persist a native submission's pre-call `outcome-unknown` boundary and stable
+   adapter idempotency key;
+9. recover unknown attempts after restart without automatic redelivery;
+10. store an exact adapter receipt atomically with disposition CAS, reject a
+    conflicting receipt, and permit retry only after evidence-backed
+    confirmed-not-submitted reconciliation;
+11. create one durable adapter admission claim bound to grant and evidence;
+12. load the registered ACP session without mixing historical replay into the
    new turn;
-10. confirm context admission only after matching adapter evidence;
-11. preserve an audit trail across restart.
+13. confirm context admission only after matching adapter evidence;
+14. preserve an audit trail across restart.
 
 It does not prove autonomous task discovery, useful model behavior, native
 provider-role isolation, exactly-once external effects, production remote

@@ -25,6 +25,6 @@ review requirement in GitHub issue #7.
 
 The final approvals apply only to the conservative experimental implementation
 merged in [#20](https://github.com/fyaic/threadmesh/pull/20). The normative
-findings originated in #15–#19. Issues #15, #17, and #18 now have normative,
-executable resolutions; reconciliation (#19), interruption/verification (#16),
-and independent review must close before M0.
+findings originated in #15–#19. Issues #15, #17, #18, and #19 now have
+normative, executable resolutions; interruption/verification (#16) and
+independent review must close before M0.

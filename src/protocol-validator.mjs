@@ -32,6 +32,10 @@ const validators = new Map([
     "https://threadmesh.dev/spec/0.0-draft/relationship-proposal.schema.json",
   ],
   ["auth-context", "https://threadmesh.dev/spec/0.0-draft/auth-context.schema.json"],
+  [
+    "adapter-submission",
+    "https://threadmesh.dev/spec/0.0-draft/adapter-submission.schema.json",
+  ],
   ["jsonrpc", "https://threadmesh.dev/spec/0.0-draft/jsonrpc.schema.json"],
   [
     "jsonrpc-request",

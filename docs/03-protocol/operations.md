@@ -86,8 +86,29 @@ Records a substantiated delivery transition such as durable receipt,
 notification, context admission, or native adapter submission.
 
 An external effect MUST NOT be retried automatically when a durable claim or
-receipt exists but its outcome is unknown. The receipt and reconciliation model
-is tracked in [#19](https://github.com/fyaic/threadmesh/issues/19).
+receipt exists but its outcome is unknown.
+
+### `adapter.prepareSubmission`
+
+Creates or replays a durable submission bound to the authenticated receiver,
+canonical envelope digest, disposition revision, adapter reference digest and
+stable adapter idempotency key. It does not authorize reporting a harness call.
+
+### `adapter.beginSubmission`
+
+Moves a prepared submission to `outcome-unknown` durably and immediately before
+the external harness call. Restart never rewinds this boundary.
+
+### `adapter.recordReceipt`
+
+Stores one exact native adapter acceptance receipt and moves delivery to
+`adapter-submitted` under disposition CAS. A conflicting receipt is rejected.
+
+### `adapter.reconcileSubmission`
+
+Resolves an unknown attempt as confirmed submitted, confirmed not submitted, or
+manual reconciliation. Evidence is mandatory. Only confirmed-not-submitted may
+permit a fresh attempt.
 
 ### `messages.recordOutcome`
 
@@ -127,10 +148,13 @@ Revokes future authority. Queued, unapplied state-changing messages MUST be re-e
 | Envelope send | `messages.send` | Core state remains suggestion-focused |
 | Mailbox receive | `mailbox.listPending`, `mailbox.claim`, `mailbox.ack` | Fixed 60-second local claim window |
 | Receiver decision | `messages.respond` | Reference runtime supports accepted/rejected/deferred |
+| Native submission | `adapter.prepareSubmission`, `adapter.beginSubmission`, `adapter.recordReceipt` | Trusted local receipt, not independent verification |
+| Unknown-outcome reconciliation | `adapter.reconcileSubmission`, `adapter.getSubmission` | Receiver task supplies evidence; no remote attestation yet |
 | Event observation | `tasks.wait` | Immediate cursor poll, not hosted long-poll |
 | Disposition/audit read | `messages.getDisposition`, `audit.list` | Sender/receiver task projection only |
 
-External adapter dispatch still uses the trusted-process
-`prepareContextAdmission` and `confirmContextAdmission` methods. Durable receipt
-and outcome reconciliation are tracked in
-[#19](https://github.com/fyaic/threadmesh/issues/19).
+The older trusted-process `prepareContextAdmission` and
+`confirmContextAdmission` methods remain an ACP experiment for model-visible
+context. Public native-effect accounting uses the adapter submission methods
+above; integrations must not collapse context admission into adapter receipt or
+verified outcome.

@@ -70,6 +70,17 @@ metadata.
 
 **Mitigation:** resource claims, adapter-specific write isolation, optimistic concurrency, and explicit ownership transfer. ThreadMesh messages alone do not serialize external writes.
 
+### Crash-window duplicate effects
+
+**Threat:** the dispatcher crashes after a native harness accepted a request but
+before the coordinator stored its receipt, then repeats the effect on restart.
+
+**Mitigation:** persist an `outcome-unknown` submission boundary before the
+external call, bind a stable adapter idempotency key and canonical envelope
+digest, require disposition CAS, reject conflicting receipts, and prohibit
+automatic retry until a query or evidence confirms the first attempt was not
+submitted.
+
 ### Audit leakage
 
 **Threat:** useful provenance becomes a second copy of sensitive prompts.
@@ -85,3 +96,5 @@ metadata.
 - A weaker relationship cannot request a stronger intent.
 - Stale state-changing messages do not apply to a new run.
 - Adapters do not silently claim capabilities they cannot enforce.
+- Process restart does not turn an unknown external outcome into permission to
+  retry.

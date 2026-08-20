@@ -53,6 +53,12 @@ binding, so these issues should move as one design slice.
 
 Primary issue: [#19](https://github.com/fyaic/threadmesh/issues/19).
 
+Status: completed in the durable adapter-submission change. The protocol now
+persists the canonical envelope digest and a pre-call `outcome-unknown`
+boundary, records exact receipts atomically with disposition CAS, prohibits
+blind restart retry, requires reconciliation evidence, and gates steer and
+interrupt on durable harness idempotency.
+
 - define canonical envelope digest conflicts;
 - define durable adapter receipts and `outcome-unknown` reconciliation;
 - specify the admission-claim linearization boundary;
@@ -60,7 +66,8 @@ Primary issue: [#19](https://github.com/fyaic/threadmesh/issues/19).
 - add crash-before-receipt, crash-after-effect, restart, and concurrent-claim
   fixtures.
 
-The SQLite prototype is input to this work, not the normative answer.
+The SQLite implementation and serialized JSON-RPC tests are executable evidence
+for the normative schema and state machine.
 
 ### 4. Add typed verification and partial interruption
 
@@ -115,10 +122,10 @@ After M0 closes and M1 has an observable coordinator:
 
 Keep each change independently reviewable:
 
-1. `spec: define receipts, in-flight claims, and outcome reconciliation`
-2. `spec: add interruption results and verification attestations`
-3. `docs: publish the external M0 reviewer packet`
-4. `feat: complete the M1 storage and migration contract`
+1. `spec: add interruption results and verification attestations`
+2. `docs: publish the external M0 reviewer packet`
+3. `feat: complete the M1 storage and migration contract`
+4. `feat: complete policy, dispatcher, stream, and inspector slices`
 
 ## Mainline guardrails
 
