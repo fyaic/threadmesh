@@ -1,7 +1,8 @@
 # Project status
 
 > Snapshot: 2026-08-20, including authenticated operations, crash-safe adapter
-> submission, typed interruption results, and signed verification attestations.
+> submission, typed interruption results, signed verification attestations,
+> and the stacked local event-stream/inspector candidate.
 
 ## Executive summary
 
@@ -22,7 +23,7 @@ maintainer organization.
 | Area | Current evidence | Status |
 |---|---|---|
 | Research and problem framing | Codex deep dive, community signals, ecosystem comparison, ADRs | Established |
-| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 62 unit tests | Executable draft |
+| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 65 unit tests | Executable draft |
 | Local binding | Schema-validated JSON-RPC, transport-derived principals, typed errors | Executable local reference |
 | Local persistence | SQLite registry, proposals, grants, summaries, mailbox, claims, submission receipts, reconciliation, replay, audit | Experimental |
 | Safety boundary | Authenticated authorship checks, effective-grant decisions, revocation, CAS | Executable local policy |
@@ -36,6 +37,7 @@ maintainer organization.
 | Interruption result | Per-target model/tool/process schema; no umbrella success | Normative, no live adapter yet |
 | External verification | Signed attestation schema plus real Ed25519 conformance proof | Normative, conformance trust anchor only |
 | Cross-harness conformance | Pull-mailbox and event-watching mock profiles over JSON-RPC | Local behavior demonstrated |
+| Event stream and inspector | Restart checkpoint, strict local cursor order, provenance, authorization-aware redaction | Stacked M1 candidate |
 
 ## Milestone accounting
 
@@ -70,8 +72,11 @@ GitHub is authoritative for milestone closure.
   shared transition table, explicit terminal reasons, and a dispatcher that
   persists unknown outcome before one native call and suppresses restart retry;
   it remains gated by #7.
-- Purge execution,
-  hosted event streaming, an inspector, and the complete M1 behavior matrix
+- A stacked #13 candidate adds a restart-safe local cursor wrapper plus a
+  provenance snapshot that distinguishes user/peer authorship, redacts content
+  after expiry or revocation, and exposes delivery/decision/outcome separately;
+  it remains gated by #7.
+- Purge execution, hosted event streaming, and the complete M1 behavior matrix
   remain unfinished.
 
 ## What the prototype proves
@@ -109,6 +114,8 @@ can:
     suppress retry after ambiguous error or restart;
 20. reject stale run/objective/checkpoint snapshots at admission and immediately
     before dispatch, and persist explicit decision/failure reasons.
+21. resume a strictly ordered local event cursor after SQLite restart and render
+    authorized provenance without leaking revoked content or raw audit detail.
 
 It does not prove autonomous task discovery, useful model behavior, native
 provider-role isolation, exactly-once external effects, production remote

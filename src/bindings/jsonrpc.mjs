@@ -261,6 +261,12 @@ export class ThreadMeshJsonRpcBinding {
             params.messageId,
             principal,
           );
+        case "inspector.snapshot":
+          return this.coordinator.inspectMessage(
+            params.senderIncarnationId,
+            params.messageId,
+            principal,
+          );
         default:
           throw codedError("threadmesh_jsonrpc_method_not_found");
       }

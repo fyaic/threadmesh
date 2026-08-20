@@ -44,11 +44,10 @@ and distributed-systems boundaries.
 
 Prototype evidence already exists for task registration, mailbox persistence,
 grant checks, CAS, admission claims, ACP session reload, and provenance. Stacked
-Draft PRs now cover the versioned storage baseline, audited expiry, and a
-fail-closed policy engine with non-disclosing denials and transactional
-state-changing revocation. The next stacked candidate adds runtime freshness,
-shared legal transitions, and crash-safe native dispatch. All M1 issues remain
-open because merge is gated by
+Draft candidates now cover the versioned storage baseline, audited expiry,
+fail-closed policy, runtime freshness, crash-safe native dispatch, and a local
+restart-safe cursor stream with an authorization-aware provenance inspector.
+All M1 issues remain open because merge is gated by
 [issue #7](https://github.com/fyaic/threadmesh/issues/7) and the remaining
 acceptance criteria are not yet met.
 

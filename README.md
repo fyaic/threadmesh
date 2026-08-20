@@ -96,6 +96,7 @@ src/
   client/            Reference clients and mock harness profiles
   coordinator/       Experimental reference coordinator
   dispatcher/        Crash-safe native-effect orchestration
+  inspector/         Restart-safe local cursor stream
   policy/            Pure fail-closed relationship authorization
   state/             Shared disposition transition rules
 test/                Behavioral and conformance tests
@@ -116,9 +117,9 @@ The implementation is deliberately narrower than the product vision:
 - M0 has 10 closed and 1 open issue after typed interruption and signed
   verification in #16;
 - only the independent external review gate remains open for M0;
-- M1 storage, audited expiry, relationship policy, and durable dispatcher
-  candidates are prepared as stacked Draft PRs, but all six acceptance issues
-  remain open behind #7;
+- M1 storage, audited expiry, relationship policy, durable dispatcher, and
+  provenance-inspector candidates are prepared as stacked changes, but all six
+  acceptance issues remain open behind #7;
 - Kimi Code ACP initialization passed, while the real model-turn marker test is
   blocked by account quota and is not counted as a pass.
 

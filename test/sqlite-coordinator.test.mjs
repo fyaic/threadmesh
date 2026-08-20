@@ -8,6 +8,7 @@ import {
   createEffectiveGrant,
   SqliteCoordinator,
 } from "../src/coordinator/sqlite-coordinator.mjs";
+import { LocalTaskEventStream } from "../src/inspector/local-event-stream.mjs";
 import { grantAuthorizationDigest } from "../src/protocol-validator.mjs";
 
 const NOW = Date.parse("2026-08-20T09:00:00Z");
@@ -590,6 +591,81 @@ test("persists mailbox state and renders provenance after restart", () => {
     coordinator.close();
     fs.rmSync(directory, { recursive: true, force: true });
   }
+});
+
+test("resumes a cursor event stream in order after coordinator restart", async () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "threadmesh-events-"));
+  const filename = path.join(directory, "coordinator.sqlite");
+  let coordinator = createCoordinator(filename);
+  try {
+    coordinator.submit(envelope(), senderPrincipal);
+    let stream = new LocalTaskEventStream({
+      readPage: (options) => coordinator.waitTask(
+        { taskId: "task_sender", incarnationId: "inc_sender01" },
+        options,
+        senderPrincipal,
+      ),
+      pollIntervalMs: 1,
+    });
+    const first = await stream.next({ timeoutMs: 0 });
+    assert.deepEqual(first.events.map((event) => event.eventType), [
+      "message-durably-received",
+    ]);
+    const checkpoint = stream.checkpoint();
+    coordinator.close();
+
+    coordinator = new SqliteCoordinator({ filename, clock: () => NOW });
+    coordinator.respond(
+      "inc_sender01",
+      "msg_sender01",
+      "accepted",
+      0,
+      receiverPrincipal,
+    );
+    stream = new LocalTaskEventStream({
+      readPage: (options) => coordinator.waitTask(
+        { taskId: "task_sender", incarnationId: "inc_sender01" },
+        options,
+        senderPrincipal,
+      ),
+      afterCursor: checkpoint,
+      pollIntervalMs: 1,
+    });
+    const second = await stream.next({ timeoutMs: 0 });
+    assert.deepEqual(second.events.map((event) => event.eventType), [
+      "receiver-decided",
+    ]);
+    assert.ok(second.nextCursor > checkpoint);
+    const empty = await stream.next({ timeoutMs: 0 });
+    assert.equal(empty.timedOut, true);
+    assert.equal(empty.nextCursor, second.nextCursor);
+  } finally {
+    coordinator.close();
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("rejects invalid event order and observes stream cancellation", async () => {
+  const invalid = new LocalTaskEventStream({
+    readPage: async () => ({
+      events: [{ cursor: 2 }, { cursor: 1 }],
+      nextCursor: 2,
+    }),
+  });
+  await assert.rejects(
+    () => invalid.next({ timeoutMs: 0 }),
+    { code: "threadmesh_event_stream_order_invalid" },
+  );
+
+  const controller = new AbortController();
+  controller.abort();
+  const cancelled = new LocalTaskEventStream({
+    readPage: async () => ({ events: [], nextCursor: 0 }),
+  });
+  await assert.rejects(
+    () => cancelled.next({ timeoutMs: 0, signal: controller.signal }),
+    { code: "threadmesh_event_stream_cancelled" },
+  );
 });
 
 test("does not trust sender-claimed control-plane provenance", () => {

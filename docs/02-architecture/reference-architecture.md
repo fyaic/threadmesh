@@ -68,6 +68,8 @@ architecture:
 - the [durable dispatcher](durable-dispatcher.md) centralizes legal state
   transitions, freshness revalidation, the pre-call unknown-outcome boundary,
   one native call, and exact receipt recording;
+- the [provenance inspector](provenance-inspector.md) adds a restart-safe local
+  cursor stream and an authorization-aware, content-redacting message snapshot;
 
 - [`SqliteCoordinator`](../../src/coordinator/sqlite-coordinator.mjs) combines a
   registry, proposals, effective grants, summaries, mailbox, durable claims,
@@ -78,7 +80,7 @@ architecture:
   session, denies permission requests, and returns prompt evidence;
 - context-admission callers still compose the older ACP prepare/prompt/confirm
   experiment; native-effect calls use the dispatcher;
-- no user/product UI, event-stream inspector, production network credential
+- no user/product UI, hosted event service, production network credential
   verifier, or OS sandbox is included.
 
 This slice validates failure semantics and informs the target architecture. It

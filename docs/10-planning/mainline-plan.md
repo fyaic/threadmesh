@@ -138,6 +138,17 @@ and runtime, all explicit receiver terminal states, and a durable dispatcher.
 The dispatcher writes `outcome-unknown` before one native call and suppresses
 automatic retry after exceptions or restart. Its merge is also gated by #7.
 
+The stacked #13 candidate adds a `tasks.wait`-compatible local stream with
+strict cursor validation and caller-owned restart checkpoints. Its authorized
+snapshot distinguishes user and peer authorship, renders delivery, decision,
+and outcome separately, and redacts content and evidence after expiry or grant
+revocation. It is not a hosted stream and its merge is also gated by #7.
+
+The next implementation slice is #14: turn the two mock harness profiles into
+an explicit behavior matrix and CI conformance kit, including unsupported
+state-changing behavior and restart evidence. Purge execution remains a
+required storage/retention follow-up before M1 can close.
+
 ### 7. Resume live adapter expansion
 
 After M0 closes and M1 has an observable coordinator:

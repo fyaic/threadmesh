@@ -96,7 +96,7 @@
             "adapter.getSubmission",
             "maintenance.expireDue",
             "mailbox.listPending", "mailbox.claim", "mailbox.ack",
-            "tasks.wait", "audit.list"
+            "tasks.wait", "audit.list", "inspector.snapshot"
           ]
         },
         "params": { "type": "object" }
@@ -125,7 +125,8 @@
         { "$ref": "#/$defs/listPendingRequest" },
         { "$ref": "#/$defs/claimRequest" },
         { "$ref": "#/$defs/ackRequest" },
-        { "$ref": "#/$defs/waitRequest" }
+        { "$ref": "#/$defs/waitRequest" },
+        { "$ref": "#/$defs/inspectRequest" }
       ]
     },
     "registerRequest": {
@@ -458,6 +459,17 @@
           "task": { "$ref": "https://threadmesh.dev/spec/0.0-draft/types.schema.json#/$defs/taskRef" },
           "afterCursor": { "type": "integer", "minimum": 0 },
           "limit": { "type": "integer", "minimum": 1, "maximum": 100 }
+        }
+      } } }
+    },
+    "inspectRequest": {
+      "if": { "properties": { "method": { "const": "inspector.snapshot" } } },
+      "then": { "properties": { "params": {
+        "type": "object", "additionalProperties": false,
+        "required": ["senderIncarnationId", "messageId"],
+        "properties": {
+          "senderIncarnationId": { "type": "string", "pattern": "^inc_[A-Za-z0-9][A-Za-z0-9._:-]{6,196}$" },
+          "messageId": { "type": "string", "pattern": "^msg_[A-Za-z0-9][A-Za-z0-9._:-]{6,196}$" }
         }
       } } }
     },

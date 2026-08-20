@@ -43,6 +43,9 @@ ThreadMesh 并不赋予 agent 任意修改其他 session 的权力。它提供�
 - durable dispatcher 在真实 adapter 调用前先持久化 `outcome-unknown`，异常或
   重启后绝不自动重试；run/objective/checkpoint freshness 会在接收和调用前各
   校验一次，所有 terminal decision 与 failure reason 都显式保存；
+- 本地事件流可保存 cursor 并在 coordinator 重启后继续；provenance inspector
+  区分用户输入与 peer agent 输入，并在过期或撤权后脱敏内容和 evidence；
 - Kimi ACP 握手通过，真实模型调用仍受额度阻塞；
 - M0 只剩独立外部 review；
+- 下一步完成 #14 conformance kit 和 purge/retention，再进入真实 agent 产品验证；
 - 在 M0 稳定前，不把更多 live adapter 当作主线完成度。

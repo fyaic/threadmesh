@@ -141,7 +141,23 @@ portable operation returns one umbrella interrupt-success value.
 
 ### `tasks.wait`
 
-Waits for task state, new disposition, or checkpoint events. Implementations SHOULD use cursors to suppress already delivered events.
+Waits for task state, new disposition, or checkpoint events. Implementations
+SHOULD use cursors to suppress already delivered events. A local stream may
+persist the last cursor and resume after restart; downstream processing remains
+idempotent because cursor delivery is not a global exactly-once guarantee.
+
+## Inspection
+
+### `inspector.snapshot`
+
+Returns one authorized message's provenance, content visibility state,
+delivery, receiver decision, outcome, adapter-submission metadata, and bounded
+audit projection. It MUST distinguish user-authored from peer-authored input
+and MUST NOT collapse delivery, decision, and outcome into one status.
+
+Content and evidence references MUST be redacted after expiry or loss of the
+exact grant. A policy-only view is metadata-only. Missing and unauthorized
+records SHOULD be indistinguishable to prevent message-ID enumeration.
 
 ## Maintenance
 
@@ -192,7 +208,8 @@ the durable `outcome-unknown` boundary remain quarantined for reconciliation.
 | Native submission | `adapter.prepareSubmission`, `adapter.beginSubmission`, `adapter.recordReceipt` | Trusted local receipt, not independent verification |
 | Unknown-outcome reconciliation | `adapter.reconcileSubmission`, `adapter.getSubmission` | Receiver task supplies evidence; no remote attestation yet |
 | Expiry maintenance | `maintenance.expireDue` | Control-plane-only bounded sweep; in-flight effects excluded |
-| Event observation | `tasks.wait` | Immediate cursor poll, not hosted long-poll |
+| Event observation | `tasks.wait` | Immediate cursor poll plus local restart checkpoint; not a hosted stream |
+| Provenance inspection | `inspector.snapshot` | Exact-message read; policy metadata-only; revoked/expired content redacted |
 | Disposition/audit read | `messages.getDisposition`, `audit.list` | Sender/receiver task projection only |
 
 The older trusted-process `prepareContextAdmission` and

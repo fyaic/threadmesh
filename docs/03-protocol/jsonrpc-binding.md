@@ -69,14 +69,27 @@ client-supplied `AuthContext`.
 | `mailbox.ack` | exact receiver task holding claim | claim token, disposition revision CAS, idempotency key |
 | `tasks.wait` | exact task | cursor-based immediate event poll |
 | `audit.list` | exact sender or receiver task | read only |
+| `inspector.snapshot` | exact participant task, either task owner, or policy | read only; policy is metadata-only and expired/revoked content is redacted |
 
 The local `tasks.wait` implementation is a non-blocking cursor poll: an empty
 page returns `timedOut: true`. A network host may hold the request until an event
 or timeout while preserving the same cursor and response semantics.
 
+The reference `LocalTaskEventStream` wraps this method with bounded polling,
+strict cursor validation, cancellation, and a caller-owned restart checkpoint.
+It does not create a global event order or a hosted stream.
+
 No `tasks.list` or equivalent global enumeration method exists in this profile.
 Task reads require an exact task reference, and summary discovery remains
 relationship scoped.
+
+`inspector.snapshot` is keyed by exact sender incarnation and message ID. It
+distinguishes authenticated user authorship from peer-agent authorship and
+returns delivery, decision, and outcome independently. Participating tasks and
+their owners see content only while the envelope is unexpired and its exact
+grant remains current. Policy sees metadata only. Missing and unauthorized
+records deliberately share `threadmesh_inspection_not_authorized`; safe audit
+projections omit arbitrary detail and raw adapter idempotency keys.
 
 ## Proposals and effective grants
 

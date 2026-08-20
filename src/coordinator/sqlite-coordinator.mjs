@@ -2020,6 +2020,140 @@ export class SqliteCoordinator {
     return this.#adapterSubmission(submission, message);
   }
 
+  inspectMessage(senderIncarnationId, messageId, principal) {
+    const row = this.db
+      .prepare(
+        `SELECT m.*, d.revision, d.delivery_state, d.decision_state,
+                d.decision_reason_code, d.delivery_failure_reason,
+                d.outcome_state,
+                source.owner_kind AS source_owner_kind,
+                source.owner_principal_id AS source_owner_principal_id,
+                target.owner_kind AS target_owner_kind,
+                target.owner_principal_id AS target_owner_principal_id
+         FROM messages m
+         JOIN dispositions d USING (sender_incarnation_id, message_id)
+         JOIN tasks source ON source.incarnation_id = m.sender_incarnation_id
+         JOIN tasks target ON target.task_id = m.target_task_id
+                          AND target.incarnation_id = m.target_incarnation_id
+         WHERE m.sender_incarnation_id = ? AND m.message_id = ?`,
+      )
+      .get(senderIncarnationId, messageId);
+    // Keep missing and unauthorized records indistinguishable to callers. The
+    // inspector is deliberately not a message-ID enumeration surface.
+    if (!row) throw codedError("threadmesh_inspection_not_authorized");
+    const envelope = JSON.parse(row.envelope_json);
+    const taskParticipant =
+      isTaskPrincipal(
+        principal,
+        envelope.sender.taskId,
+        envelope.sender.incarnationId,
+      ) ||
+      isTaskPrincipal(
+        principal,
+        envelope.target.taskId,
+        envelope.target.incarnationId,
+      );
+    const ownerParticipant =
+      principal?.kind === "user" &&
+      ((row.source_owner_kind === principal.kind &&
+        row.source_owner_principal_id === principal.principalId) ||
+        (row.target_owner_kind === principal.kind &&
+          row.target_owner_principal_id === principal.principalId));
+    const policyViewer = principal?.kind === "policy";
+    if (!taskParticipant && !ownerParticipant && !policyViewer) {
+      throw codedError("threadmesh_inspection_not_authorized");
+    }
+
+    const expired = Date.parse(row.expires_at) <= this.clock();
+    let currentlyAuthorized = false;
+    try {
+      this.#assertCurrentAuthorization(row);
+      currentlyAuthorized = true;
+    } catch (error) {
+      if (error?.code !== "threadmesh_policy_denied") throw error;
+      currentlyAuthorized = false;
+    }
+    const contentVisible =
+      !expired && currentlyAuthorized && !policyViewer &&
+      (taskParticipant || ownerParticipant);
+    const redactionReason = expired
+      ? "expired"
+      : policyViewer
+        ? "metadata-only-policy-view"
+        : "authorization-no-longer-current";
+    const evidenceRefs = envelope.evidenceRefs ?? [];
+    const submission = this.db
+      .prepare(
+        `SELECT submission_id, state, envelope_digest, adapter_ref_digest,
+                adapter_idempotency_key, updated_at
+         FROM adapter_submissions
+         WHERE sender_incarnation_id = ? AND message_id = ?`,
+      )
+      .get(senderIncarnationId, messageId);
+    const events = this.db
+      .prepare(
+        `SELECT sequence AS cursor, event_type AS eventType, revision,
+                occurred_at AS occurredAt
+         FROM audit_events
+         WHERE sender_incarnation_id = ? AND message_id = ?
+         ORDER BY sequence ASC`,
+      )
+      .all(senderIncarnationId, messageId);
+    const actorType = envelope.sender.actorType;
+    return {
+      specVersion: "0.0-draft",
+      messageId,
+      provenance: {
+        authorship:
+          actorType === "user"
+            ? "user-authored"
+            : actorType === "agent"
+              ? "peer-authored"
+              : `${actorType}-authored`,
+        actor: {
+          actorType,
+          ...(envelope.sender.actorId
+            ? { actorId: envelope.sender.actorId }
+            : {}),
+        },
+        source: {
+          taskId: envelope.sender.taskId,
+          incarnationId: envelope.sender.incarnationId,
+          harness: envelope.sender.harness,
+        },
+        target: envelope.target,
+        relationshipId: envelope.relationshipId,
+        intent: envelope.intent,
+        claimStatus: envelope.claimStatus,
+      },
+      evidence: contentVisible
+        ? { state: "visible", refs: evidenceRefs }
+        : { state: "redacted", count: evidenceRefs.length, reason: redactionReason },
+      content: contentVisible
+        ? { state: "visible", reason: envelope.reason, value: envelope.content }
+        : { state: "redacted", reason: redactionReason },
+      lifecycle: {
+        createdAt: envelope.createdAt,
+        expiresAt: envelope.expiresAt,
+        expired,
+      },
+      disposition: this.#disposition(row),
+      adapterSubmission: submission
+        ? {
+            submissionId: submission.submission_id,
+            state: submission.state,
+            envelopeDigest: submission.envelope_digest,
+            adapterRefDigest: submission.adapter_ref_digest,
+            adapterIdempotencyKeyDigest: sha256Digest(
+              submission.adapter_idempotency_key,
+            ),
+            updatedAt: submission.updated_at,
+          }
+        : null,
+      events,
+    };
+  }
+
   expireDueMessages({ limit = 100 } = {}, principal) {
     assertControlPlanePrincipal(principal);
     const boundedLimit = Math.max(1, Math.min(Number(limit) || 100, 1000));

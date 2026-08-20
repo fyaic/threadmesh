@@ -15,14 +15,17 @@ incarnation 轮换和两类 mock harness 都有自动化测试。
 
 当前不能把它称为跨 harness 产品能力：
 
-- M0 仍有 #7、#16、#19 三个开放 issue；
+- M0 的规范阻塞项已经解决，只剩 #7 的两份独立外部 review；
 - 本地静态 token 认证不是生产级网络认证；
 - ACP 中的 peer 内容仍通过普通 prompt surface；
 - steer/interrupt 未启用；
 - Kimi ACP 握手已通过，但真实模型调用因账户额度被阻塞，未计为成功。
 
-后续主线是完成 crash reconciliation 和 interruption/verification，再完成外部 review 与 M1 本地
-coordinator。详见[项目状态](docs/10-planning/project-status.md)和
+M1 已形成存储迁移、过期审计、默认拒绝 policy、crash-safe dispatcher，以及
+可重启事件游标和权限化 provenance inspector 的堆叠候选实现。后续主线是完成
+issue #14 的 conformance kit 与 purge/retention 实现，等待外部 review 后合并，
+再进行真实
+agent 产品验证。详见[项目状态](docs/10-planning/project-status.md)和
 [主线计划](docs/10-planning/mainline-plan.md)。
 
 ThreadMesh 关注一种具体能力：Agent A 在执行过程中发现 Agent B 的任务与自己的目标存在依赖，于是主动发起通知、建议、纠偏或停止请求。
