@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://threadmesh.dev/spec/0.0-draft/types.schema.json",
+  "title": "ThreadMesh shared types",
+  "$defs": {
+    "taskRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["taskId", "incarnationId"],
+      "properties": {
+        "taskId": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "incarnationId": {
+          "type": "string",
+          "pattern": "^inc_[A-Za-z0-9][A-Za-z0-9._:-]{6,196}$"
+        },
+        "harness": { "type": "string", "minLength": 1, "maxLength": 200 }
+      }
+    },
+    "actorRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["actorType"],
+      "properties": {
+        "actorType": {
+          "enum": ["user", "agent", "service", "policy", "adapter"]
+        },
+        "actorId": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "task": { "$ref": "#/$defs/taskRef" }
+      }
+    },
+    "freshness": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "expectedRunId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "expectedObjectiveVersion": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "expectedCheckpoint": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      },
+      "anyOf": [
+        { "required": ["expectedRunId"] },
+        { "required": ["expectedObjectiveVersion"] }
+      ]
+    },
+    "deliveryMode": {
+      "enum": [
+        "store-only",
+        "side-channel",
+        "checkpoint-offer",
+        "wake-idle",
+        "active-steer",
+        "interrupt-request"
+      ]
+    },
+    "evidenceRef": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000
+    },
+    "reasonCode": {
+      "enum": [
+        "accepted",
+        "policy-denied",
+        "receiver-rejected",
+        "receiver-deferred",
+        "stale-incarnation",
+        "stale-run",
+        "stale-objective",
+        "expired",
+        "unsupported-intent",
+        "unsupported-delivery-mode",
+        "structured-gate-required",
+        "revoked",
+        "backpressure",
+        "evidence-insufficient",
+        "adapter-failed",
+        "other"
+      ]
+    }
+  }
+}

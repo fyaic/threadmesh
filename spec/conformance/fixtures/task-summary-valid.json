@@ -1,0 +1,28 @@
+{
+  "specVersion": "0.0-draft",
+  "summaryId": "sum_validation01",
+  "summaryVersion": 4,
+  "task": {
+    "taskId": "task_validation",
+    "incarnationId": "inc_validation01",
+    "harness": "harness-b"
+  },
+  "state": "running",
+  "objective": {
+    "hint": "Validate the release candidate against declared capabilities.",
+    "version": 3
+  },
+  "activeRunId": "run_validation_7",
+  "blockerHint": "Waiting for an updated capability inventory.",
+  "dependencyHints": ["release capability inventory"],
+  "coordination": {
+    "intents": ["notify", "suggest"],
+    "deliveryModes": ["side-channel", "checkpoint-offer"]
+  },
+  "sensitivity": "relationship-scoped",
+  "audience": {
+    "visibility": "relationship-scoped",
+    "relationshipIds": ["rel_release_validation"]
+  },
+  "updatedAt": "2026-08-20T09:00:00Z"
+}

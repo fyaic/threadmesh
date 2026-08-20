@@ -1,0 +1,20 @@
+{
+  "specVersion": "0.0-draft",
+  "summaryId": "sum_private01",
+  "summaryVersion": 1,
+  "task": {
+    "taskId": "task_private",
+    "incarnationId": "inc_private01"
+  },
+  "state": "running",
+  "coordination": {
+    "intents": ["suggest"],
+    "deliveryModes": ["checkpoint-offer"]
+  },
+  "sensitivity": "restricted",
+  "audience": {
+    "visibility": "owner-only"
+  },
+  "prompt": "This private prompt must never be accepted by the summary schema.",
+  "updatedAt": "2026-08-20T09:00:00Z"
+}

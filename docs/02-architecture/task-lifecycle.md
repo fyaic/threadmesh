@@ -14,21 +14,14 @@ Adapters may expose more detailed local states, but they must map them to a port
 ## Coordination lifecycle
 
 ```text
-created
-  └→ authorized
-       ├→ denied
-       └→ queued
-            ├→ expired
-            └→ delivered
-                 ├→ deferred
-                 ├→ rejected
-                 ├→ stale
-                 ├→ unsupported
-                 └→ accepted
-                      └→ applied
+delivery: control-plane-accepted → durably-received → offered/admitted/submitted
+decision: pending → accepted | rejected | deferred | stale | expired | unsupported
+outcome:  not-observed → effect-observed | externally-verified | failed
 ```
 
-`delivered` means the target adapter or mailbox received the envelope. It does not mean the target agent read, accepted, or applied it.
+The three lines are orthogonal. Durable receipt does not mean the target agent
+accepted a message. Context admission does not mean the model followed it.
+Native adapter submission does not prove an external outcome.
 
 ## Checkpoints
 

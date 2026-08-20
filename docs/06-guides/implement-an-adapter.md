@@ -28,7 +28,8 @@ Bind `steer` and `interrupt` to a local run and objective version. Fail closed o
 
 ## 7. Report dispositions
 
-Return separate delivery, acceptance, and application events. Report partial cancellation honestly.
+Return separate delivery, receiver-decision, context-admission,
+adapter-submission, and outcome events. Report partial cancellation honestly.
 
 ## 8. Run conformance scenarios
 

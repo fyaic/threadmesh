@@ -30,7 +30,8 @@ Advisory. A receiver MUST retain the right to accept, reject, defer, or mark it 
 
 ### `steer`
 
-State-changing. A receiver MUST verify authorization and freshness before applying it to an active run. Delivery alone is not application.
+State-changing. A receiver MUST verify authorization and freshness before
+submitting it to an active run. Delivery alone is not adapter submission.
 
 ### `interrupt`
 

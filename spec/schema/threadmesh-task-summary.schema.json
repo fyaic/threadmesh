@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://threadmesh.dev/spec/0.0-draft/task-summary.schema.json",
+  "title": "ThreadMesh relationship-scoped task summary",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "specVersion",
+    "summaryId",
+    "summaryVersion",
+    "task",
+    "state",
+    "coordination",
+    "sensitivity",
+    "audience",
+    "updatedAt"
+  ],
+  "properties": {
+    "specVersion": { "const": "0.0-draft" },
+    "summaryId": {
+      "type": "string",
+      "pattern": "^sum_[A-Za-z0-9][A-Za-z0-9._:-]{6,196}$"
+    },
+    "summaryVersion": { "type": "integer", "minimum": 0 },
+    "task": {
+      "$ref": "https://threadmesh.dev/spec/0.0-draft/types.schema.json#/$defs/taskRef"
+    },
+    "state": {
+      "enum": [
+        "idle",
+        "running",
+        "waiting",
+        "blocked",
+        "completed",
+        "failed",
+        "interrupted",
+        "archived",
+        "unknown"
+      ]
+    },
+    "objective": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["hint", "version"],
+      "properties": {
+        "hint": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "version": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "activeRunId": { "type": "string", "minLength": 1, "maxLength": 200 },
+    "blockerHint": { "type": "string", "minLength": 1, "maxLength": 500 },
+    "dependencyHints": {
+      "type": "array",
+      "maxItems": 16,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1, "maxLength": 300 }
+    },
+    "coordination": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["intents", "deliveryModes"],
+      "properties": {
+        "intents": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["notify", "suggest", "steer", "interrupt"] }
+        },
+        "deliveryModes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "https://threadmesh.dev/spec/0.0-draft/types.schema.json#/$defs/deliveryMode"
+          }
+        }
+      }
+    },
+    "sensitivity": {
+      "enum": ["public-metadata", "relationship-scoped", "restricted"]
+    },
+    "audience": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["visibility"],
+      "properties": {
+        "visibility": {
+          "enum": ["public", "relationship-scoped", "owner-only"]
+        },
+        "relationshipIds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^rel_[A-Za-z0-9][A-Za-z0-9._:-]{2,196}$"
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "visibility": { "const": "relationship-scoped" } },
+            "required": ["visibility"]
+          },
+          "then": {
+            "properties": { "relationshipIds": true },
+            "required": ["relationshipIds"]
+          }
+        }
+      ]
+    },
+    "updatedAt": { "type": "string", "format": "date-time" }
+  }
+}

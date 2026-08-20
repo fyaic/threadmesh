@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://threadmesh.dev/spec/0.0-draft/audit-event.schema.json",
+  "title": "ThreadMesh audit event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "specVersion",
+    "eventId",
+    "eventType",
+    "actor",
+    "subject",
+    "revision",
+    "occurredAt"
+  ],
+  "properties": {
+    "specVersion": { "const": "0.0-draft" },
+    "eventId": {
+      "type": "string",
+      "pattern": "^evt_[A-Za-z0-9][A-Za-z0-9._:-]{6,196}$"
+    },
+    "eventType": {
+      "enum": [
+        "message-submitted",
+        "message-durably-received",
+        "receiver-notified",
+        "checkpoint-offered",
+        "context-admitted",
+        "adapter-submitted",
+        "receiver-decided",
+        "outcome-observed",
+        "message-failed",
+        "message-expired",
+        "relationship-granted",
+        "relationship-revoked"
+      ]
+    },
+    "actor": {
+      "$ref": "https://threadmesh.dev/spec/0.0-draft/types.schema.json#/$defs/actorRef"
+    },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "messageId": {
+          "type": "string",
+          "pattern": "^msg_[A-Za-z0-9][A-Za-z0-9._:-]{6,196}$"
+        },
+        "relationshipId": {
+          "type": "string",
+          "pattern": "^rel_[A-Za-z0-9][A-Za-z0-9._:-]{2,196}$"
+        }
+      }
+    },
+    "revision": { "type": "integer", "minimum": 0 },
+    "reasonCode": {
+      "$ref": "https://threadmesh.dev/spec/0.0-draft/types.schema.json#/$defs/reasonCode"
+    },
+    "evidenceRefs": {
+      "type": "array",
+      "maxItems": 32,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "https://threadmesh.dev/spec/0.0-draft/types.schema.json#/$defs/evidenceRef"
+      }
+    },
+    "previousEventHash": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "occurredAt": { "type": "string", "format": "date-time" }
+  }
+}

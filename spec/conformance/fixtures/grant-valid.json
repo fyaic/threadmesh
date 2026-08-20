@@ -1,0 +1,25 @@
+{
+  "specVersion": "0.0-draft",
+  "grantId": "grant_supervisor01",
+  "grantVersion": 1,
+  "relationshipId": "rel_supervisor_worker",
+  "relationshipType": "supervisor",
+  "source": {
+    "taskId": "task_supervisor",
+    "incarnationId": "inc_supervisor01"
+  },
+  "target": {
+    "taskId": "task_worker",
+    "incarnationId": "inc_worker01"
+  },
+  "allowedIntents": ["notify", "suggest", "steer"],
+  "allowedDeliveryModes": ["side-channel", "checkpoint-offer", "active-steer"],
+  "summaryVisibility": "coordination",
+  "structuredGateResponses": false,
+  "grantedBy": {
+    "actorType": "user",
+    "actorId": "owner"
+  },
+  "createdAt": "2026-08-20T08:00:00Z",
+  "expiresAt": "2026-08-20T10:00:00Z"
+}

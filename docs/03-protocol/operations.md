@@ -24,7 +24,19 @@ Returns delivery and receiver state for a message.
 
 ### `messages.respond`
 
-Records an accepted, rejected, deferred, stale, expired, unsupported, or applied disposition.
+Records a receiver decision: accepted, rejected, deferred, stale, expired,
+unsupported, or revoked. Delivery and observed outcome are reported separately;
+there is no bare `applied` disposition.
+
+### `messages.recordDelivery`
+
+Records a substantiated delivery transition such as durable receipt,
+notification, context admission, or native adapter submission.
+
+### `messages.recordOutcome`
+
+Records an observed effect, externally verified outcome, or adapter failure.
+External verification requires evidence references.
 
 ## Waiting
 

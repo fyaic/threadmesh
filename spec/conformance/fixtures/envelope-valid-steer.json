@@ -1,0 +1,31 @@
+{
+  "specVersion": "0.0-draft",
+  "messageId": "msg_steering01",
+  "messageType": "action-request",
+  "intent": "steer",
+  "claimStatus": "sender-asserted",
+  "sender": {
+    "taskId": "task_supervisor",
+    "incarnationId": "inc_supervisor01",
+    "actorType": "agent",
+    "harness": "harness-a"
+  },
+  "target": {
+    "taskId": "task_worker",
+    "incarnationId": "inc_worker01",
+    "harness": "harness-b"
+  },
+  "relationshipId": "rel_supervisor_worker",
+  "content": "Pause deployment and re-run the invariant check.",
+  "reason": "The reviewed invariant changed after this run started.",
+  "freshness": {
+    "expectedRunId": "run_worker_7",
+    "expectedObjectiveVersion": 3
+  },
+  "delivery": {
+    "requestedMode": "active-steer",
+    "requiresDisposition": true
+  },
+  "createdAt": "2026-08-20T09:00:00Z",
+  "expiresAt": "2026-08-20T09:02:00Z"
+}
