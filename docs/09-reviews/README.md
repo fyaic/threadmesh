@@ -3,6 +3,16 @@
 This directory preserves review evidence, including reviewer identity,
 reviewed commit, verdict, findings, and follow-up disposition.
 
+## M0 external review
+
+- [Reviewer packet](m0-external-reviewer-packet.md)
+- [Review submission template](external-review-template.md)
+- [Public review issue #7](https://github.com/fyaic/threadmesh/issues/7)
+
+The packet targets the first commit containing all normative M0 blocker fixes.
+External verdicts and finding dispositions will be linked here without
+rewriting their original text.
+
 ## 2026-08-20 internal review round
 
 Three independent read-only review lanes examined

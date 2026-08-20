@@ -91,6 +91,9 @@ exist.
 
 Primary issue: [#7](https://github.com/fyaic/threadmesh/issues/7).
 
+Status: reviewer packet and findings template published. Two qualifying verdicts
+are still required; no internal agent review is counted toward this gate.
+
 - prepare a compact reviewer packet containing schemas, state machines, threat
   model, transport binding, conformance command, and known limitations;
 - obtain distributed-systems and agent-safety reviews;

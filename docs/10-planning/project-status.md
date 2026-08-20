@@ -29,7 +29,7 @@ maintainer organization.
 | ACP adapter | ACP v1 initialize, session create/load, prompt aggregation, permission denial, timeout cleanup | Experimental |
 | Kimi Code | CLI 0.36.1 handshake and capability snapshot | Handshake verified |
 | Live Kimi model behavior | Prompt reached provider but returned billing-cycle quota exhaustion | Blocked, not passed |
-| Independent review | Three internal review lanes approved the conservative prototype after fixes | Internal only |
+| Independent review | Three internal lanes complete; external reviewer packet and public template published | Awaiting two external verdicts |
 | Production authentication | Local static-token reference; no TLS/OAuth verifier supplied | Host integration required |
 | OS isolation | No child-process sandbox supplied by ThreadMesh | Not implemented |
 | Steer and interrupt | Not advertised by the ACP prototype | Intentionally unsupported |
