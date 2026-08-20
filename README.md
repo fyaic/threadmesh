@@ -4,11 +4,19 @@
 
 [简体中文](README.zh-CN.md) · [Documentation](docs/README.md) · [Protocol draft](spec/README.md) · [Roadmap](ROADMAP.md)
 
-> Status: documentation-first, pre-alpha. The protocol is not stable and no production adapter has been released yet.
+> Status: pre-alpha. The protocol is not stable; an experimental SQLite
+> coordinator and ACP adapter exist for conformance work, but no production
+> adapter has been released.
+
+The coordinator is currently a trusted, in-process, single-user experiment.
+Caller-supplied principal objects are identity injection points, not an
+authenticator; any network wrapper must bind them to authenticated transports.
 
 New: [Codex implementation deep dive](docs/07-research/codex-orchestration-deep-dive.md) ·
 [community evidence](docs/07-research/community-signals.md) ·
 [ecosystem landscape](docs/07-research/ecosystem-landscape.md) ·
+[design reviews](docs/09-reviews/README.md) ·
+[Kimi Code smoke evidence](docs/09-reviews/2026-08-20-kimi-code-smoke.md) ·
 [中文调研摘要](docs/zh-CN/research-summary.md)
 
 ThreadMesh explores a specific capability: an agent notices that another running task matters to its goal and proactively coordinates with it. The hard part is not message transport. The hard part is letting agents discover dependencies, communicate intent, and revise plans **without silently taking ownership of another task's context**.
@@ -75,9 +83,14 @@ docs/
   06-guides/         Implementation guides
   07-research/       Prior art and open research questions
   08-decisions/      Architecture Decision Records
+  09-reviews/        Reviewer evidence and smoke-test limitations
   zh-CN/             Chinese project overview
 spec/
   schema/            Machine-readable draft schemas
+src/
+  adapters/          Experimental harness adapters
+  coordinator/       Experimental reference coordinator
+test/                Behavioral and conformance tests
 ```
 
 ## Current milestone

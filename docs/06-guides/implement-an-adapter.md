@@ -2,6 +2,10 @@
 
 This guide describes the intended implementation sequence. Concrete SDK code will follow in M1.
 
+For a deliberately conservative ACP example, see the
+[Kimi Code experiment](../05-adapters/kimi-code.md) and its
+[smoke evidence](../09-reviews/2026-08-20-kimi-code-smoke.md).
+
 ## 1. Identify local primitives
 
 Document how the harness represents sessions, active runs, model messages, tool calls, cancellation, waiting, and approvals. Mark anything that is not observable or controllable.
