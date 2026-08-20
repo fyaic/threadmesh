@@ -106,9 +106,26 @@ for (const testCase of manifest.schemaCases) {
     actual = Date.parse(fixture.createdAt) < Date.parse(fixture.expiresAt);
   }
 
+  if (actual && schema.$id.endsWith("/relationship-grant.schema.json")) {
+    const createdAt = Date.parse(fixture.createdAt);
+    actual =
+      (!fixture.expiresAt || createdAt < Date.parse(fixture.expiresAt)) &&
+      (!fixture.revokedAt || createdAt <= Date.parse(fixture.revokedAt));
+  }
+
+  if (
+    actual &&
+    schema.$id.endsWith("/task-summary.schema.json") &&
+    fixture.audience.visibility === "relationship-scoped"
+  ) {
+    actual = fixture.audience.relationshipIds.includes(fixture.projection.relationshipId);
+  }
+
   if (actual !== testCase.valid) {
     failures += 1;
-    const detail = validate.errors ? ajv.errorsText(validate.errors) : "semantic date check";
+    const detail = validate.errors
+      ? ajv.errorsText(validate.errors)
+      : "semantic chronology or projection check";
     console.error(`FAIL schema: ${testCase.name} (${detail})`);
   } else {
     console.log(`PASS schema: ${testCase.name}`);

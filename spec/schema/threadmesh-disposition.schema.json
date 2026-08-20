@@ -108,6 +108,110 @@
             },
             "required": ["decidedAt", "decidedBy", "reasonCode"]
           }
+        },
+        {
+          "if": {
+            "properties": { "state": { "const": "pending" } },
+            "required": ["state"]
+          },
+          "then": {
+            "properties": {
+              "decidedAt": false,
+              "decidedBy": false,
+              "reasonCode": false,
+              "detail": false
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "state": { "const": "accepted" } },
+            "required": ["state"]
+          },
+          "then": {
+            "properties": { "reasonCode": { "const": "accepted" } }
+          }
+        },
+        {
+          "if": {
+            "properties": { "state": { "const": "rejected" } },
+            "required": ["state"]
+          },
+          "then": {
+            "properties": {
+              "reasonCode": {
+                "enum": [
+                  "policy-denied",
+                  "receiver-rejected",
+                  "structured-gate-required",
+                  "backpressure",
+                  "evidence-insufficient",
+                  "other"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "state": { "const": "deferred" } },
+            "required": ["state"]
+          },
+          "then": {
+            "properties": {
+              "reasonCode": {
+                "enum": ["receiver-deferred", "backpressure", "other"]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "state": { "const": "stale" } },
+            "required": ["state"]
+          },
+          "then": {
+            "properties": {
+              "reasonCode": {
+                "enum": ["stale-incarnation", "stale-run", "stale-objective"]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "state": { "const": "expired" } },
+            "required": ["state"]
+          },
+          "then": {
+            "properties": { "reasonCode": { "const": "expired" } }
+          }
+        },
+        {
+          "if": {
+            "properties": { "state": { "const": "unsupported" } },
+            "required": ["state"]
+          },
+          "then": {
+            "properties": {
+              "reasonCode": {
+                "enum": [
+                  "unsupported-intent",
+                  "unsupported-delivery-mode",
+                  "structured-gate-required"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "state": { "const": "revoked" } },
+            "required": ["state"]
+          },
+          "then": {
+            "properties": { "reasonCode": { "const": "revoked" } }
+          }
         }
       ]
     },

@@ -6,6 +6,12 @@
     "taskId": "task_private",
     "incarnationId": "inc_private01"
   },
+  "projection": {
+    "relationshipId": "rel_owner_private",
+    "grantId": "grant_owner_private",
+    "grantVersion": 1,
+    "summaryVisibility": "state-only"
+  },
   "state": "running",
   "coordination": {
     "intents": ["suggest"],

@@ -20,7 +20,7 @@ Therefore, delivery to a task mailbox and injection into model context are separ
 The default authority order is:
 
 ```text
-user > explicit supervisor > parent task > task itself > peer task > unrelated task
+user owner > `supervisor` > `parent` > task itself > `child`/`peer`/`dependency` > `observer` > unrelated
 ```
 
 This order does not automatically grant every higher principal every action. Policy and freshness still apply.

@@ -1,0 +1,20 @@
+{
+  "specVersion": "0.0-draft",
+  "adapterName": "incoherent-wake-mode",
+  "adapterVersion": "0.0.1",
+  "intents": ["suggest"],
+  "deliveryModes": ["wake-idle"],
+  "features": {
+    "relatedTaskDiscovery": "explicit-only",
+    "taskIncarnation": true,
+    "objectiveVersioning": false,
+    "checkpointEvents": false,
+    "idleWake": false,
+    "modelTurnCancellation": false,
+    "subprocessCancellation": false,
+    "contextAdmission": "receiver-mediated",
+    "provenanceRendering": "model-visible",
+    "dispositionCallbacks": false,
+    "structuredGateResponses": "none"
+  }
+}

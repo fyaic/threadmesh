@@ -1,0 +1,21 @@
+{
+  "specVersion": "0.0-draft",
+  "grantId": "grant_peer_steer01",
+  "grantVersion": 1,
+  "relationshipId": "rel_peer_steer01",
+  "relationshipType": "peer",
+  "source": {
+    "taskId": "task_peer_a",
+    "incarnationId": "inc_peer_a01"
+  },
+  "target": {
+    "taskId": "task_peer_b",
+    "incarnationId": "inc_peer_b01"
+  },
+  "allowedIntents": ["steer"],
+  "allowedDeliveryModes": ["active-steer"],
+  "summaryVisibility": "state-only",
+  "structuredGateResponses": false,
+  "grantedBy": { "actorType": "user", "actorId": "owner" },
+  "createdAt": "2026-08-20T08:00:00Z"
+}

@@ -13,6 +13,10 @@ The negative cases are security properties, not malformed examples to copy:
 - a steer grant must explicitly allow active-steer delivery;
 - externally verified outcomes require evidence;
 - private prompt text is not allowed in task summaries;
+- restricted summaries cannot be public and projections bind grant versions;
+- decision states cannot carry contradictory reason codes;
+- active modes require matching intents and runtime features;
+- peer, dependency, child, and observer grants cannot escalate authority;
 - terminal state machines cannot silently regress.
 
 Run all checks from the repository root with `npm test`.

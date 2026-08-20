@@ -1,0 +1,21 @@
+{
+  "specVersion": "0.0-draft",
+  "grantId": "grant_legacy_parent",
+  "grantVersion": 1,
+  "relationshipId": "rel_legacy_parent",
+  "relationshipType": "parent-of",
+  "source": {
+    "taskId": "task_parent",
+    "incarnationId": "inc_parent01"
+  },
+  "target": {
+    "taskId": "task_child",
+    "incarnationId": "inc_child01"
+  },
+  "allowedIntents": ["notify"],
+  "allowedDeliveryModes": ["side-channel"],
+  "summaryVisibility": "state-only",
+  "structuredGateResponses": false,
+  "grantedBy": { "actorType": "user", "actorId": "owner" },
+  "createdAt": "2026-08-20T08:00:00Z"
+}

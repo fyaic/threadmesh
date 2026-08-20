@@ -101,18 +101,18 @@ The repository now contains an executable `0.0-draft` specification and a
 reviewed experimental path through SQLite and ACP. Pull request
 [#20](https://github.com/fyaic/threadmesh/pull/20) added durable task and message
 state, owner-scoped grants, idempotency and CAS, single-use admission claims, a
-registered-session ACP adapter, and 19 behavioral tests.
+registered-session ACP adapter, and runtime coherence validation.
 
 The implementation is deliberately narrower than the product vision:
 
-- M0 has 5 closed and 6 open issues;
-- authenticated transport, normative reconciliation, coherent capability
-  constraints, typed interruption/verification, and external review remain open;
+- M0 has 6 closed and 5 open issues after the coherence work in #18;
+- authenticated transport, normative reconciliation, typed
+  interruption/verification, and external review remain open;
 - M1 has partial prototype evidence, but all six acceptance issues remain open;
 - Kimi Code ACP initialization passed, while the real model-turn marker test is
   blocked by account quota and is not counted as a pass.
 
-The mainline is now protocol stabilization (#18, #15/#17, #19, #16), followed
+The mainline is now protocol stabilization (#15/#17, #19, #16), followed
 by independent M0 review (#7) and completion of the local M1 coordinator. See
 the [project status](docs/10-planning/project-status.md),
 [mainline plan](docs/10-planning/mainline-plan.md), and

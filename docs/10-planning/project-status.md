@@ -1,7 +1,7 @@
 # Project status
 
-> Snapshot: 2026-08-20, after merge commit `2e74aa8` and pull request
-> [#20](https://github.com/fyaic/threadmesh/pull/20).
+> Snapshot: 2026-08-20, including the M0 coherence work for
+> [#18](https://github.com/fyaic/threadmesh/issues/18).
 
 ## Executive summary
 
@@ -13,16 +13,15 @@ persistent fake agent and the local Kimi Code ACP endpoint.
 
 The implementation is not a production coordinator and does not establish
 cross-harness interoperability. Normative M0 remains open because authenticated
-transport bindings, coherent schema constraints, typed interruption and
-verification results, crash reconciliation, and two independent external
-reviews are unfinished.
+transport bindings, typed interruption and verification results, crash
+reconciliation, and two independent external reviews are unfinished.
 
 ## Evidence ledger
 
 | Area | Current evidence | Status |
 |---|---|---|
 | Research and problem framing | Codex deep dive, community signals, ecosystem comparison, ADRs | Established |
-| Protocol draft | 8 JSON Schemas, 13 positive/negative cases, 7 transition cases | Executable draft |
+| Protocol draft | 8 JSON Schemas, 29 positive/negative cases, 7 transition cases, 22 unit tests | Executable draft |
 | Local persistence | SQLite task registry, grants, mailbox, dispositions, audit events, admission claims | Experimental |
 | Safety boundary | Owner-scoped grants, revocation, expiry, CAS, canonical peer provenance | Experimental trusted process |
 | ACP adapter | ACP v1 initialize, session create/load, prompt aggregation, permission denial, timeout cleanup | Experimental |
@@ -40,9 +39,11 @@ GitHub is authoritative for milestone closure.
 
 ### M0 — Foundation and protocol draft
 
-- 5 issues closed.
-- 6 issues open: [#7](https://github.com/fyaic/threadmesh/issues/7) and
+- 6 issues closed, including schema coherence issue
+  [#18](https://github.com/fyaic/threadmesh/issues/18).
+- 5 issues open: [#7](https://github.com/fyaic/threadmesh/issues/7),
   [#15](https://github.com/fyaic/threadmesh/issues/15)–
+  [#17](https://github.com/fyaic/threadmesh/issues/17), and
   [#19](https://github.com/fyaic/threadmesh/issues/19).
 - Internal review findings have prototype mitigations, but their normative
   acceptance criteria remain open.

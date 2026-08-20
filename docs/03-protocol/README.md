@@ -52,7 +52,7 @@ Cancellation request. A receiver MUST verify elevated authority and report wheth
 
 ## Current conformance boundary
 
-`npm test` validates schema compilation, 13 positive/negative fixture cases,
+`npm test` validates schema compilation, 29 positive/negative fixture cases,
 and 7 transition cases. It does not yet validate an authenticated wire binding,
 two harness profiles, interruption results, verification attestations, or crash
 reconciliation. Those are mainline M0 work rather than inferred behavior.

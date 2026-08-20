@@ -20,9 +20,14 @@ All notable changes will be documented here. The project follows Keep a Changelo
 - Kimi Code ACP handshake and quota-blocked live-smoke evidence.
 - Distributed-systems, safety, and adapter internal review artifacts.
 - Evidence-backed project status and mainline execution plan.
+- Negative conformance fixtures for summary disclosure, relationship direction,
+  disposition reasons, capability freshness, cancellation, and idle wake.
 
 ### Changed
 
 - Project status advanced from documentation-only research to a reviewed
   pre-alpha experimental runtime; production and interoperability claims remain
   explicitly out of scope.
+- Task-summary projections now bind relationship, grant version, and disclosure
+  level; relationship grants, dispositions, and adapter capabilities reject
+  incoherent combinations at schema validation time.

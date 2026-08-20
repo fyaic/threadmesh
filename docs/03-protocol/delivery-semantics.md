@@ -39,6 +39,22 @@ deferred → accepted | rejected | stale | expired | revoked
 accepted → revoked
 ```
 
+Decision reason codes are state-constrained:
+
+| Decision state | Compatible reason codes |
+|---|---|
+| `pending` | none |
+| `accepted` | `accepted` |
+| `rejected` | `policy-denied`, `receiver-rejected`, `structured-gate-required`, `backpressure`, `evidence-insufficient`, or `other` |
+| `deferred` | `receiver-deferred`, `backpressure`, or `other` |
+| `stale` | `stale-incarnation`, `stale-run`, or `stale-objective` |
+| `expired` | `expired` |
+| `unsupported` | `unsupported-intent`, `unsupported-delivery-mode`, or `structured-gate-required` |
+| `revoked` | `revoked` |
+
+An implementation MUST reject contradictory pairs such as
+`accepted + policy-denied` rather than treating the reason as free-form detail.
+
 ### Observed outcome
 
 ```text

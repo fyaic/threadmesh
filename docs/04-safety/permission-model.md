@@ -14,11 +14,11 @@ delivery mode, freshness, policy)
 | Sender relationship | `notify` | `suggest` | `steer` | `interrupt` |
 |---|---:|---:|---:|---:|
 | User owner | Allow | Allow | Allow | Allow |
-| Explicit supervisor | Allow | Allow | Policy | Policy |
-| Parent of delegated task | Allow | Allow | Policy | Policy |
-| Child of target | Allow | Allow | Deny | Deny |
-| Declared peer | Allow | Allow | Deny | Deny |
-| Observer | Policy | Deny | Deny | Deny |
+| `supervisor` | Allow | Allow | Policy | Policy |
+| `parent` | Allow | Allow | Policy | Policy |
+| `child` | Allow | Allow | Deny | Deny |
+| `peer` or `dependency` | Allow | Allow | Deny | Deny |
+| `observer` | Policy | Deny | Deny | Deny |
 | Unrelated | Deny | Deny | Deny | Deny |
 
 Deployments MAY make the matrix stricter. They MUST NOT make user-owned tasks peer-steerable by default.

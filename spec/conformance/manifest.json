@@ -38,6 +38,48 @@
       "valid": true
     },
     {
+      "name": "reject steer capability without objective freshness",
+      "schema": "schema/threadmesh-capabilities.schema.json",
+      "fixture": "conformance/fixtures/capabilities-invalid-steer-no-freshness.json",
+      "valid": false
+    },
+    {
+      "name": "reject interrupt capability without cancellation",
+      "schema": "schema/threadmesh-capabilities.schema.json",
+      "fixture": "conformance/fixtures/capabilities-invalid-interrupt-no-cancellation.json",
+      "valid": false
+    },
+    {
+      "name": "reject active steer mode without steer intent",
+      "schema": "schema/threadmesh-capabilities.schema.json",
+      "fixture": "conformance/fixtures/capabilities-invalid-active-mode-without-steer.json",
+      "valid": false
+    },
+    {
+      "name": "reject wake mode without idle wake feature",
+      "schema": "schema/threadmesh-capabilities.schema.json",
+      "fixture": "conformance/fixtures/capabilities-invalid-wake-without-idle-feature.json",
+      "valid": false
+    },
+    {
+      "name": "reject model context admission without suggest intent",
+      "schema": "schema/threadmesh-capabilities.schema.json",
+      "fixture": "conformance/fixtures/capabilities-invalid-context-no-suggest.json",
+      "valid": false
+    },
+    {
+      "name": "reject model context admission without visible provenance",
+      "schema": "schema/threadmesh-capabilities.schema.json",
+      "fixture": "conformance/fixtures/capabilities-invalid-context-no-provenance.json",
+      "valid": false
+    },
+    {
+      "name": "reject relationship discovery without task incarnation",
+      "schema": "schema/threadmesh-capabilities.schema.json",
+      "fixture": "conformance/fixtures/capabilities-invalid-discovery-no-incarnation.json",
+      "valid": false
+    },
+    {
       "name": "valid disposition snapshot",
       "schema": "schema/threadmesh-disposition.schema.json",
       "fixture": "conformance/fixtures/disposition-valid.json",
@@ -47,6 +89,18 @@
       "name": "reject verified outcome without evidence",
       "schema": "schema/threadmesh-disposition.schema.json",
       "fixture": "conformance/fixtures/disposition-invalid-verified-without-evidence.json",
+      "valid": false
+    },
+    {
+      "name": "reject accepted decision with denial reason",
+      "schema": "schema/threadmesh-disposition.schema.json",
+      "fixture": "conformance/fixtures/disposition-invalid-accepted-policy-denied.json",
+      "valid": false
+    },
+    {
+      "name": "reject pending decision with terminal reason",
+      "schema": "schema/threadmesh-disposition.schema.json",
+      "fixture": "conformance/fixtures/disposition-invalid-pending-reason.json",
       "valid": false
     },
     {
@@ -62,6 +116,24 @@
       "valid": false
     },
     {
+      "name": "reject peer grant with steer authority",
+      "schema": "schema/threadmesh-relationship-grant.schema.json",
+      "fixture": "conformance/fixtures/grant-invalid-peer-steer.json",
+      "valid": false
+    },
+    {
+      "name": "reject legacy ambiguous relationship vocabulary",
+      "schema": "schema/threadmesh-relationship-grant.schema.json",
+      "fixture": "conformance/fixtures/grant-invalid-legacy-parent-of.json",
+      "valid": false
+    },
+    {
+      "name": "reject observer grant with suggest authority",
+      "schema": "schema/threadmesh-relationship-grant.schema.json",
+      "fixture": "conformance/fixtures/grant-invalid-observer-suggest.json",
+      "valid": false
+    },
+    {
       "name": "valid minimal task summary",
       "schema": "schema/threadmesh-task-summary.schema.json",
       "fixture": "conformance/fixtures/task-summary-valid.json",
@@ -71,6 +143,30 @@
       "name": "reject private prompt in task summary",
       "schema": "schema/threadmesh-task-summary.schema.json",
       "fixture": "conformance/fixtures/task-summary-invalid-prompt.json",
+      "valid": false
+    },
+    {
+      "name": "reject restricted public task summary",
+      "schema": "schema/threadmesh-task-summary.schema.json",
+      "fixture": "conformance/fixtures/task-summary-invalid-restricted-public.json",
+      "valid": false
+    },
+    {
+      "name": "reject task summary outside projected relationship",
+      "schema": "schema/threadmesh-task-summary.schema.json",
+      "fixture": "conformance/fixtures/task-summary-invalid-projection-mismatch.json",
+      "valid": false
+    },
+    {
+      "name": "reject objective under state-only summary grant",
+      "schema": "schema/threadmesh-task-summary.schema.json",
+      "fixture": "conformance/fixtures/task-summary-invalid-state-only-objective.json",
+      "valid": false
+    },
+    {
+      "name": "reject objective under coordination-only summary grant",
+      "schema": "schema/threadmesh-task-summary.schema.json",
+      "fixture": "conformance/fixtures/task-summary-invalid-coordination-objective.json",
       "valid": false
     },
     {

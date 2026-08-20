@@ -1,0 +1,20 @@
+{
+  "specVersion": "0.0-draft",
+  "dispositionId": "dsp_pending_reason",
+  "messageId": "msg_pending_reason",
+  "receiver": {
+    "taskId": "task_receiver",
+    "incarnationId": "inc_receiver01"
+  },
+  "revision": 0,
+  "delivery": {
+    "state": "durably-received",
+    "observedAt": "2026-08-20T09:00:00Z"
+  },
+  "decision": {
+    "state": "pending",
+    "reasonCode": "accepted"
+  },
+  "outcome": { "state": "not-observed" },
+  "updatedAt": "2026-08-20T09:00:00Z"
+}

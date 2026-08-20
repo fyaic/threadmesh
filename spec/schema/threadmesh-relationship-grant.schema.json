@@ -31,7 +31,8 @@
       "pattern": "^rel_[A-Za-z0-9][A-Za-z0-9._:-]{2,196}$"
     },
     "relationshipType": {
-      "enum": ["supervisor", "delegation", "peer", "dependency", "observer"]
+      "description": "Directional from source to target. supervisor means source supervises target; parent means source delegated target; child means source was delegated by target; dependency means source depends on target; observer means source observes target. peer is authority-symmetric but each grant still has a source-to-target direction.",
+      "enum": ["supervisor", "parent", "child", "peer", "dependency", "observer"]
     },
     "source": {
       "$ref": "https://threadmesh.dev/spec/0.0-draft/types.schema.json#/$defs/taskRef"
@@ -68,6 +69,41 @@
     {
       "if": {
         "properties": {
+          "allowedIntents": { "contains": { "const": "notify" } }
+        }
+      },
+      "then": {
+        "properties": {
+          "allowedDeliveryModes": {
+            "contains": { "enum": ["store-only", "side-channel"] }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "allowedIntents": { "contains": { "const": "suggest" } }
+        }
+      },
+      "then": {
+        "properties": {
+          "allowedDeliveryModes": {
+            "contains": {
+              "enum": [
+                "store-only",
+                "side-channel",
+                "checkpoint-offer",
+                "wake-idle"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
           "allowedIntents": { "contains": { "const": "steer" } }
         },
         "required": ["allowedIntents"]
@@ -92,6 +128,84 @@
           "allowedDeliveryModes": {
             "contains": { "const": "interrupt-request" }
           }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "allowedDeliveryModes": { "contains": { "const": "active-steer" } }
+        }
+      },
+      "then": {
+        "properties": {
+          "allowedIntents": { "contains": { "const": "steer" } }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "allowedDeliveryModes": { "contains": { "const": "interrupt-request" } }
+        }
+      },
+      "then": {
+        "properties": {
+          "allowedIntents": { "contains": { "const": "interrupt" } }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "allowedDeliveryModes": {
+            "contains": { "enum": ["checkpoint-offer", "wake-idle"] }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "allowedIntents": { "contains": { "const": "suggest" } }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "relationshipType": { "enum": ["child", "peer", "dependency"] }
+        },
+        "required": ["relationshipType"]
+      },
+      "then": {
+        "properties": {
+          "allowedIntents": {
+            "items": { "enum": ["notify", "suggest"] }
+          },
+          "allowedDeliveryModes": {
+            "items": {
+              "enum": [
+                "store-only",
+                "side-channel",
+                "checkpoint-offer",
+                "wake-idle"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "relationshipType": { "const": "observer" } },
+        "required": ["relationshipType"]
+      },
+      "then": {
+        "properties": {
+          "allowedIntents": { "items": { "const": "notify" } },
+          "allowedDeliveryModes": {
+            "items": { "enum": ["store-only", "side-channel"] }
+          },
+          "summaryVisibility": { "enum": ["none", "state-only"] }
         }
       }
     }

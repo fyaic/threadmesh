@@ -15,7 +15,7 @@ admission claim、ACP session reload、来源封装和审计记录均有自动�
 
 当前不能把它称为跨 harness 产品能力：
 
-- M0 仍有 #7、#15–#19 六个开放 issue；
+- M0 仍有 #7、#15–#17、#19 五个开放 issue；
 - principal 仍是可信进程注入，不是网络认证；
 - ACP 中的 peer 内容仍通过普通 prompt surface；
 - steer/interrupt 未启用；

@@ -1,0 +1,30 @@
+{
+  "specVersion": "0.0-draft",
+  "summaryId": "sum_state_leak01",
+  "summaryVersion": 1,
+  "task": {
+    "taskId": "task_state_leak",
+    "incarnationId": "inc_state_leak01"
+  },
+  "projection": {
+    "relationshipId": "rel_state_only01",
+    "grantId": "grant_state_only01",
+    "grantVersion": 1,
+    "summaryVisibility": "state-only"
+  },
+  "state": "running",
+  "objective": {
+    "hint": "This objective exceeds a state-only grant.",
+    "version": 2
+  },
+  "coordination": {
+    "intents": ["notify"],
+    "deliveryModes": ["store-only"]
+  },
+  "sensitivity": "relationship-scoped",
+  "audience": {
+    "visibility": "relationship-scoped",
+    "relationshipIds": ["rel_state_only01"]
+  },
+  "updatedAt": "2026-08-20T09:00:00Z"
+}

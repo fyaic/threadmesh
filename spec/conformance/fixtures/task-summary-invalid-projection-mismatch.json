@@ -1,0 +1,27 @@
+{
+  "specVersion": "0.0-draft",
+  "summaryId": "sum_projection_mismatch",
+  "summaryVersion": 1,
+  "task": {
+    "taskId": "task_projection",
+    "incarnationId": "inc_projection01"
+  },
+  "projection": {
+    "relationshipId": "rel_not_authorized",
+    "grantId": "grant_projection01",
+    "grantVersion": 4,
+    "summaryVisibility": "coordination"
+  },
+  "state": "blocked",
+  "blockerHint": "Waiting for a dependency artifact.",
+  "coordination": {
+    "intents": ["suggest"],
+    "deliveryModes": ["checkpoint-offer"]
+  },
+  "sensitivity": "relationship-scoped",
+  "audience": {
+    "visibility": "relationship-scoped",
+    "relationshipIds": ["rel_authorized_only"]
+  },
+  "updatedAt": "2026-08-20T09:00:00Z"
+}

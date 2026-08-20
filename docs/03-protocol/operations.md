@@ -30,6 +30,11 @@ Returns minimal summaries for tasks connected by visible relationship or depende
 
 Returns task state, objective summary, freshness information, and advertised capabilities. Full message history is outside the core operation.
 
+For relationship-scoped reads, the implementation MUST verify that the
+summary's `projection.relationshipId`, `grantId`, and `grantVersion` still name
+the current effective grant. It MUST reject or reduce a stale projection rather
+than returning fields authorized by an older grant version.
+
 ## Coordination
 
 ### `mailbox.listPending`

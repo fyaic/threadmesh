@@ -7,6 +7,12 @@
     "incarnationId": "inc_validation01",
     "harness": "harness-b"
   },
+  "projection": {
+    "relationshipId": "rel_release_validation",
+    "grantId": "grant_release_validation",
+    "grantVersion": 2,
+    "summaryVisibility": "objective-hint"
+  },
   "state": "running",
   "objective": {
     "hint": "Validate the release candidate against declared capabilities.",
