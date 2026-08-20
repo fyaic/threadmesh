@@ -150,8 +150,14 @@ side-channel notification, accept/reject/defer, stale and unsupported
 state-changing intents, replay, queued revocation, provenance, audit evidence,
 and deterministic test-database cleanup. Its merge is also gated by #7.
 
-Purge execution remains a required storage/retention follow-up before M1 can
-close. Once the stack merges and is revalidated on `main`, real agent-product
+The stacked #34 retention candidate adds an append-only schema-v3 migration and
+a policy-only bounded purge. It tombstones expired messages, audit detail,
+inactive proposals/summaries, and retired adapter references while retaining
+canonical digests and excluding in-flight/unknown external effects. It also
+tests v1/v2 upgrade, restart, replay, idempotent JSON-RPC, and explicit WAL
+truncation. Its merge is gated by #7 and the lower M1 stack.
+
+Once the stack merges and is revalidated on `main`, real agent-product
 validation becomes the next evidence workstream.
 
 ### 7. Resume live adapter expansion
@@ -173,7 +179,8 @@ Keep each change independently reviewable:
 2. `feat: complete the M1 storage and migration contract`
 3. `feat: complete policy, dispatcher, stream, and inspector slices`
 4. `test: complete the two-profile M1 conformance kit`
-5. `test: run real product adapters after normative and M1 completion`
+5. `feat: implement retention-driven sensitive-content purge`
+6. `test: run real product adapters after normative and M1 completion`
 
 ## Mainline guardrails
 

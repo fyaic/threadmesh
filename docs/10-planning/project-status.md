@@ -3,7 +3,7 @@
 > Snapshot: 2026-08-20, including authenticated operations, crash-safe adapter
 > submission, typed interruption results, signed verification attestations,
 > the stacked local event-stream/inspector candidate, and the two-profile M1
-> conformance matrix.
+> conformance matrix, and the retention-driven purge candidate.
 
 ## Executive summary
 
@@ -24,9 +24,9 @@ maintainer organization.
 | Area | Current evidence | Status |
 |---|---|---|
 | Research and problem framing | Codex deep dive, community signals, ecosystem comparison, ADRs | Established |
-| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 66 unit tests | Executable draft |
+| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 69 unit tests | Executable draft |
 | Local binding | Schema-validated JSON-RPC, transport-derived principals, typed errors | Executable local reference |
-| Local persistence | SQLite registry, proposals, grants, summaries, mailbox, claims, submission receipts, reconciliation, replay, audit | Experimental |
+| Local persistence | SQLite registry, proposals, grants, summaries, mailbox, claims, receipts, reconciliation, replay, audit, retention tombstones | Experimental |
 | Safety boundary | Authenticated authorship checks, effective-grant decisions, revocation, CAS | Executable local policy |
 | ACP adapter | ACP v1 initialize, session create/load, prompt aggregation, permission denial, timeout cleanup | Experimental |
 | Kimi Code | CLI 0.36.1 handshake and capability snapshot | Handshake verified |
@@ -40,6 +40,7 @@ maintainer organization.
 | Cross-harness conformance | Pull-mailbox and event-watching mock profiles over JSON-RPC | Local behavior demonstrated |
 | Event stream and inspector | Restart checkpoint, strict local cursor order, provenance, authorization-aware redaction | Stacked M1 candidate |
 | M1 behavior matrix | Two capability-valid mock profiles, related discovery, notify/suggest decisions, stale/unsupported state change, revocation, cleanup | Stacked conformance candidate |
+| Retention purge | Schema v3 tombstones, policy-only bounded operation, unknown-effect exclusion, replay preservation, WAL checkpoint | Stacked M1 candidate |
 
 ## Milestone accounting
 
@@ -59,8 +60,9 @@ GitHub is authoritative for milestone closure.
 
 ### M1 — Local reference coordinator
 
-- 6 issues open: [#9](https://github.com/fyaic/threadmesh/issues/9)–
-  [#14](https://github.com/fyaic/threadmesh/issues/14).
+- 7 issues open: [#9](https://github.com/fyaic/threadmesh/issues/9)–
+  [#14](https://github.com/fyaic/threadmesh/issues/14), plus retention follow-up
+  [#34](https://github.com/fyaic/threadmesh/issues/34).
 - Pull request #20 and the authenticated binding supply partial implementation
   evidence for #9–#14.
 - A versioned baseline, transactional migration rollback tests, and the
@@ -83,7 +85,11 @@ GitHub is authoritative for milestone closure.
   suggestion decisions, stale/unsupported state changes, replay, revocation,
   audit assertions, and deterministic test-database cleanup; it remains gated
   by #7.
-- Purge execution and hosted event streaming remain unfinished.
+- A stacked #34 candidate adds schema version 3 and executes policy-only,
+  bounded content tombstoning while preserving original digests and excluding
+  unresolved context/native effects; it remains gated by #7.
+- Hosted event streaming remains unfinished and is not required by an existing
+  M1 acceptance issue.
 
 ## What the prototype proves
 
@@ -124,10 +130,13 @@ can:
     authorized provenance without leaking revoked content or raw audit detail.
 22. run the complete M1 scenario matrix across an event watcher and pull-mailbox
     receiver with explicit capability degradation and per-transition audit.
+23. tombstone expired sensitive content without losing replay defense, scrub
+    retired adapter references, and preserve unresolved-effect evidence.
 
 It does not prove autonomous task discovery, useful model behavior, native
 provider-role isolation, exactly-once external effects, production remote
-credential verification, or safe interruption.
+credential verification, safe interruption, managed backup expiry, or forensic
+erasure.
 
 ## Progress rule
 

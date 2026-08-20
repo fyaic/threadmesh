@@ -119,7 +119,8 @@ The implementation is deliberately narrower than the product vision:
 - only the independent external review gate remains open for M0;
 - M1 storage, audited expiry, relationship policy, durable dispatcher,
   provenance inspector, and two-profile conformance candidates are prepared as
-  stacked changes, but all six acceptance issues remain open behind #7;
+  stacked changes; a retention-purge follow-up is also implemented as a stacked
+  candidate, but all seven M1 issues remain open behind #7;
 - Kimi Code ACP initialization passed, while the real model-turn marker test is
   blocked by account quota and is not counted as a pass.
 

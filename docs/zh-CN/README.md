@@ -47,7 +47,9 @@ ThreadMesh 并不赋予 agent 任意修改其他 session 的权力。它提供�
   区分用户输入与 peer agent 输入，并在过期或撤权后脱敏内容和 evidence；
 - 两类能力声明不同的 mock harness 已覆盖 related summary、side-channel notify、
   accept/reject/defer、stale/unsupported steer 与 interrupt、撤权和审计矩阵；
+- schema v3 retention purge 会墓碑化过期内容和失效引用，保留原始 digest，并
+  跳过 `outcome-unknown` 或仍需人工对账的外部效果；
 - Kimi ACP 握手通过，真实模型调用仍受额度阻塞；
 - M0 只剩独立外部 review；
-- 下一步完成 purge/retention，等待堆叠变更合并后进入真实 agent 产品验证；
+- 下一步等待独立 review 与堆叠变更合并，然后进入真实 agent 产品验证；
 - 在 M0 稳定前，不把更多 live adapter 当作主线完成度。

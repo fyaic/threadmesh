@@ -64,6 +64,7 @@ client-supplied `AuthContext`.
 | `adapter.reconcileSubmission` | exact receiver task | evidence-required resolution and CAS where submitted |
 | `adapter.getSubmission` | exact sender or receiver task | read only |
 | `maintenance.expireDue` | common source/target owner or policy | bounded deterministic expiry, operation idempotency key |
+| `maintenance.purgeContent` | policy only | caller-supplied past cutoff, bounded tombstoning, unresolved-effect exclusion, operation idempotency key |
 | `mailbox.listPending` | exact receiver task | opaque monotonic cursor, expiry and current-grant filtering |
 | `mailbox.claim` | exact receiver task | disposition revision CAS, 60-second bounded claim, idempotency key |
 | `mailbox.ack` | exact receiver task holding claim | claim token, disposition revision CAS, idempotency key |
@@ -90,6 +91,8 @@ their owners see content only while the envelope is unexpired and its exact
 grant remains current. Policy sees metadata only. Missing and unauthorized
 records deliberately share `threadmesh_inspection_not_authorized`; safe audit
 projections omit arbitrary detail and raw adapter idempotency keys.
+After retention purge, content and evidence use the stronger `purged` state;
+the original envelope digest remains available for replay defense.
 
 ## Proposals and effective grants
 
@@ -132,6 +135,12 @@ deduplicates the JSON-RPC operation, while `adapterIdempotencyKey` remains stabl
 across the native harness call represented by one submission. The coordinator
 persists `outcome-unknown` before that call. It never infers safe retry merely
 because the process restarted.
+
+Retention purge deletes old operation replay payloads for methods whose stored
+results can contain envelope, proposal, summary, or adapter-reference content.
+Resource-level message digests, proposal digests, task identities, and revision
+checks continue to prevent silent duplication; callers must not treat operation
+replay retention as permanent archival storage.
 
 ## Mailbox claim and acknowledgement
 

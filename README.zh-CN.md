@@ -23,8 +23,9 @@ incarnation 轮换和两类 mock harness 都有自动化测试。
 
 M1 已形成存储迁移、过期审计、默认拒绝 policy、crash-safe dispatcher，以及
 可重启事件游标、权限化 provenance inspector 和两类 mock harness 行为矩阵的
-堆叠候选实现。后续主线是完成 purge/retention，等待外部 review 后合并并在
-`main` 重验，再进行真实 agent 产品验证。详见
+堆叠候选实现；schema v3 的 retention purge 也已加入候选，能够在保留 digest
+防重放的同时清除过期内容，并保护未知外部效果。后续主线是等待外部 review，
+合并后在 `main` 重验，再进行真实 agent 产品验证。详见
 [项目状态](docs/10-planning/project-status.md)和
 [主线计划](docs/10-planning/mainline-plan.md)。
 

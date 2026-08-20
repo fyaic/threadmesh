@@ -227,6 +227,11 @@ export class ThreadMeshJsonRpcBinding {
             { limit: params.limit },
             principal,
           );
+        case "maintenance.purgeContent":
+          return this.coordinator.purgeSensitiveContent(
+            { before: params.before, limit: params.limit },
+            principal,
+          );
         case "mailbox.listPending":
           return this.coordinator.listPending(
             params.receiver,

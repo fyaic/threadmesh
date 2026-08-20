@@ -27,9 +27,10 @@ const DEFAULT_DECISION_REASONS = Object.freeze({
   unsupported: "unsupported-intent",
   revoked: "revoked",
 });
-export const SQLITE_SCHEMA_VERSION = 2;
-export const SQLITE_SCHEMA_NAME = "threadmesh-dispatcher-state";
-export const SQLITE_SCHEMA_MANIFEST = Object.freeze({
+const PURGED_TEXT = "Content purged by the ThreadMesh retention policy.";
+export const SQLITE_SCHEMA_VERSION = 3;
+export const SQLITE_SCHEMA_NAME = "threadmesh-retention-state";
+const SQLITE_SCHEMA_V2_MANIFEST = Object.freeze({
   tables: {
     tasks: [
       "task_id", "incarnation_id", "harness", "state", "owner_kind",
@@ -95,15 +96,46 @@ export const SQLITE_SCHEMA_MANIFEST = Object.freeze({
   indexes: ["tasks_global_incarnation", "grants_relationship_version"],
 });
 const SQLITE_SCHEMA_V1_MANIFEST = Object.freeze({
-  ...SQLITE_SCHEMA_MANIFEST,
+  ...SQLITE_SCHEMA_V2_MANIFEST,
   tables: Object.freeze({
-    ...SQLITE_SCHEMA_MANIFEST.tables,
+    ...SQLITE_SCHEMA_V2_MANIFEST.tables,
     task_metadata: Object.freeze([
       "task_id", "incarnation_id", "revision", "retired_at",
     ]),
     dispositions: Object.freeze([
       "sender_incarnation_id", "message_id", "revision", "delivery_state",
       "decision_state", "outcome_state", "updated_at",
+    ]),
+  }),
+});
+export const SQLITE_SCHEMA_MANIFEST = Object.freeze({
+  ...SQLITE_SCHEMA_V2_MANIFEST,
+  tables: Object.freeze({
+    ...SQLITE_SCHEMA_V2_MANIFEST.tables,
+    tasks: Object.freeze([
+      ...SQLITE_SCHEMA_V2_MANIFEST.tables.tasks,
+      "adapter_ref_purged_at",
+    ]),
+    relationship_proposals: Object.freeze([
+      ...SQLITE_SCHEMA_V2_MANIFEST.tables.relationship_proposals,
+      "content_purged_at",
+    ]),
+    task_summaries: Object.freeze([
+      ...SQLITE_SCHEMA_V2_MANIFEST.tables.task_summaries,
+      "content_purged_at",
+    ]),
+    messages: Object.freeze([
+      ...SQLITE_SCHEMA_V2_MANIFEST.tables.messages,
+      "content_purged_at",
+      "claim_status",
+    ]),
+    admission_claims: Object.freeze([
+      ...SQLITE_SCHEMA_V2_MANIFEST.tables.admission_claims,
+      "adapter_ref_purged_at",
+    ]),
+    audit_events: Object.freeze([
+      ...SQLITE_SCHEMA_V2_MANIFEST.tables.audit_events,
+      "detail_purged_at",
     ]),
   }),
 });
@@ -114,7 +146,12 @@ export const SQLITE_SCHEMA_MIGRATIONS = Object.freeze([
     manifest: SQLITE_SCHEMA_V1_MANIFEST,
   }),
   Object.freeze({
-    version: SQLITE_SCHEMA_VERSION,
+    version: 2,
+    name: "threadmesh-dispatcher-state",
+    manifest: SQLITE_SCHEMA_V2_MANIFEST,
+  }),
+  Object.freeze({
+    version: 3,
     name: SQLITE_SCHEMA_NAME,
     manifest: SQLITE_SCHEMA_MANIFEST,
   }),
@@ -144,6 +181,16 @@ function assertControlPlanePrincipal(principal) {
     principal.principalId.length === 0
   ) {
     throw codedError("threadmesh_control_plane_authority_required");
+  }
+}
+
+function assertPolicyPrincipal(principal) {
+  if (
+    principal?.kind !== "policy" ||
+    typeof principal.principalId !== "string" ||
+    principal.principalId.length === 0
+  ) {
+    throw codedError("threadmesh_policy_authority_required");
   }
 }
 
@@ -202,6 +249,35 @@ function runtimeSnapshot(metadata) {
       : {}),
     ...(metadata.checkpoint ? { checkpoint: metadata.checkpoint } : {}),
   };
+}
+
+function tombstoneEnvelope(envelope) {
+  const tombstone = {
+    ...envelope,
+    content: PURGED_TEXT,
+    reason: PURGED_TEXT,
+    ...(envelope.claimStatus === "evidence-referenced"
+      ? { claimStatus: "unverified" }
+      : {}),
+  };
+  delete tombstone.evidenceRefs;
+  assertProtocolObject("envelope", tombstone);
+  return tombstone;
+}
+
+function tombstoneProposal(proposal) {
+  const tombstone = { ...proposal, reason: PURGED_TEXT };
+  assertProtocolObject("relationship-proposal", tombstone);
+  return tombstone;
+}
+
+function tombstoneSummary(summary) {
+  const tombstone = { ...summary };
+  delete tombstone.objective;
+  delete tombstone.blockerHint;
+  delete tombstone.dependencyHints;
+  assertProtocolObject("task-summary", tombstone);
+  return tombstone;
 }
 
 export function createEffectiveGrant(draft, decision, principal) {
@@ -284,6 +360,27 @@ export class SqliteCoordinator {
         this.#addColumnIfMissing("dispositions", "decision_reason_code", "TEXT");
         this.#addColumnIfMissing("dispositions", "delivery_failure_reason", "TEXT");
       }
+      if (version < 3) {
+        this.#addColumnIfMissing("tasks", "adapter_ref_purged_at", "TEXT");
+        this.#addColumnIfMissing(
+          "relationship_proposals",
+          "content_purged_at",
+          "TEXT",
+        );
+        this.#addColumnIfMissing("task_summaries", "content_purged_at", "TEXT");
+        this.#addColumnIfMissing("messages", "content_purged_at", "TEXT");
+        this.#addColumnIfMissing("messages", "claim_status", "TEXT");
+        this.db.exec(`
+          UPDATE messages SET claim_status = json_extract(envelope_json, '$.claimStatus')
+          WHERE claim_status IS NULL;
+        `);
+        this.#addColumnIfMissing(
+          "admission_claims",
+          "adapter_ref_purged_at",
+          "TEXT",
+        );
+        this.#addColumnIfMissing("audit_events", "detail_purged_at", "TEXT");
+      }
       this.#assertSchemaCompatible();
       for (const migration of SQLITE_SCHEMA_MIGRATIONS) {
         this.db
@@ -325,6 +422,7 @@ export class SqliteCoordinator {
         owner_kind TEXT NOT NULL,
         owner_principal_id TEXT NOT NULL,
         adapter_ref_json TEXT,
+        adapter_ref_purged_at TEXT,
         created_at TEXT NOT NULL,
         PRIMARY KEY (task_id, incarnation_id)
       );
@@ -354,7 +452,8 @@ export class SqliteCoordinator {
         target_incarnation_id TEXT NOT NULL,
         proposal_json TEXT NOT NULL,
         status TEXT NOT NULL,
-        created_at TEXT NOT NULL
+        created_at TEXT NOT NULL,
+        content_purged_at TEXT
       );
 
       CREATE TABLE IF NOT EXISTS task_summaries (
@@ -367,6 +466,7 @@ export class SqliteCoordinator {
         summary_version INTEGER NOT NULL,
         summary_json TEXT NOT NULL,
         updated_at TEXT NOT NULL,
+        content_purged_at TEXT,
         UNIQUE (task_id, incarnation_id, relationship_id)
       );
 
@@ -398,6 +498,8 @@ export class SqliteCoordinator {
         envelope_json TEXT NOT NULL,
         expires_at TEXT NOT NULL,
         created_at TEXT NOT NULL,
+        content_purged_at TEXT,
+        claim_status TEXT NOT NULL,
         UNIQUE (sender_incarnation_id, message_id)
       );
 
@@ -427,6 +529,7 @@ export class SqliteCoordinator {
         state TEXT NOT NULL,
         claimed_at TEXT NOT NULL,
         completed_at TEXT,
+        adapter_ref_purged_at TEXT,
         PRIMARY KEY (sender_incarnation_id, message_id)
       );
 
@@ -479,7 +582,8 @@ export class SqliteCoordinator {
         event_type TEXT NOT NULL,
         revision INTEGER NOT NULL,
         detail_json TEXT NOT NULL,
-        occurred_at TEXT NOT NULL
+        occurred_at TEXT NOT NULL,
+        detail_purged_at TEXT
       );
 
       CREATE UNIQUE INDEX IF NOT EXISTS grants_relationship_version
@@ -1267,8 +1371,9 @@ export class SqliteCoordinator {
           `INSERT INTO messages (
              sender_incarnation_id, message_id, target_task_id,
              target_incarnation_id, relationship_id, grant_id, grant_version,
-             envelope_digest, envelope_json, expires_at, created_at
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             envelope_digest, envelope_json, expires_at, created_at,
+             claim_status
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .run(
           envelope.sender.incarnationId,
@@ -1282,6 +1387,7 @@ export class SqliteCoordinator {
           JSON.stringify(envelope),
           envelope.expiresAt,
           envelope.createdAt,
+          envelope.claimStatus,
         );
       this.db
         .prepare(
@@ -2065,6 +2171,7 @@ export class SqliteCoordinator {
     }
 
     const expired = Date.parse(row.expires_at) <= this.clock();
+    const purged = row.content_purged_at !== null;
     let currentlyAuthorized = false;
     try {
       this.#assertCurrentAuthorization(row);
@@ -2074,13 +2181,12 @@ export class SqliteCoordinator {
       currentlyAuthorized = false;
     }
     const contentVisible =
-      !expired && currentlyAuthorized && !policyViewer &&
+      !purged && !expired && currentlyAuthorized && !policyViewer &&
       (taskParticipant || ownerParticipant);
-    const redactionReason = expired
-      ? "expired"
-      : policyViewer
-        ? "metadata-only-policy-view"
-        : "authorization-no-longer-current";
+    let redactionReason = "authorization-no-longer-current";
+    if (policyViewer) redactionReason = "metadata-only-policy-view";
+    if (expired) redactionReason = "expired";
+    if (purged) redactionReason = "purged";
     const evidenceRefs = envelope.evidenceRefs ?? [];
     const submission = this.db
       .prepare(
@@ -2124,7 +2230,7 @@ export class SqliteCoordinator {
         target: envelope.target,
         relationshipId: envelope.relationshipId,
         intent: envelope.intent,
-        claimStatus: envelope.claimStatus,
+        claimStatus: row.claim_status ?? envelope.claimStatus,
       },
       evidence: contentVisible
         ? { state: "visible", refs: evidenceRefs }
@@ -2136,6 +2242,7 @@ export class SqliteCoordinator {
         createdAt: envelope.createdAt,
         expiresAt: envelope.expiresAt,
         expired,
+        ...(purged ? { contentPurgedAt: row.content_purged_at } : {}),
       },
       disposition: this.#disposition(row),
       adapterSubmission: submission
@@ -2152,6 +2259,252 @@ export class SqliteCoordinator {
         : null,
       events,
     };
+  }
+
+  purgeSensitiveContent({ before, limit = 100 } = {}, principal) {
+    assertPolicyPrincipal(principal);
+    const cutoffTime = Date.parse(before);
+    if (!Number.isFinite(cutoffTime) || cutoffTime > this.clock()) {
+      throw codedError("threadmesh_retention_cutoff_invalid");
+    }
+    if (!Number.isInteger(limit) || limit < 1 || limit > 1000) {
+      throw codedError("threadmesh_retention_limit_invalid");
+    }
+    const cutoff = new Date(cutoffTime).toISOString();
+    const boundedLimit = limit;
+    return this.db.transaction(() => {
+      const purgedAt = nowIso(this.clock);
+      const messages = this.db
+        .prepare(
+          `SELECT m.sender_incarnation_id, m.message_id, m.envelope_json,
+                  d.revision
+           FROM messages m
+           JOIN dispositions d USING (sender_incarnation_id, message_id)
+           LEFT JOIN admission_claims a
+             USING (sender_incarnation_id, message_id)
+           LEFT JOIN adapter_submissions s
+             USING (sender_incarnation_id, message_id)
+           WHERE m.content_purged_at IS NULL
+             AND m.expires_at <= ?
+             AND COALESCE(a.state, '') != 'in-flight'
+             AND COALESCE(s.state, '') NOT IN (
+               'outcome-unknown', 'manual-reconciliation'
+             )
+           ORDER BY m.sequence ASC LIMIT ?`,
+        )
+        .all(cutoff, boundedLimit);
+      for (const message of messages) {
+        const tombstone = tombstoneEnvelope(JSON.parse(message.envelope_json));
+        const updated = this.db
+          .prepare(
+            `UPDATE messages SET envelope_json = ?, content_purged_at = ?
+             WHERE sender_incarnation_id = ? AND message_id = ?
+               AND content_purged_at IS NULL`,
+          )
+          .run(
+            canonicalJson(tombstone),
+            purgedAt,
+            message.sender_incarnation_id,
+            message.message_id,
+          );
+        if (updated.changes !== 1) {
+          throw codedError("threadmesh_retention_state_conflict");
+        }
+        this.db
+          .prepare(
+            `UPDATE audit_events SET
+               detail_json = ?, detail_purged_at = ?
+             WHERE sender_incarnation_id = ? AND message_id = ?
+               AND detail_purged_at IS NULL`,
+          )
+          .run(
+            canonicalJson({ redacted: true, reason: "retention-policy" }),
+            purgedAt,
+            message.sender_incarnation_id,
+            message.message_id,
+          );
+        this.db
+          .prepare(
+            `DELETE FROM mailbox_claims
+             WHERE sender_incarnation_id = ? AND message_id = ?`,
+          )
+          .run(message.sender_incarnation_id, message.message_id);
+        this.#audit(
+          message.sender_incarnation_id,
+          message.message_id,
+          "content-purged",
+          message.revision,
+          { retentionCutoff: cutoff },
+        );
+      }
+
+      const proposals = this.db
+        .prepare(
+          `SELECT proposal_id, proposal_json FROM relationship_proposals
+           WHERE content_purged_at IS NULL
+             AND json_extract(proposal_json, '$.expiresAt') <= ?
+           ORDER BY proposal_id ASC LIMIT ?`,
+        )
+        .all(cutoff, boundedLimit);
+      for (const proposal of proposals) {
+        this.db
+          .prepare(
+            `UPDATE relationship_proposals
+             SET proposal_json = ?, content_purged_at = ?
+             WHERE proposal_id = ? AND content_purged_at IS NULL`,
+          )
+          .run(
+            canonicalJson(tombstoneProposal(JSON.parse(proposal.proposal_json))),
+            purgedAt,
+            proposal.proposal_id,
+          );
+      }
+
+      const summaries = this.db
+        .prepare(
+          `SELECT s.summary_id, s.summary_json
+           FROM task_summaries s
+           LEFT JOIN grants g
+             ON g.grant_id = s.grant_id AND g.grant_version = s.grant_version
+           LEFT JOIN task_metadata t
+             ON t.task_id = s.task_id AND t.incarnation_id = s.incarnation_id
+           WHERE s.content_purged_at IS NULL AND s.updated_at <= ?
+             AND (
+               (g.revoked_at IS NOT NULL AND g.revoked_at <= ?) OR
+               (g.expires_at IS NOT NULL AND g.expires_at <= ?) OR
+               (t.retired_at IS NOT NULL AND t.retired_at <= ?)
+             )
+           ORDER BY s.summary_id ASC LIMIT ?`,
+        )
+        .all(cutoff, cutoff, cutoff, cutoff, boundedLimit);
+      for (const summary of summaries) {
+        this.db
+          .prepare(
+            `UPDATE task_summaries
+             SET summary_json = ?, content_purged_at = ?
+             WHERE summary_id = ? AND content_purged_at IS NULL`,
+          )
+          .run(
+            canonicalJson(tombstoneSummary(JSON.parse(summary.summary_json))),
+            purgedAt,
+            summary.summary_id,
+          );
+      }
+
+      const adapterRefs = this.db
+        .prepare(
+          `SELECT t.task_id, t.incarnation_id
+           FROM tasks t JOIN task_metadata tm
+             USING (task_id, incarnation_id)
+           WHERE t.adapter_ref_json IS NOT NULL
+             AND t.adapter_ref_purged_at IS NULL
+             AND tm.retired_at IS NOT NULL AND tm.retired_at <= ?
+             AND NOT EXISTS (
+               SELECT 1 FROM messages m
+               JOIN adapter_submissions s
+                 USING (sender_incarnation_id, message_id)
+               WHERE m.target_task_id = t.task_id
+                 AND m.target_incarnation_id = t.incarnation_id
+                 AND s.state IN ('outcome-unknown', 'manual-reconciliation')
+             )
+             AND NOT EXISTS (
+               SELECT 1 FROM messages m
+               JOIN admission_claims a
+                 USING (sender_incarnation_id, message_id)
+               WHERE m.target_task_id = t.task_id
+                 AND m.target_incarnation_id = t.incarnation_id
+                 AND a.state = 'in-flight'
+             )
+           ORDER BY t.task_id, t.incarnation_id LIMIT ?`,
+        )
+        .all(cutoff, boundedLimit);
+      for (const task of adapterRefs) {
+        this.db
+          .prepare(
+            `UPDATE tasks SET adapter_ref_json = NULL,
+               adapter_ref_purged_at = ?
+             WHERE task_id = ? AND incarnation_id = ?
+               AND adapter_ref_purged_at IS NULL`,
+          )
+          .run(purgedAt, task.task_id, task.incarnation_id);
+      }
+
+      const admissionRefs = this.db
+        .prepare(
+          `SELECT a.sender_incarnation_id, a.message_id
+           FROM admission_claims a
+           JOIN messages m USING (sender_incarnation_id, message_id)
+           JOIN task_metadata tm
+             ON tm.task_id = m.target_task_id
+            AND tm.incarnation_id = m.target_incarnation_id
+           WHERE a.adapter_ref_purged_at IS NULL
+             AND a.state != 'in-flight'
+             AND tm.retired_at IS NOT NULL AND tm.retired_at <= ?
+           ORDER BY a.sender_incarnation_id, a.message_id LIMIT ?`,
+        )
+        .all(cutoff, boundedLimit);
+      for (const claim of admissionRefs) {
+        this.db
+          .prepare(
+            `UPDATE admission_claims SET adapter_ref_json = ?,
+               adapter_ref_purged_at = ?
+             WHERE sender_incarnation_id = ? AND message_id = ?
+               AND adapter_ref_purged_at IS NULL`,
+          )
+          .run(
+            canonicalJson({ kind: "purged" }),
+            purgedAt,
+            claim.sender_incarnation_id,
+            claim.message_id,
+          );
+      }
+
+      const replayRecords = this.db
+        .prepare(
+          `SELECT authentication_id, method, idempotency_key
+           FROM operation_replays
+           WHERE method IN (
+             'relationships.propose', 'tasks.publishSummary', 'messages.send',
+             'tasks.register', 'tasks.attach', 'tasks.rotateIncarnation'
+           )
+             AND completed_at <= ?
+           ORDER BY completed_at, authentication_id, method, idempotency_key
+           LIMIT ?`,
+        )
+        .all(cutoff, boundedLimit);
+      for (const replay of replayRecords) {
+        this.db
+          .prepare(
+            `DELETE FROM operation_replays
+             WHERE authentication_id = ? AND method = ? AND idempotency_key = ?`,
+          )
+          .run(
+            replay.authentication_id,
+            replay.method,
+            replay.idempotency_key,
+          );
+      }
+
+      return {
+        purgedAt,
+        retentionCutoff: cutoff,
+        messages: messages.map((message) => ({
+          senderIncarnationId: message.sender_incarnation_id,
+          messageId: message.message_id,
+        })),
+        proposalIds: proposals.map((proposal) => proposal.proposal_id),
+        summaryIds: summaries.map((summary) => summary.summary_id),
+        adapterRefs: adapterRefs.map((task) => ({
+          taskId: task.task_id,
+          incarnationId: task.incarnation_id,
+        })),
+        admissionClaimRefs: admissionRefs.map((claim) => ({
+          senderIncarnationId: claim.sender_incarnation_id,
+          messageId: claim.message_id,
+        })),
+        replayRecordsDeleted: replayRecords.length,
+      };
+    }).immediate();
   }
 
   expireDueMessages({ limit = 100 } = {}, principal) {
@@ -2633,6 +2986,16 @@ export class SqliteCoordinator {
         JSON.stringify(detail),
         nowIso(this.clock),
       );
+  }
+
+  checkpointStorage(principal) {
+    assertPolicyPrincipal(principal);
+    const result = this.db.pragma("wal_checkpoint(TRUNCATE)")[0];
+    return {
+      busy: result.busy,
+      logFrames: result.log,
+      checkpointedFrames: result.checkpointed,
+    };
   }
 
   close() {

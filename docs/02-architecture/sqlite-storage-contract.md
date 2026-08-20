@@ -11,27 +11,29 @@ single-user coordinator instance. SQLite is a durability and concurrency
 boundary, not tenant isolation. The process that opens the database can read or
 modify every row.
 
-The current schema version is `2`. Version 1 is the immutable coordinator
+The current schema version is `3`. Version 1 is the immutable coordinator
 baseline; version 2 adds task run/objective/checkpoint snapshots plus persisted
-decision and delivery-failure reasons. `PRAGMA user_version` is the fast
-compatibility check; `schema_migrations` is the immutable audit record for the
-version name, checksum, and application time.
+decision and delivery-failure reasons; version 3 adds retention tombstone
+timestamps for messages, proposals, summaries, task and admission-claim adapter
+references, and audit detail. `PRAGMA user_version` is the fast compatibility
+check; `schema_migrations` is the immutable audit record for the version name,
+checksum, and application time.
 
 ## Protocol-to-storage mapping
 
 | Protocol object or operation | Primary storage | Integrity and identity |
 |---|---|---|
-| Task incarnation | `tasks`, `task_metadata` | `(task_id, incarnation_id)` primary key; globally unique incarnation index; revision CAS; run/objective/checkpoint freshness snapshot |
-| Relationship proposal | `relationship_proposals` | `proposal_id` primary key plus canonical proposal digest |
+| Task incarnation | `tasks`, `task_metadata` | `(task_id, incarnation_id)` primary key; globally unique incarnation index; revision CAS; run/objective/checkpoint freshness snapshot; adapter-ref purge marker |
+| Relationship proposal | `relationship_proposals` | `proposal_id` primary key plus canonical original proposal digest and content-purge marker |
 | Effective grant | `grants` | `grant_id` primary key; unique relationship/endpoints/version tuple; signed authorization digest inside `grant_json` |
-| Task summary projection | `task_summaries` | task/incarnation/relationship uniqueness plus grant ID/version and summary version |
-| Envelope | `messages` | `(sender_incarnation_id, message_id)` uniqueness plus canonical `envelope_digest` |
+| Task summary projection | `task_summaries` | task/incarnation/relationship uniqueness plus grant ID/version, summary version, and content-purge marker |
+| Envelope | `messages` | `(sender_incarnation_id, message_id)` uniqueness plus canonical original `envelope_digest`, original claim-status projection, and content-purge marker |
 | Disposition snapshot | `dispositions` | same message identity plus expected-revision CAS |
 | Mailbox worker claim | `mailbox_claims` | one bounded claim per logical message; unique random token |
-| Context admission claim | `admission_claims` | one irreversible admission boundary per logical message; unique token |
+| Context admission claim | `admission_claims` | one irreversible admission boundary per logical message; unique token; completed adapter reference may be tombstoned |
 | Native adapter submission | `adapter_submissions` | one active submission per logical message; unique submission ID and adapter idempotency key |
 | JSON-RPC operation replay | `operation_replays` | `(authentication_id, method, idempotency_key)` plus canonical request digest |
-| Audit event | `audit_events` | monotonic local sequence and unique event ID |
+| Audit event | `audit_events` | monotonic local sequence, unique event ID, and independent detail-purge marker |
 | Interruption result | Not yet persisted | Typed schema exists; persistence belongs to dispatcher work in #12 |
 | Verification attestation | Not yet persisted | Signed schema exists; production trust-store integration belongs to #12 |
 
@@ -71,6 +73,7 @@ state transition at a time while WAL readers continue.
 | Task rotation | retire previous incarnation and metadata revision, register next incarnation |
 | Summary publication | summary version CAS and current-grant projection |
 | Expiry sweep | due-message disposition CAS plus `message-expired` audit event; active irreversible claims excluded |
+| Retention purge | content tombstones, audit-detail redaction, completed mailbox-claim cleanup, proposal/summary redaction, retired adapter-ref cleanup, and replay-payload deletion under one bounded policy transaction |
 
 No queue acknowledgement, adapter receipt, or audit event is emitted before its
 corresponding durable state commits. A transaction failure leaves every member
@@ -132,7 +135,8 @@ grant JSON, adapter references, operation results, reconciliation evidence, and
 audit detail. File mode `0600` and a small child-process environment are not
 encryption at rest.
 
-The M1 purge implementation in #10 MUST follow these classes:
+The retention implementation in
+[#34](https://github.com/fyaic/threadmesh/issues/34) follows these classes:
 
 | Class | Examples | Required deletion behavior |
 |---|---|---|
@@ -143,12 +147,31 @@ The M1 purge implementation in #10 MUST follow these classes:
 | Audit detail | reason codes and bounded evidence references | redact fields that reveal purged content; retain only policy-approved metadata |
 | Unknown external attempt | stable adapter key, receipt/reconciliation evidence | retain until reconciled and then for the configured audit period |
 
+`maintenance.purgeContent` is policy-only, idempotent in the authenticated
+operation scope, and bounded independently per storage class. Its caller passes
+an already computed retention cutoff; a future cutoff is rejected. Eligible
+envelopes are replaced with schema-valid tombstones, evidence references are
+removed, audit detail is replaced with a retention marker, completed mailbox
+claims are deleted, and a `content-purged` event is appended. The original
+canonical digest remains, so replay of the original envelope is still
+deduplicated while no original content is returned.
+
+Messages with an in-flight context-admission claim or an adapter submission in
+`outcome-unknown` or `manual-reconciliation` are excluded. Retired task and
+completed admission-claim adapter references are scrubbed only when they are no
+longer required by such an attempt. Old operation replay results for sends,
+proposals, summaries, task registration/attachment, and incarnation rotation
+are deleted because those results can retain content or adapter references;
+resource-level identities and digests remain authoritative.
+
 Deletion MUST preserve enough non-content metadata to reject replay and explain
 that content was purged, without reconstructing the content. Purge must cover
 the main database, WAL/checkpoint lifecycle, backups, exported inspector files,
 and test artifacts according to their separate retention policies.
 
-`secure_delete = FAST` reduces ordinary free-page remnants but does not promise
+After a purge, a trusted local operator can call `checkpointStorage` outside a
+write transaction to issue `wal_checkpoint(TRUNCATE)`. `secure_delete = FAST`
+and WAL truncation reduce ordinary live-file remnants but do not promise
 forensic erasure from SSD wear leveling, filesystem snapshots, backups, or
 already exported logs. Operators needing stronger deletion guarantees must use
 encrypted storage with key destruction and managed backup expiry.
@@ -157,11 +180,14 @@ encrypted storage with key destruction and managed backup expiry.
 
 The storage test suite verifies:
 
-- a fresh database records ordered immutable versions 1 and 2;
-- a version-1 database upgrades without rewriting its recorded checksum;
+- a fresh database records ordered immutable versions 1, 2, and 3;
+- version-1 and version-2 databases upgrade without rewriting prior checksums;
 - a version-zero prototype database is adopted without deleting unrelated data;
 - a newer database is rejected without modification;
 - incompatible adoption rolls back `schema_migrations` and `user_version`;
 - a modified migration checksum is rejected;
 - required table columns and named indexes are revalidated on every open;
 - existing restart, crash-window, CAS, receipt, and mailbox tests still pass.
+- purge tombstones survive restart, original message replay remains deduplicated,
+  unresolved external effects retain required state, and WAL truncation is
+  explicit and verified.

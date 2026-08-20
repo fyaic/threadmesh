@@ -174,6 +174,22 @@ external effect. The operation is control-plane-only, bounded, and idempotent.
 A user sweep covers only messages whose source and target tasks that user owns;
 cross-owner maintenance requires policy authority.
 
+### `maintenance.purgeContent`
+
+Applies a policy-selected retention cutoff to bounded storage classes. The
+operation replaces eligible content with tombstones while retaining message and
+task identities, original canonical digests, grant/version, dispositions,
+timestamps, and safe audit event metadata. It is policy-only and idempotent in
+the authenticated operation scope.
+
+The operation MUST exclude an in-flight context-admission claim and any native
+submission whose result is `outcome-unknown` or still requires manual
+reconciliation. Expired envelope content and evidence, associated audit detail,
+inactive proposal/summary content, completed admission references, and retired
+task adapter references may then be scrubbed. A future cutoff MUST fail closed.
+Physical WAL truncation is a separate operator checkpoint and is not proof of
+forensic erasure from backups or storage snapshots.
+
 ## Relationship management
 
 ### `relationships.propose`
@@ -208,6 +224,7 @@ the durable `outcome-unknown` boundary remain quarantined for reconciliation.
 | Native submission | `adapter.prepareSubmission`, `adapter.beginSubmission`, `adapter.recordReceipt` | Trusted local receipt, not independent verification |
 | Unknown-outcome reconciliation | `adapter.reconcileSubmission`, `adapter.getSubmission` | Receiver task supplies evidence; no remote attestation yet |
 | Expiry maintenance | `maintenance.expireDue` | Control-plane-only bounded sweep; in-flight effects excluded |
+| Retention maintenance | `maintenance.purgeContent` | Policy-only tombstoning; unresolved effects excluded; backups remain operator-managed |
 | Event observation | `tasks.wait` | Immediate cursor poll plus local restart checkpoint; not a hosted stream |
 | Provenance inspection | `inspector.snapshot` | Exact-message read; policy metadata-only; revoked/expired content redacted |
 | Disposition/audit read | `messages.getDisposition`, `audit.list` | Sender/receiver task projection only |

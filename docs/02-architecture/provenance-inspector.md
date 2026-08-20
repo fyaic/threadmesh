@@ -47,6 +47,7 @@ snapshot keeps non-content lifecycle and disposition metadata after expiry or
 revocation, but replaces content with one of these reasons:
 
 - `expired`;
+- `purged`;
 - `authorization-no-longer-current`;
 - `metadata-only-policy-view`.
 
@@ -67,9 +68,11 @@ key is replaced by its SHA-256 digest.
 
 ## Retention boundary
 
-Redaction is an authorization response, not physical deletion. Full envelope
-content remains in SQLite until the purge contract is implemented. Exporters
-must apply the same authorization and retention rules and must not create an
+Expiry and revocation redaction are authorization responses, not physical
+deletion. Once policy runs `maintenance.purgeContent`, the inspector reports
+`purged` and the live envelope/evidence fields are replaced by tombstones while
+identity, digest, disposition, and safe audit metadata remain. Exporters must
+apply the same authorization and retention rules and must not create an
 unmanaged copy of visible content.
 
 ## Current evidence
@@ -83,5 +86,5 @@ Deterministic tests cover:
 - revocation-driven content and evidence redaction;
 - separate delivery, decision, outcome, and ordered audit projections.
 
-Hosted streaming, a user interface, cross-host ordering, and purge execution
-remain outside this slice.
+Hosted streaming, a user interface, cross-host ordering, managed backup expiry,
+and forensic storage erasure remain outside this slice.

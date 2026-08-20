@@ -54,7 +54,7 @@ test("records ordered immutable migrations for a fresh database", () => {
   }
 });
 
-test("upgrades a version-one database without rewriting its migration checksum", () => {
+test("upgrades a version-one database through all append-only migrations", () => {
   const temporary = temporaryDatabase();
   let coordinator = new SqliteCoordinator({
     filename: temporary.filename,
@@ -68,7 +68,14 @@ test("upgrades a version-one database without rewriting its migration checksum",
     ALTER TABLE task_metadata DROP COLUMN checkpoint;
     ALTER TABLE dispositions DROP COLUMN decision_reason_code;
     ALTER TABLE dispositions DROP COLUMN delivery_failure_reason;
-    DELETE FROM schema_migrations WHERE version = 2;
+    ALTER TABLE tasks DROP COLUMN adapter_ref_purged_at;
+    ALTER TABLE relationship_proposals DROP COLUMN content_purged_at;
+    ALTER TABLE task_summaries DROP COLUMN content_purged_at;
+    ALTER TABLE messages DROP COLUMN content_purged_at;
+    ALTER TABLE messages DROP COLUMN claim_status;
+    ALTER TABLE admission_claims DROP COLUMN adapter_ref_purged_at;
+    ALTER TABLE audit_events DROP COLUMN detail_purged_at;
+    DELETE FROM schema_migrations WHERE version >= 2;
     PRAGMA user_version = 1;
   `);
   const v1Checksum = database
@@ -84,14 +91,68 @@ test("upgrades a version-one database without rewriting its migration checksum",
   coordinator.close();
   database = new Database(temporary.filename, { readonly: true });
   try {
-    assert.equal(database.pragma("user_version", { simple: true }), 2);
+    assert.equal(
+      database.pragma("user_version", { simple: true }),
+      SQLITE_SCHEMA_VERSION,
+    );
     assert.equal(
       database.prepare("SELECT checksum FROM schema_migrations WHERE version = 1").pluck().get(),
       v1Checksum,
     );
     assert.equal(
       database.prepare("SELECT COUNT(*) FROM schema_migrations").pluck().get(),
-      2,
+      SQLITE_SCHEMA_VERSION,
+    );
+  } finally {
+    database.close();
+    temporary.cleanup();
+  }
+});
+
+test("upgrades version two without rewriting its migration checksum", () => {
+  const temporary = temporaryDatabase();
+  let coordinator = new SqliteCoordinator({
+    filename: temporary.filename,
+    clock: () => NOW,
+  });
+  coordinator.close();
+  let database = new Database(temporary.filename);
+  const v2Checksum = database
+    .prepare("SELECT checksum FROM schema_migrations WHERE version = 2")
+    .pluck()
+    .get();
+  database.exec(`
+    ALTER TABLE tasks DROP COLUMN adapter_ref_purged_at;
+    ALTER TABLE relationship_proposals DROP COLUMN content_purged_at;
+    ALTER TABLE task_summaries DROP COLUMN content_purged_at;
+    ALTER TABLE messages DROP COLUMN content_purged_at;
+    ALTER TABLE messages DROP COLUMN claim_status;
+    ALTER TABLE admission_claims DROP COLUMN adapter_ref_purged_at;
+    ALTER TABLE audit_events DROP COLUMN detail_purged_at;
+    DELETE FROM schema_migrations WHERE version = 3;
+    PRAGMA user_version = 2;
+  `);
+  database.close();
+
+  coordinator = new SqliteCoordinator({
+    filename: temporary.filename,
+    clock: () => NOW,
+  });
+  coordinator.close();
+  database = new Database(temporary.filename, { readonly: true });
+  try {
+    assert.equal(database.pragma("user_version", { simple: true }), 3);
+    assert.equal(
+      database.prepare("SELECT checksum FROM schema_migrations WHERE version = 2").pluck().get(),
+      v2Checksum,
+    );
+    assert.equal(
+      database.prepare("SELECT COUNT(*) FROM schema_migrations").pluck().get(),
+      3,
+    );
+    assert.equal(
+      database.prepare("SELECT name FROM pragma_table_info('messages') WHERE name = 'content_purged_at'").pluck().get(),
+      "content_purged_at",
     );
   } finally {
     database.close();
