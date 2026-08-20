@@ -12,13 +12,14 @@ The documentation is organized from intent to implementation. New readers should
 6. [Proactive coordination](01-concepts/proactive-coordination.md)
 7. [Context sovereignty](01-concepts/context-sovereignty.md)
 8. [Reference architecture](02-architecture/reference-architecture.md)
-9. [Protocol overview](03-protocol/README.md)
-10. [JSON-RPC binding](03-protocol/jsonrpc-binding.md)
-11. [Threat model](04-safety/threat-model.md)
-12. [Adapter contract](05-adapters/adapter-contract.md)
-13. [Design reviews](09-reviews/README.md)
-14. [M0 external reviewer packet](09-reviews/m0-external-reviewer-packet.md)
-15. [Mainline plan](10-planning/mainline-plan.md)
+9. [SQLite storage contract](02-architecture/sqlite-storage-contract.md)
+10. [Protocol overview](03-protocol/README.md)
+11. [JSON-RPC binding](03-protocol/jsonrpc-binding.md)
+12. [Threat model](04-safety/threat-model.md)
+13. [Adapter contract](05-adapters/adapter-contract.md)
+14. [Design reviews](09-reviews/README.md)
+15. [M0 external reviewer packet](09-reviews/m0-external-reviewer-packet.md)
+16. [Mainline plan](10-planning/mainline-plan.md)
 
 ## Directory guide
 

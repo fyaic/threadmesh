@@ -116,6 +116,11 @@ Recommended implementation order:
 5. cursor event stream and provenance inspector (#13);
 6. two deliberately different mock-harness profiles in CI (#14).
 
+The #9 implementation candidate now records an immutable baseline migration,
+rejects newer or checksum-mismatched databases, rolls back failed adoption,
+configures durable WAL concurrency, and documents protocol/table mapping plus
+retention and operational rollback. Its merge remains gated by #7.
+
 ### 7. Resume live adapter expansion
 
 After M0 closes and M1 has an observable coordinator:

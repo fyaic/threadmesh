@@ -59,6 +59,10 @@ The initial implementation may run as a local daemon with adapters in separate p
 The repository currently implements a local authenticated slice of this
 architecture:
 
+- the [SQLite storage contract](sqlite-storage-contract.md) maps protocol
+  objects to tables and defines migration, rollback, concurrency, retention,
+  and deletion rules;
+
 - [`SqliteCoordinator`](../../src/coordinator/sqlite-coordinator.mjs) combines a
   registry, proposals, effective grants, summaries, mailbox, durable claims,
   dispositions, operation replay, and audit events in one process;

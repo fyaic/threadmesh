@@ -22,7 +22,7 @@ maintainer organization.
 | Area | Current evidence | Status |
 |---|---|---|
 | Research and problem framing | Codex deep dive, community signals, ecosystem comparison, ADRs | Established |
-| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 34 unit tests | Executable draft |
+| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 40 unit tests | Executable draft |
 | Local binding | Schema-validated JSON-RPC, transport-derived principals, typed errors | Executable local reference |
 | Local persistence | SQLite registry, proposals, grants, summaries, mailbox, claims, submission receipts, reconciliation, replay, audit | Experimental |
 | Safety boundary | Authenticated authorship checks, effective-grant decisions, revocation, CAS | Executable local policy |
@@ -59,9 +59,11 @@ GitHub is authoritative for milestone closure.
   [#14](https://github.com/fyaic/threadmesh/issues/14).
 - Pull request #20 and the authenticated binding supply partial implementation
   evidence for #9–#14.
-- Migration/rollback, retention, complete policy reason codes, complete
-  disposition reconciliation, hosted event streaming, an inspector, and the
-  complete M1 behavior matrix remain unfinished.
+- A versioned baseline, transactional migration rollback tests, and the
+  retention/deletion contract are prepared under #9 but remain gated by #7.
+- Purge execution, complete policy reason codes, complete disposition handling,
+  hosted event streaming, an inspector, and the complete M1 behavior matrix
+  remain unfinished.
 
 ## What the prototype proves
 

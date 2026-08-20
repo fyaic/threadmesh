@@ -11,6 +11,74 @@ import {
 } from "../protocol-validator.mjs";
 
 const SAFE_DECISIONS = new Set(["accepted", "rejected", "deferred"]);
+export const SQLITE_SCHEMA_VERSION = 1;
+export const SQLITE_SCHEMA_NAME = "threadmesh-coordinator-baseline";
+export const SQLITE_SCHEMA_MANIFEST = Object.freeze({
+  tables: {
+    tasks: [
+      "task_id", "incarnation_id", "harness", "state", "owner_kind",
+      "owner_principal_id", "adapter_ref_json", "created_at",
+    ],
+    task_metadata: ["task_id", "incarnation_id", "revision", "retired_at"],
+    relationship_proposals: [
+      "proposal_id", "proposal_digest", "source_task_id",
+      "source_incarnation_id", "target_task_id", "target_incarnation_id",
+      "proposal_json", "status", "created_at",
+    ],
+    task_summaries: [
+      "summary_id", "task_id", "incarnation_id", "relationship_id",
+      "grant_id", "grant_version", "summary_version", "summary_json",
+      "updated_at",
+    ],
+    grants: [
+      "grant_id", "grant_version", "relationship_id", "source_task_id",
+      "source_incarnation_id", "target_task_id", "target_incarnation_id",
+      "allowed_intents_json", "allowed_modes_json", "expires_at",
+      "revoked_at", "grant_json",
+    ],
+    messages: [
+      "sequence", "sender_incarnation_id", "message_id", "target_task_id",
+      "target_incarnation_id", "relationship_id", "grant_id",
+      "grant_version", "envelope_digest", "envelope_json", "expires_at",
+      "created_at",
+    ],
+    dispositions: [
+      "sender_incarnation_id", "message_id", "revision", "delivery_state",
+      "decision_state", "outcome_state", "updated_at",
+    ],
+    admission_claims: [
+      "sender_incarnation_id", "message_id", "nonce", "admission_token",
+      "expected_revision", "grant_id", "grant_version", "adapter_ref_json",
+      "adapter_ref_digest", "state", "claimed_at", "completed_at",
+    ],
+    adapter_submissions: [
+      "sender_incarnation_id", "message_id", "submission_id",
+      "expected_revision", "envelope_digest", "adapter_ref_digest",
+      "adapter_idempotency_key", "state", "prepared_at",
+      "attempt_started_at", "receipt_json", "reconciliation_json",
+      "updated_at",
+    ],
+    mailbox_claims: [
+      "sender_incarnation_id", "message_id", "receiver_task_id",
+      "receiver_incarnation_id", "claim_token", "expected_revision", "state",
+      "claimed_at", "expires_at", "acknowledged_at",
+    ],
+    operation_replays: [
+      "authentication_id", "method", "idempotency_key", "request_digest",
+      "result_json", "completed_at",
+    ],
+    audit_events: [
+      "sequence", "event_id", "sender_incarnation_id", "message_id",
+      "event_type", "revision", "detail_json", "occurred_at",
+    ],
+  },
+  indexes: ["tasks_global_incarnation", "grants_relationship_version"],
+});
+export const SQLITE_SCHEMA_CHECKSUM = sha256Digest({
+  version: SQLITE_SCHEMA_VERSION,
+  name: SQLITE_SCHEMA_NAME,
+  manifest: SQLITE_SCHEMA_MANIFEST,
+});
 
 function nowIso(clock) {
   return new Date(clock()).toISOString();
@@ -84,11 +152,64 @@ export class SqliteCoordinator {
     this.db = new Database(filename);
     if (filename !== ":memory:") fs.chmodSync(filename, 0o600);
     this.db.pragma("journal_mode = WAL");
+    this.db.pragma("synchronous = FULL");
+    this.db.pragma("busy_timeout = 5000");
+    this.db.pragma("secure_delete = FAST");
     this.db.pragma("foreign_keys = ON");
-    this.#migrate();
+    try {
+      this.#migrate();
+    } catch (error) {
+      this.db.close();
+      throw error;
+    }
   }
 
   #migrate() {
+    const version = this.db.pragma("user_version", { simple: true });
+    if (version > SQLITE_SCHEMA_VERSION) {
+      throw codedError(
+        "threadmesh_storage_version_unsupported",
+        `${version} > ${SQLITE_SCHEMA_VERSION}`,
+      );
+    }
+    this.db.transaction(() => {
+      this.db.exec(`
+        CREATE TABLE IF NOT EXISTS schema_migrations (
+          version INTEGER PRIMARY KEY,
+          name TEXT NOT NULL,
+          checksum TEXT NOT NULL,
+          applied_at TEXT NOT NULL
+        );
+      `);
+      const recorded = this.db
+        .prepare("SELECT * FROM schema_migrations WHERE version = ?")
+        .get(SQLITE_SCHEMA_VERSION);
+      if (recorded && recorded.checksum !== SQLITE_SCHEMA_CHECKSUM) {
+        throw codedError("threadmesh_storage_migration_checksum_mismatch");
+      }
+      if (version < SQLITE_SCHEMA_VERSION || !recorded) {
+        this.#initializeSchema();
+        this.#assertSchemaCompatible();
+        this.db
+          .prepare(
+            `INSERT INTO schema_migrations (version, name, checksum, applied_at)
+             VALUES (?, ?, ?, ?)
+             ON CONFLICT(version) DO NOTHING`,
+          )
+          .run(
+            SQLITE_SCHEMA_VERSION,
+            SQLITE_SCHEMA_NAME,
+            SQLITE_SCHEMA_CHECKSUM,
+            nowIso(this.clock),
+          );
+        this.db.pragma(`user_version = ${SQLITE_SCHEMA_VERSION}`);
+      } else {
+        this.#assertSchemaCompatible();
+      }
+    }).immediate();
+  }
+
+  #initializeSchema() {
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS tasks (
         task_id TEXT NOT NULL,
@@ -260,6 +381,57 @@ export class SqliteCoordinator {
       INSERT OR IGNORE INTO task_metadata (task_id, incarnation_id, revision)
       SELECT task_id, incarnation_id, 0 FROM tasks;
     `);
+  }
+
+  #assertSchemaCompatible() {
+    for (const [table, expectedColumns] of Object.entries(SQLITE_SCHEMA_MANIFEST.tables)) {
+      const actualColumns = new Set(
+        this.db
+          .prepare("SELECT name FROM pragma_table_info(?)")
+          .all(table)
+          .map((row) => row.name),
+      );
+      const missing = expectedColumns.filter((column) => !actualColumns.has(column));
+      if (missing.length > 0) {
+        throw codedError(
+          "threadmesh_storage_schema_incompatible",
+          `${table} missing ${missing.join(",")}`,
+        );
+      }
+    }
+    const indexes = new Set(
+      this.db
+        .prepare("SELECT name FROM sqlite_master WHERE type = 'index'")
+        .all()
+        .map((row) => row.name),
+    );
+    const missingIndexes = SQLITE_SCHEMA_MANIFEST.indexes.filter(
+      (index) => !indexes.has(index),
+    );
+    if (missingIndexes.length > 0) {
+      throw codedError(
+        "threadmesh_storage_schema_incompatible",
+        `indexes missing ${missingIndexes.join(",")}`,
+      );
+    }
+  }
+
+  storageInfo() {
+    return {
+      schemaVersion: this.db.pragma("user_version", { simple: true }),
+      migrations: this.db
+        .prepare(
+          "SELECT version, name, checksum, applied_at AS appliedAt FROM schema_migrations ORDER BY version",
+        )
+        .all(),
+      pragmas: {
+        journalMode: this.db.pragma("journal_mode", { simple: true }),
+        synchronous: this.db.pragma("synchronous", { simple: true }),
+        busyTimeout: this.db.pragma("busy_timeout", { simple: true }),
+        foreignKeys: this.db.pragma("foreign_keys", { simple: true }),
+        secureDelete: this.db.pragma("secure_delete", { simple: true }),
+      },
+    };
   }
 
   registerTask(task, principal) {
