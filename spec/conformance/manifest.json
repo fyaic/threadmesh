@@ -1,0 +1,134 @@
+{
+  "specVersion": "0.0-draft",
+  "schemaCases": [
+    {
+      "name": "valid checkpoint suggestion",
+      "schema": "schema/threadmesh-envelope.schema.json",
+      "fixture": "conformance/fixtures/envelope-valid-suggest.json",
+      "valid": true
+    },
+    {
+      "name": "valid freshness-bound steer",
+      "schema": "schema/threadmesh-envelope.schema.json",
+      "fixture": "conformance/fixtures/envelope-valid-steer.json",
+      "valid": true
+    },
+    {
+      "name": "reject steer without freshness",
+      "schema": "schema/threadmesh-envelope.schema.json",
+      "fixture": "conformance/fixtures/envelope-invalid-steer-without-freshness.json",
+      "valid": false
+    },
+    {
+      "name": "reject notify using active steer delivery",
+      "schema": "schema/threadmesh-envelope.schema.json",
+      "fixture": "conformance/fixtures/envelope-invalid-notify-active-steer.json",
+      "valid": false
+    },
+    {
+      "name": "reject referenced evidence without references",
+      "schema": "schema/threadmesh-envelope.schema.json",
+      "fixture": "conformance/fixtures/envelope-invalid-missing-evidence.json",
+      "valid": false
+    },
+    {
+      "name": "valid adapter capabilities",
+      "schema": "schema/threadmesh-capabilities.schema.json",
+      "fixture": "conformance/fixtures/capabilities-valid.json",
+      "valid": true
+    },
+    {
+      "name": "valid disposition snapshot",
+      "schema": "schema/threadmesh-disposition.schema.json",
+      "fixture": "conformance/fixtures/disposition-valid.json",
+      "valid": true
+    },
+    {
+      "name": "reject verified outcome without evidence",
+      "schema": "schema/threadmesh-disposition.schema.json",
+      "fixture": "conformance/fixtures/disposition-invalid-verified-without-evidence.json",
+      "valid": false
+    },
+    {
+      "name": "valid relationship grant",
+      "schema": "schema/threadmesh-relationship-grant.schema.json",
+      "fixture": "conformance/fixtures/grant-valid.json",
+      "valid": true
+    },
+    {
+      "name": "reject steer grant without active steer mode",
+      "schema": "schema/threadmesh-relationship-grant.schema.json",
+      "fixture": "conformance/fixtures/grant-invalid-steer-mode.json",
+      "valid": false
+    },
+    {
+      "name": "valid minimal task summary",
+      "schema": "schema/threadmesh-task-summary.schema.json",
+      "fixture": "conformance/fixtures/task-summary-valid.json",
+      "valid": true
+    },
+    {
+      "name": "reject private prompt in task summary",
+      "schema": "schema/threadmesh-task-summary.schema.json",
+      "fixture": "conformance/fixtures/task-summary-invalid-prompt.json",
+      "valid": false
+    },
+    {
+      "name": "valid audit event",
+      "schema": "schema/threadmesh-audit-event.schema.json",
+      "fixture": "conformance/fixtures/audit-event-valid.json",
+      "valid": true
+    }
+  ],
+  "transitionCases": [
+    {
+      "name": "mailbox persistence follows submission",
+      "machine": "delivery",
+      "from": "control-plane-accepted",
+      "to": "durably-received",
+      "valid": true
+    },
+    {
+      "name": "context admission follows checkpoint offer",
+      "machine": "delivery",
+      "from": "checkpoint-offered",
+      "to": "context-admitted",
+      "valid": true
+    },
+    {
+      "name": "delivery cannot regress to control-plane acceptance",
+      "machine": "delivery",
+      "from": "durably-received",
+      "to": "control-plane-accepted",
+      "valid": false
+    },
+    {
+      "name": "deferred advice may later be accepted",
+      "machine": "decision",
+      "from": "deferred",
+      "to": "accepted",
+      "valid": true
+    },
+    {
+      "name": "rejected advice cannot silently become accepted",
+      "machine": "decision",
+      "from": "rejected",
+      "to": "accepted",
+      "valid": false
+    },
+    {
+      "name": "observed effect may later be externally verified",
+      "machine": "outcome",
+      "from": "effect-observed",
+      "to": "externally-verified",
+      "valid": true
+    },
+    {
+      "name": "verified outcome cannot regress to unobserved",
+      "machine": "outcome",
+      "from": "externally-verified",
+      "to": "not-observed",
+      "valid": false
+    }
+  ]
+}

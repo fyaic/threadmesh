@@ -1,0 +1,26 @@
+{
+  "specVersion": "0.0-draft",
+  "messageId": "msg_badmode01",
+  "messageType": "observation",
+  "intent": "notify",
+  "claimStatus": "unverified",
+  "sender": {
+    "taskId": "task_release",
+    "incarnationId": "inc_release01",
+    "actorType": "agent",
+    "harness": "harness-a"
+  },
+  "target": {
+    "taskId": "task_validation",
+    "incarnationId": "inc_validation01"
+  },
+  "relationshipId": "rel_release_validation",
+  "content": "The release task completed.",
+  "reason": "Inform the related validation task.",
+  "delivery": {
+    "requestedMode": "active-steer",
+    "requiresDisposition": false
+  },
+  "createdAt": "2026-08-20T09:00:00Z",
+  "expiresAt": "2026-08-20T09:10:00Z"
+}

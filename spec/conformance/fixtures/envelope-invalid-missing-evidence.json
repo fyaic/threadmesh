@@ -1,0 +1,26 @@
+{
+  "specVersion": "0.0-draft",
+  "messageId": "msg_noevidence01",
+  "messageType": "result",
+  "intent": "suggest",
+  "claimStatus": "evidence-referenced",
+  "sender": {
+    "taskId": "task_release",
+    "incarnationId": "inc_release01",
+    "actorType": "agent",
+    "harness": "harness-a"
+  },
+  "target": {
+    "taskId": "task_validation",
+    "incarnationId": "inc_validation01"
+  },
+  "relationshipId": "rel_release_validation",
+  "content": "The new capability count is ten.",
+  "reason": "This fixture must fail because the evidence reference is absent.",
+  "delivery": {
+    "requestedMode": "checkpoint-offer",
+    "requiresDisposition": true
+  },
+  "createdAt": "2026-08-20T09:00:00Z",
+  "expiresAt": "2026-08-20T09:10:00Z"
+}

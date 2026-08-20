@@ -1,0 +1,20 @@
+{
+  "name": "threadmesh",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Protocol schemas and conformance kit for safe cross-task agent coordination",
+  "type": "module",
+  "scripts": {
+    "validate:spec": "node scripts/validate-spec.mjs",
+    "lint:docs": "markdownlint-cli2 'README*.md' 'docs/**/*.md' 'spec/**/*.md' '*.md'",
+    "test": "npm run validate:spec && npm run lint:docs"
+  },
+  "devDependencies": {
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1",
+    "markdownlint-cli2": "0.23.2"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

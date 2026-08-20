@@ -5,6 +5,7 @@
 ```text
 Task
   id
+  incarnation_id
   adapter
   local_ref
   owner
@@ -20,17 +21,24 @@ Task
 
 `objective_summary` is intentionally not the complete prompt. Adapters should expose the least information needed for coordination.
 
+`incarnation_id` is opaque and changes whenever identity continuity cannot be
+proven. `objective_version` is a receiver-maintained monotonic counter rather
+than a prompt hash.
+
 ## Relationship
 
 ```text
 Relationship
   id
-  source_task_id
-  target_task_id
+  grant_id
+  grant_version
+  source_task_ref
+  target_task_ref
   type
   allowed_intents
+  allowed_delivery_modes
+  summary_visibility
   granted_by
-  version
   expires_at?
 ```
 
@@ -40,7 +48,9 @@ Relationship
 CoordinationEnvelope
   spec_version
   message_id
+  message_type
   intent
+  claim_status
   sender
   target
   relationship_id
@@ -60,16 +70,24 @@ The machine-readable draft is in [`spec/schema/threadmesh-envelope.schema.json`]
 
 ```text
 Disposition
+  disposition_id
   message_id
-  state
-  receiver_task_id
-  applied_at?
-  reason_code?
-  detail?
+  receiver_task_ref
+  revision
+  delivery { state, observed_at, failure_reason? }
+  decision { state, decided_at?, decided_by?, reason_code?, detail? }
+  outcome { state, observed_at?, evidence_refs[], detail? }
+  updated_at
 ```
 
-The receiver should use stable reason codes for automation and optional detail for people.
+Delivery, receiver decision, and observed outcome are orthogonal state
+machines. The receiver uses stable reason codes for automation and optional
+detail for people. `adapter-submitted` and `context-admitted` deliberately do
+not claim that a model followed the content.
 
 ## Audit event
 
-Every state transition emits an event containing the message ID, event type, actor, timestamp, and previous event hash or equivalent integrity reference. The initial implementation need not use a blockchain or distributed ledger.
+Every state transition emits an event containing its subject, event type,
+actor, revision, timestamp, and optional previous-event hash or equivalent
+integrity reference. The initial implementation need not use a blockchain or
+distributed ledger.

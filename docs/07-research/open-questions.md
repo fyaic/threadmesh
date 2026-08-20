@@ -1,22 +1,30 @@
 # Open questions
 
-## M0 blockers
+## Resolved M0 blockers
 
 ### What is the minimum portable task summary?
 
-It must support useful relevance judgments without leaking prompts, filenames, customers, or private objectives.
+Resolved by [ADR 0007](../08-decisions/0007-minimal-task-summary.md): a typed,
+relationship-scoped document with no raw prompt, history, filesystem paths, or
+arbitrary extension fields.
 
 ### How is accepted peer advice represented to the model?
 
-Harnesses expose different message roles. The protocol needs a provenance-preserving representation that does not impersonate the user or weaken instruction hierarchy.
+Resolved by [ADR 0006](../08-decisions/0006-provider-neutral-provenance.md):
+the core remains provider-neutral and the receiving adapter renders preserved
+peer provenance only after context admission.
 
 ### Which freshness token is mandatory?
 
-Run ID is easy to understand but insufficient when an objective mutates within one run. Objective hashes can leak information or change for editorial reasons.
+Resolved by [ADR 0005](../08-decisions/0005-task-incarnation-and-freshness.md):
+all task references bind an incarnation; state-changing requests require a run
+ID or monotonic objective version, and prompt hashes are not used.
 
 ### What does `applied` mean?
 
-A harness can prove that content entered model context, but not that the model followed it. The disposition vocabulary must avoid overstating causal influence.
+Resolved by [ADR 0004](../08-decisions/0004-separate-coordination-transitions.md):
+delivery, receiver decision, and observed outcome are separate state machines;
+the protocol has no bare `applied` state.
 
 ## Research questions
 

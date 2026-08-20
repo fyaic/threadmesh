@@ -1,0 +1,30 @@
+{
+  "specVersion": "0.0-draft",
+  "adapterName": "threadmesh-mock-adapter",
+  "adapterVersion": "0.0.1",
+  "harness": {
+    "name": "mock-harness",
+    "versionRange": ">=1"
+  },
+  "intents": ["notify", "suggest", "steer", "interrupt"],
+  "deliveryModes": [
+    "store-only",
+    "side-channel",
+    "checkpoint-offer",
+    "active-steer",
+    "interrupt-request"
+  ],
+  "features": {
+    "relatedTaskDiscovery": "relationship-scoped",
+    "taskIncarnation": true,
+    "objectiveVersioning": true,
+    "checkpointEvents": true,
+    "idleWake": false,
+    "modelTurnCancellation": true,
+    "subprocessCancellation": false,
+    "contextAdmission": "receiver-mediated",
+    "provenanceRendering": "model-visible",
+    "dispositionCallbacks": true,
+    "structuredGateResponses": "none"
+  }
+}

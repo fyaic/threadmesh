@@ -13,49 +13,30 @@
     "features"
   ],
   "properties": {
-    "specVersion": {
-      "const": "0.0-draft"
-    },
-    "adapterName": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 200
-    },
-    "adapterVersion": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 100
-    },
+    "specVersion": { "const": "0.0-draft" },
+    "adapterName": { "type": "string", "minLength": 1, "maxLength": 200 },
+    "adapterVersion": { "type": "string", "minLength": 1, "maxLength": 100 },
     "harness": {
       "type": "object",
       "additionalProperties": false,
       "required": ["name"],
       "properties": {
-        "name": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 200
-        },
-        "versionRange": {
-          "type": "string",
-          "maxLength": 200
-        }
+        "name": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "versionRange": { "type": "string", "maxLength": 200 }
       }
     },
     "intents": {
       "type": "array",
       "minItems": 1,
       "uniqueItems": true,
-      "items": {
-        "enum": ["notify", "suggest", "steer", "interrupt"]
-      }
+      "items": { "enum": ["notify", "suggest", "steer", "interrupt"] }
     },
     "deliveryModes": {
       "type": "array",
       "minItems": 1,
       "uniqueItems": true,
       "items": {
-        "enum": ["side-channel", "mailbox", "checkpoint", "active-run"]
+        "$ref": "https://threadmesh.dev/spec/0.0-draft/types.schema.json#/$defs/deliveryMode"
       }
     },
     "features": {
@@ -63,35 +44,35 @@
       "additionalProperties": false,
       "required": [
         "relatedTaskDiscovery",
+        "taskIncarnation",
         "objectiveVersioning",
         "checkpointEvents",
+        "idleWake",
         "modelTurnCancellation",
         "subprocessCancellation",
-        "provenanceRoles",
-        "dispositionCallbacks"
+        "contextAdmission",
+        "provenanceRendering",
+        "dispositionCallbacks",
+        "structuredGateResponses"
       ],
       "properties": {
         "relatedTaskDiscovery": {
           "enum": ["none", "explicit-only", "relationship-scoped"]
         },
-        "objectiveVersioning": {
-          "type": "boolean"
+        "taskIncarnation": { "type": "boolean" },
+        "objectiveVersioning": { "type": "boolean" },
+        "checkpointEvents": { "type": "boolean" },
+        "idleWake": { "type": "boolean" },
+        "modelTurnCancellation": { "type": "boolean" },
+        "subprocessCancellation": { "type": "boolean" },
+        "contextAdmission": {
+          "enum": ["none", "receiver-mediated", "native"]
         },
-        "checkpointEvents": {
-          "type": "boolean"
+        "provenanceRendering": {
+          "enum": ["none", "side-channel-only", "model-visible"]
         },
-        "modelTurnCancellation": {
-          "type": "boolean"
-        },
-        "subprocessCancellation": {
-          "type": "boolean"
-        },
-        "provenanceRoles": {
-          "type": "boolean"
-        },
-        "dispositionCallbacks": {
-          "type": "boolean"
-        }
+        "dispositionCallbacks": { "type": "boolean" },
+        "structuredGateResponses": { "const": "none" }
       }
     }
   }

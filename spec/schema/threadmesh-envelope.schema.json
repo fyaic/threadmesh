@@ -7,37 +7,62 @@
   "required": [
     "specVersion",
     "messageId",
+    "messageType",
     "intent",
+    "claimStatus",
     "sender",
     "target",
     "relationshipId",
     "content",
     "reason",
+    "delivery",
     "createdAt",
     "expiresAt"
   ],
   "properties": {
-    "specVersion": {
-      "const": "0.0-draft"
-    },
+    "specVersion": { "const": "0.0-draft" },
     "messageId": {
       "type": "string",
-      "minLength": 8,
-      "maxLength": 200
+      "pattern": "^msg_[A-Za-z0-9][A-Za-z0-9._:-]{6,196}$"
+    },
+    "messageType": {
+      "enum": [
+        "observation",
+        "question",
+        "suggestion",
+        "result",
+        "state-update",
+        "action-request"
+      ]
     },
     "intent": {
       "enum": ["notify", "suggest", "steer", "interrupt"]
     },
+    "claimStatus": {
+      "enum": ["unverified", "sender-asserted", "evidence-referenced"]
+    },
     "sender": {
-      "$ref": "#/$defs/sender"
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["taskId", "incarnationId", "actorType", "harness"],
+      "properties": {
+        "taskId": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "incarnationId": {
+          "type": "string",
+          "pattern": "^inc_[A-Za-z0-9][A-Za-z0-9._:-]{6,196}$"
+        },
+        "actorType": {
+          "enum": ["user", "agent", "service", "policy"]
+        },
+        "harness": { "type": "string", "minLength": 1, "maxLength": 200 }
+      }
     },
     "target": {
-      "$ref": "#/$defs/target"
+      "$ref": "https://threadmesh.dev/spec/0.0-draft/types.schema.json#/$defs/taskRef"
     },
     "relationshipId": {
       "type": "string",
-      "minLength": 1,
-      "maxLength": 200
+      "pattern": "^rel_[A-Za-z0-9][A-Za-z0-9._:-]{2,196}$"
     },
     "content": {
       "type": "string",
@@ -53,130 +78,124 @@
       "type": "array",
       "maxItems": 32,
       "items": {
-        "type": "string",
-        "maxLength": 2000
+        "$ref": "https://threadmesh.dev/spec/0.0-draft/types.schema.json#/$defs/evidenceRef"
       },
       "uniqueItems": true
     },
     "freshness": {
-      "$ref": "#/$defs/freshness"
+      "$ref": "https://threadmesh.dev/spec/0.0-draft/types.schema.json#/$defs/freshness"
     },
     "causality": {
-      "$ref": "#/$defs/causality"
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "traceId": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "parentMessageId": {
+          "type": "string",
+          "pattern": "^msg_[A-Za-z0-9][A-Za-z0-9._:-]{6,196}$"
+        },
+        "hopCount": { "type": "integer", "minimum": 0, "maximum": 32 }
+      }
     },
     "delivery": {
-      "$ref": "#/$defs/delivery"
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requestedMode", "requiresDisposition"],
+      "properties": {
+        "requestedMode": {
+          "$ref": "https://threadmesh.dev/spec/0.0-draft/types.schema.json#/$defs/deliveryMode"
+        },
+        "requiresDisposition": { "type": "boolean" }
+      }
     },
-    "createdAt": {
-      "type": "string",
-      "format": "date-time"
-    },
-    "expiresAt": {
-      "type": "string",
-      "format": "date-time"
-    }
+    "createdAt": { "type": "string", "format": "date-time" },
+    "expiresAt": { "type": "string", "format": "date-time" }
   },
   "allOf": [
     {
       "if": {
-        "properties": {
-          "intent": {
-            "enum": ["steer", "interrupt"]
-          }
-        },
+        "properties": { "intent": { "enum": ["steer", "interrupt"] } },
         "required": ["intent"]
       },
       "then": {
+        "properties": { "freshness": true },
         "required": ["freshness"]
       }
-    }
-  ],
-  "$defs": {
-    "sender": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["taskId", "actorType", "harness"],
-      "properties": {
-        "taskId": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 200
-        },
-        "actorType": {
-          "enum": ["user", "agent", "service", "policy"]
-        },
-        "harness": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 200
+    },
+    {
+      "if": {
+        "properties": { "claimStatus": { "const": "evidence-referenced" } },
+        "required": ["claimStatus"]
+      },
+      "then": {
+        "required": ["evidenceRefs"],
+        "properties": { "evidenceRefs": { "minItems": 1 } }
+      }
+    },
+    {
+      "if": {
+        "properties": { "intent": { "const": "notify" } },
+        "required": ["intent"]
+      },
+      "then": {
+        "properties": {
+          "delivery": {
+            "properties": {
+              "requestedMode": { "enum": ["store-only", "side-channel"] }
+            }
+          }
         }
       }
     },
-    "target": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["taskId"],
-      "properties": {
-        "taskId": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 200
+    {
+      "if": {
+        "properties": { "intent": { "const": "suggest" } },
+        "required": ["intent"]
+      },
+      "then": {
+        "properties": {
+          "delivery": {
+            "properties": {
+              "requestedMode": {
+                "enum": [
+                  "store-only",
+                  "side-channel",
+                  "checkpoint-offer",
+                  "wake-idle"
+                ]
+              }
+            }
+          }
         }
       }
     },
-    "freshness": {
-      "type": "object",
-      "additionalProperties": false,
-      "minProperties": 1,
-      "properties": {
-        "expectedRunId": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 200
-        },
-        "expectedObjectiveVersion": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "expectedCheckpoint": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 200
+    {
+      "if": {
+        "properties": { "intent": { "const": "steer" } },
+        "required": ["intent"]
+      },
+      "then": {
+        "properties": {
+          "delivery": {
+            "properties": { "requestedMode": { "const": "active-steer" } }
+          }
         }
       }
     },
-    "causality": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "traceId": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 200
-        },
-        "parentMessageId": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 200
-        },
-        "hopCount": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 32
-        }
-      }
-    },
-    "delivery": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "modelVisibility": {
-          "enum": ["none", "checkpoint", "immediate-if-authorized"]
-        },
-        "requiresDisposition": {
-          "type": "boolean"
+    {
+      "if": {
+        "properties": { "intent": { "const": "interrupt" } },
+        "required": ["intent"]
+      },
+      "then": {
+        "properties": {
+          "delivery": {
+            "properties": {
+              "requestedMode": { "const": "interrupt-request" }
+            }
+          }
         }
       }
     }
-  }
+  ]
 }

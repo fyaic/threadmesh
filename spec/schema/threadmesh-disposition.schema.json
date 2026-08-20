@@ -1,0 +1,169 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://threadmesh.dev/spec/0.0-draft/disposition.schema.json",
+  "title": "ThreadMesh message disposition snapshot",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "specVersion",
+    "dispositionId",
+    "messageId",
+    "receiver",
+    "revision",
+    "delivery",
+    "decision",
+    "outcome",
+    "updatedAt"
+  ],
+  "properties": {
+    "specVersion": { "const": "0.0-draft" },
+    "dispositionId": {
+      "type": "string",
+      "pattern": "^dsp_[A-Za-z0-9][A-Za-z0-9._:-]{6,196}$"
+    },
+    "messageId": {
+      "type": "string",
+      "pattern": "^msg_[A-Za-z0-9][A-Za-z0-9._:-]{6,196}$"
+    },
+    "receiver": {
+      "$ref": "https://threadmesh.dev/spec/0.0-draft/types.schema.json#/$defs/taskRef"
+    },
+    "revision": { "type": "integer", "minimum": 0 },
+    "delivery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "observedAt"],
+      "properties": {
+        "state": {
+          "enum": [
+            "control-plane-accepted",
+            "durably-received",
+            "receiver-notified",
+            "checkpoint-offered",
+            "context-admitted",
+            "adapter-submitted",
+            "failed",
+            "expired"
+          ]
+        },
+        "observedAt": { "type": "string", "format": "date-time" },
+        "failureReason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "state": { "const": "failed" } },
+            "required": ["state"]
+          },
+          "then": {
+            "properties": { "failureReason": true },
+            "required": ["failureReason"]
+          }
+        }
+      ]
+    },
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state"],
+      "properties": {
+        "state": {
+          "enum": [
+            "pending",
+            "accepted",
+            "rejected",
+            "deferred",
+            "stale",
+            "expired",
+            "unsupported",
+            "revoked"
+          ]
+        },
+        "decidedAt": { "type": "string", "format": "date-time" },
+        "decidedBy": {
+          "$ref": "https://threadmesh.dev/spec/0.0-draft/types.schema.json#/$defs/actorRef"
+        },
+        "reasonCode": {
+          "$ref": "https://threadmesh.dev/spec/0.0-draft/types.schema.json#/$defs/reasonCode"
+        },
+        "detail": { "type": "string", "maxLength": 4000 }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "state": { "not": { "const": "pending" } }
+            },
+            "required": ["state"]
+          },
+          "then": {
+            "properties": {
+              "decidedAt": true,
+              "decidedBy": true,
+              "reasonCode": true
+            },
+            "required": ["decidedAt", "decidedBy", "reasonCode"]
+          }
+        }
+      ]
+    },
+    "outcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state"],
+      "properties": {
+        "state": {
+          "enum": [
+            "not-observed",
+            "effect-observed",
+            "externally-verified",
+            "failed"
+          ]
+        },
+        "observedAt": { "type": "string", "format": "date-time" },
+        "evidenceRefs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "https://threadmesh.dev/spec/0.0-draft/types.schema.json#/$defs/evidenceRef"
+          }
+        },
+        "detail": { "type": "string", "maxLength": 4000 }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "state": { "const": "externally-verified" } },
+            "required": ["state"]
+          },
+          "then": {
+            "properties": {
+              "observedAt": true,
+              "evidenceRefs": true
+            },
+            "required": ["observedAt", "evidenceRefs"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "state": { "enum": ["effect-observed", "failed"] }
+            },
+            "required": ["state"]
+          },
+          "then": {
+            "properties": { "observedAt": true },
+            "required": ["observedAt"]
+          }
+        }
+      ]
+    },
+    "updatedAt": { "type": "string", "format": "date-time" }
+  }
+}

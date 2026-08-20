@@ -1,0 +1,28 @@
+{
+  "specVersion": "0.0-draft",
+  "messageId": "msg_suggest01",
+  "messageType": "suggestion",
+  "intent": "suggest",
+  "claimStatus": "evidence-referenced",
+  "sender": {
+    "taskId": "task_release",
+    "incarnationId": "inc_release01",
+    "actorType": "agent",
+    "harness": "harness-a"
+  },
+  "target": {
+    "taskId": "task_validation",
+    "incarnationId": "inc_validation01",
+    "harness": "harness-b"
+  },
+  "relationshipId": "rel_release_validation",
+  "content": "Re-check the capability count before interpreting the smoke test.",
+  "reason": "The target may be validating an obsolete invariant.",
+  "evidenceRefs": ["artifact://release/capability-list@revision-10"],
+  "delivery": {
+    "requestedMode": "checkpoint-offer",
+    "requiresDisposition": true
+  },
+  "createdAt": "2026-08-20T09:00:00Z",
+  "expiresAt": "2026-08-20T09:10:00Z"
+}

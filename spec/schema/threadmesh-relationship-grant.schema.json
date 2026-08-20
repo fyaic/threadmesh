@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://threadmesh.dev/spec/0.0-draft/relationship-grant.schema.json",
+  "title": "ThreadMesh relationship grant",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "specVersion",
+    "grantId",
+    "grantVersion",
+    "relationshipId",
+    "relationshipType",
+    "source",
+    "target",
+    "allowedIntents",
+    "allowedDeliveryModes",
+    "summaryVisibility",
+    "structuredGateResponses",
+    "grantedBy",
+    "createdAt"
+  ],
+  "properties": {
+    "specVersion": { "const": "0.0-draft" },
+    "grantId": {
+      "type": "string",
+      "pattern": "^grant_[A-Za-z0-9][A-Za-z0-9._:-]{4,194}$"
+    },
+    "grantVersion": { "type": "integer", "minimum": 0 },
+    "relationshipId": {
+      "type": "string",
+      "pattern": "^rel_[A-Za-z0-9][A-Za-z0-9._:-]{2,196}$"
+    },
+    "relationshipType": {
+      "enum": ["supervisor", "delegation", "peer", "dependency", "observer"]
+    },
+    "source": {
+      "$ref": "https://threadmesh.dev/spec/0.0-draft/types.schema.json#/$defs/taskRef"
+    },
+    "target": {
+      "$ref": "https://threadmesh.dev/spec/0.0-draft/types.schema.json#/$defs/taskRef"
+    },
+    "allowedIntents": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "enum": ["notify", "suggest", "steer", "interrupt"] }
+    },
+    "allowedDeliveryModes": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "https://threadmesh.dev/spec/0.0-draft/types.schema.json#/$defs/deliveryMode"
+      }
+    },
+    "summaryVisibility": {
+      "enum": ["none", "state-only", "coordination", "objective-hint"]
+    },
+    "structuredGateResponses": { "const": false },
+    "grantedBy": {
+      "$ref": "https://threadmesh.dev/spec/0.0-draft/types.schema.json#/$defs/actorRef"
+    },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "expiresAt": { "type": "string", "format": "date-time" },
+    "revokedAt": { "type": "string", "format": "date-time" }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "allowedIntents": { "contains": { "const": "steer" } }
+        },
+        "required": ["allowedIntents"]
+      },
+      "then": {
+        "properties": {
+          "allowedDeliveryModes": {
+            "contains": { "const": "active-steer" }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "allowedIntents": { "contains": { "const": "interrupt" } }
+        },
+        "required": ["allowedIntents"]
+      },
+      "then": {
+        "properties": {
+          "allowedDeliveryModes": {
+            "contains": { "const": "interrupt-request" }
+          }
+        }
+      }
+    }
+  ]
+}

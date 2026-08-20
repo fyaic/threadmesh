@@ -1,0 +1,20 @@
+{
+  "specVersion": "0.0-draft",
+  "eventId": "evt_admitted01",
+  "eventType": "context-admitted",
+  "actor": {
+    "actorType": "agent",
+    "task": {
+      "taskId": "task_validation",
+      "incarnationId": "inc_validation01"
+    }
+  },
+  "subject": {
+    "messageId": "msg_suggest01",
+    "relationshipId": "rel_release_validation"
+  },
+  "revision": 3,
+  "evidenceRefs": ["audit://target/context-admission/revision-3"],
+  "previousEventHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "occurredAt": "2026-08-20T09:01:00Z"
+}

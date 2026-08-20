@@ -1,0 +1,26 @@
+{
+  "specVersion": "0.0-draft",
+  "messageId": "msg_nofresh01",
+  "messageType": "action-request",
+  "intent": "steer",
+  "claimStatus": "unverified",
+  "sender": {
+    "taskId": "task_supervisor",
+    "incarnationId": "inc_supervisor01",
+    "actorType": "agent",
+    "harness": "harness-a"
+  },
+  "target": {
+    "taskId": "task_worker",
+    "incarnationId": "inc_worker01"
+  },
+  "relationshipId": "rel_supervisor_worker",
+  "content": "Change the active objective.",
+  "reason": "This fixture must fail because it is not freshness-bound.",
+  "delivery": {
+    "requestedMode": "active-steer",
+    "requiresDisposition": true
+  },
+  "createdAt": "2026-08-20T09:00:00Z",
+  "expiresAt": "2026-08-20T09:02:00Z"
+}

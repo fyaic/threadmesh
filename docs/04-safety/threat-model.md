@@ -71,7 +71,8 @@
 
 - Semantic relevance never creates authorization.
 - Delivery never implies model visibility.
-- Queue acknowledgement never implies application.
+- Queue acknowledgement never implies receiver acceptance, context admission,
+  or adapter submission.
 - A weaker relationship cannot request a stronger intent.
 - Stale state-changing messages do not apply to a new run.
 - Adapters do not silently claim capabilities they cannot enforce.

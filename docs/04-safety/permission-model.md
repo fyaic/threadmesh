@@ -5,7 +5,8 @@
 Authorization evaluates the tuple:
 
 ```text
-(actor, sender task, target task, relationship, intent, freshness, policy)
+(actor, sender incarnation, target incarnation, relationship grant, intent,
+delivery mode, freshness, policy)
 ```
 
 ## Baseline matrix
@@ -26,6 +27,11 @@ Deployments MAY make the matrix stricter. They MUST NOT make user-owned tasks pe
 
 Capability answers whether an adapter can perform an operation. Permission answers whether this sender may request it for this target. Both must pass.
 
+Authorization to send is not authorization to inject model context. The
+receiver independently owns context admission and MAY reject, defer, or
+downgrade a permitted request to a safer supported mode when semantics remain
+honest. It MUST reject mappings that would change the requested intent.
+
 ## Approval
 
 Policies may require user approval for:
@@ -39,3 +45,6 @@ Policies may require user approval for:
 ## Revocation
 
 Revoking a relationship invalidates queued state-changing messages. Adapters should also rotate or invalidate cached capability grants.
+
+Task recreation invalidates every grant bound to the previous incarnation,
+even if a harness reuses the same human-readable task ID.
