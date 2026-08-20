@@ -81,6 +81,24 @@ digest, require disposition CAS, reject conflicting receipts, and prohibit
 automatic retry until a query or evidence confirms the first attempt was not
 submitted.
 
+### Umbrella cancellation claims
+
+**Threat:** a harness reports interrupt success after stopping only the model
+turn while a tool call or subprocess continues.
+
+**Mitigation:** mandatory per-target results for model turn, tool calls, and
+subprocesses; explicit enumeration coverage; no overall success field; and
+capability gating on typed results plus real cancellation primitives.
+
+### Forged external verification
+
+**Threat:** an adapter supplies an attacker-controlled URL or self-selected key
+and upgrades its own observation to `externally-verified`.
+
+**Mitigation:** signed attestations from authenticated non-agent verifiers,
+canonical claim/evidence digests, subject matching, separately provisioned trust
+anchors, cryptographic proof verification, and explicit trust-policy decisions.
+
 ### Audit leakage
 
 **Threat:** useful provenance becomes a second copy of sensitive prompts.
@@ -98,3 +116,5 @@ submitted.
 - Adapters do not silently claim capabilities they cannot enforce.
 - Process restart does not turn an unknown external outcome into permission to
   retry.
+- Model-turn cancellation does not imply tool-call or subprocess cancellation.
+- Evidence references and adapter receipts do not imply external verification.

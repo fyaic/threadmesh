@@ -110,14 +110,15 @@ operation replay, receiver claims, and two public-path mock harness profiles.
 
 The implementation is deliberately narrower than the product vision:
 
-- M0 has 9 closed and 2 open issues after the crash-safe receipt work in #19;
-- typed interruption/verification and external review remain open;
+- M0 has 10 closed and 1 open issue after typed interruption and signed
+  verification in #16;
+- only the independent external review gate remains open for M0;
 - M1 has partial prototype evidence, but all six acceptance issues remain open;
 - Kimi Code ACP initialization passed, while the real model-turn marker test is
   blocked by account quota and is not counted as a pass.
 
-The mainline is now typed interruption/verification (#16), followed by
-independent M0 review (#7) and completion of the local M1 coordinator. See
+The mainline is now independent M0 review (#7), followed by completion of the
+local M1 coordinator and then real agent-product validation. See
 the [project status](docs/10-planning/project-status.md),
 [mainline plan](docs/10-planning/mainline-plan.md), and
 [roadmap](ROADMAP.md).

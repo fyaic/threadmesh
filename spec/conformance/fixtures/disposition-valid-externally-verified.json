@@ -1,0 +1,69 @@
+{
+  "specVersion": "0.0-draft",
+  "dispositionId": "dsp_suggest01",
+  "messageId": "msg_suggest01",
+  "receiver": {
+    "taskId": "task_validation",
+    "incarnationId": "inc_validation01"
+  },
+  "revision": 5,
+  "delivery": {
+    "state": "adapter-submitted",
+    "observedAt": "2026-08-20T09:01:00Z"
+  },
+  "decision": {
+    "state": "accepted",
+    "decidedAt": "2026-08-20T09:00:50Z",
+    "decidedBy": {
+      "actorType": "agent",
+      "task": {
+        "taskId": "task_validation",
+        "incarnationId": "inc_validation01"
+      }
+    },
+    "reasonCode": "accepted"
+  },
+  "outcome": {
+    "state": "externally-verified",
+    "observedAt": "2026-08-20T09:02:00Z",
+    "evidenceRefs": ["https://verifier.example/evidence/query-10"],
+    "verificationAttestations": [
+      {
+        "specVersion": "0.0-draft",
+        "attestationId": "att_validation01",
+        "verifier": {
+          "actorType": "service",
+          "actorId": "verifier.example",
+          "authenticationId": "authn_verifier01",
+          "trustDomain": "https://verifier.example"
+        },
+        "subject": {
+          "messageId": "msg_suggest01",
+          "senderIncarnationId": "inc_sender_validation01",
+          "receiver": {
+            "taskId": "task_validation",
+            "incarnationId": "inc_validation01"
+          },
+          "claimType": "external-effect",
+          "claimDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "method": "direct-resource-query",
+        "evidenceDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "verifiedAt": "2026-08-20T09:02:00Z",
+        "trustPolicy": {
+          "policyId": "threadmesh://policy/trusted-verifiers/v1",
+          "decisionId": "decision_verifier01",
+          "decision": "trusted",
+          "decidedAt": "2026-08-20T09:02:00Z"
+        },
+        "signedPayloadDigest": "sha256:ff1169250e2d15528015c8c25f0ec4c1d2b06a9dc0b4457f19c0b35cf79dcdd9",
+        "proof": {
+          "algorithm": "ed25519",
+          "keyId": "https://verifier.example/keys/2026-08",
+          "signature": "5MavgG9ncVeGg62GNimejNjxDqnZeHDIwBzvchcAUY9_JDR_iMWTprNLzfQpbd31pLzh7W8duge6H5OsBK0TCg"
+        }
+      }
+    ]
+  },
+  "updatedAt": "2026-08-20T09:02:00Z"
+}

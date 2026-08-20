@@ -98,6 +98,12 @@
       "valid": false
     },
     {
+      "name": "reject interrupt capability without typed per-target results",
+      "schema": "schema/threadmesh-capabilities.schema.json",
+      "fixture": "conformance/fixtures/capabilities-invalid-interrupt-no-typed-results.json",
+      "valid": false
+    },
+    {
       "name": "valid disposition snapshot",
       "schema": "schema/threadmesh-disposition.schema.json",
       "fixture": "conformance/fixtures/disposition-valid.json",
@@ -143,6 +149,66 @@
       "name": "reject completed submission without durable receipt",
       "schema": "schema/threadmesh-adapter-submission.schema.json",
       "fixture": "conformance/fixtures/adapter-submission-invalid-receipt-missing.json",
+      "valid": false
+    },
+    {
+      "name": "valid partial per-target interruption result",
+      "schema": "schema/threadmesh-interruption-result.schema.json",
+      "fixture": "conformance/fixtures/interruption-result-valid-partial.json",
+      "valid": true
+    },
+    {
+      "name": "reject umbrella interrupt success",
+      "schema": "schema/threadmesh-interruption-result.schema.json",
+      "fixture": "conformance/fixtures/interruption-result-invalid-umbrella-success.json",
+      "valid": false
+    },
+    {
+      "name": "reject interruption result without subprocess coverage",
+      "schema": "schema/threadmesh-interruption-result.schema.json",
+      "fixture": "conformance/fixtures/interruption-result-invalid-missing-subprocess-coverage.json",
+      "valid": false
+    },
+    {
+      "name": "reject cancelled target with denial reason",
+      "schema": "schema/threadmesh-interruption-result.schema.json",
+      "fixture": "conformance/fixtures/interruption-result-invalid-cancelled-denied-reason.json",
+      "valid": false
+    },
+    {
+      "name": "valid signed verification attestation",
+      "schema": "schema/threadmesh-verification-attestation.schema.json",
+      "fixture": "conformance/fixtures/verification-attestation-valid.json",
+      "valid": true
+    },
+    {
+      "name": "reject adapter-forged verification attestation",
+      "schema": "schema/threadmesh-verification-attestation.schema.json",
+      "fixture": "conformance/fixtures/verification-attestation-invalid-adapter-forgery.json",
+      "valid": false
+    },
+    {
+      "name": "reject tampered verification attestation digest",
+      "schema": "schema/threadmesh-verification-attestation.schema.json",
+      "fixture": "conformance/fixtures/verification-attestation-invalid-tampered-digest.json",
+      "valid": false
+    },
+    {
+      "name": "reject verification attestation with invalid signature",
+      "schema": "schema/threadmesh-verification-attestation.schema.json",
+      "fixture": "conformance/fixtures/verification-attestation-invalid-signature.json",
+      "valid": false
+    },
+    {
+      "name": "valid externally verified disposition with trusted attestation",
+      "schema": "schema/threadmesh-disposition.schema.json",
+      "fixture": "conformance/fixtures/disposition-valid-externally-verified.json",
+      "valid": true
+    },
+    {
+      "name": "reject externally verified disposition with arbitrary evidence only",
+      "schema": "schema/threadmesh-disposition.schema.json",
+      "fixture": "conformance/fixtures/disposition-invalid-verified-arbitrary-evidence.json",
       "valid": false
     },
     {

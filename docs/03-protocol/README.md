@@ -53,8 +53,9 @@ Cancellation request. A receiver MUST verify elevated authority and report wheth
 
 ## Current conformance boundary
 
-`npm test` validates schema compilation, 44 positive/negative fixture cases,
+`npm test` validates schema compilation, 55 positive/negative fixture cases,
 7 transition cases, an authenticated serialized JSON-RPC path, crash-safe
-submission reconciliation, and two mock harness profiles. It does not yet
-validate interruption results, verification attestations, production network
-authentication, or real-product cross-harness behavior.
+submission reconciliation, typed partial interruption, real Ed25519
+attestation verification against a pinned conformance trust anchor, and two
+mock harness profiles. It does not yet validate production network
+authentication, trust-store operations, or real-product cross-harness behavior.

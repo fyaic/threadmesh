@@ -26,6 +26,7 @@
     "provenanceRendering": "model-visible",
     "dispositionCallbacks": true,
     "structuredGateResponses": "none",
-    "durableSubmissionIdempotency": "queryable-receipt"
+    "durableSubmissionIdempotency": "queryable-receipt",
+    "typedInterruptionResults": true
   }
 }

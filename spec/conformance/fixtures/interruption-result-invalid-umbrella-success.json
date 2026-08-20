@@ -1,0 +1,21 @@
+{
+  "specVersion": "0.0-draft",
+  "interruptionId": "int_umbrella01",
+  "messageId": "msg_interrupt01",
+  "receiver": {
+    "taskId": "task_validation",
+    "incarnationId": "inc_validation01"
+  },
+  "requestedAt": "2026-08-20T09:00:00Z",
+  "success": true,
+  "results": {
+    "modelTurn": {
+      "targetId": "turn-10",
+      "state": "cancelled",
+      "observedAt": "2026-08-20T09:00:01Z"
+    },
+    "toolCalls": { "enumeration": "unavailable", "targets": [] },
+    "subprocesses": { "enumeration": "unavailable", "targets": [] }
+  },
+  "updatedAt": "2026-08-20T09:00:01Z"
+}

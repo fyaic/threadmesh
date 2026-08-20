@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://threadmesh.dev/spec/0.0-draft/interruption-result.schema.json",
+  "title": "ThreadMesh typed per-target interruption result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "specVersion",
+    "interruptionId",
+    "messageId",
+    "receiver",
+    "requestedAt",
+    "results",
+    "updatedAt"
+  ],
+  "properties": {
+    "specVersion": { "const": "0.0-draft" },
+    "interruptionId": {
+      "type": "string",
+      "pattern": "^int_[A-Za-z0-9][A-Za-z0-9._:-]{6,196}$"
+    },
+    "messageId": {
+      "type": "string",
+      "pattern": "^msg_[A-Za-z0-9][A-Za-z0-9._:-]{6,196}$"
+    },
+    "receiver": {
+      "$ref": "https://threadmesh.dev/spec/0.0-draft/types.schema.json#/$defs/taskRef"
+    },
+    "freshness": {
+      "$ref": "https://threadmesh.dev/spec/0.0-draft/types.schema.json#/$defs/freshness"
+    },
+    "requestedAt": { "type": "string", "format": "date-time" },
+    "results": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["modelTurn", "toolCalls", "subprocesses"],
+      "properties": {
+        "modelTurn": { "$ref": "#/$defs/targetResult" },
+        "toolCalls": { "$ref": "#/$defs/targetSet" },
+        "subprocesses": { "$ref": "#/$defs/targetSet" }
+      }
+    },
+    "updatedAt": { "type": "string", "format": "date-time" }
+  },
+  "$defs": {
+    "targetResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["targetId", "state", "observedAt"],
+      "properties": {
+        "targetId": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "state": {
+          "enum": [
+            "requested",
+            "cancelled",
+            "not-cancellable",
+            "not-running",
+            "failed",
+            "stale",
+            "denied"
+          ]
+        },
+        "observedAt": { "type": "string", "format": "date-time" },
+        "reasonCode": {
+          "enum": [
+            "accepted",
+            "policy-denied",
+            "stale-incarnation",
+            "stale-run",
+            "stale-objective",
+            "adapter-failed",
+            "other"
+          ]
+        },
+        "detail": { "type": "string", "maxLength": 4000 }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "state": { "const": "cancelled" } },
+            "required": ["state"]
+          },
+          "then": {
+            "properties": { "reasonCode": { "const": "accepted" } },
+            "required": ["reasonCode"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "state": { "const": "denied" } },
+            "required": ["state"]
+          },
+          "then": {
+            "properties": { "reasonCode": { "const": "policy-denied" } },
+            "required": ["reasonCode"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "state": { "const": "stale" } },
+            "required": ["state"]
+          },
+          "then": {
+            "properties": {
+              "reasonCode": {
+                "enum": ["stale-incarnation", "stale-run", "stale-objective"]
+              }
+            },
+            "required": ["reasonCode"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "state": { "const": "failed" } },
+            "required": ["state"]
+          },
+          "then": {
+            "properties": {
+              "reasonCode": { "enum": ["adapter-failed", "other"] }
+            },
+            "required": ["reasonCode"]
+          }
+        }
+      ]
+    },
+    "targetSet": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enumeration", "targets"],
+      "properties": {
+        "enumeration": { "enum": ["complete", "partial", "unavailable"] },
+        "targets": {
+          "type": "array",
+          "maxItems": 256,
+          "items": { "$ref": "#/$defs/targetResult" }
+        },
+        "detail": { "type": "string", "maxLength": 4000 }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "enumeration": { "const": "unavailable" } },
+            "required": ["enumeration"]
+          },
+          "then": {
+            "properties": { "targets": { "maxItems": 0 } }
+          }
+        }
+      ]
+    }
+  }
+}

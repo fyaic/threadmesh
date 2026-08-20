@@ -136,6 +136,12 @@ attempt. `confirmed-submitted` requires and records a receipt;
 `manual-required` quarantines the message. These receipts are trusted binding
 evidence, not the independent verification attestations tracked by #16.
 
+Typed interruption results and signed verification attestations are portable
+protocol objects, but this local JSON-RPC profile does not yet expose mutation
+methods for them. Until a host supplies target enumeration and a production
+trust-store verifier, it must reject `interrupt` capability and must not write
+`externally-verified` outcomes through private shortcuts.
+
 ## Typed errors
 
 Errors use a JSON-RPC numeric category plus stable ThreadMesh data:

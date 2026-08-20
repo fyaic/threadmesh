@@ -12,5 +12,6 @@ ADRs capture durable decisions that constrain the protocol or implementation.
 | [0006](0006-provider-neutral-provenance.md) | Keep the core envelope provider-neutral and structured gates isolated | Accepted |
 | [0007](0007-minimal-task-summary.md) | Publish minimal relationship-scoped task summaries | Accepted |
 | [0008](0008-outcome-unknown-before-external-dispatch.md) | Persist outcome unknown before external dispatch and reconcile before retry | Accepted |
+| [0009](0009-per-target-interruption-and-signed-verification.md) | Require per-target interruption results and signed, trust-evaluated verification | Accepted |
 
 New ADRs should include context, decision, consequences, rejected alternatives, and status.

@@ -16,6 +16,8 @@ This directory contains machine-readable artifacts for the pre-alpha protocol.
 - [`threadmesh-relationship-proposal.schema.json`](schema/threadmesh-relationship-proposal.schema.json) — non-authoritative agent proposal.
 - [`threadmesh-jsonrpc.schema.json`](schema/threadmesh-jsonrpc.schema.json) — JSON-RPC requests, success responses, and typed errors.
 - [`threadmesh-adapter-submission.schema.json`](schema/threadmesh-adapter-submission.schema.json) — crash-safe native submission, receipt, and reconciliation record.
+- [`threadmesh-interruption-result.schema.json`](schema/threadmesh-interruption-result.schema.json) — per-target model, tool, and subprocess cancellation results.
+- [`threadmesh-verification-attestation.schema.json`](schema/threadmesh-verification-attestation.schema.json) — signed, trust-evaluated external verification evidence.
 
 The schemas are exploratory and use the version label `0.0-draft`. They are not a compatibility promise.
 
@@ -36,8 +38,8 @@ fixture, checks envelope chronology, and evaluates the draft state machines.
 
 ## Planned additions
 
-- typed interruption results and verification attestations;
-- additional live adapter behavior profiles.
+- additional live adapter behavior profiles;
+- production trust-store, key-rotation, and remote verifier bindings.
 
 The executable JSON-RPC binding supplies local implementation evidence. It is
 not an Internet-facing server or a production credential verifier.

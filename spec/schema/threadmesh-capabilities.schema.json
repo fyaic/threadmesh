@@ -54,7 +54,8 @@
         "provenanceRendering",
         "dispositionCallbacks",
         "structuredGateResponses",
-        "durableSubmissionIdempotency"
+        "durableSubmissionIdempotency",
+        "typedInterruptionResults"
       ],
       "properties": {
         "relatedTaskDiscovery": {
@@ -76,7 +77,8 @@
         "structuredGateResponses": { "const": "none" },
         "durableSubmissionIdempotency": {
           "enum": ["none", "stable-key", "queryable-receipt"]
-        }
+        },
+        "typedInterruptionResults": { "type": "boolean" }
       }
     }
   },
@@ -143,7 +145,8 @@
               "taskIncarnation": { "const": true },
               "durableSubmissionIdempotency": {
                 "enum": ["stable-key", "queryable-receipt"]
-              }
+              },
+              "typedInterruptionResults": { "const": true }
             },
             "anyOf": [
               {

@@ -73,6 +73,12 @@ for the normative schema and state machine.
 
 Primary issue: [#16](https://github.com/fyaic/threadmesh/issues/16).
 
+Status: completed in the typed interruption and signed verification change.
+The protocol has per-target model/tool/process results with explicit coverage,
+no umbrella success, and signed attestations bound to authenticated verifier,
+claim subject, evidence digest, time, trust-policy decision, and external trust
+anchor. Conformance verifies a real Ed25519 signature.
+
 - separate model-turn, tool-call, and subprocess cancellation results;
 - prohibit umbrella success claims;
 - define authenticated verification attestations;
@@ -122,10 +128,10 @@ After M0 closes and M1 has an observable coordinator:
 
 Keep each change independently reviewable:
 
-1. `spec: add interruption results and verification attestations`
-2. `docs: publish the external M0 reviewer packet`
-3. `feat: complete the M1 storage and migration contract`
-4. `feat: complete policy, dispatcher, stream, and inspector slices`
+1. `docs: publish the external M0 reviewer packet`
+2. `feat: complete the M1 storage and migration contract`
+3. `feat: complete policy, dispatcher, stream, and inspector slices`
+4. `test: run real product adapters after normative and M1 completion`
 
 ## Mainline guardrails
 

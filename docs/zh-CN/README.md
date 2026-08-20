@@ -35,6 +35,8 @@ ThreadMesh 并不赋予 agent 任意修改其他 session 的权力。它提供�
   JSON-RPC error 已有公开 schema 和两类 mock harness；
 - 原生 harness 调用已有持久化 `outcome-unknown` 边界、稳定幂等键、receipt、
   disposition CAS 与重启后对账；未知结果不会被自动重试；
+- interrupt 结果按 model turn、tool call、subprocess 分别报告，不存在笼统
+  success；外部验证必须通过可信锚校验签名 attestation；
 - Kimi ACP 握手通过，真实模型调用仍受额度阻塞；
-- M0 仍待 interrupt/verification 和外部 review；
+- M0 只剩独立外部 review；
 - 在 M0 稳定前，不把更多 live adapter 当作主线完成度。

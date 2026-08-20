@@ -41,6 +41,8 @@ Capability combinations are fail-closed. In particular:
   real cancellation target;
 - `steer` and `interrupt` require durable submission idempotency declared as
   `stable-key` or `queryable-receipt`;
+- `interrupt` additionally requires `typedInterruptionResults: true`; results
+  cover model turn, tool calls, and subprocesses without an umbrella success;
 - `wake-idle` requires the idle-wake feature;
 - model-visible context admission requires `suggest` plus model-visible
   provenance;
@@ -64,6 +66,7 @@ An adapter MUST NOT:
 
 - map `suggest` to an unlabelled user message;
 - report `interrupt` success when only text was appended;
+- report all work cancelled when only a model turn or session stopped;
 - reuse an incarnation ID when task identity continuity cannot be proven;
 - invent objective versions that cannot detect staleness;
 - advertise private task discovery as relationship-scoped discovery;
@@ -71,6 +74,8 @@ An adapter MUST NOT:
 - parse peer prose as a structured approval or permission response.
 - retry an `outcome-unknown` external attempt without a queryable receipt or an
   evidence-backed `confirmed-not-submitted` reconciliation.
+- mark an outcome externally verified using its own adapter identity, an
+  arbitrary evidence reference, or an untrusted self-selected key.
 
 ## Graceful degradation
 

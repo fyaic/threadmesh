@@ -127,7 +127,13 @@ Disposition
   revision
   delivery { state, observed_at, failure_reason? }
   decision { state, decided_at?, decided_by?, reason_code?, detail? }
-  outcome { state, observed_at?, evidence_refs[], detail? }
+  outcome {
+    state,
+    observed_at?,
+    evidence_refs[],
+    verification_attestations[]?,
+    detail?
+  }
   updated_at
 ```
 
@@ -157,9 +163,47 @@ AdmissionClaim
 The experimental coordinator persists one claim per message before an external
 ACP dispatch. The claim is the revocation linearization boundary and prevents a
 second worker or restart from automatically redelivering the same prompt. A
-crash can leave a claim `in-flight`; the normative `outcome-unknown` and
-reconciliation rules remain open in
-[#19](https://github.com/fyaic/threadmesh/issues/19).
+crash can leave a claim `in-flight`. Native state-changing calls use the
+separate durable adapter-submission record and `outcome-unknown`
+reconciliation state machine defined by ADR 0008.
+
+## Interruption result
+
+```text
+InterruptionResult
+  interruption_id
+  message_id
+  receiver_task_ref
+  freshness?
+  requested_at
+  results {
+    model_turn: TargetResult
+    tool_calls: { enumeration, targets[] }
+    subprocesses: { enumeration, targets[] }
+  }
+  updated_at
+```
+
+There is deliberately no overall success field. Each target reports requested,
+cancelled, not-cancellable, not-running, failed, stale, or denied.
+
+## Verification attestation
+
+```text
+VerificationAttestation
+  attestation_id
+  verifier { actor, authentication_id, trust_domain }
+  subject { message, receiver, claim_type, claim_digest }
+  method
+  evidence_digest
+  verified_at
+  trust_policy { policy_id, decision_id, decision, decided_at }
+  signed_payload_digest
+  proof { algorithm, key_id, signature }
+```
+
+The key ID resolves through a separately configured trust anchor. The
+attestation does not carry authority to trust its own key.
 
 ## Audit event
 
@@ -170,8 +214,8 @@ distributed ledger.
 
 ## Prototype-to-target gaps
 
-The prototype does not yet persist objective summaries, objective versions,
-sensitivity projections, typed failure reasons, evidence attestations, actor
-authentication, or hash-linked audit integrity. Storage migration, rollback,
-retention, and deletion policy remain part of
+The prototype does not yet persist objective versions, complete typed failure
+reasons, verification attestations, production credential verification, or
+hash-linked audit integrity. Storage migration, rollback, retention, and
+deletion policy remain part of
 [#9](https://github.com/fyaic/threadmesh/issues/9).

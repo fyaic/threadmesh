@@ -6,7 +6,12 @@ import { fileURLToPath } from "node:url";
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 
-import { grantAuthorizationDigest } from "../src/protocol-validator.mjs";
+import {
+  grantAuthorizationDigest,
+  verificationAttestationDigest,
+  verifyExternallyVerifiedDisposition,
+  verifyVerificationAttestation,
+} from "../src/protocol-validator.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const specRoot = path.join(root, "spec");
@@ -33,6 +38,9 @@ for (const name of schemaFiles) {
 
 const manifestPath = path.join(specRoot, "conformance", "manifest.json");
 const manifest = readJson(manifestPath);
+const verificationTrustAnchor = readJson(
+  path.join(specRoot, "conformance", "fixtures", "verification-trust-anchor.json"),
+);
 const manifestSchema = ajv.getSchema(
   "https://threadmesh.dev/spec/0.0-draft/conformance-manifest.schema.json",
 );
@@ -135,6 +143,32 @@ for (const testCase of manifest.schemaCases) {
       Date.parse(fixture.createdAt) < Date.parse(fixture.expiresAt) &&
       fixture.source.taskId === fixture.proposedBy.task.taskId &&
       fixture.source.incarnationId === fixture.proposedBy.task.incarnationId;
+  }
+
+  if (
+    actual &&
+    schema.$id.endsWith("/verification-attestation.schema.json")
+  ) {
+    actual = fixture.signedPayloadDigest === verificationAttestationDigest(fixture);
+    if (actual && fixture.trustPolicy.decision === "trusted") {
+      try {
+        verifyVerificationAttestation(fixture, verificationTrustAnchor);
+      } catch {
+        actual = false;
+      }
+    }
+  }
+
+  if (
+    actual &&
+    schema.$id.endsWith("/disposition.schema.json") &&
+    fixture.outcome.state === "externally-verified"
+  ) {
+    try {
+      verifyExternallyVerifiedDisposition(fixture, [verificationTrustAnchor]);
+    } catch {
+      actual = false;
+    }
   }
 
   if (actual !== testCase.valid) {

@@ -1,8 +1,7 @@
 # Project status
 
-> Snapshot: 2026-08-20, including authenticated operations and crash-safe
-> adapter submission reconciliation for
-> [#19](https://github.com/fyaic/threadmesh/issues/19).
+> Snapshot: 2026-08-20, including authenticated operations, crash-safe adapter
+> submission, typed interruption results, and signed verification attestations.
 
 ## Executive summary
 
@@ -14,16 +13,16 @@ ACP adapter exercised against a persistent fake agent and the local Kimi Code
 ACP endpoint.
 
 The implementation is not a production coordinator and does not establish
-cross-product interoperability. Normative M0 remains open because typed
-interruption and verification results and two independent external reviews are
-unfinished.
+cross-product interoperability. The normative M0 blockers are resolved; M0
+remains open only for two independent reviews, including one outside the
+maintainer organization.
 
 ## Evidence ledger
 
 | Area | Current evidence | Status |
 |---|---|---|
 | Research and problem framing | Codex deep dive, community signals, ecosystem comparison, ADRs | Established |
-| Protocol draft | 12 JSON Schemas, 44 positive/negative cases, 7 transition cases, 32 unit tests | Executable draft |
+| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 34 unit tests | Executable draft |
 | Local binding | Schema-validated JSON-RPC, transport-derived principals, typed errors | Executable local reference |
 | Local persistence | SQLite registry, proposals, grants, summaries, mailbox, claims, submission receipts, reconciliation, replay, audit | Experimental |
 | Safety boundary | Authenticated authorship checks, effective-grant decisions, revocation, CAS | Executable local policy |
@@ -34,6 +33,8 @@ unfinished.
 | Production authentication | Local static-token reference; no TLS/OAuth verifier supplied | Host integration required |
 | OS isolation | No child-process sandbox supplied by ThreadMesh | Not implemented |
 | Steer and interrupt | Not advertised by the ACP prototype | Intentionally unsupported |
+| Interruption result | Per-target model/tool/process schema; no umbrella success | Normative, no live adapter yet |
+| External verification | Signed attestation schema plus real Ed25519 conformance proof | Normative, conformance trust anchor only |
 | Cross-harness conformance | Pull-mailbox and event-watching mock profiles over JSON-RPC | Local behavior demonstrated |
 
 ## Milestone accounting
@@ -42,17 +43,15 @@ GitHub is authoritative for milestone closure.
 
 ### M0 — Foundation and protocol draft
 
-- 9 issues closed, including coherence, authenticated binding, and crash-safety issues
+- 10 issues closed, including all normative review blockers
   [#15](https://github.com/fyaic/threadmesh/issues/15),
   [#17](https://github.com/fyaic/threadmesh/issues/17),
-  [#18](https://github.com/fyaic/threadmesh/issues/18), and
-  [#19](https://github.com/fyaic/threadmesh/issues/19).
-- 2 issues open: [#7](https://github.com/fyaic/threadmesh/issues/7) and
+  [#18](https://github.com/fyaic/threadmesh/issues/18),
+  [#19](https://github.com/fyaic/threadmesh/issues/19), and
   [#16](https://github.com/fyaic/threadmesh/issues/16).
-- Internal review findings have prototype mitigations, but their normative
-  acceptance criteria remain open.
-- Exit is blocked by interruption/verification and two independent reviews,
-  including at least one outside the maintainer organization.
+- 1 issue open: [#7](https://github.com/fyaic/threadmesh/issues/7).
+- Exit is blocked only by two independent reviews, including at least one
+  outside the maintainer organization.
 
 ### M1 — Local reference coordinator
 
@@ -86,7 +85,11 @@ can:
 12. load the registered ACP session without mixing historical replay into the
    new turn;
 13. confirm context admission only after matching adapter evidence;
-14. preserve an audit trail across restart.
+14. preserve an audit trail across restart;
+15. reject umbrella interrupt success and require explicit model-turn,
+    tool-call, and subprocess coverage;
+16. reject arbitrary evidence, adapter-forged attestations, tampered digests,
+    invalid signatures, and untrusted verifier keys.
 
 It does not prove autonomous task discovery, useful model behavior, native
 provider-role isolation, exactly-once external effects, production remote

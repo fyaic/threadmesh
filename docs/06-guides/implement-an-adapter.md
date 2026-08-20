@@ -43,6 +43,16 @@ Bind `steer` and `interrupt` to a local run and objective version. Fail closed o
 Return separate delivery, receiver-decision, context-admission,
 adapter-submission, and outcome events. Report partial cancellation honestly.
 
+For interruption, always return a model-turn result and explicit tool-call and
+subprocess coverage. Enumerate each known target. If the harness cannot inspect
+a target class, report `unavailable`; never infer that session cancellation
+stopped external work.
+
+Keep ordinary evidence at `effect-observed`. Only accept
+`externally-verified` after recomputing the attestation digest, resolving the
+key ID through a configured trust store, validating the signature, matching the
+message/receiver subject, and enforcing the trust-policy decision.
+
 For external model-visible dispatch, durably claim the message before invoking
 the harness. Bind the claim to message revision, grant version, and the resolved
 adapter reference. Confirm it only with matching adapter evidence. If the
@@ -73,6 +83,9 @@ At minimum test:
 - provenance preservation;
 - unsupported intent;
 - repeated interruption rate limit.
+- partial cancellation where the turn stops but a tool or subprocess continues;
+- attacker-controlled evidence URL, self-signed adapter attestation, tampered
+  digest, invalid signature, and untrusted key ID;
 - crash before native receipt, restart recovery, conflicting receipt, and
   concurrent disposition CAS.
 
