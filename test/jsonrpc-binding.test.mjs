@@ -432,6 +432,49 @@ test("quarantines revoked queued content on the public mailbox path", () => {
   }
 });
 
+test("exposes explicit unsupported and pre-effect failure results", () => {
+  const api = transport(":memory:");
+  try {
+    bootstrap(api);
+    api.a.call("messages.send", {
+      envelope: envelope("msg_rpc_unsupported01"),
+      idempotencyKey: "idem_send_rpc_unsupported01",
+    });
+    const unsupported = api.b.call("messages.respond", {
+      senderIncarnationId: taskA.incarnationId,
+      messageId: "msg_rpc_unsupported01",
+      decision: "unsupported",
+      reasonCode: "unsupported-delivery-mode",
+      expectedRevision: 0,
+      idempotencyKey: "idem_respond_rpc_unsupported01",
+    });
+    assert.equal(unsupported.value.decision, "unsupported");
+    assert.equal(
+      unsupported.value.decisionReasonCode,
+      "unsupported-delivery-mode",
+    );
+
+    api.a.call("messages.send", {
+      envelope: envelope("msg_rpc_delivery_failed01"),
+      idempotencyKey: "idem_send_rpc_delivery_failed01",
+    });
+    const failed = api.b.call("messages.failDelivery", {
+      senderIncarnationId: taskA.incarnationId,
+      messageId: "msg_rpc_delivery_failed01",
+      expectedRevision: 0,
+      failureReason: "adapter-preflight-failed",
+      idempotencyKey: "idem_fail_rpc_delivery01",
+    });
+    assert.equal(failed.value.delivery, "failed");
+    assert.equal(
+      failed.value.deliveryFailureReason,
+      "adapter-preflight-failed",
+    );
+  } finally {
+    api.coordinator.close();
+  }
+});
+
 test("binds attach, summary projection, and incarnation rotation with CAS", () => {
   const api = transport(":memory:");
   try {
@@ -453,6 +496,18 @@ test("binds attach, summary projection, and incarnation rotation with CAS", () =
       }),
       { code: "threadmesh_revision_conflict" },
     );
+    const runtime = api.b.call("tasks.updateRuntime", {
+      task: taskB,
+      runtime: {
+        runId: "run_rpc_b01",
+        objectiveVersion: 7,
+        checkpoint: "checkpoint-rpc-b-7",
+      },
+      expectedRevision: 1,
+      idempotencyKey: "idem_runtime_rpc_b01",
+    });
+    assert.equal(runtime.value.revision, 2);
+    assert.equal(runtime.value.runtime.objectiveVersion, 7);
 
     const summary = {
       specVersion: "0.0-draft",
@@ -499,10 +554,10 @@ test("binds attach, summary projection, and incarnation rotation with CAS", () =
         harness: "mock-pull-v2",
         state: "idle",
       },
-      expectedRevision: 1,
+      expectedRevision: 2,
       idempotencyKey: "idem_rotate_rpc_b02",
     });
-    assert.equal(rotated.value.previous.revision, 2);
+    assert.equal(rotated.value.previous.revision, 3);
     assert.equal(rotated.value.current.incarnationId, "inc_rpc_task_b02");
     assert.throws(
       () => api.a.call("tasks.getSummary", {

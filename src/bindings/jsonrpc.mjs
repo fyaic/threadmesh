@@ -124,6 +124,13 @@ export class ThreadMeshJsonRpcBinding {
             params.expectedRevision,
             principal,
           );
+        case "tasks.updateRuntime":
+          return this.coordinator.updateTaskRuntime(
+            params.task,
+            params.runtime,
+            params.expectedRevision,
+            principal,
+          );
         case "tasks.rotateIncarnation":
           return this.coordinator.rotateTaskIncarnation(
             params.previous,
@@ -169,6 +176,15 @@ export class ThreadMeshJsonRpcBinding {
             params.messageId,
             params.decision,
             params.expectedRevision,
+            principal,
+            params.reasonCode,
+          );
+        case "messages.failDelivery":
+          return this.coordinator.failDelivery(
+            params.senderIncarnationId,
+            params.messageId,
+            params.expectedRevision,
+            params.failureReason,
             principal,
           );
         case "messages.getDisposition":

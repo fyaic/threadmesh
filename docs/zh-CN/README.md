@@ -40,6 +40,9 @@ ThreadMesh 并不赋予 agent 任意修改其他 session 的权力。它提供�
 - relationship policy 已抽成默认拒绝的纯决策引擎；公开错误不会泄露关系是
   不存在、已撤销、已过期或被新版本取代，撤销与排队中的 steer/interrupt
   失效在同一事务完成；
+- durable dispatcher 在真实 adapter 调用前先持久化 `outcome-unknown`，异常或
+  重启后绝不自动重试；run/objective/checkpoint freshness 会在接收和调用前各
+  校验一次，所有 terminal decision 与 failure reason 都显式保存；
 - Kimi ACP 握手通过，真实模型调用仍受额度阻塞；
 - M0 只剩独立外部 review；
 - 在 M0 稳定前，不把更多 live adapter 当作主线完成度。

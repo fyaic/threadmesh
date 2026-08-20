@@ -132,6 +132,12 @@ rechecks authority immediately before native submission, and couples grant
 revocation with audited invalidation of queued `steer`/`interrupt` work. Its
 merge is also gated by #7.
 
+The stacked #12 candidate introduces an append-only version-2 migration,
+runtime freshness snapshots under CAS, a transition table shared by conformance
+and runtime, all explicit receiver terminal states, and a durable dispatcher.
+The dispatcher writes `outcome-unknown` before one native call and suppresses
+automatic retry after exceptions or restart. Its merge is also gated by #7.
+
 ### 7. Resume live adapter expansion
 
 After M0 closes and M1 has an observable coordinator:

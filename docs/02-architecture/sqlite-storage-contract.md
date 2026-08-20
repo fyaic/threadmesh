@@ -11,7 +11,9 @@ single-user coordinator instance. SQLite is a durability and concurrency
 boundary, not tenant isolation. The process that opens the database can read or
 modify every row.
 
-The current baseline schema version is `1`. `PRAGMA user_version` is the fast
+The current schema version is `2`. Version 1 is the immutable coordinator
+baseline; version 2 adds task run/objective/checkpoint snapshots plus persisted
+decision and delivery-failure reasons. `PRAGMA user_version` is the fast
 compatibility check; `schema_migrations` is the immutable audit record for the
 version name, checksum, and application time.
 
@@ -19,7 +21,7 @@ version name, checksum, and application time.
 
 | Protocol object or operation | Primary storage | Integrity and identity |
 |---|---|---|
-| Task incarnation | `tasks`, `task_metadata` | `(task_id, incarnation_id)` primary key; globally unique incarnation index; revision CAS |
+| Task incarnation | `tasks`, `task_metadata` | `(task_id, incarnation_id)` primary key; globally unique incarnation index; revision CAS; run/objective/checkpoint freshness snapshot |
 | Relationship proposal | `relationship_proposals` | `proposal_id` primary key plus canonical proposal digest |
 | Effective grant | `grants` | `grant_id` primary key; unique relationship/endpoints/version tuple; signed authorization digest inside `grant_json` |
 | Task summary projection | `task_summaries` | task/incarnation/relationship uniqueness plus grant ID/version and summary version |
@@ -59,6 +61,9 @@ state transition at a time while WAL readers continue.
 |---|---|
 | Receive | envelope row, initial disposition, `message-durably-received` audit event |
 | Receiver decision | disposition revision/state CAS, `receiver-decided` audit event |
+| Runtime freshness update | task metadata revision CAS for run/objective/checkpoint |
+| Delivery failure | legal delivery transition, bounded reason, and `delivery-failed` audit event |
+| Grant revocation | grant timestamp plus eligible queued state-changing decision revocation and audit events |
 | Mailbox acknowledgement | exact claim transition plus receiver decision and its audit event |
 | Context admission | exact admission-token transition, disposition CAS, context-admitted audit event |
 | Native receipt | exact receipt storage, disposition CAS to adapter-submitted, audit event |
@@ -152,7 +157,8 @@ encrypted storage with key destruction and managed backup expiry.
 
 The storage test suite verifies:
 
-- a fresh database records exactly one baseline migration;
+- a fresh database records ordered immutable versions 1 and 2;
+- a version-1 database upgrades without rewriting its recorded checksum;
 - a version-zero prototype database is adopted without deleting unrelated data;
 - a newer database is rejected without modification;
 - incompatible adoption rolls back `schema_migrations` and `user_version`;

@@ -70,6 +70,28 @@ export function evaluateRelationshipPolicy({
   if (grant.structuredGateResponses !== false) {
     return deny("structured-gate-unsupported");
   }
+  if (STATE_CHANGING_INTENTS.has(envelope.intent)) {
+    const freshness = envelope.freshness;
+    if (!freshness) return deny("freshness-missing");
+    if (
+      freshness.expectedRunId !== undefined &&
+      freshness.expectedRunId !== targetTask.runId
+    ) {
+      return deny("stale-run", "stale-run");
+    }
+    if (
+      freshness.expectedObjectiveVersion !== undefined &&
+      freshness.expectedObjectiveVersion !== targetTask.objectiveVersion
+    ) {
+      return deny("stale-objective", "stale-objective");
+    }
+    if (
+      freshness.expectedCheckpoint !== undefined &&
+      freshness.expectedCheckpoint !== targetTask.checkpoint
+    ) {
+      return deny("stale-checkpoint", "stale-objective");
+    }
+  }
   if (
     STATE_CHANGING_INTENTS.has(envelope.intent) &&
     !ELEVATED_RELATIONSHIPS.has(grant.relationshipType)

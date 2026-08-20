@@ -13,17 +13,32 @@ import {
   evaluateRelationshipPolicy,
   isStateChangingIntent,
 } from "../policy/relationship-policy.mjs";
+import {
+  isDecisionReasonAllowed,
+  isDispositionTransitionAllowed,
+} from "../state/disposition-transitions.mjs";
 
-const SAFE_DECISIONS = new Set(["accepted", "rejected", "deferred"]);
-export const SQLITE_SCHEMA_VERSION = 1;
-export const SQLITE_SCHEMA_NAME = "threadmesh-coordinator-baseline";
+const DEFAULT_DECISION_REASONS = Object.freeze({
+  accepted: "accepted",
+  rejected: "receiver-rejected",
+  deferred: "receiver-deferred",
+  stale: "stale-objective",
+  expired: "expired",
+  unsupported: "unsupported-intent",
+  revoked: "revoked",
+});
+export const SQLITE_SCHEMA_VERSION = 2;
+export const SQLITE_SCHEMA_NAME = "threadmesh-dispatcher-state";
 export const SQLITE_SCHEMA_MANIFEST = Object.freeze({
   tables: {
     tasks: [
       "task_id", "incarnation_id", "harness", "state", "owner_kind",
       "owner_principal_id", "adapter_ref_json", "created_at",
     ],
-    task_metadata: ["task_id", "incarnation_id", "revision", "retired_at"],
+    task_metadata: [
+      "task_id", "incarnation_id", "revision", "retired_at", "run_id",
+      "objective_version", "checkpoint",
+    ],
     relationship_proposals: [
       "proposal_id", "proposal_digest", "source_task_id",
       "source_incarnation_id", "target_task_id", "target_incarnation_id",
@@ -48,7 +63,8 @@ export const SQLITE_SCHEMA_MANIFEST = Object.freeze({
     ],
     dispositions: [
       "sender_incarnation_id", "message_id", "revision", "delivery_state",
-      "decision_state", "outcome_state", "updated_at",
+      "decision_state", "decision_reason_code", "delivery_failure_reason",
+      "outcome_state", "updated_at",
     ],
     admission_claims: [
       "sender_incarnation_id", "message_id", "nonce", "admission_token",
@@ -78,6 +94,38 @@ export const SQLITE_SCHEMA_MANIFEST = Object.freeze({
   },
   indexes: ["tasks_global_incarnation", "grants_relationship_version"],
 });
+const SQLITE_SCHEMA_V1_MANIFEST = Object.freeze({
+  ...SQLITE_SCHEMA_MANIFEST,
+  tables: Object.freeze({
+    ...SQLITE_SCHEMA_MANIFEST.tables,
+    task_metadata: Object.freeze([
+      "task_id", "incarnation_id", "revision", "retired_at",
+    ]),
+    dispositions: Object.freeze([
+      "sender_incarnation_id", "message_id", "revision", "delivery_state",
+      "decision_state", "outcome_state", "updated_at",
+    ]),
+  }),
+});
+export const SQLITE_SCHEMA_MIGRATIONS = Object.freeze([
+  Object.freeze({
+    version: 1,
+    name: "threadmesh-coordinator-baseline",
+    manifest: SQLITE_SCHEMA_V1_MANIFEST,
+  }),
+  Object.freeze({
+    version: SQLITE_SCHEMA_VERSION,
+    name: SQLITE_SCHEMA_NAME,
+    manifest: SQLITE_SCHEMA_MANIFEST,
+  }),
+].map((migration) => Object.freeze({
+  ...migration,
+  checksum: sha256Digest({
+    version: migration.version,
+    name: migration.name,
+    manifest: migration.manifest,
+  }),
+})));
 export const SQLITE_SCHEMA_CHECKSUM = sha256Digest({
   version: SQLITE_SCHEMA_VERSION,
   name: SQLITE_SCHEMA_NAME,
@@ -123,6 +171,36 @@ function parseRow(row) {
   return {
     ...row,
     envelope: row.envelope_json ? JSON.parse(row.envelope_json) : undefined,
+  };
+}
+
+function assertRuntimeSnapshot(runtime, optional) {
+  if (runtime === undefined && optional) return;
+  if (
+    !runtime ||
+    typeof runtime !== "object" ||
+    Array.isArray(runtime) ||
+    (runtime.runId !== undefined &&
+      (typeof runtime.runId !== "string" || runtime.runId.length === 0)) ||
+    (runtime.objectiveVersion !== undefined &&
+      (!Number.isInteger(runtime.objectiveVersion) || runtime.objectiveVersion < 0)) ||
+    (runtime.checkpoint !== undefined &&
+      (typeof runtime.checkpoint !== "string" || runtime.checkpoint.length === 0)) ||
+    (runtime.runId === undefined &&
+      runtime.objectiveVersion === undefined &&
+      runtime.checkpoint === undefined)
+  ) {
+    throw codedError("threadmesh_task_runtime_invalid");
+  }
+}
+
+function runtimeSnapshot(metadata) {
+  return {
+    ...(metadata.run_id ? { runId: metadata.run_id } : {}),
+    ...(metadata.objective_version !== null
+      ? { objectiveVersion: metadata.objective_version }
+      : {}),
+    ...(metadata.checkpoint ? { checkpoint: metadata.checkpoint } : {}),
   };
 }
 
@@ -185,15 +263,29 @@ export class SqliteCoordinator {
           applied_at TEXT NOT NULL
         );
       `);
-      const recorded = this.db
-        .prepare("SELECT * FROM schema_migrations WHERE version = ?")
-        .get(SQLITE_SCHEMA_VERSION);
-      if (recorded && recorded.checksum !== SQLITE_SCHEMA_CHECKSUM) {
-        throw codedError("threadmesh_storage_migration_checksum_mismatch");
+      for (const migration of SQLITE_SCHEMA_MIGRATIONS) {
+        const recorded = this.db
+          .prepare("SELECT * FROM schema_migrations WHERE version = ?")
+          .get(migration.version);
+        if (recorded && recorded.checksum !== migration.checksum) {
+          throw codedError(
+            "threadmesh_storage_migration_checksum_mismatch",
+            String(migration.version),
+          );
+        }
       }
-      if (version < SQLITE_SCHEMA_VERSION || !recorded) {
+      if (version === 0) {
         this.#initializeSchema();
-        this.#assertSchemaCompatible();
+      }
+      if (version < 2) {
+        this.#addColumnIfMissing("task_metadata", "run_id", "TEXT");
+        this.#addColumnIfMissing("task_metadata", "objective_version", "INTEGER");
+        this.#addColumnIfMissing("task_metadata", "checkpoint", "TEXT");
+        this.#addColumnIfMissing("dispositions", "decision_reason_code", "TEXT");
+        this.#addColumnIfMissing("dispositions", "delivery_failure_reason", "TEXT");
+      }
+      this.#assertSchemaCompatible();
+      for (const migration of SQLITE_SCHEMA_MIGRATIONS) {
         this.db
           .prepare(
             `INSERT INTO schema_migrations (version, name, checksum, applied_at)
@@ -201,16 +293,26 @@ export class SqliteCoordinator {
              ON CONFLICT(version) DO NOTHING`,
           )
           .run(
-            SQLITE_SCHEMA_VERSION,
-            SQLITE_SCHEMA_NAME,
-            SQLITE_SCHEMA_CHECKSUM,
+            migration.version,
+            migration.name,
+            migration.checksum,
             nowIso(this.clock),
           );
-        this.db.pragma(`user_version = ${SQLITE_SCHEMA_VERSION}`);
-      } else {
-        this.#assertSchemaCompatible();
       }
+      this.db.pragma(`user_version = ${SQLITE_SCHEMA_VERSION}`);
     }).immediate();
+  }
+
+  #addColumnIfMissing(table, column, declaration) {
+    const existing = new Set(
+      this.db
+        .prepare("SELECT name FROM pragma_table_info(?)")
+        .all(table)
+        .map((row) => row.name),
+    );
+    if (!existing.has(column)) {
+      this.db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${declaration}`);
+    }
   }
 
   #initializeSchema() {
@@ -235,6 +337,9 @@ export class SqliteCoordinator {
         incarnation_id TEXT NOT NULL,
         revision INTEGER NOT NULL DEFAULT 0,
         retired_at TEXT,
+        run_id TEXT,
+        objective_version INTEGER,
+        checkpoint TEXT,
         PRIMARY KEY (task_id, incarnation_id),
         FOREIGN KEY (task_id, incarnation_id)
           REFERENCES tasks (task_id, incarnation_id)
@@ -302,6 +407,8 @@ export class SqliteCoordinator {
         revision INTEGER NOT NULL,
         delivery_state TEXT NOT NULL,
         decision_state TEXT NOT NULL,
+        decision_reason_code TEXT,
+        delivery_failure_reason TEXT,
         outcome_state TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         PRIMARY KEY (sender_incarnation_id, message_id)
@@ -443,6 +550,7 @@ export class SqliteCoordinator {
     if (!task?.taskId || !task?.incarnationId || !task?.harness) {
       throw codedError("threadmesh_task_invalid");
     }
+    assertRuntimeSnapshot(task.runtime, true);
 
     const incarnation = this.db
       .prepare("SELECT * FROM tasks WHERE incarnation_id = ?")
@@ -451,6 +559,7 @@ export class SqliteCoordinator {
       throw codedError("threadmesh_incarnation_id_conflict", task.incarnationId);
     }
     if (incarnation) {
+      const metadata = this.#taskMetadata(task);
       const same =
         incarnation.owner_kind === principal.kind &&
         incarnation.owner_principal_id === principal.principalId &&
@@ -458,9 +567,11 @@ export class SqliteCoordinator {
         incarnation.state === (task.state ?? "idle") &&
         canonicalJson(
           incarnation.adapter_ref_json ? JSON.parse(incarnation.adapter_ref_json) : null,
-        ) === canonicalJson(task.adapterRef ?? null);
+        ) === canonicalJson(task.adapterRef ?? null) &&
+        canonicalJson(runtimeSnapshot(metadata)) ===
+          canonicalJson(task.runtime ?? {});
       if (!same) throw codedError("threadmesh_idempotency_conflict", task.incarnationId);
-      return { ...task, revision: this.#taskMetadata(task).revision, replay: true };
+      return { ...task, runtime: runtimeSnapshot(metadata), revision: metadata.revision, replay: true };
     }
 
     this.db.transaction(() => {
@@ -483,10 +594,18 @@ export class SqliteCoordinator {
         );
       this.db
         .prepare(
-          `INSERT INTO task_metadata (task_id, incarnation_id, revision)
-           VALUES (?, ?, 0)`,
+          `INSERT INTO task_metadata (
+             task_id, incarnation_id, revision, run_id,
+             objective_version, checkpoint
+           ) VALUES (?, ?, 0, ?, ?, ?)`,
         )
-        .run(task.taskId, task.incarnationId);
+        .run(
+          task.taskId,
+          task.incarnationId,
+          task.runtime?.runId ?? null,
+          task.runtime?.objectiveVersion ?? null,
+          task.runtime?.checkpoint ?? null,
+        );
     }).immediate();
     return { ...task, revision: 0, replay: false };
   }
@@ -548,14 +667,45 @@ export class SqliteCoordinator {
     ) {
       throw codedError("threadmesh_task_not_authorized", task.task_id);
     }
+    const metadata = this.#taskMetadata(taskRef);
     return {
       taskId: task.task_id,
       incarnationId: task.incarnation_id,
       harness: task.harness,
       state: task.state,
       adapterRef: task.adapter_ref_json ? JSON.parse(task.adapter_ref_json) : null,
-      revision: this.#taskMetadata(taskRef).revision,
+      runtime: runtimeSnapshot(metadata),
+      revision: metadata.revision,
     };
+  }
+
+  updateTaskRuntime(taskRef, runtime, expectedRevision, principal) {
+    assertRuntimeSnapshot(runtime, false);
+    return this.db.transaction(() => {
+      const task = this.#taskRecord(taskRef);
+      this.#assertTaskOwnerOrSelf(task, principal);
+      const metadata = this.#taskMetadata(taskRef);
+      if (metadata.retired_at) throw codedError("threadmesh_task_retired");
+      if (metadata.revision !== expectedRevision) {
+        throw codedError("threadmesh_revision_conflict");
+      }
+      const result = this.db
+        .prepare(
+          `UPDATE task_metadata SET revision = revision + 1,
+             run_id = ?, objective_version = ?, checkpoint = ?
+           WHERE task_id = ? AND incarnation_id = ? AND revision = ?`,
+        )
+        .run(
+          runtime.runId ?? null,
+          runtime.objectiveVersion ?? null,
+          runtime.checkpoint ?? null,
+          taskRef.taskId,
+          taskRef.incarnationId,
+          expectedRevision,
+        );
+      if (result.changes !== 1) throw codedError("threadmesh_revision_conflict");
+      return this.getTask(taskRef, principal);
+    }).immediate();
   }
 
   attachTask(taskRef, adapterRef, expectedRevision, principal) {
@@ -586,6 +736,7 @@ export class SqliteCoordinator {
 
   rotateTaskIncarnation(previous, next, expectedRevision, principal) {
     assertControlPlanePrincipal(principal);
+    assertRuntimeSnapshot(next?.runtime, true);
     return this.db.transaction(() => {
       const current = this.#taskRecord(previous);
       if (
@@ -642,10 +793,18 @@ export class SqliteCoordinator {
         );
       this.db
         .prepare(
-          `INSERT INTO task_metadata (task_id, incarnation_id, revision)
-           VALUES (?, ?, 0)`,
+          `INSERT INTO task_metadata (
+             task_id, incarnation_id, revision, run_id,
+             objective_version, checkpoint
+           ) VALUES (?, ?, 0, ?, ?, ?)`,
         )
-        .run(next.taskId, next.incarnationId);
+        .run(
+          next.taskId,
+          next.incarnationId,
+          next.runtime?.runId ?? null,
+          next.runtime?.objectiveVersion ?? null,
+          next.runtime?.checkpoint ?? null,
+        );
       return {
         previous: { ...previous, revision: expectedRevision + 1, retiredAt: at },
         current: { ...next, revision: 0 },
@@ -994,10 +1153,20 @@ export class SqliteCoordinator {
           isStateChangingIntent(JSON.parse(message.envelope_json).intent),
         );
       for (const message of queued) {
+        if (
+          !isDispositionTransitionAllowed(
+            "decision",
+            message.decision_state,
+            "revoked",
+          )
+        ) {
+          throw codedError("threadmesh_revision_or_state_conflict");
+        }
         const updated = this.db
           .prepare(
-            `UPDATE dispositions SET revision = revision + 1,
-               decision_state = 'revoked', updated_at = ?
+          `UPDATE dispositions SET revision = revision + 1,
+               decision_state = 'revoked', decision_reason_code = 'revoked',
+               updated_at = ?
              WHERE sender_incarnation_id = ? AND message_id = ?
                AND revision = ?
                AND decision_state IN ('pending', 'deferred', 'accepted')
@@ -1069,7 +1238,9 @@ export class SqliteCoordinator {
     return this.db.transaction(() => {
       const existing = this.db
         .prepare(
-          `SELECT m.*, d.revision, d.delivery_state, d.decision_state, d.outcome_state
+          `SELECT m.*, d.revision, d.delivery_state, d.decision_state,
+                  d.decision_reason_code, d.delivery_failure_reason,
+                  d.outcome_state
            FROM messages m JOIN dispositions d USING (sender_incarnation_id, message_id)
            WHERE m.sender_incarnation_id = ? AND m.message_id = ?`,
         )
@@ -1138,7 +1309,9 @@ export class SqliteCoordinator {
     this.#assertTaskActive(target);
     const rows = this.db
       .prepare(
-        `SELECT m.*, d.revision, d.delivery_state, d.decision_state, d.outcome_state,
+        `SELECT m.*, d.revision, d.delivery_state, d.decision_state,
+                d.decision_reason_code, d.delivery_failure_reason,
+                d.outcome_state,
                 c.state AS claim_state, c.expires_at AS claim_expires_at
          FROM messages m JOIN dispositions d USING (sender_incarnation_id, message_id)
          LEFT JOIN mailbox_claims c USING (sender_incarnation_id, message_id)
@@ -1293,28 +1466,105 @@ export class SqliteCoordinator {
     }).immediate();
   }
 
-  respond(senderIncarnationId, messageId, decision, expectedRevision, principal) {
-    if (!SAFE_DECISIONS.has(decision)) {
-      throw codedError("threadmesh_decision_unsupported", decision);
+  respond(
+    senderIncarnationId,
+    messageId,
+    decision,
+    expectedRevision,
+    principal,
+    reasonCode = DEFAULT_DECISION_REASONS[decision],
+  ) {
+    if (!isDecisionReasonAllowed(decision, reasonCode)) {
+      throw codedError("threadmesh_decision_reason_invalid", `${decision}:${reasonCode}`);
     }
     return this.db.transaction(() => {
       const row = this.#message(senderIncarnationId, messageId);
       assertTaskPrincipal(principal, row.target_task_id, row.target_incarnation_id);
-      this.#assertCurrentAuthorization(row);
-      if (Date.parse(row.expires_at) <= this.clock()) {
+      if (["accepted", "deferred"].includes(decision)) {
+        this.#assertCurrentAuthorization(row);
+      }
+      if (decision !== "expired" && Date.parse(row.expires_at) <= this.clock()) {
         throw codedError("threadmesh_message_expired");
+      }
+      if (row.revision !== expectedRevision) {
+        throw codedError("threadmesh_revision_conflict");
+      }
+      if (!isDispositionTransitionAllowed("decision", row.decision_state, decision)) {
+        throw codedError("threadmesh_revision_or_state_conflict");
       }
       const result = this.db
         .prepare(
-          `UPDATE dispositions SET revision = revision + 1, decision_state = ?, updated_at = ?
+          `UPDATE dispositions SET revision = revision + 1,
+             decision_state = ?, decision_reason_code = ?, updated_at = ?
            WHERE sender_incarnation_id = ? AND message_id = ? AND revision = ?
-             AND decision_state IN ('pending', 'deferred')`,
+             AND decision_state = ?`,
         )
-        .run(decision, nowIso(this.clock), senderIncarnationId, messageId, expectedRevision);
-      if (result.changes !== 1) throw codedError("threadmesh_revision_conflict");
+        .run(
+          decision,
+          reasonCode,
+          nowIso(this.clock),
+          senderIncarnationId,
+          messageId,
+          expectedRevision,
+          row.decision_state,
+        );
+      if (result.changes !== 1) throw codedError("threadmesh_revision_or_state_conflict");
       const updated = this.#getDisposition(senderIncarnationId, messageId);
       this.#audit(senderIncarnationId, messageId, "receiver-decided", updated.revision, {
         decision,
+        reasonCode,
+      });
+      return updated;
+    }).immediate();
+  }
+
+  failDelivery(
+    senderIncarnationId,
+    messageId,
+    expectedRevision,
+    failureReason,
+    principal,
+  ) {
+    if (typeof failureReason !== "string" || failureReason.length === 0) {
+      throw codedError("threadmesh_delivery_failure_reason_invalid");
+    }
+    return this.db.transaction(() => {
+      const row = this.#message(senderIncarnationId, messageId);
+      assertTaskPrincipal(principal, row.target_task_id, row.target_incarnation_id);
+      if (
+        row.revision !== expectedRevision ||
+        !isDispositionTransitionAllowed("delivery", row.delivery_state, "failed")
+      ) {
+        throw codedError("threadmesh_revision_or_state_conflict");
+      }
+      const unknown = this.db
+        .prepare(
+          `SELECT 1 FROM adapter_submissions
+           WHERE sender_incarnation_id = ? AND message_id = ?
+             AND state IN ('outcome-unknown', 'receipt-recorded')`,
+        )
+        .get(senderIncarnationId, messageId);
+      if (unknown) throw codedError("threadmesh_external_outcome_unknown");
+      const at = nowIso(this.clock);
+      const result = this.db
+        .prepare(
+          `UPDATE dispositions SET revision = revision + 1,
+             delivery_state = 'failed', delivery_failure_reason = ?, updated_at = ?
+           WHERE sender_incarnation_id = ? AND message_id = ?
+             AND revision = ? AND delivery_state = ?`,
+        )
+        .run(
+          failureReason.slice(0, 2000),
+          at,
+          senderIncarnationId,
+          messageId,
+          expectedRevision,
+          row.delivery_state,
+        );
+      if (result.changes !== 1) throw codedError("threadmesh_revision_or_state_conflict");
+      const updated = this.#getDisposition(senderIncarnationId, messageId);
+      this.#audit(senderIncarnationId, messageId, "delivery-failed", updated.revision, {
+        failureReason: failureReason.slice(0, 2000),
       });
       return updated;
     }).immediate();
@@ -1481,24 +1731,30 @@ export class SqliteCoordinator {
     return this.db.transaction(() => {
       const row = this.#message(senderIncarnationId, messageId);
       assertTaskPrincipal(principal, row.target_task_id, row.target_incarnation_id);
-      this.#assertCurrentAuthorization(row);
-      if (Date.parse(row.expires_at) <= this.clock()) {
-        throw codedError("threadmesh_message_expired");
-      }
-      this.#assertAdapterSubmissionState(row, expectedRevision);
       const existing = this.db
         .prepare(
           `SELECT * FROM adapter_submissions
            WHERE sender_incarnation_id = ? AND message_id = ?`,
         )
         .get(senderIncarnationId, messageId);
-      if (existing && existing.state !== "confirmed-not-submitted") {
-        if (existing.state === "prepared" && existing.expected_revision === expectedRevision) {
-          return { replay: true, submission: this.#adapterSubmission(existing, row) };
+      if (
+        existing &&
+        existing.state !== "prepared" &&
+        existing.state !== "confirmed-not-submitted"
+      ) {
+        if (existing.expected_revision !== expectedRevision) {
+          throw codedError("threadmesh_adapter_submission_in_flight", existing.state);
         }
-        throw codedError("threadmesh_adapter_submission_in_flight", existing.state);
+        return {
+          replay: true,
+          submission: this.#adapterSubmission(existing, row),
+        };
       }
-
+      this.#assertCurrentAuthorization(row);
+      if (Date.parse(row.expires_at) <= this.clock()) {
+        throw codedError("threadmesh_message_expired");
+      }
+      this.#assertAdapterSubmissionState(row, expectedRevision);
       const task = this.db
         .prepare(
           `SELECT adapter_ref_json FROM tasks
@@ -1506,7 +1762,19 @@ export class SqliteCoordinator {
         )
         .get(row.target_task_id, row.target_incarnation_id);
       if (!task?.adapter_ref_json) throw codedError("threadmesh_target_adapter_not_bound");
-      const adapterRefDigest = sha256Digest(JSON.parse(task.adapter_ref_json));
+      const adapterRef = JSON.parse(task.adapter_ref_json);
+      if (existing && existing.state !== "confirmed-not-submitted") {
+        if (existing.expected_revision === expectedRevision) {
+          return {
+            replay: true,
+            adapterRef,
+            envelope: JSON.parse(row.envelope_json),
+            submission: this.#adapterSubmission(existing, row),
+          };
+        }
+        throw codedError("threadmesh_adapter_submission_in_flight", existing.state);
+      }
+      const adapterRefDigest = sha256Digest(adapterRef);
       const at = nowIso(this.clock);
       const submissionId = `sub_${randomUUID()}`;
       const adapterIdempotencyKey = `adp_${randomUUID()}`;
@@ -1547,7 +1815,12 @@ export class SqliteCoordinator {
         envelopeDigest: row.envelope_digest,
         adapterRefDigest,
       });
-      return { replay: false, submission: this.#adapterSubmission(submission, row) };
+      return {
+        replay: false,
+        adapterRef,
+        envelope: JSON.parse(row.envelope_json),
+        submission: this.#adapterSubmission(submission, row),
+      };
     }).immediate();
   }
 
@@ -1566,6 +1839,17 @@ export class SqliteCoordinator {
       if (submission.state === "outcome-unknown") {
         return { replay: true, submission: this.#adapterSubmission(submission, message) };
       }
+      const task = this.db
+        .prepare(
+          `SELECT adapter_ref_json FROM tasks
+           WHERE task_id = ? AND incarnation_id = ?`,
+        )
+        .get(message.target_task_id, message.target_incarnation_id);
+      if (!task?.adapter_ref_json) throw codedError("threadmesh_target_adapter_not_bound");
+      const adapterRef = JSON.parse(task.adapter_ref_json);
+      if (sha256Digest(adapterRef) !== submission.adapter_ref_digest) {
+        throw codedError("threadmesh_adapter_ref_changed");
+      }
       const at = nowIso(this.clock);
       const result = this.db
         .prepare(
@@ -1582,7 +1866,14 @@ export class SqliteCoordinator {
         submissionId,
         adapterIdempotencyKey: submission.adapter_idempotency_key,
       });
-      return { replay: false, submission: this.#adapterSubmission(updated, message) };
+      return {
+        replay: false,
+        submission: this.#adapterSubmission(updated, message),
+        dispatch: {
+          adapterRef,
+          envelope: JSON.parse(message.envelope_json),
+        },
+      };
     }).immediate();
   }
 
@@ -1778,14 +2069,33 @@ export class SqliteCoordinator {
         const decision = ["pending", "deferred"].includes(candidate.decision_state)
           ? "expired"
           : candidate.decision_state;
+        if (
+          !isDispositionTransitionAllowed(
+            "delivery",
+            candidate.delivery_state,
+            "expired",
+          ) ||
+          (decision !== candidate.decision_state &&
+            !isDispositionTransitionAllowed(
+              "decision",
+              candidate.decision_state,
+              decision,
+            ))
+        ) {
+          throw codedError("threadmesh_revision_or_state_conflict");
+        }
         const result = this.db
           .prepare(
             `UPDATE dispositions SET revision = revision + 1,
-               delivery_state = 'expired', decision_state = ?, updated_at = ?
+               delivery_state = 'expired', decision_state = ?,
+               decision_reason_code = CASE
+                 WHEN ? = 'expired' THEN 'expired' ELSE decision_reason_code END,
+               updated_at = ?
              WHERE sender_incarnation_id = ? AND message_id = ? AND revision = ?
                AND delivery_state NOT IN ('adapter-submitted', 'failed', 'expired')`,
           )
           .run(
+            decision,
             decision,
             at,
             candidate.sender_incarnation_id,
@@ -1904,7 +2214,8 @@ export class SqliteCoordinator {
   #taskMetadata(taskRef) {
     const metadata = this.db
       .prepare(
-        `SELECT revision, retired_at FROM task_metadata
+        `SELECT revision, retired_at, run_id, objective_version, checkpoint
+         FROM task_metadata
          WHERE task_id = ? AND incarnation_id = ?`,
       )
       .get(taskRef.taskId, taskRef.incarnationId);
@@ -2011,7 +2322,9 @@ export class SqliteCoordinator {
       const row = this.db
         .prepare(
           `SELECT t.task_id AS taskId, t.incarnation_id AS incarnationId,
-                  m.retired_at AS retiredAt
+                  m.retired_at AS retiredAt, m.run_id AS runId,
+                  m.objective_version AS objectiveVersion,
+                  m.checkpoint AS checkpoint
            FROM tasks t JOIN task_metadata m USING (task_id, incarnation_id)
            WHERE t.task_id = ? AND t.incarnation_id = ?`,
         )
@@ -2067,7 +2380,11 @@ export class SqliteCoordinator {
     if (
       row.revision !== expectedRevision ||
       row.decision_state !== "accepted" ||
-      !["durably-received", "checkpoint-offered"].includes(row.delivery_state)
+      !isDispositionTransitionAllowed(
+        "delivery",
+        row.delivery_state,
+        "context-admitted",
+      )
     ) {
       throw codedError("threadmesh_revision_or_state_conflict");
     }
@@ -2090,8 +2407,10 @@ export class SqliteCoordinator {
     if (
       row.revision !== expectedRevision ||
       row.decision_state !== "accepted" ||
-      !["durably-received", "receiver-notified", "checkpoint-offered", "context-admitted"].includes(
+      !isDispositionTransitionAllowed(
+        "delivery",
         row.delivery_state,
+        "adapter-submitted",
       )
     ) {
       throw codedError("threadmesh_revision_or_state_conflict");
@@ -2137,7 +2456,9 @@ export class SqliteCoordinator {
   #message(senderIncarnationId, messageId) {
     const row = this.db
       .prepare(
-        `SELECT m.*, d.revision, d.delivery_state, d.decision_state, d.outcome_state
+        `SELECT m.*, d.revision, d.delivery_state, d.decision_state,
+                d.decision_reason_code, d.delivery_failure_reason,
+                d.outcome_state
          FROM messages m JOIN dispositions d USING (sender_incarnation_id, message_id)
          WHERE m.sender_incarnation_id = ? AND m.message_id = ?`,
       )
@@ -2151,6 +2472,12 @@ export class SqliteCoordinator {
       revision: row.revision,
       delivery: row.delivery_state,
       decision: row.decision_state,
+      ...(row.decision_reason_code
+        ? { decisionReasonCode: row.decision_reason_code }
+        : {}),
+      ...(row.delivery_failure_reason
+        ? { deliveryFailureReason: row.delivery_failure_reason }
+        : {}),
       outcome: row.outcome_state,
     };
   }

@@ -47,6 +47,7 @@ client-supplied `AuthContext`.
 | `tasks.register` | user owner or policy | incarnation ID plus durable idempotency key |
 | `tasks.get` | owner, policy, or exact task | read only |
 | `tasks.attach` | owner, policy, or exact task | task revision CAS and idempotency key |
+| `tasks.updateRuntime` | owner, policy, or exact task | run/objective/checkpoint snapshot under task revision CAS |
 | `tasks.rotateIncarnation` | owner or policy | old task revision CAS and idempotency key |
 | `tasks.publishSummary` | owner, policy, or summarized task | summary version CAS, current grant projection, idempotency key |
 | `tasks.getSummary` | exact grant source task | current grant and version reauthorization |
@@ -54,7 +55,8 @@ client-supplied `AuthContext`.
 | `relationships.grant` | owner or policy | decision ID, optional proposal binding, integrity digest, idempotency key |
 | `relationships.revoke` | issuer, target owner, or policy | grant-version CAS and idempotency key |
 | `messages.send` | exact task or authenticated owner/policy author | message replay protection plus operation idempotency |
-| `messages.respond` | exact receiver task | disposition revision CAS and idempotency key |
+| `messages.respond` | exact receiver task | legal decision transition, state-constrained reason, disposition CAS and idempotency key |
+| `messages.failDelivery` | exact receiver task | legal delivery transition, no unknown external attempt, disposition CAS |
 | `messages.getDisposition` | exact sender or receiver task | read only |
 | `adapter.prepareSubmission` | exact receiver task | disposition CAS, envelope and adapter digests, durable idempotency key |
 | `adapter.beginSubmission` | exact receiver task | durable pre-call `outcome-unknown` boundary and idempotency key |
@@ -107,6 +109,10 @@ is only a correlation identifier.
 Task attachment and rotation, summary publication, receiver responses, mailbox
 acknowledgement, and grant revocation use explicit expected revisions. A stale
 write returns `threadmesh_revision_conflict` and does not partially apply.
+
+`tasks.updateRuntime` publishes the exact run, objective version, and checkpoint
+used by state-changing freshness checks. A later snapshot invalidates an older
+`steer`/`interrupt` both before acceptance and immediately before dispatch.
 
 Adapter submission adds a second idempotency scope. The control-plane replay key
 deduplicates the JSON-RPC operation, while `adapterIdempotencyKey` remains stable

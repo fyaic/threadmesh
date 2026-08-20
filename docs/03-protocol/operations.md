@@ -27,6 +27,12 @@ Atomically retires the previous incarnation and registers a new incarnation for
 the same logical task under owner/policy authority and revision CAS. Retiring an
 incarnation invalidates grants bound to it even if an old credential remains.
 
+### `tasks.updateRuntime`
+
+Publishes the current run ID, objective version, and optional checkpoint under
+task revision CAS. State-changing envelopes are compared with this snapshot at
+admission and again immediately before native dispatch.
+
 ### `tasks.publishSummary`
 
 Publishes a privacy-bounded summary for relationship-scoped discovery. Summary
@@ -79,6 +85,12 @@ Returns delivery and receiver state for a message.
 Records a receiver decision: accepted, rejected, deferred, stale, expired,
 unsupported, or revoked. Delivery and observed outcome are reported separately;
 there is no bare `applied` disposition.
+
+### `messages.failDelivery`
+
+Records a legal transition to delivery failure with a bounded reason. It is
+permitted only before `adapter-submitted` and when no native attempt is
+`outcome-unknown`; ambiguity must be reconciled, not relabelled as failure.
 
 ### `messages.recordDelivery`
 
@@ -170,12 +182,13 @@ the durable `outcome-unknown` boundary remain quarantined for reconciliation.
 
 | Portable concern | Public JSON-RPC method | Current limitation |
 |---|---|---|
-| Task lifecycle | `tasks.register`, `tasks.attach`, `tasks.rotateIncarnation` | Local token authenticator only |
+| Task lifecycle | `tasks.register`, `tasks.attach`, `tasks.updateRuntime`, `tasks.rotateIncarnation` | Local token authenticator only |
 | Summary projection | `tasks.publishSummary`, `tasks.getSummary` | Relationship-scoped profile only |
 | Grant proposal/decision | `relationships.propose`, `relationships.grant`, `relationships.revoke` | No signed remote attestation |
 | Envelope send | `messages.send` | Core state remains suggestion-focused |
 | Mailbox receive | `mailbox.listPending`, `mailbox.claim`, `mailbox.ack` | Fixed 60-second local claim window |
-| Receiver decision | `messages.respond` | Reference runtime supports accepted/rejected/deferred |
+| Receiver decision | `messages.respond` | All legal decision states and constrained reasons; no structured approval gate |
+| Delivery failure | `messages.failDelivery` | Pre-effect failure only; unknown outcomes require reconciliation |
 | Native submission | `adapter.prepareSubmission`, `adapter.beginSubmission`, `adapter.recordReceipt` | Trusted local receipt, not independent verification |
 | Unknown-outcome reconciliation | `adapter.reconcileSubmission`, `adapter.getSubmission` | Receiver task supplies evidence; no remote attestation yet |
 | Expiry maintenance | `maintenance.expireDue` | Control-plane-only bounded sweep; in-flight effects excluded |

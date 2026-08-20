@@ -122,6 +122,10 @@ quarantined. Local adapter evidence is not an independently verified outcome.
 - Every disposition mutation uses expected-revision CAS; reconciliation does
   not bypass it.
 
+The executable reference imports the same transition table as the conformance
+validator. Runtime and manifest legality therefore cannot drift through two
+independent hard-coded lists.
+
 ## Expiry
 
 Expired messages MUST NOT be context-admitted or adapter-submitted.

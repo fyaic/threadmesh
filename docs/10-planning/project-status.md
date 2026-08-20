@@ -22,7 +22,7 @@ maintainer organization.
 | Area | Current evidence | Status |
 |---|---|---|
 | Research and problem framing | Codex deep dive, community signals, ecosystem comparison, ADRs | Established |
-| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 52 unit tests | Executable draft |
+| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 62 unit tests | Executable draft |
 | Local binding | Schema-validated JSON-RPC, transport-derived principals, typed errors | Executable local reference |
 | Local persistence | SQLite registry, proposals, grants, summaries, mailbox, claims, submission receipts, reconciliation, replay, audit | Experimental |
 | Safety boundary | Authenticated authorship checks, effective-grant decisions, revocation, CAS | Executable local policy |
@@ -66,7 +66,11 @@ GitHub is authoritative for milestone closure.
 - A stacked #11 candidate extracts a fail-closed policy engine, uses a
   non-disclosing public denial, reauthorizes adapter submission, and atomically
   invalidates queued state-changing work on revocation; it remains gated by #7.
-- Purge execution, complete disposition handling,
+- A stacked #12 candidate adds schema version 2, runtime freshness CAS, one
+  shared transition table, explicit terminal reasons, and a dispatcher that
+  persists unknown outcome before one native call and suppresses restart retry;
+  it remains gated by #7.
+- Purge execution,
   hosted event streaming, an inspector, and the complete M1 behavior matrix
   remain unfinished.
 
@@ -101,6 +105,10 @@ can:
     insufficient-authority policy cases without disclosing hidden grant state;
 18. atomically invalidate queued state-changing work when its grant is revoked,
     while preserving unknown external attempts for reconciliation.
+19. dispatch one idempotency-bound native call, persist the exact receipt, and
+    suppress retry after ambiguous error or restart;
+20. reject stale run/objective/checkpoint snapshots at admission and immediately
+    before dispatch, and persist explicit decision/failure reasons.
 
 It does not prove autonomous task discovery, useful model behavior, native
 provider-role isolation, exactly-once external effects, production remote

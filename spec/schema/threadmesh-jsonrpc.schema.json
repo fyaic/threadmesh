@@ -12,6 +12,16 @@
       "type": "string",
       "pattern": "^idem_[A-Za-z0-9][A-Za-z0-9._:-]{4,190}$"
     },
+    "taskRuntime": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "runId": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "objectiveVersion": { "type": "integer", "minimum": 0 },
+        "checkpoint": { "type": "string", "minLength": 1, "maxLength": 200 }
+      }
+    },
     "response": {
       "oneOf": [
         { "$ref": "#/$defs/successResponse" },
@@ -32,7 +42,8 @@
         "state": {
           "enum": ["idle", "running", "waiting", "blocked", "completed", "failed", "interrupted", "archived", "unknown"]
         },
-        "adapterRef": { "type": "object", "minProperties": 1, "maxProperties": 32 }
+        "adapterRef": { "type": "object", "minProperties": 1, "maxProperties": 32 },
+        "runtime": { "$ref": "#/$defs/taskRuntime" }
       }
     },
     "grantDraft": {
@@ -75,10 +86,11 @@
         "id": { "$ref": "#/$defs/rpcId" },
         "method": {
           "enum": [
-            "tasks.register", "tasks.get", "tasks.attach",
+            "tasks.register", "tasks.get", "tasks.attach", "tasks.updateRuntime",
             "tasks.rotateIncarnation", "tasks.publishSummary", "tasks.getSummary",
             "relationships.propose", "relationships.grant", "relationships.revoke",
-            "messages.send", "messages.respond", "messages.getDisposition",
+            "messages.send", "messages.respond", "messages.failDelivery",
+            "messages.getDisposition",
             "adapter.prepareSubmission", "adapter.beginSubmission",
             "adapter.recordReceipt", "adapter.reconcileSubmission",
             "adapter.getSubmission",
@@ -93,6 +105,7 @@
         { "$ref": "#/$defs/registerRequest" },
         { "$ref": "#/$defs/getTaskRequest" },
         { "$ref": "#/$defs/attachRequest" },
+        { "$ref": "#/$defs/updateRuntimeRequest" },
         { "$ref": "#/$defs/rotateRequest" },
         { "$ref": "#/$defs/publishSummaryRequest" },
         { "$ref": "#/$defs/getSummaryRequest" },
@@ -101,6 +114,7 @@
         { "$ref": "#/$defs/revokeRequest" },
         { "$ref": "#/$defs/sendRequest" },
         { "$ref": "#/$defs/respondRequest" },
+        { "$ref": "#/$defs/failDeliveryRequest" },
         { "$ref": "#/$defs/messageReadRequest" },
         { "$ref": "#/$defs/prepareSubmissionRequest" },
         { "$ref": "#/$defs/beginSubmissionRequest" },
@@ -137,6 +151,19 @@
         "properties": {
           "task": { "$ref": "https://threadmesh.dev/spec/0.0-draft/types.schema.json#/$defs/taskRef" },
           "adapterRef": { "type": "object", "minProperties": 1, "maxProperties": 32 },
+          "expectedRevision": { "type": "integer", "minimum": 0 },
+          "idempotencyKey": { "$ref": "#/$defs/idempotencyKey" }
+        }
+      } } }
+    },
+    "updateRuntimeRequest": {
+      "if": { "properties": { "method": { "const": "tasks.updateRuntime" } } },
+      "then": { "properties": { "params": {
+        "type": "object", "additionalProperties": false,
+        "required": ["task", "runtime", "expectedRevision", "idempotencyKey"],
+        "properties": {
+          "task": { "$ref": "https://threadmesh.dev/spec/0.0-draft/types.schema.json#/$defs/taskRef" },
+          "runtime": { "$ref": "#/$defs/taskRuntime" },
           "expectedRevision": { "type": "integer", "minimum": 0 },
           "idempotencyKey": { "$ref": "#/$defs/idempotencyKey" }
         }
@@ -235,8 +262,33 @@
         "properties": {
           "senderIncarnationId": { "type": "string", "pattern": "^inc_[A-Za-z0-9][A-Za-z0-9._:-]{6,196}$" },
           "messageId": { "type": "string", "pattern": "^msg_[A-Za-z0-9][A-Za-z0-9._:-]{6,196}$" },
-          "decision": { "enum": ["accepted", "rejected", "deferred"] },
+          "decision": {
+            "enum": [
+              "accepted", "rejected", "deferred", "stale", "expired",
+              "unsupported", "revoked"
+            ]
+          },
+          "reasonCode": {
+            "$ref": "https://threadmesh.dev/spec/0.0-draft/types.schema.json#/$defs/reasonCode"
+          },
           "expectedRevision": { "type": "integer", "minimum": 0 },
+          "idempotencyKey": { "$ref": "#/$defs/idempotencyKey" }
+        }
+      } } }
+    },
+    "failDeliveryRequest": {
+      "if": { "properties": { "method": { "const": "messages.failDelivery" } } },
+      "then": { "properties": { "params": {
+        "type": "object", "additionalProperties": false,
+        "required": [
+          "senderIncarnationId", "messageId", "expectedRevision",
+          "failureReason", "idempotencyKey"
+        ],
+        "properties": {
+          "senderIncarnationId": { "type": "string", "pattern": "^inc_[A-Za-z0-9][A-Za-z0-9._:-]{6,196}$" },
+          "messageId": { "type": "string", "pattern": "^msg_[A-Za-z0-9][A-Za-z0-9._:-]{6,196}$" },
+          "expectedRevision": { "type": "integer", "minimum": 0 },
+          "failureReason": { "type": "string", "minLength": 1, "maxLength": 2000 },
           "idempotencyKey": { "$ref": "#/$defs/idempotencyKey" }
         }
       } } }

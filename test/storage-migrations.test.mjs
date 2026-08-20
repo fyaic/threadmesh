@@ -7,8 +7,7 @@ import test from "node:test";
 import Database from "better-sqlite3";
 
 import {
-  SQLITE_SCHEMA_CHECKSUM,
-  SQLITE_SCHEMA_NAME,
+  SQLITE_SCHEMA_MIGRATIONS,
   SQLITE_SCHEMA_VERSION,
   SqliteCoordinator,
 } from "../src/coordinator/sqlite-coordinator.mjs";
@@ -26,7 +25,7 @@ function temporaryDatabase() {
   };
 }
 
-test("records one immutable baseline migration for a fresh database", () => {
+test("records ordered immutable migrations for a fresh database", () => {
   const temporary = temporaryDatabase();
   const coordinator = new SqliteCoordinator({
     filename: temporary.filename,
@@ -35,14 +34,12 @@ test("records one immutable baseline migration for a fresh database", () => {
   try {
     assert.deepEqual(coordinator.storageInfo(), {
       schemaVersion: SQLITE_SCHEMA_VERSION,
-      migrations: [
-        {
-          version: SQLITE_SCHEMA_VERSION,
-          name: SQLITE_SCHEMA_NAME,
-          checksum: SQLITE_SCHEMA_CHECKSUM,
-          appliedAt: "2026-08-20T09:00:00.000Z",
-        },
-      ],
+      migrations: SQLITE_SCHEMA_MIGRATIONS.map((migration) => ({
+        version: migration.version,
+        name: migration.name,
+        checksum: migration.checksum,
+        appliedAt: "2026-08-20T09:00:00.000Z",
+      })),
       pragmas: {
         journalMode: "wal",
         synchronous: 2,
@@ -53,6 +50,51 @@ test("records one immutable baseline migration for a fresh database", () => {
     });
   } finally {
     coordinator.close();
+    temporary.cleanup();
+  }
+});
+
+test("upgrades a version-one database without rewriting its migration checksum", () => {
+  const temporary = temporaryDatabase();
+  let coordinator = new SqliteCoordinator({
+    filename: temporary.filename,
+    clock: () => NOW,
+  });
+  coordinator.close();
+  let database = new Database(temporary.filename);
+  database.exec(`
+    ALTER TABLE task_metadata DROP COLUMN run_id;
+    ALTER TABLE task_metadata DROP COLUMN objective_version;
+    ALTER TABLE task_metadata DROP COLUMN checkpoint;
+    ALTER TABLE dispositions DROP COLUMN decision_reason_code;
+    ALTER TABLE dispositions DROP COLUMN delivery_failure_reason;
+    DELETE FROM schema_migrations WHERE version = 2;
+    PRAGMA user_version = 1;
+  `);
+  const v1Checksum = database
+    .prepare("SELECT checksum FROM schema_migrations WHERE version = 1")
+    .pluck()
+    .get();
+  database.close();
+
+  coordinator = new SqliteCoordinator({
+    filename: temporary.filename,
+    clock: () => NOW,
+  });
+  coordinator.close();
+  database = new Database(temporary.filename, { readonly: true });
+  try {
+    assert.equal(database.pragma("user_version", { simple: true }), 2);
+    assert.equal(
+      database.prepare("SELECT checksum FROM schema_migrations WHERE version = 1").pluck().get(),
+      v1Checksum,
+    );
+    assert.equal(
+      database.prepare("SELECT COUNT(*) FROM schema_migrations").pluck().get(),
+      2,
+    );
+  } finally {
+    database.close();
     temporary.cleanup();
   }
 });

@@ -13,13 +13,15 @@ The documentation is organized from intent to implementation. New readers should
 7. [Context sovereignty](01-concepts/context-sovereignty.md)
 8. [Reference architecture](02-architecture/reference-architecture.md)
 9. [SQLite storage contract](02-architecture/sqlite-storage-contract.md)
-10. [Protocol overview](03-protocol/README.md)
-11. [JSON-RPC binding](03-protocol/jsonrpc-binding.md)
-12. [Threat model](04-safety/threat-model.md)
-13. [Adapter contract](05-adapters/adapter-contract.md)
-14. [Design reviews](09-reviews/README.md)
-15. [M0 external reviewer packet](09-reviews/m0-external-reviewer-packet.md)
-16. [Mainline plan](10-planning/mainline-plan.md)
+10. [Relationship policy engine](02-architecture/relationship-policy-engine.md)
+11. [Durable dispatcher](02-architecture/durable-dispatcher.md)
+12. [Protocol overview](03-protocol/README.md)
+13. [JSON-RPC binding](03-protocol/jsonrpc-binding.md)
+14. [Threat model](04-safety/threat-model.md)
+15. [Adapter contract](05-adapters/adapter-contract.md)
+16. [Design reviews](09-reviews/README.md)
+17. [M0 external reviewer packet](09-reviews/m0-external-reviewer-packet.md)
+18. [Mainline plan](10-planning/mainline-plan.md)
 
 ## Directory guide
 

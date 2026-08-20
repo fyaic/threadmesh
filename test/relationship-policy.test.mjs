@@ -41,7 +41,13 @@ function evaluate(overrides = {}) {
     grant: effective,
     currentGrant: effective,
     sourceTask: { ...source, retiredAt: null },
-    targetTask: { ...target, retiredAt: null },
+    targetTask: {
+      ...target,
+      retiredAt: null,
+      runId: "run_target01",
+      objectiveVersion: 3,
+      checkpoint: "checkpoint-3",
+    },
     now,
     ...overrides,
   });
@@ -87,6 +93,7 @@ test("denies state-changing peer authority even if a malformed grant claims it",
   const denied = evaluate({
     envelope: envelope({
       intent: "steer",
+      freshness: { expectedObjectiveVersion: 3 },
       delivery: { requestedMode: "active-steer" },
     }),
     grant: peerSteer,
@@ -105,12 +112,61 @@ test("allows state-changing authority only on an explicit elevated grant", () =>
   const allowed = evaluate({
     envelope: envelope({
       intent: "steer",
+      freshness: { expectedObjectiveVersion: 3 },
       delivery: { requestedMode: "active-steer" },
     }),
     grant: supervisor,
     currentGrant: supervisor,
   });
   assert.equal(allowed.decision, "allow");
+});
+
+test("rejects stale run, objective, and checkpoint snapshots", () => {
+  const supervisor = grant({
+    relationshipType: "supervisor",
+    allowedIntents: ["steer"],
+    allowedDeliveryModes: ["active-steer"],
+  });
+  const base = {
+    grant: supervisor,
+    currentGrant: supervisor,
+  };
+  assert.equal(
+    evaluate({
+      ...base,
+      envelope: envelope({
+        intent: "steer",
+        freshness: { expectedRunId: "run_old" },
+        delivery: { requestedMode: "active-steer" },
+      }),
+    }).internalReasonCode,
+    "stale-run",
+  );
+  assert.equal(
+    evaluate({
+      ...base,
+      envelope: envelope({
+        intent: "steer",
+        freshness: { expectedObjectiveVersion: 2 },
+        delivery: { requestedMode: "active-steer" },
+      }),
+    }).internalReasonCode,
+    "stale-objective",
+  );
+  assert.equal(
+    evaluate({
+      ...base,
+      envelope: envelope({
+        intent: "steer",
+        freshness: {
+          expectedObjectiveVersion: 3,
+          expectedCheckpoint: "checkpoint-old",
+        },
+        delivery: { requestedMode: "active-steer" },
+      }),
+    }).internalReasonCode,
+    "stale-checkpoint",
+  );
 });
 
 test("denies superseded grants and structured gates fail closed", () => {

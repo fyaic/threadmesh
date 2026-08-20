@@ -215,6 +215,7 @@ test("revocation invalidates queued state-changing work before adapter submissio
         harness: "harness-b",
         state: "running",
         adapterRef: receiverAdapterRef,
+        runtime: { objectiveVersion: 3 },
       },
       owner,
     );
@@ -260,6 +261,178 @@ test("revocation invalidates queued state-changing work before adapter submissio
         "adapter-submission-prepared",
         "authorization-revoked",
       ],
+    );
+  } finally {
+    coordinator.close();
+  }
+});
+
+test("records explicit deferred, stale, unsupported, revoked, and failed results", () => {
+  const coordinator = createCoordinator();
+  try {
+    coordinator.submit(envelope({ messageId: "msg_result_deferred01" }), senderPrincipal);
+    let disposition = coordinator.respond(
+      "inc_sender01",
+      "msg_result_deferred01",
+      "deferred",
+      0,
+      receiverPrincipal,
+      "backpressure",
+    );
+    assert.equal(disposition.decisionReasonCode, "backpressure");
+    disposition = coordinator.respond(
+      "inc_sender01",
+      "msg_result_deferred01",
+      "stale",
+      1,
+      receiverPrincipal,
+      "stale-run",
+    );
+    assert.equal(disposition.decision, "stale");
+    assert.equal(disposition.decisionReasonCode, "stale-run");
+
+    coordinator.submit(envelope({ messageId: "msg_result_unsupported01" }), senderPrincipal);
+    disposition = coordinator.respond(
+      "inc_sender01",
+      "msg_result_unsupported01",
+      "unsupported",
+      0,
+      receiverPrincipal,
+      "unsupported-delivery-mode",
+    );
+    assert.equal(disposition.decision, "unsupported");
+
+    coordinator.submit(envelope({ messageId: "msg_result_revoked01" }), senderPrincipal);
+    disposition = coordinator.respond(
+      "inc_sender01",
+      "msg_result_revoked01",
+      "revoked",
+      0,
+      receiverPrincipal,
+      "revoked",
+    );
+    assert.equal(disposition.decision, "revoked");
+
+    coordinator.submit(envelope({ messageId: "msg_result_failed01" }), senderPrincipal);
+    disposition = coordinator.failDelivery(
+      "inc_sender01",
+      "msg_result_failed01",
+      0,
+      "adapter-preflight-failed",
+      receiverPrincipal,
+    );
+    assert.equal(disposition.delivery, "failed");
+    assert.equal(disposition.deliveryFailureReason, "adapter-preflight-failed");
+
+    assert.throws(
+      () =>
+        coordinator.respond(
+          "inc_sender01",
+          "msg_result_unsupported01",
+          "accepted",
+          1,
+          receiverPrincipal,
+          "accepted",
+        ),
+      { code: "threadmesh_revision_or_state_conflict" },
+    );
+    assert.throws(
+      () =>
+        coordinator.respond(
+          "inc_sender01",
+          "msg_result_revoked01",
+          "applied",
+          1,
+          receiverPrincipal,
+        ),
+      { code: "threadmesh_decision_reason_invalid" },
+    );
+  } finally {
+    coordinator.close();
+  }
+});
+
+test("enforces objective freshness again immediately before adapter dispatch", () => {
+  const coordinator = new SqliteCoordinator({ clock: () => NOW });
+  try {
+    coordinator.registerTask(
+      {
+        taskId: "task_sender",
+        incarnationId: "inc_sender01",
+        harness: "harness-a",
+        state: "running",
+      },
+      owner,
+    );
+    coordinator.registerTask(
+      {
+        taskId: "task_receiver",
+        incarnationId: "inc_receiver01",
+        harness: "harness-b",
+        state: "running",
+        adapterRef: receiverAdapterRef,
+        runtime: { runId: "run-1", objectiveVersion: 3 },
+      },
+      owner,
+    );
+    coordinator.issueGrant(steerGrant(), grantDecision, owner);
+    coordinator.submit(steerEnvelope(), senderPrincipal);
+    coordinator.respond("inc_sender01", "msg_sender01", "accepted", 0, receiverPrincipal);
+    const prepared = coordinator.prepareAdapterSubmission(
+      "inc_sender01",
+      "msg_sender01",
+      1,
+      receiverPrincipal,
+    );
+    coordinator.updateTaskRuntime(
+      { taskId: "task_receiver", incarnationId: "inc_receiver01" },
+      { runId: "run-1", objectiveVersion: 4 },
+      0,
+      receiverPrincipal,
+    );
+    assert.throws(
+      () =>
+        coordinator.beginAdapterSubmission(
+          prepared.submission.submissionId,
+          1,
+          receiverPrincipal,
+        ),
+      { code: "threadmesh_policy_denied" },
+    );
+  } finally {
+    coordinator.close();
+  }
+});
+
+test("rejects adapter rebinding between prepare and the native-call boundary", () => {
+  const coordinator = createCoordinator();
+  try {
+    coordinator.submit(envelope(), senderPrincipal);
+    coordinator.respond("inc_sender01", "msg_sender01", "accepted", 0, receiverPrincipal);
+    const prepared = coordinator.prepareAdapterSubmission(
+      "inc_sender01",
+      "msg_sender01",
+      1,
+      receiverPrincipal,
+    );
+    coordinator.attachTask(
+      { taskId: "task_receiver", incarnationId: "inc_receiver01" },
+      {
+        kind: "acp-session",
+        sessionId: "different-session",
+        snapshotDigest: `sha256:${"b".repeat(64)}`,
+      },
+      0,
+      receiverPrincipal,
+    );
+    assert.throws(
+      () =>
+        coordinator.beginAdapterSubmission(
+          prepared.submission.submissionId,
+          1,
+          receiverPrincipal,
+        ),
+      { code: "threadmesh_adapter_ref_changed" },
     );
   } finally {
     coordinator.close();
@@ -636,15 +809,14 @@ test("persists outcome-unknown adapter attempts across restart without retry", (
     );
     assert.equal(recovered.state, "outcome-unknown");
     assert.equal(recovered.adapterIdempotencyKey, prepared.submission.adapterIdempotencyKey);
-    assert.throws(
-      () => coordinator.prepareAdapterSubmission(
-        "inc_sender01",
-        "msg_sender01",
-        1,
-        receiverPrincipal,
-      ),
-      { code: "threadmesh_adapter_submission_in_flight" },
+    const suppressed = coordinator.prepareAdapterSubmission(
+      "inc_sender01",
+      "msg_sender01",
+      1,
+      receiverPrincipal,
     );
+    assert.equal(suppressed.replay, true);
+    assert.equal(suppressed.submission.state, "outcome-unknown");
   } finally {
     coordinator.close();
     fs.rmSync(directory, { recursive: true, force: true });
