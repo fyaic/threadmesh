@@ -17,7 +17,8 @@ The documentation is organized from intent to implementation. New readers should
 11. [Threat model](04-safety/threat-model.md)
 12. [Adapter contract](05-adapters/adapter-contract.md)
 13. [Design reviews](09-reviews/README.md)
-14. [Mainline plan](10-planning/mainline-plan.md)
+14. [M0 external reviewer packet](09-reviews/m0-external-reviewer-packet.md)
+15. [Mainline plan](10-planning/mainline-plan.md)
 
 ## Directory guide
 
