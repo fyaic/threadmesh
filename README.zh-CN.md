@@ -22,10 +22,10 @@ incarnation 轮换和两类 mock harness 都有自动化测试。
 - Kimi ACP 握手已通过，但真实模型调用因账户额度被阻塞，未计为成功。
 
 M1 已形成存储迁移、过期审计、默认拒绝 policy、crash-safe dispatcher，以及
-可重启事件游标和权限化 provenance inspector 的堆叠候选实现。后续主线是完成
-issue #14 的 conformance kit 与 purge/retention 实现，等待外部 review 后合并，
-再进行真实
-agent 产品验证。详见[项目状态](docs/10-planning/project-status.md)和
+可重启事件游标、权限化 provenance inspector 和两类 mock harness 行为矩阵的
+堆叠候选实现。后续主线是完成 purge/retention，等待外部 review 后合并并在
+`main` 重验，再进行真实 agent 产品验证。详见
+[项目状态](docs/10-planning/project-status.md)和
 [主线计划](docs/10-planning/mainline-plan.md)。
 
 ThreadMesh 关注一种具体能力：Agent A 在执行过程中发现 Agent B 的任务与自己的目标存在依赖，于是主动发起通知、建议、纠偏或停止请求。

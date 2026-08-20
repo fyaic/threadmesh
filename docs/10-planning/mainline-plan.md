@@ -144,10 +144,15 @@ snapshot distinguishes user and peer authorship, renders delivery, decision,
 and outcome separately, and redacts content and evidence after expiry or grant
 revocation. It is not a hosted stream and its merge is also gated by #7.
 
-The next implementation slice is #14: turn the two mock harness profiles into
-an explicit behavior matrix and CI conformance kit, including unsupported
-state-changing behavior and restart evidence. Purge execution remains a
-required storage/retention follow-up before M1 can close.
+The stacked #14 candidate turns the two mock harness profiles into an explicit
+behavior matrix and CI conformance kit. It covers related-only summaries,
+side-channel notification, accept/reject/defer, stale and unsupported
+state-changing intents, replay, queued revocation, provenance, audit evidence,
+and deterministic test-database cleanup. Its merge is also gated by #7.
+
+Purge execution remains a required storage/retention follow-up before M1 can
+close. Once the stack merges and is revalidated on `main`, real agent-product
+validation becomes the next evidence workstream.
 
 ### 7. Resume live adapter expansion
 
@@ -167,7 +172,8 @@ Keep each change independently reviewable:
 1. `docs: publish the external M0 reviewer packet`
 2. `feat: complete the M1 storage and migration contract`
 3. `feat: complete policy, dispatcher, stream, and inspector slices`
-4. `test: run real product adapters after normative and M1 completion`
+4. `test: complete the two-profile M1 conformance kit`
+5. `test: run real product adapters after normative and M1 completion`
 
 ## Mainline guardrails
 

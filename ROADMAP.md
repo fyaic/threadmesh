@@ -47,6 +47,8 @@ grant checks, CAS, admission claims, ACP session reload, and provenance. Stacked
 Draft candidates now cover the versioned storage baseline, audited expiry,
 fail-closed policy, runtime freshness, crash-safe native dispatch, and a local
 restart-safe cursor stream with an authorization-aware provenance inspector.
+The final stacked candidate adds the deterministic two-profile behavior matrix
+and explicit unsupported degradation.
 All M1 issues remain open because merge is gated by
 [issue #7](https://github.com/fyaic/threadmesh/issues/7) and the remaining
 acceptance criteria are not yet met.

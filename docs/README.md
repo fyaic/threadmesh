@@ -20,9 +20,10 @@ The documentation is organized from intent to implementation. New readers should
 14. [JSON-RPC binding](03-protocol/jsonrpc-binding.md)
 15. [Threat model](04-safety/threat-model.md)
 16. [Adapter contract](05-adapters/adapter-contract.md)
-17. [Design reviews](09-reviews/README.md)
-18. [M0 external reviewer packet](09-reviews/m0-external-reviewer-packet.md)
-19. [Mainline plan](10-planning/mainline-plan.md)
+17. [Mock harness conformance kit](06-guides/mock-harness-conformance.md)
+18. [Design reviews](09-reviews/README.md)
+19. [M0 external reviewer packet](09-reviews/m0-external-reviewer-packet.md)
+20. [Mainline plan](10-planning/mainline-plan.md)
 
 ## Directory guide
 

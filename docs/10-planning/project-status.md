@@ -2,7 +2,8 @@
 
 > Snapshot: 2026-08-20, including authenticated operations, crash-safe adapter
 > submission, typed interruption results, signed verification attestations,
-> and the stacked local event-stream/inspector candidate.
+> the stacked local event-stream/inspector candidate, and the two-profile M1
+> conformance matrix.
 
 ## Executive summary
 
@@ -23,7 +24,7 @@ maintainer organization.
 | Area | Current evidence | Status |
 |---|---|---|
 | Research and problem framing | Codex deep dive, community signals, ecosystem comparison, ADRs | Established |
-| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 65 unit tests | Executable draft |
+| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 66 unit tests | Executable draft |
 | Local binding | Schema-validated JSON-RPC, transport-derived principals, typed errors | Executable local reference |
 | Local persistence | SQLite registry, proposals, grants, summaries, mailbox, claims, submission receipts, reconciliation, replay, audit | Experimental |
 | Safety boundary | Authenticated authorship checks, effective-grant decisions, revocation, CAS | Executable local policy |
@@ -38,6 +39,7 @@ maintainer organization.
 | External verification | Signed attestation schema plus real Ed25519 conformance proof | Normative, conformance trust anchor only |
 | Cross-harness conformance | Pull-mailbox and event-watching mock profiles over JSON-RPC | Local behavior demonstrated |
 | Event stream and inspector | Restart checkpoint, strict local cursor order, provenance, authorization-aware redaction | Stacked M1 candidate |
+| M1 behavior matrix | Two capability-valid mock profiles, related discovery, notify/suggest decisions, stale/unsupported state change, revocation, cleanup | Stacked conformance candidate |
 
 ## Milestone accounting
 
@@ -76,8 +78,12 @@ GitHub is authoritative for milestone closure.
   provenance snapshot that distinguishes user/peer authorship, redacts content
   after expiry or revocation, and exposes delivery/decision/outcome separately;
   it remains gated by #7.
-- Purge execution, hosted event streaming, and the complete M1 behavior matrix
-  remain unfinished.
+- A stacked #14 candidate runs two capability-valid profiles through the public
+  JSON-RPC path, including relationship-scoped discovery, side-channel notify,
+  suggestion decisions, stale/unsupported state changes, replay, revocation,
+  audit assertions, and deterministic test-database cleanup; it remains gated
+  by #7.
+- Purge execution and hosted event streaming remain unfinished.
 
 ## What the prototype proves
 
@@ -116,6 +122,8 @@ can:
     before dispatch, and persist explicit decision/failure reasons.
 21. resume a strictly ordered local event cursor after SQLite restart and render
     authorized provenance without leaking revoked content or raw audit detail.
+22. run the complete M1 scenario matrix across an event watcher and pull-mailbox
+    receiver with explicit capability degradation and per-transition audit.
 
 It does not prove autonomous task discovery, useful model behavior, native
 provider-role isolation, exactly-once external effects, production remote
