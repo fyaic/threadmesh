@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "issueUrl": "https://github.com/fyaic/threadmesh/issues/7",
+  "reviewTarget": "265e461f1b8714c56f7fe817795b81d895f732c6",
+  "status": "awaiting",
+  "requiredReviews": 2,
+  "requiredPerspectives": [
+    "distributed-systems",
+    "agent-safety"
+  ],
+  "reviews": []
+}

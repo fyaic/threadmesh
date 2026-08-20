@@ -60,7 +60,8 @@ ThreadMesh 并不赋予 agent 任意修改其他 session 的权力。它提供�
 - ACP、Codex、Gemini 的 fake product 已通过同一条 mailbox accepted → durable
   admission claim → kind-specific evidence → context-admitted 矩阵；
 - 统一验证 runner 又增加了 mailbox claim/ack、精确 marker、受限 audit evidence
-  与精确资源清理；没有外部 review 确认时，真实模式机械拒绝运行；
+  与精确资源清理；没有完整的可校验外部 review 记录和操作者确认时，真实模式
+  机械拒绝运行；
 - M0 只剩独立外部 review；
 - 下一步等待独立 review 与堆叠变更合并，在 `main` 重验后执行 Codex、Kimi
   及 Gemini 的同场景真实产品验证；

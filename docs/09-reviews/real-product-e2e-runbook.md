@@ -11,7 +11,7 @@ admission claim, adapter boundary, exact evidence confirmation, and audit path.
 Tracked by [issue #44](https://github.com/fyaic/threadmesh/issues/44). This is
 an experimental validation procedure, not an M0 normative requirement.
 
-## Mechanical gate
+## Mechanical gates
 
 Real model execution is disabled by default. Before setting the acknowledgement,
 a maintainer must verify all of the following:
@@ -24,17 +24,25 @@ a maintainer must verify all of the following:
 4. The provider account, quota, and credential are explicitly authorized for
    the bounded validation turn.
 
-The exact acknowledgement is:
+The repository first verifies
+[`m0-review-gate.json`](m0-review-gate.json). It requires two integrity-bound
+public review records, two distinct reviewers, both review perspectives, at
+least one outside reviewer, the exact review-target commit, approving verdicts,
+and terminal public dispositions for every finding. A self-asserted environment
+variable cannot bypass missing or invalid records.
+
+After the review-record verifier passes, the exact operator acknowledgement is:
 
 ```sh
 export THREADMESH_LIVE_E2E_ACK=issue-7-approved-for-live-product-validation
 ```
 
-This environment variable is an intentional operator acknowledgement, not
-cryptographic proof of review. Repository maintainers remain responsible for
-checking #7. Without the exact value, every live command exits with code 3 and
-reports `not-run/external_review_gate_not_acknowledged` before starting an
-adapter or model.
+This environment variable is an intentional second acknowledgement, not
+cryptographic proof of review. Without the exact value, every live command
+exits with code 3 and reports `not-run/external_review_gate_not_acknowledged`.
+With the variable but without valid records, it reports
+`not-run/external_review_records_incomplete`. Both outcomes occur before an
+adapter or model starts.
 
 ## Deterministic rehearsal
 

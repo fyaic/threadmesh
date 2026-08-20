@@ -7,11 +7,17 @@ reviewed commit, verdict, findings, and follow-up disposition.
 
 - [Reviewer packet](m0-external-reviewer-packet.md)
 - [Review submission template](external-review-template.md)
+- [Machine-checkable review gate](m0-review-gate.json)
+- [External review record format](external/README.md)
 - [Public review issue #7](https://github.com/fyaic/threadmesh/issues/7)
 
 The packet targets the first commit containing all normative M0 blocker fixes.
 External verdicts and finding dispositions will be linked here without
 rewriting their original text.
+
+The checked-in gate manifest currently remains `awaiting`. It cannot become
+accepted until two qualifying public records exist and pass
+`npm run validate:review-gate`.
 
 ## 2026-08-20 internal review round
 

@@ -187,6 +187,7 @@ Draft [#45](https://github.com/fyaic/threadmesh/pull/45), tracked by
 execution surface: fake-all and live modes now traverse the same mailbox claim,
 receiver acceptance, admission token, exact marker, strict evidence, audit, and
 cleanup path. Fake-all passes. Live mode remains mechanically `not-run` unless
+the repository contains two valid integrity-bound external-review records and
 the operator supplies the exact post-review acknowledgement.
 
 After M0 closes and the M1 stack is merged and revalidated:

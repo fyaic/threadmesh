@@ -20,9 +20,23 @@ test("live product validation is refused without the exact review acknowledgemen
   assert.equal(wrong.state, "not-run");
   const missingGeminiKey = await runLive("gemini", {
     THREADMESH_LIVE_E2E_ACK: LIVE_E2E_ACK,
-  });
+  }, () => ({ satisfied: true }));
   assert.equal(missingGeminiKey.state, "blocked");
   assert.equal(missingGeminiKey.code, "gemini_api_key_not_authorized");
+});
+
+test("operator acknowledgement cannot bypass incomplete review records", async () => {
+  const result = await runLive("codex", {
+    THREADMESH_LIVE_E2E_ACK: LIVE_E2E_ACK,
+  }, () => ({
+    satisfied: false,
+    reviewCount: 0,
+    externalReviewerCount: 0,
+    errors: ["required review count not met"],
+  }));
+  assert.equal(result.state, "not-run");
+  assert.equal(result.code, "external_review_records_incomplete");
+  assert.equal(result.reviewGate.reviewCount, 0);
 });
 
 test("one runner admits and cleans all three fake products", async () => {

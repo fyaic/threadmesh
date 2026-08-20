@@ -1,6 +1,6 @@
 # M0 external reviewer packet
 
-> Review target: `main@265e461e4f8d53447d21cfe79894ddd2f46d297b`
+> Review target: `main@265e461f1b8714c56f7fe817795b81d895f732c6`
 > (`spec: type interruption and signed verification (#25)`).
 
 ## Purpose
@@ -27,7 +27,7 @@ Requirements: Node.js 22 or newer, npm, and a C/C++ toolchain supported by
 ```sh
 git clone https://github.com/fyaic/threadmesh.git
 cd threadmesh
-git checkout 265e461e4f8d53447d21cfe79894ddd2f46d297b
+git checkout 265e461f1b8714c56f7fe817795b81d895f732c6
 npm ci
 npm test
 npm audit --audit-level=high
@@ -134,3 +134,9 @@ Disclose affiliation or relevant perspective and any material relationship to
 the maintainers. Findings should cite exact paths and, where practical, include
 a reproducer or invalid fixture. The maintainers will disposition every finding
 as accepted, resolved, deferred with rationale, or rejected with rationale.
+
+Reviewers may submit Markdown only. After public disposition, maintainers will
+transcribe the review into an integrity-bound machine record using the
+[external record format](external/README.md). The gate verifier never replaces
+the public source; it checks that two distinct, complete records point back to
+that source and to this exact review target.

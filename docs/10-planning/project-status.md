@@ -27,7 +27,7 @@ maintainer organization.
 | Area | Current evidence | Status |
 |---|---|---|
 | Research and problem framing | Codex deep dive, community signals, ecosystem comparison, ADRs | Established |
-| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 96 unit/subtests | Executable draft |
+| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 100 unit/subtests | Executable draft |
 | Local binding | Schema-validated JSON-RPC, transport-derived principals, typed errors | Executable local reference |
 | Local persistence | SQLite registry, proposals, grants, summaries, mailbox, claims, receipts, reconciliation, replay, audit, retention tombstones | Experimental |
 | Safety boundary | Authenticated authorship checks, effective-grant decisions, revocation, CAS | Executable local policy |
@@ -39,7 +39,8 @@ maintainer organization.
 | Gemini CLI headless | Official package 0.56.0 integrity, required flags, isolated-home cleanup | Real no-model preflight passed |
 | Gemini live model behavior | Exact marker script requires explicit provider key | Not authorized, not run |
 | Multi-product admission | One mailbox/acceptance/claim/evidence path across ACP, Codex, and Gemini fakes | Stacked deterministic candidate |
-| Product validation runner | One fake/live entry point with exact review acknowledgement, marker, audit, and cleanup checks | Fake-all passed; live gated |
+| Product validation runner | One fake/live entry point with review records plus operator acknowledgement, marker, audit, and cleanup checks | Fake-all passed; live gated |
+| External-review gate | Integrity-bound records, distinct reviewers, both perspectives, outside-reviewer and target-ancestry checks | Mechanically awaiting 2 records |
 | Independent review | Three internal lanes complete; external reviewer packet and public template published | Awaiting two external verdicts |
 | Production authentication | Local static-token reference; no TLS/OAuth verifier supplied | Host integration required |
 | OS isolation | No child-process sandbox supplied by ThreadMesh | Not implemented |
@@ -118,7 +119,8 @@ GitHub is authoritative for milestone closure.
 - Draft [#45](https://github.com/fyaic/threadmesh/pull/45), tracked by #44, adds
   one mechanically gated runner over the exact mailbox, acceptance, admission,
   evidence, audit, and cleanup path. Its fake-all mode passes all three
-  products; live mode remains `not-run` before #7.
+  products; live mode requires both integrity-bound review records and an exact
+  operator acknowledgement, so it remains `not-run` before #7.
 - The Codex candidate implements suggestion-only capability negotiation,
   receiver-acceptance enforcement, exact turn evidence, server-request denial,
   timeout cleanup, generated-schema digesting, and a real no-model product

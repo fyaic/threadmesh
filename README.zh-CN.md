@@ -30,7 +30,8 @@ incarnation 轮换和两类 mock harness 都有自动化测试。
 - ACP、Codex、Gemini 已在同一个 deterministic matrix 中复用 mailbox acceptance、
   durable admission claim 和各自严格的 evidence confirmation，不再绕过 coordinator。
 - 统一验证 runner 已在三种 fake product 上走通 mailbox claim、receiver acceptance、
-  精确 marker、evidence、audit 与资源清理；真实模式在 #7 前默认返回 `not-run`。
+  精确 marker、evidence、audit 与资源清理；真实模式同时要求可校验 review 记录
+  和 operator acknowledgement，在 #7 前默认返回 `not-run`。
 
 M1 已形成存储迁移、过期审计、默认拒绝 policy、crash-safe dispatcher，以及
 可重启事件游标、权限化 provenance inspector 和两类 mock harness 行为矩阵的

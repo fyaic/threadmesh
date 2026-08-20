@@ -134,7 +134,8 @@ The implementation is deliberately narrower than the product vision:
   through ACP, Codex, and Gemini admission claims and kind-specific evidence;
 - one mechanically gated runner now rehearses mailbox claim, receiver
   acceptance, exact marker, evidence, audit, and cleanup across all three fake
-  products; real mode defaults to `not-run` before #7;
+  products; real mode requires integrity-bound review records plus an operator
+  acknowledgement and defaults to `not-run` before #7;
 - Kimi Code ACP initialization and exact create/list/delete/absence lifecycle
   passed against the real product, while the earlier model-turn marker remains
   blocked by account quota and is not counted as a pass.

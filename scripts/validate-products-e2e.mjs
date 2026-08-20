@@ -10,6 +10,7 @@ import {
   geminiProductDriver,
 } from "../src/validation/product-drivers.mjs";
 import { runCoordinatorProductScenario } from "../src/validation/coordinator-product-scenario.mjs";
+import { verifyExternalReviewGate } from "../src/validation/external-review-gate.mjs";
 
 export const LIVE_E2E_ACK = "issue-7-approved-for-live-product-validation";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -136,7 +137,11 @@ export async function runFakeAll() {
   }
 }
 
-export async function runLive(productId, env = process.env) {
+export async function runLive(
+  productId,
+  env = process.env,
+  verifyGate = () => verifyExternalReviewGate({ root }),
+) {
   const startedAt = new Date().toISOString();
   if (env.THREADMESH_LIVE_E2E_ACK !== LIVE_E2E_ACK) {
     return {
@@ -147,6 +152,18 @@ export async function runLive(productId, env = process.env) {
       productId,
       code: "external_review_gate_not_acknowledged",
       requiredAcknowledgement: LIVE_E2E_ACK,
+    };
+  }
+  const reviewGate = verifyGate();
+  if (!reviewGate.satisfied) {
+    return {
+      mode: "live",
+      startedAt,
+      finishedAt: new Date().toISOString(),
+      state: "not-run",
+      productId,
+      code: "external_review_records_incomplete",
+      reviewGate,
     };
   }
   try {
