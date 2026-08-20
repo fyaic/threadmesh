@@ -9,6 +9,7 @@ ThreadMesh uses milestone exit criteria rather than date promises. Priorities ma
 - [x] Establish context sovereignty and least-authority principles.
 - [x] Publish draft envelope and capability schemas.
 - [x] Resolve the open questions marked **M0 blocker**.
+- [ ] Resolve internal review blockers [#15](https://github.com/fyaic/threadmesh/issues/15)–[#19](https://github.com/fyaic/threadmesh/issues/19).
 - [ ] Accept two independent design reviews.
 
 Exit: a reader can implement a compatible prototype without relying on undocumented assumptions.

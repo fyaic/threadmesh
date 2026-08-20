@@ -15,6 +15,7 @@ The documentation is organized from intent to implementation. New readers should
 9. [Threat model](04-safety/threat-model.md)
 10. [Adapter contract](05-adapters/adapter-contract.md)
 11. [Research synthesis](07-research/research-synthesis.md)
+12. [Design reviews](09-reviews/README.md)
 
 ## Directory guide
 
@@ -29,6 +30,7 @@ The documentation is organized from intent to implementation. New readers should
 | `06-guides` | Implementation walkthroughs | No |
 | `07-research` | Prior art and unresolved questions | No |
 | `08-decisions` | Accepted Architecture Decision Records | Decision record |
+| `09-reviews` | Reviewer evidence, verdicts, and test limitations | No |
 | `zh-CN` | Chinese orientation documents | No; English is canonical |
 
 Machine-readable schemas live under [`spec/schema`](../spec/schema).
