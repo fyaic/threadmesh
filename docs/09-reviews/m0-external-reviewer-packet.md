@@ -1,6 +1,6 @@
 # M0 external reviewer packet
 
-> Review target: `main@265e461e4f8d53447d21cfe79894ddd2f46d297b`
+> Review target: `main@265e461f1b8714c56f7fe817795b81d895f732c6`
 > (`spec: type interruption and signed verification (#25)`).
 
 ## Purpose
@@ -27,7 +27,7 @@ Requirements: Node.js 22 or newer, npm, and a C/C++ toolchain supported by
 ```sh
 git clone https://github.com/fyaic/threadmesh.git
 cd threadmesh
-git checkout 265e461e4f8d53447d21cfe79894ddd2f46d297b
+git checkout 265e461f1b8714c56f7fe817795b81d895f732c6
 npm ci
 npm test
 npm audit --audit-level=high
