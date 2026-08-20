@@ -145,6 +145,7 @@ revalidation of the M1 stack, then real Codex, Kimi, and Gemini product
 validation. See
 the [project status](docs/10-planning/project-status.md),
 [mainline plan](docs/10-planning/mainline-plan.md), and
+[milestone acceptance audit](docs/10-planning/acceptance-audit.md),
 [real product validation runbook](docs/09-reviews/real-product-e2e-runbook.md), and
 [roadmap](ROADMAP.md).
 

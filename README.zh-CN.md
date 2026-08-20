@@ -41,7 +41,8 @@ M1 已形成存储迁移、过期审计、默认拒绝 policy、crash-safe dispa
 agent 产品验证。Codex 的 live 脚本已准备好，但会继续遵守门禁。详见
 [项目状态](docs/10-planning/project-status.md)和
 [主线计划](docs/10-planning/mainline-plan.md)，真实执行步骤见
-[产品验证手册](docs/09-reviews/real-product-e2e-runbook.md)。
+[产品验证手册](docs/09-reviews/real-product-e2e-runbook.md)，逐项完成度见
+[里程碑验收审计](docs/10-planning/acceptance-audit.md)。
 
 ThreadMesh 关注一种具体能力：Agent A 在执行过程中发现 Agent B 的任务与自己的目标存在依赖，于是主动发起通知、建议、纠偏或停止请求。
 

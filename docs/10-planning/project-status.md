@@ -209,3 +209,7 @@ erasure.
 An implementation demonstration may inform a normative issue, but it does not
 close that issue until its public schema, operation semantics, negative cases,
 and review evidence satisfy the issue acceptance criteria.
+
+The [milestone acceptance audit](acceptance-audit.md) maps every open M1/M2
+criterion to current evidence and explicitly separates candidate, merge-pending,
+blocked, and not-run states.
