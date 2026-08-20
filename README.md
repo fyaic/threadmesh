@@ -4,6 +4,15 @@
 
 [简体中文](README.zh-CN.md) · [Documentation](docs/README.md) · [Current status](docs/10-planning/project-status.md) · [Protocol draft](spec/README.md) · [Roadmap](ROADMAP.md)
 
+> **External reviewers wanted:** M0 needs independent distributed-systems and
+> agent-safety verdicts, including at least one reviewer outside `fyaic`.
+> The bounded 30–60 minute path, exact commit, commands, and template are in the
+> [reviewer packet](docs/09-reviews/m0-external-reviewer-packet.md). Submit on
+> [issue #7](https://github.com/fyaic/threadmesh/issues/7); every finding receives
+> a public disposition.
+
+---
+
 > Status: pre-alpha. The protocol is not stable; an experimental SQLite
 > coordinator and ACP adapter exist for conformance work, but no production
 > adapter has been released.
