@@ -1,10 +1,22 @@
 # Prior art and adjacent protocols
 
+> This is the concise index. See the
+> [Codex deep dive](codex-orchestration-deep-dive.md),
+> [community signals](community-signals.md),
+> [ecosystem landscape](ecosystem-landscape.md), and
+> [research synthesis](research-synthesis.md) for the evidence-backed research
+> snapshot dated 2026-08-20.
+
 ThreadMesh should extend existing standards where possible and remain narrow where they already provide the right abstraction.
 
 ## Codex App Server
 
 Codex App Server demonstrates practical primitives for persistent agent threads, active turns, streamed events, approvals, steering, and interruption. ThreadMesh's Codex adapter can map to these lifecycle controls while adding cross-harness relationships, receiver mailboxes, and intent-level permissions.
+
+Codex also supplies two distinct precedents: an open-source, root-tree-scoped
+multi-agent mailbox and a shipped Desktop surface for persistent cross-thread
+list/read/send/fork/archive operations. They are related but should not be
+treated as the same implementation boundary.
 
 Reference: [Codex App Server](https://learn.chatgpt.com/docs/app-server).
 
@@ -21,6 +33,22 @@ Reference: [A2A Protocol specification](https://a2a-protocol.org/dev/specificati
 MCP standardizes how model applications connect to tools and context providers. ThreadMesh operations can be exposed through MCP tools, but MCP does not itself define cross-task ownership or steering semantics.
 
 Reference: [MCP specification](https://modelcontextprotocol.io/specification/).
+
+## Agent mailboxes and live session meshes
+
+MCP Agent Mail, Repowire, Aerial, agent-inbox, MAGI, and AIPass demonstrate
+active community demand for persistent identities, inboxes, acknowledgements,
+wake-up, and cross-harness session coordination. AAMP adds a portable typed
+task vocabulary over ordinary mail infrastructure.
+
+ThreadMesh should interoperate where useful, but its core differentiation is
+receiver-owned context entry, typed authority, freshness, and conformance across
+harnesses. License constraints also rule out casually copying several adjacent
+implementations.
+
+References:
+[ecosystem landscape](ecosystem-landscape.md) and
+[community signals](community-signals.md).
 
 ## Message brokers and actor systems
 

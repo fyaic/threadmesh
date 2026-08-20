@@ -14,6 +14,7 @@ The documentation is organized from intent to implementation. New readers should
 8. [Protocol overview](03-protocol/README.md)
 9. [Threat model](04-safety/threat-model.md)
 10. [Adapter contract](05-adapters/adapter-contract.md)
+11. [Research synthesis](07-research/research-synthesis.md)
 
 ## Directory guide
 
@@ -31,6 +32,14 @@ The documentation is organized from intent to implementation. New readers should
 | `zh-CN` | Chinese orientation documents | No; English is canonical |
 
 Machine-readable schemas live under [`spec/schema`](../spec/schema).
+
+## Research dossiers
+
+- [Codex proactive and cross-task orchestration deep dive](07-research/codex-orchestration-deep-dive.md)
+- [Community signals](07-research/community-signals.md)
+- [Ecosystem landscape](07-research/ecosystem-landscape.md)
+- [Research synthesis and project direction](07-research/research-synthesis.md)
+- [Open questions](07-research/open-questions.md)
 
 ## Normative language
 

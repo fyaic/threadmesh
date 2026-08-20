@@ -6,6 +6,11 @@
 
 > Status: documentation-first, pre-alpha. The protocol is not stable and no production adapter has been released yet.
 
+New: [Codex implementation deep dive](docs/07-research/codex-orchestration-deep-dive.md) ·
+[community evidence](docs/07-research/community-signals.md) ·
+[ecosystem landscape](docs/07-research/ecosystem-landscape.md) ·
+[中文调研摘要](docs/zh-CN/research-summary.md)
+
 ThreadMesh explores a specific capability: an agent notices that another running task matters to its goal and proactively coordinates with it. The hard part is not message transport. The hard part is letting agents discover dependencies, communicate intent, and revise plans **without silently taking ownership of another task's context**.
 
 ThreadMesh aims to make that capability portable across Codex, Claude Code, LangGraph, custom loops, and other agent harnesses through a small protocol, explicit capability negotiation, and adapter contracts.
