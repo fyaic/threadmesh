@@ -166,7 +166,9 @@ validation becomes the next evidence workstream.
 Status: M2 issues [#36](https://github.com/fyaic/threadmesh/issues/36)–
 [#38](https://github.com/fyaic/threadmesh/issues/38) are open. The first Codex
 App Server candidate is implemented as a stack above M1 and its no-model
-preflight passes against CLI `0.145.0`. The live first turn remains gated.
+preflight passes against CLI `0.145.0` in Draft
+[#39](https://github.com/fyaic/threadmesh/pull/39). The live first turn remains
+gated.
 
 After M0 closes and the M1 stack is merged and revalidated:
 

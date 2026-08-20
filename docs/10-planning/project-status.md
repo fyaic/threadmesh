@@ -100,6 +100,8 @@ GitHub is authoritative for milestone closure.
 - 3 issues open: Codex App Server [#36](https://github.com/fyaic/threadmesh/issues/36),
   Kimi ACP hardening [#37](https://github.com/fyaic/threadmesh/issues/37), and a
   materially different third harness [#38](https://github.com/fyaic/threadmesh/issues/38).
+- Draft [#39](https://github.com/fyaic/threadmesh/pull/39) contains the Codex
+  candidate and is stacked on retention Draft #35.
 - The Codex candidate implements suggestion-only capability negotiation,
   receiver-acceptance enforcement, exact turn evidence, server-request denial,
   timeout cleanup, generated-schema digesting, and a real no-model product
