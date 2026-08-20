@@ -21,6 +21,20 @@ The model supplies situated judgment:
 
 This is tool-conditioned agency: deterministic infrastructure enables a model-selected coordination action.
 
+## Empirical precedent in Codex
+
+The open-source Codex Multi-Agent V2 runtime makes this split unusually
+visible. It computes an explicit-only or proactive multi-agent mode, renders
+that policy into model-visible developer context, and exposes different tools
+for queue-only messages and turn-triggering follow-ups. The model still decides
+whether a concrete task benefits from coordination; the runtime owns addressing,
+mailbox delivery, wake-up, and lifecycle enforcement.
+
+This confirms that apparently spontaneous delegation need not require a hidden
+global planner. A policy, well-described tools, and a capable model are enough
+to produce initiative. See the
+[Codex orchestration deep dive](../07-research/codex-orchestration-deep-dive.md).
+
 ## Coordination maturity levels
 
 1. **Transport:** a program can send a message between known task IDs.
@@ -55,3 +69,5 @@ This is a behavioral model, not a required numeric formula. The agent should be 
 - Assuming silence means acceptance.
 - Retrying an interruption indefinitely.
 - Optimizing global completion while ignoring user disruption.
+- Treating a model-visible "be proactive" policy as a hard budget or permission
+  boundary.

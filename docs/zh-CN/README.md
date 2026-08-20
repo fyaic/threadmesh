@@ -8,9 +8,10 @@ ThreadMesh 是一个面向多种 agent harness 的安全主动协调层。它让
 
 1. [愿景](vision.md)
 2. [安全模型](safety-model.md)
-3. [英文文档总览](../README.md)
-4. [英文协议草案](../03-protocol/README.md)
-5. [路线图](../../ROADMAP.md)
+3. [Codex 主动跨任务协调调研摘要](research-summary.md)
+4. [英文文档总览](../README.md)
+5. [英文协议草案](../03-protocol/README.md)
+6. [路线图](../../ROADMAP.md)
 
 ## 一句话理解
 
