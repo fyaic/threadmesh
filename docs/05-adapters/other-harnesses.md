@@ -27,3 +27,11 @@ A harness name should not be listed as supported until an adapter publishes:
 - conformance test results;
 - known semantic gaps;
 - security and permission notes.
+
+## Current third-harness selection
+
+Gemini CLI headless `stream-json` is the selected non-ACP subprocess candidate.
+Its deterministic adapter and real no-model package probe are implemented; the
+model marker awaits explicit provider credential authorization. See the
+[Gemini adapter experiment](gemini-cli.md) and
+[selection evidence](../09-reviews/2026-08-20-third-harness-selection.md).

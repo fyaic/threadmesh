@@ -102,3 +102,9 @@ The Codex App Server adapter adds deterministic JSONL, denial, timeout, and
 provenance tests plus a real no-model product preflight. Its live first-turn and
 existing-receiver tests remain gated; it also advertises no steer, interrupt,
 or durable submission idempotency.
+
+The Gemini headless adapter exercises a materially different one-process JSONL
+event boundary. It runs in plan mode, requests the product sandbox, requires an
+explicit accepted suggestion, and fails a bounded marker if any tool-use event
+appears. It likewise advertises no steer, interrupt, or durable submission
+idempotency. See the [Gemini experiment](gemini-cli.md).

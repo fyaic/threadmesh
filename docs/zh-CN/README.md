@@ -54,8 +54,11 @@ ThreadMesh 并不赋予 agent 任意修改其他 session 的权力。它提供�
 - Codex CLI `0.145.0` 的 App Server 真实无模型预检通过，已记录 273 个生成
   schema 文件的摘要、初始化摘要和空 read-only thread；真实模型 marker、
   持久 resume 和清理仍受门禁约束；
+- Gemini CLI `0.56.0` 被选为第三种非 ACP harness，固定官方包的 integrity、
+  headless stream-json/plan/sandbox 表面与隔离 home 清理均已真实预检；没有
+  provider key 授权，所以模型调用仍为 `not-run`；
 - M0 只剩独立外部 review；
 - 下一步等待独立 review 与堆叠变更合并，在 `main` 重验后执行 Codex、Kimi
-  及第三种不同 harness 的同场景真实产品验证；
+  及 Gemini 的同场景真实产品验证；
 - 在 M0 稳定前，适配器代码和无模型预检可以准备，但不会把 live model 标为
   已通过。

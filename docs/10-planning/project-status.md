@@ -26,7 +26,7 @@ maintainer organization.
 | Area | Current evidence | Status |
 |---|---|---|
 | Research and problem framing | Codex deep dive, community signals, ecosystem comparison, ADRs | Established |
-| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 81 unit tests | Executable draft |
+| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 90 unit tests | Executable draft |
 | Local binding | Schema-validated JSON-RPC, transport-derived principals, typed errors | Executable local reference |
 | Local persistence | SQLite registry, proposals, grants, summaries, mailbox, claims, receipts, reconciliation, replay, audit, retention tombstones | Experimental |
 | Safety boundary | Authenticated authorship checks, effective-grant decisions, revocation, CAS | Executable local policy |
@@ -35,6 +35,8 @@ maintainer organization.
 | Live Kimi model behavior | Earlier prompt reached provider but returned billing-cycle quota exhaustion | Blocked, not passed |
 | Codex App Server | CLI 0.145.0, 273 generated-schema files, JSONL handshake, empty read-only thread start | Real no-model preflight passed |
 | Codex live model behavior | Exact marker, persisted resume, and cleanup script prepared | Gated, not run |
+| Gemini CLI headless | Official package 0.56.0 integrity, required flags, isolated-home cleanup | Real no-model preflight passed |
+| Gemini live model behavior | Exact marker script requires explicit provider key | Not authorized, not run |
 | Independent review | Three internal lanes complete; external reviewer packet and public template published | Awaiting two external verdicts |
 | Production authentication | Local static-token reference; no TLS/OAuth verifier supplied | Host integration required |
 | OS isolation | No child-process sandbox supplied by ThreadMesh | Not implemented |
@@ -111,6 +113,10 @@ GitHub is authoritative for milestone closure.
 - The Kimi hardening candidate now hashes the exact binary, timestamps each
   run, verifies one real session through create/list/delete/list, and separates
   the gated live marker from the default no-model preflight.
+- Gemini CLI headless `stream-json` is selected for #38 after the repository's
+  Copilot assignability checks returned unavailable. The official pinned package
+  passes a no-model version/flag/integrity probe and its fake-product matrix;
+  no Google account or API key was inferred or created.
 - Codex `0.145.0` does not persist an empty thread before its first turn. The
   live script therefore keeps create plus first accepted turn on one connection,
   then separately verifies resume and exact-thread deletion.
@@ -164,6 +170,9 @@ can:
 25. reject unaccepted Codex suggestions, delimiter attacks, malformed JSONL,
     server-initiated gate requests, and unresponsive child processes in a
     deterministic fake-product matrix.
+26. probe the official pinned Gemini CLI package without a model turn, isolate
+    its home, validate a non-ACP stream-json adapter, and refuse unaccepted or
+    tool-using marker scenarios.
 
 It does not prove autonomous task discovery, useful model behavior, native
 provider-role isolation, exactly-once external effects, production remote

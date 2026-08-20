@@ -75,6 +75,10 @@ The Codex App Server candidate now has deterministic tests and a real no-model
 CLI `0.145.0` preflight. Its live first turn, persisted resume, exact cleanup,
 and coordinator-mediated A-to-B scenario remain gated and therefore do not
 complete the Codex checklist item.
+Gemini CLI headless `stream-json` is selected as the materially different third
+harness. Its pinned official package and no-model capability preflight pass;
+the checklist remains open until an explicitly authorized real model executes
+the shared scenario.
 
 Exit: the same scenario runs across at least two different harness families.
 

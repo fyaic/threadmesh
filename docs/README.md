@@ -24,8 +24,10 @@ The documentation is organized from intent to implementation. New readers should
 18. [Design reviews](09-reviews/README.md)
 19. [Codex App Server experiment](05-adapters/codex-app-server.md)
 20. [Codex App Server preflight](09-reviews/2026-08-20-codex-app-server-preflight.md)
-21. [M0 external reviewer packet](09-reviews/m0-external-reviewer-packet.md)
-22. [Mainline plan](10-planning/mainline-plan.md)
+21. [Gemini CLI experiment](05-adapters/gemini-cli.md)
+22. [Third-harness selection](09-reviews/2026-08-20-third-harness-selection.md)
+23. [M0 external reviewer packet](09-reviews/m0-external-reviewer-packet.md)
+24. [Mainline plan](10-planning/mainline-plan.md)
 
 ## Directory guide
 

@@ -19,6 +19,7 @@ New: [Codex implementation deep dive](docs/07-research/codex-orchestration-deep-
 [authenticated JSON-RPC binding](docs/03-protocol/jsonrpc-binding.md) ·
 [Kimi Code smoke evidence](docs/09-reviews/2026-08-20-kimi-code-smoke.md) ·
 [Codex App Server preflight](docs/09-reviews/2026-08-20-codex-app-server-preflight.md) ·
+[Gemini third-harness selection](docs/09-reviews/2026-08-20-third-harness-selection.md) ·
 [mainline plan](docs/10-planning/mainline-plan.md) ·
 [中文调研摘要](docs/zh-CN/research-summary.md)
 
@@ -126,12 +127,15 @@ The implementation is deliberately narrower than the product vision:
   real CLI `0.145.0` no-model handshake/thread-start preflight; its exact live
   marker, persisted resume, cleanup, and coordinator-mediated A-to-B path are
   implemented or planned but intentionally not counted as run;
+- Gemini CLI `0.56.0` is selected as the materially different non-ACP headless
+  harness; its official pinned package and isolated no-model preflight pass,
+  while model execution awaits an explicitly authorized provider key;
 - Kimi Code ACP initialization and exact create/list/delete/absence lifecycle
   passed against the real product, while the earlier model-turn marker remains
   blocked by account quota and is not counted as a pass.
 
 The mainline is now independent M0 review (#7), sequential merge and `main`
-revalidation of the M1 stack, then real Codex, Kimi, and third-harness product
+revalidation of the M1 stack, then real Codex, Kimi, and Gemini product
 validation. See
 the [project status](docs/10-planning/project-status.md),
 [mainline plan](docs/10-planning/mainline-plan.md), and

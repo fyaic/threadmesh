@@ -172,6 +172,9 @@ gated. The Kimi hardening candidate also passes a real no-model
 create/list/delete/absence lifecycle with exact binary digest; its live marker
 remains quota-blocked and gated in Draft
 [#40](https://github.com/fyaic/threadmesh/pull/40).
+Gemini CLI headless `stream-json` is selected for #38; its pinned package and
+isolated no-model preflight pass, while model execution waits for explicit
+provider credential authorization.
 
 After M0 closes and the M1 stack is merged and revalidated:
 
@@ -180,8 +183,8 @@ After M0 closes and the M1 stack is merged and revalidated:
 - run a coordinator-mediated A-to-B accepted-suggestion scenario against an
   already persisted Codex receiver;
 - harden the generic ACP/subprocess adapter and rerun Kimi when quota permits;
-- select and add one materially different non-ACP harness whose real product
-  can be installed and authenticated without weakening the test;
+- merge the selected Gemini CLI non-ACP headless adapter, then run it only with
+  an explicitly authorized provider credential;
 - run the same envelope, acceptance, provenance, restart, and cleanup assertions
   against at least two harness families;
 - measure useful coordination and interference cost before enabling proactive
