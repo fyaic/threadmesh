@@ -28,6 +28,7 @@ Three independent read-only review lanes examined
 - [Safety review](2026-08-20-safety.md)
 - [Adapter implementability review](2026-08-20-adapter-implementability.md)
 - [Kimi Code integration evidence](2026-08-20-kimi-code-smoke.md)
+- [Codex App Server preflight evidence](2026-08-20-codex-app-server-preflight.md)
 
 These are independent review passes but not organizationally independent
 external reviews. They therefore do not, by themselves, satisfy the external

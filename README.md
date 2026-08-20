@@ -5,8 +5,8 @@
 [简体中文](README.zh-CN.md) · [Documentation](docs/README.md) · [Current status](docs/10-planning/project-status.md) · [Protocol draft](spec/README.md) · [Roadmap](ROADMAP.md)
 
 > Status: pre-alpha. The protocol is not stable; an experimental SQLite
-> coordinator and ACP adapter exist for conformance work, but no production
-> adapter has been released.
+> coordinator plus ACP and Codex App Server adapter candidates exist for
+> conformance work, but no production adapter has been released.
 
 The executable JSON-RPC reference derives principals from a host authenticator
 outside the request body. Its static-token mechanism is local-only; production
@@ -18,6 +18,7 @@ New: [Codex implementation deep dive](docs/07-research/codex-orchestration-deep-
 [design reviews](docs/09-reviews/README.md) ·
 [authenticated JSON-RPC binding](docs/03-protocol/jsonrpc-binding.md) ·
 [Kimi Code smoke evidence](docs/09-reviews/2026-08-20-kimi-code-smoke.md) ·
+[Codex App Server preflight](docs/09-reviews/2026-08-20-codex-app-server-preflight.md) ·
 [mainline plan](docs/10-planning/mainline-plan.md) ·
 [中文调研摘要](docs/zh-CN/research-summary.md)
 
@@ -121,11 +122,16 @@ The implementation is deliberately narrower than the product vision:
   provenance inspector, and two-profile conformance candidates are prepared as
   stacked changes; a retention-purge follow-up is also implemented as a stacked
   candidate, but all seven M1 issues remain open behind #7;
+- an M2 Codex App Server candidate now passes deterministic JSONL tests and a
+  real CLI `0.145.0` no-model handshake/thread-start preflight; its exact live
+  marker, persisted resume, cleanup, and coordinator-mediated A-to-B path are
+  implemented or planned but intentionally not counted as run;
 - Kimi Code ACP initialization passed, while the real model-turn marker test is
   blocked by account quota and is not counted as a pass.
 
-The mainline is now independent M0 review (#7), followed by completion of the
-local M1 coordinator and then real agent-product validation. See
+The mainline is now independent M0 review (#7), sequential merge and `main`
+revalidation of the M1 stack, then real Codex, Kimi, and third-harness product
+validation. See
 the [project status](docs/10-planning/project-status.md),
 [mainline plan](docs/10-planning/mainline-plan.md), and
 [roadmap](ROADMAP.md).

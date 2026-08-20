@@ -60,6 +60,12 @@ receiver-mediated `checkpoint-offer`. It advertises no checkpoint events,
 disposition callbacks, steer, interrupt, model-turn cancellation, or subprocess
 cancellation. See the [Kimi experiment](kimi-code.md).
 
+The checked-in Codex App Server profile is similarly suggestion-only even
+though the native API exposes steer and interrupt methods. It requires explicit
+receiver acceptance, sends canonical labelled JSON through `turn/start`, and
+correlates exact terminal turn evidence. See the
+[Codex experiment](codex-app-server.md).
+
 ## Forbidden approximations
 
 An adapter MUST NOT:
@@ -91,3 +97,8 @@ authenticated binding, OS isolation guidance, and product-level behavior
 tests. The normative receipt/reconciliation contract is executable, but the ACP
 profile honestly advertises `durableSubmissionIdempotency: none` and therefore
 cannot expose `steer` or `interrupt`.
+
+The Codex App Server adapter adds deterministic JSONL, denial, timeout, and
+provenance tests plus a real no-model product preflight. Its live first-turn and
+existing-receiver tests remain gated; it also advertises no steer, interrupt,
+or durable submission idempotency.

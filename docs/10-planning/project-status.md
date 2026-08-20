@@ -3,16 +3,18 @@
 > Snapshot: 2026-08-20, including authenticated operations, crash-safe adapter
 > submission, typed interruption results, signed verification attestations,
 > the stacked local event-stream/inspector candidate, and the two-profile M1
-> conformance matrix, and the retention-driven purge candidate.
+> conformance matrix, the retention-driven purge candidate, and the first real
+> Codex App Server no-model preflight.
 
 ## Executive summary
 
 ThreadMesh is a pre-alpha protocol and reference-runtime experiment. The
 repository has progressed beyond documentation-only research: it contains
 machine-readable schemas, deterministic conformance fixtures, an authenticated
-local JSON-RPC binding, an experimental SQLite coordinator, and a conservative
-ACP adapter exercised against a persistent fake agent and the local Kimi Code
-ACP endpoint.
+local JSON-RPC binding, an experimental SQLite coordinator, and conservative
+ACP and Codex App Server adapters. Kimi ACP has a real handshake; Codex App
+Server has deterministic JSONL tests and a real CLI initialize/thread-start
+preflight. Neither real model path counts as passed yet.
 
 The implementation is not a production coordinator and does not establish
 cross-product interoperability. The normative M0 blockers are resolved; M0
@@ -24,18 +26,20 @@ maintainer organization.
 | Area | Current evidence | Status |
 |---|---|---|
 | Research and problem framing | Codex deep dive, community signals, ecosystem comparison, ADRs | Established |
-| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 69 unit tests | Executable draft |
+| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 81 unit tests | Executable draft |
 | Local binding | Schema-validated JSON-RPC, transport-derived principals, typed errors | Executable local reference |
 | Local persistence | SQLite registry, proposals, grants, summaries, mailbox, claims, receipts, reconciliation, replay, audit, retention tombstones | Experimental |
 | Safety boundary | Authenticated authorship checks, effective-grant decisions, revocation, CAS | Executable local policy |
 | ACP adapter | ACP v1 initialize, session create/load, prompt aggregation, permission denial, timeout cleanup | Experimental |
 | Kimi Code | CLI 0.36.1 handshake and capability snapshot | Handshake verified |
 | Live Kimi model behavior | Prompt reached provider but returned billing-cycle quota exhaustion | Blocked, not passed |
+| Codex App Server | CLI 0.145.0, 273 generated-schema files, JSONL handshake, empty read-only thread start | Real no-model preflight passed |
+| Codex live model behavior | Exact marker, persisted resume, and cleanup script prepared | Gated, not run |
 | Independent review | Three internal lanes complete; external reviewer packet and public template published | Awaiting two external verdicts |
 | Production authentication | Local static-token reference; no TLS/OAuth verifier supplied | Host integration required |
 | OS isolation | No child-process sandbox supplied by ThreadMesh | Not implemented |
 | Steer and interrupt | Not advertised by the ACP prototype | Intentionally unsupported |
-| Interruption result | Per-target model/tool/process schema; no umbrella success | Normative, no live adapter yet |
+| Interruption result | Per-target model/tool/process schema; no umbrella success | Normative, no live cancellation adapter yet |
 | External verification | Signed attestation schema plus real Ed25519 conformance proof | Normative, conformance trust anchor only |
 | Cross-harness conformance | Pull-mailbox and event-watching mock profiles over JSON-RPC | Local behavior demonstrated |
 | Event stream and inspector | Restart checkpoint, strict local cursor order, provenance, authorization-aware redaction | Stacked M1 candidate |
@@ -91,6 +95,22 @@ GitHub is authoritative for milestone closure.
 - Hosted event streaming remains unfinished and is not required by an existing
   M1 acceptance issue.
 
+### M2 — First real adapters
+
+- 3 issues open: Codex App Server [#36](https://github.com/fyaic/threadmesh/issues/36),
+  Kimi ACP hardening [#37](https://github.com/fyaic/threadmesh/issues/37), and a
+  materially different third harness [#38](https://github.com/fyaic/threadmesh/issues/38).
+- The Codex candidate implements suggestion-only capability negotiation,
+  receiver-acceptance enforcement, exact turn evidence, server-request denial,
+  timeout cleanup, generated-schema digesting, and a real no-model product
+  preflight.
+- Codex `0.145.0` does not persist an empty thread before its first turn. The
+  live script therefore keeps create plus first accepted turn on one connection,
+  then separately verifies resume and exact-thread deletion.
+- M2 does not close until real model behavior runs through the merged
+  coordinator and at least two materially different harness families pass the
+  same scenario.
+
 ## What the prototype proves
 
 The current tests support the narrower claim that a local authenticated binding
@@ -132,6 +152,11 @@ can:
     receiver with explicit capability degradation and per-transition audit.
 23. tombstone expired sensitive content without losing replay defense, scrub
     retired adapter references, and preserve unresolved-effect evidence.
+24. negotiate the real Codex App Server protocol, start an empty read-only
+    thread, and reproduce generated-schema and initialize snapshot digests.
+25. reject unaccepted Codex suggestions, delimiter attacks, malformed JSONL,
+    server-initiated gate requests, and unresponsive child processes in a
+    deterministic fake-product matrix.
 
 It does not prove autonomous task discovery, useful model behavior, native
 provider-role isolation, exactly-once external effects, production remote

@@ -69,6 +69,10 @@ typed cancellation contract is implemented.
 - [ ] Adapter capability negotiation and graceful degradation.
 
 The Kimi ACP work is experimental evidence, not an M2 completion claim.
+The Codex App Server candidate now has deterministic tests and a real no-model
+CLI `0.145.0` preflight. Its live first turn, persisted resume, exact cleanup,
+and coordinator-mediated A-to-B scenario remain gated and therefore do not
+complete the Codex checklist item.
 
 Exit: the same scenario runs across at least two different harness families.
 

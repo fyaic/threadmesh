@@ -5,7 +5,8 @@
 Turn the current trusted-process demonstration into a protocol whose safety and
 failure semantics can be implemented by more than one harness without private
 assumptions. The critical path is M0 stabilization followed by M1 completion;
-additional live adapters are evidence work, not the mainline.
+live adapter code may be prepared in parallel, but no model result counts toward
+completion before the gate and merged coordinator path are satisfied.
 
 ## Workstream order
 
@@ -160,16 +161,30 @@ truncation. Its merge is gated by #7 and the lower M1 stack.
 Once the stack merges and is revalidated on `main`, real agent-product
 validation becomes the next evidence workstream.
 
-### 7. Resume live adapter expansion
+### 7. Complete real product validation
 
-After M0 closes and M1 has an observable coordinator:
+Status: M2 issues [#36](https://github.com/fyaic/threadmesh/issues/36)–
+[#38](https://github.com/fyaic/threadmesh/issues/38) are open. The first Codex
+App Server candidate is implemented as a stack above M1 and its no-model
+preflight passes against CLI `0.145.0`. The live first turn remains gated.
 
-- build the Codex App Server adapter;
-- harden the generic ACP/subprocess adapter;
-- add one materially different non-ACP harness;
-- rerun the Kimi live marker test when quota is available;
+After M0 closes and the M1 stack is merged and revalidated:
+
+- merge and revalidate the conservative Codex App Server adapter;
+- run its exact live marker, persisted resume, and exact-thread cleanup;
+- run a coordinator-mediated A-to-B accepted-suggestion scenario against an
+  already persisted Codex receiver;
+- harden the generic ACP/subprocess adapter and rerun Kimi when quota permits;
+- select and add one materially different non-ACP harness whose real product
+  can be installed and authenticated without weakening the test;
+- run the same envelope, acceptance, provenance, restart, and cleanup assertions
+  against at least two harness families;
 - measure useful coordination and interference cost before enabling proactive
   discovery.
+
+The validation ledger must distinguish `passed`, `blocked`, `failed`, and
+`not-run`. A handshake, a fake server, or an unavailable quota is never promoted
+to a live-model pass.
 
 ## Next pull-request slices
 
@@ -180,7 +195,8 @@ Keep each change independently reviewable:
 3. `feat: complete policy, dispatcher, stream, and inspector slices`
 4. `test: complete the two-profile M1 conformance kit`
 5. `feat: implement retention-driven sensitive-content purge`
-6. `test: run real product adapters after normative and M1 completion`
+6. `feat: add Codex App Server adapter and no-model product preflight`
+7. `test: run real product adapters after normative and M1 completion`
 
 ## Mainline guardrails
 

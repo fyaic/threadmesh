@@ -5,7 +5,8 @@
 [English](README.md) · [中文文档入口](docs/zh-CN/README.md) · [当前进度](docs/10-planning/project-status.md) · [JSON-RPC binding](docs/03-protocol/jsonrpc-binding.md) · [协议草案](spec/README.md) · [路线图](ROADMAP.md)
 
 > 当前状态：pre-alpha。仓库已包含可执行协议草案、SQLite coordinator
-> 实验原型和 ACP adapter，但协议尚未稳定，也没有可用于生产的 adapter。
+> 实验原型以及 ACP、Codex App Server adapter 候选，但协议尚未稳定，也没有
+> 可用于生产的 adapter。
 
 ## 当前进度
 
@@ -20,12 +21,15 @@ incarnation 轮换和两类 mock harness 都有自动化测试。
 - ACP 中的 peer 内容仍通过普通 prompt surface；
 - steer/interrupt 未启用；
 - Kimi ACP 握手已通过，但真实模型调用因账户额度被阻塞，未计为成功。
+- Codex CLI `0.145.0` 的真实 App Server 初始化、协议 schema 摘要和空的
+  read-only thread 启动已通过；真实模型 marker 尚未运行，也未计为成功。
 
 M1 已形成存储迁移、过期审计、默认拒绝 policy、crash-safe dispatcher，以及
 可重启事件游标、权限化 provenance inspector 和两类 mock harness 行为矩阵的
 堆叠候选实现；schema v3 的 retention purge 也已加入候选，能够在保留 digest
 防重放的同时清除过期内容，并保护未知外部效果。后续主线是等待外部 review，
-合并后在 `main` 重验，再进行真实 agent 产品验证。详见
+合并后在 `main` 重验，再依次执行 Codex、Kimi 和第三种不同 harness 的真实
+agent 产品验证。Codex 的 live 脚本已准备好，但会继续遵守门禁。详见
 [项目状态](docs/10-planning/project-status.md)和
 [主线计划](docs/10-planning/mainline-plan.md)。
 
