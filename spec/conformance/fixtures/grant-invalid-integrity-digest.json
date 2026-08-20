@@ -1,29 +1,30 @@
 {
   "specVersion": "0.0-draft",
-  "grantId": "grant_peer_steer01",
+  "grantId": "grant_tampered_digest01",
   "grantVersion": 1,
-  "relationshipId": "rel_peer_steer01",
+  "relationshipId": "rel_tampered_digest01",
   "relationshipType": "peer",
   "source": {
-    "taskId": "task_peer_a",
-    "incarnationId": "inc_peer_a01"
+    "taskId": "task_fixture_sender",
+    "incarnationId": "inc_fixture_sender01"
   },
   "target": {
-    "taskId": "task_peer_b",
-    "incarnationId": "inc_peer_b01"
+    "taskId": "task_fixture_target",
+    "incarnationId": "inc_fixture_target01"
   },
-  "allowedIntents": ["steer"],
-  "allowedDeliveryModes": ["active-steer"],
-  "summaryVisibility": "state-only",
+  "allowedIntents": ["suggest"],
+  "allowedDeliveryModes": ["checkpoint-offer"],
+  "summaryVisibility": "coordination",
   "structuredGateResponses": false,
   "grantedBy": { "actorType": "user", "actorId": "owner" },
   "authorization": {
     "authority": "owner",
     "authenticationId": "authn_owner_fixture01",
-    "decisionId": "decision_peer_steer",
+    "decisionId": "decision_tampered_digest01",
     "decidedAt": "2026-08-20T08:00:00Z",
     "principal": { "actorType": "user", "actorId": "owner" },
     "integrity": { "algorithm": "sha-256", "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }
   },
-  "createdAt": "2026-08-20T08:00:00Z"
+  "createdAt": "2026-08-20T08:00:00Z",
+  "expiresAt": "2026-08-20T10:00:00Z"
 }

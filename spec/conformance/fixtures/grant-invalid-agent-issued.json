@@ -1,0 +1,30 @@
+{
+  "specVersion": "0.0-draft",
+  "grantId": "grant_agent_issued01",
+  "grantVersion": 1,
+  "relationshipId": "rel_agent_issued01",
+  "relationshipType": "peer",
+  "source": {
+    "taskId": "task_fixture_sender",
+    "incarnationId": "inc_fixture_sender01"
+  },
+  "target": {
+    "taskId": "task_fixture_target",
+    "incarnationId": "inc_fixture_target01"
+  },
+  "allowedIntents": ["suggest"],
+  "allowedDeliveryModes": ["checkpoint-offer"],
+  "summaryVisibility": "coordination",
+  "structuredGateResponses": false,
+  "grantedBy": { "actorType": "agent", "actorId": "task_fixture_sender" },
+  "authorization": {
+    "authority": "owner",
+    "authenticationId": "authn_attacker_fixture01",
+    "decisionId": "decision_agent_issued01",
+    "decidedAt": "2026-08-20T08:00:00Z",
+    "principal": { "actorType": "agent", "actorId": "task_fixture_sender" },
+    "integrity": { "algorithm": "sha-256", "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }
+  },
+  "createdAt": "2026-08-20T08:00:00Z",
+  "expiresAt": "2026-08-20T10:00:00Z"
+}

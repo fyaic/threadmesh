@@ -17,5 +17,13 @@
   "summaryVisibility": "state-only",
   "structuredGateResponses": false,
   "grantedBy": { "actorType": "user", "actorId": "owner" },
+  "authorization": {
+    "authority": "owner",
+    "authenticationId": "authn_owner_fixture01",
+    "decisionId": "decision_legacy_parent",
+    "decidedAt": "2026-08-20T08:00:00Z",
+    "principal": { "actorType": "user", "actorId": "owner" },
+    "integrity": { "algorithm": "sha-256", "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }
+  },
   "createdAt": "2026-08-20T08:00:00Z"
 }

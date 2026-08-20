@@ -17,6 +17,12 @@
 4. Target mailbox to model-visible context.
 5. One user, tenant, project, or machine to another.
 
+The JSON-RPC transport authenticator is a distinct trust boundary. Its request
+body is untrusted and cannot assert a principal. The checked-in static-token
+authenticator is suitable only for a trusted local host; production token
+verification, TLS, credential rotation, and revocation are host
+responsibilities.
+
 ## Threats and mitigations
 
 ### Unauthorized task discovery
@@ -53,7 +59,10 @@
 
 **Threat:** a sender claims that a user or supervisor originated an instruction.
 
-**Mitigation:** control-plane identity, immutable origin fields, signed envelopes across trust boundaries, and UI rendering from verified metadata.
+**Mitigation:** transport-authenticated control-plane identity, exact comparison
+between claimed author and authenticated principal, immutable origin fields,
+signed envelopes across trust boundaries, and UI rendering from verified
+metadata.
 
 ### Shared-resource races
 

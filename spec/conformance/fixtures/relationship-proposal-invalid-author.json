@@ -1,0 +1,26 @@
+{
+  "specVersion": "0.0-draft",
+  "proposalId": "proposal_fixture_spoof01",
+  "source": {
+    "taskId": "task_fixture_sender",
+    "incarnationId": "inc_fixture_sender01"
+  },
+  "target": {
+    "taskId": "task_fixture_target",
+    "incarnationId": "inc_fixture_target01"
+  },
+  "relationshipType": "peer",
+  "requestedIntents": ["suggest"],
+  "requestedDeliveryModes": ["checkpoint-offer"],
+  "requestedSummaryVisibility": "coordination",
+  "reason": "This proposal claims a different source task.",
+  "proposedBy": {
+    "actorType": "agent",
+    "task": {
+      "taskId": "task_attacker",
+      "incarnationId": "inc_fixture_attacker01"
+    }
+  },
+  "createdAt": "2026-08-20T09:00:00Z",
+  "expiresAt": "2026-08-20T09:10:00Z"
+}

@@ -46,6 +46,11 @@ Capability combinations are fail-closed. In particular:
 
 The draft schema is in [`spec/schema/threadmesh-capabilities.schema.json`](../../spec/schema/threadmesh-capabilities.schema.json).
 
+Adapters using the reference JSON-RPC binding authenticate outside the request
+body. They must never copy a model-produced principal object into transport
+credentials. Two reference client profiles demonstrate pull/claim/ack and
+cursor-event observation without coordinator-private APIs.
+
 The checked-in Kimi ACP profile intentionally advertises only `suggest` with
 receiver-mediated `checkpoint-offer`. It advertises no checkpoint events,
 disposition callbacks, steer, interrupt, model-turn cancellation, or subprocess

@@ -13,9 +13,9 @@ The reviewed operations had message submission and disposition updates but no
 receiver-owned `mailbox.listPending`, claim/lease, cursor, or read operation.
 An adapter therefore had to invent a private API to inspect pending work.
 
-The experimental coordinator now provides a target-principal cursor read inside
-its trusted process, but the normative operation and authenticated transport
-binding remain open.
+The reviewed coordinator supplied only a target-principal in-process cursor.
+The later JSON-RPC binding now publishes authenticated list, claim,
+acknowledgement, restart, and cursor semantics.
 
 ### No executable task-registration or transport binding
 
@@ -64,8 +64,7 @@ classification, runtime chronology checks, permission and timeout fixtures, and
 a schema-valid conservative capability profile. The reviewer approved the
 experimental adapter path after re-review.
 
-The public task/mailbox binding, two-harness behavior suite, and normative
-receipt semantics remain open in
-[#17](https://github.com/fyaic/threadmesh/issues/17),
-[#18](https://github.com/fyaic/threadmesh/issues/18), and
+The later authenticated binding resolves the public task/mailbox and two-profile
+requirements in [#17](https://github.com/fyaic/threadmesh/issues/17), while
+normative external-effect receipt semantics remain open in
 [#19](https://github.com/fyaic/threadmesh/issues/19).

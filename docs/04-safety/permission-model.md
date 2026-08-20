@@ -9,6 +9,10 @@ Authorization evaluates the tuple:
 delivery mode, freshness, policy)
 ```
 
+The actor named inside a request is claimed authorship, not operation
+authority. Operation authority comes only from the transport-authenticated
+context. A request payload cannot supply or override that context.
+
 ## Baseline matrix
 
 | Sender relationship | `notify` | `suggest` | `steer` | `interrupt` |
@@ -42,9 +46,18 @@ Policies may require user approval for:
 - delivery across a trust boundary;
 - disclosure of task summaries above a sensitivity threshold.
 
+An agent-authored relationship proposal is never approval. Effective grants
+are created only by an authenticated owner or policy decision and bind the
+issuer, authentication event ID, decision ID, grant version, optional proposal
+ID, and recomputable canonical integrity digest.
+
 ## Revocation
 
 Revoking a relationship invalidates queued state-changing messages. Adapters should also rotate or invalidate cached capability grants.
+
+Mailbox reads, claims, decisions, summary reads, and adapter admission
+preparation reauthorize the exact current grant/version. Revoked or superseded
+queued content is quarantined before envelope disclosure.
 
 Task recreation invalidates every grant bound to the previous incarnation,
 even if a harness reuses the same human-readable task ID.

@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://threadmesh.dev/spec/0.0-draft/relationship-proposal.schema.json",
+  "title": "ThreadMesh non-authoritative relationship proposal",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "specVersion",
+    "proposalId",
+    "source",
+    "target",
+    "relationshipType",
+    "requestedIntents",
+    "requestedDeliveryModes",
+    "requestedSummaryVisibility",
+    "reason",
+    "proposedBy",
+    "createdAt",
+    "expiresAt"
+  ],
+  "properties": {
+    "specVersion": { "const": "0.0-draft" },
+    "proposalId": {
+      "type": "string",
+      "pattern": "^proposal_[A-Za-z0-9][A-Za-z0-9._:-]{4,188}$"
+    },
+    "source": {
+      "$ref": "https://threadmesh.dev/spec/0.0-draft/types.schema.json#/$defs/taskRef"
+    },
+    "target": {
+      "$ref": "https://threadmesh.dev/spec/0.0-draft/types.schema.json#/$defs/taskRef"
+    },
+    "relationshipType": {
+      "enum": ["supervisor", "parent", "child", "peer", "dependency", "observer"]
+    },
+    "requestedIntents": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "enum": ["notify", "suggest", "steer", "interrupt"] }
+    },
+    "requestedDeliveryModes": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "https://threadmesh.dev/spec/0.0-draft/types.schema.json#/$defs/deliveryMode"
+      }
+    },
+    "requestedSummaryVisibility": {
+      "enum": ["none", "state-only", "coordination", "objective-hint"]
+    },
+    "reason": { "type": "string", "minLength": 1, "maxLength": 2000 },
+    "proposedBy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["actorType", "task"],
+      "properties": {
+        "actorType": { "const": "agent" },
+        "task": {
+          "$ref": "https://threadmesh.dev/spec/0.0-draft/types.schema.json#/$defs/taskRef"
+        }
+      }
+    },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "expiresAt": { "type": "string", "format": "date-time" }
+  }
+}

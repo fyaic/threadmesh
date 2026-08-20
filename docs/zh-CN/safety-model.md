@@ -32,7 +32,8 @@ ThreadMesh 的核心安全假设是：**Agent A 认为某条消息有帮助，�
 
 ## 当前实现边界
 
-现有 SQLite/ACP 原型只在单用户、可信进程内验证了 owner-scoped grant、
-revocation、CAS、单次 admission claim、来源 JSON 封装和 ACP permission deny。
-它没有网络认证、签名 attestation、OS sandbox 或真实 interrupt 能力；这些限制
-不是可选优化，而是 M0 尚未完成的规范工作。
+现有 SQLite/JSON-RPC/ACP 路径已经验证：请求体不能注入 principal、静态 token
+由 host 映射为认证身份、agent proposal 与 owner/policy effective grant 分离、
+revocation 会隔离 queued content，并支持 CAS、mailbox claim/ack 与 admission
+claim。它仍没有生产级网络凭据验证、签名 verification attestation、OS sandbox
+或真实 interrupt 能力。

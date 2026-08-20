@@ -20,4 +20,7 @@
 | **Context sovereignty** | The receiver's authority over what enters its active model context and changes its objective. |
 | **Adapter** | A harness-specific implementation of the ThreadMesh contract. |
 | **Control plane** | Registry, policy, routing, mailbox, and audit components outside individual agent loops. |
+| **Authenticated context** | Principal identity resolved by the transport authenticator outside the operation request body. |
+| **Relationship proposal** | Expiring agent-authored request for a relationship; it creates no authority. |
+| **Effective grant** | Owner/policy-issued, versioned relationship authority with a decision identity and integrity digest. |
 | **Interference budget** | A configured limit on the cost or frequency of proactive coordination. |

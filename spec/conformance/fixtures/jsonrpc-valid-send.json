@@ -1,0 +1,35 @@
+{
+  "jsonrpc": "2.0",
+  "id": "fixture-send-1",
+  "method": "messages.send",
+  "params": {
+    "envelope": {
+      "specVersion": "0.0-draft",
+      "messageId": "msg_fixture_rpc01",
+      "messageType": "suggestion",
+      "intent": "suggest",
+      "claimStatus": "sender-asserted",
+      "sender": {
+        "taskId": "task_fixture_sender",
+        "incarnationId": "inc_fixture_sender01",
+        "actorType": "agent",
+        "harness": "mock-a"
+      },
+      "target": {
+        "taskId": "task_fixture_target",
+        "incarnationId": "inc_fixture_target01",
+        "harness": "mock-b"
+      },
+      "relationshipId": "rel_fixture_rpc01",
+      "content": "Re-check the dependency result.",
+      "reason": "A newer result is available.",
+      "delivery": {
+        "requestedMode": "checkpoint-offer",
+        "requiresDisposition": true
+      },
+      "createdAt": "2026-08-20T09:00:00Z",
+      "expiresAt": "2026-08-20T09:10:00Z"
+    },
+    "idempotencyKey": "idem_fixture_send01"
+  }
+}

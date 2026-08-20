@@ -155,12 +155,12 @@ ThreadMesh 不应该再造一个 agent framework、工作流引擎或消息队�
 
 调研后的第一轮 SQLite/ACP 实验已经完成。当前主线调整为：
 
-1. 先收紧 summary、relationship、reason code 和 capability schema；
-2. 联合定义 authenticated principal、effective grant 与 task/mailbox binding；
-3. 固化 admission claim、durable receipt 和 `outcome-unknown` reconciliation；
+1. summary、relationship、reason code 和 capability coherence 已完成；
+2. authenticated principal、effective grant 与 JSON-RPC task/mailbox binding 已完成；
+3. 下一步固化 admission claim、durable receipt 和 `outcome-unknown` reconciliation；
 4. 增加 typed interruption result 与 verification attestation；
 5. 完成至少一次组织外 independent review，关闭 M0；
-6. 再完成 M1 storage、policy、dispatcher、inspector 和双 mock harness；
+6. 再完成 M1 storage、policy、dispatcher、inspector 和完整双 mock harness matrix；
 7. 最后扩展 Codex 与第二类真实 harness adapter，再做主动发现评估。
 
 详见[当前项目状态](../10-planning/project-status.md)与

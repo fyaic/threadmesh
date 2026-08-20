@@ -6,6 +6,8 @@ import { fileURLToPath } from "node:url";
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 
+import { grantAuthorizationDigest } from "../src/protocol-validator.mjs";
+
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const specRoot = path.join(root, "spec");
 const schemaRoot = path.join(specRoot, "schema");
@@ -109,8 +111,12 @@ for (const testCase of manifest.schemaCases) {
   if (actual && schema.$id.endsWith("/relationship-grant.schema.json")) {
     const createdAt = Date.parse(fixture.createdAt);
     actual =
+      fixture.authorization.decidedAt === fixture.createdAt &&
       (!fixture.expiresAt || createdAt < Date.parse(fixture.expiresAt)) &&
       (!fixture.revokedAt || createdAt <= Date.parse(fixture.revokedAt));
+    if (actual) {
+      actual = fixture.authorization.integrity.digest === grantAuthorizationDigest(fixture);
+    }
   }
 
   if (
@@ -119,6 +125,16 @@ for (const testCase of manifest.schemaCases) {
     fixture.audience.visibility === "relationship-scoped"
   ) {
     actual = fixture.audience.relationshipIds.includes(fixture.projection.relationshipId);
+  }
+
+  if (
+    actual &&
+    schema.$id.endsWith("/relationship-proposal.schema.json")
+  ) {
+    actual =
+      Date.parse(fixture.createdAt) < Date.parse(fixture.expiresAt) &&
+      fixture.source.taskId === fixture.proposedBy.task.taskId &&
+      fixture.source.incarnationId === fixture.proposedBy.task.incarnationId;
   }
 
   if (actual !== testCase.valid) {

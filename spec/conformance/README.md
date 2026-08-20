@@ -17,6 +17,10 @@ The negative cases are security properties, not malformed examples to copy:
 - decision states cannot carry contradictory reason codes;
 - active modes require matching intents and runtime features;
 - peer, dependency, child, and observer grants cannot escalate authority;
+- user authorship requires an actor ID and JSON-RPC params cannot inject an
+  operation principal;
+- proposals remain non-authoritative and effective grant decision digests must
+  match canonical authorization content;
 - terminal state machines cannot silently regress.
 
 Run all checks from the repository root with `npm test`.

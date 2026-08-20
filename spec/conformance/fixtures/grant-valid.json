@@ -20,6 +20,14 @@
     "actorType": "user",
     "actorId": "owner"
   },
+  "authorization": {
+    "authority": "owner",
+    "authenticationId": "authn_owner_fixture01",
+    "decisionId": "decision_supervisor01",
+    "decidedAt": "2026-08-20T08:00:00Z",
+    "principal": { "actorType": "user", "actorId": "owner" },
+    "integrity": { "algorithm": "sha-256", "digest": "sha256:b9314c3f06d54f3421b20fcdd6329e1269ce9d81c9463e8ad146112d1efd5e5b" }
+  },
   "createdAt": "2026-08-20T08:00:00Z",
   "expiresAt": "2026-08-20T10:00:00Z"
 }

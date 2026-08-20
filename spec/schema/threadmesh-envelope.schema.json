@@ -54,8 +54,19 @@
         "actorType": {
           "enum": ["user", "agent", "service", "policy"]
         },
+        "actorId": { "type": "string", "minLength": 1, "maxLength": 200 },
         "harness": { "type": "string", "minLength": 1, "maxLength": 200 }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "actorType": { "enum": ["user", "policy"] } },
+            "required": ["actorType"]
+          },
+          "then": { "required": ["actorId"] },
+          "else": { "properties": { "actorId": false } }
+        }
+      ]
     },
     "target": {
       "$ref": "https://threadmesh.dev/spec/0.0-draft/types.schema.json#/$defs/taskRef"

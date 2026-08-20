@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://threadmesh.dev/spec/0.0-draft/auth-context.schema.json",
+  "title": "ThreadMesh transport-authenticated operation context",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "specVersion",
+    "authenticationId",
+    "mechanism",
+    "principal",
+    "authenticatedAt"
+  ],
+  "properties": {
+    "specVersion": { "const": "0.0-draft" },
+    "authenticationId": {
+      "type": "string",
+      "pattern": "^authn_[A-Za-z0-9][A-Za-z0-9._:-]{4,190}$"
+    },
+    "mechanism": {
+      "enum": ["local-static-token", "mutual-tls", "oauth-access-token", "host-attested"]
+    },
+    "principal": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "principalId"],
+          "properties": {
+            "kind": { "enum": ["user", "policy"] },
+            "principalId": { "type": "string", "minLength": 1, "maxLength": 200 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "taskId", "incarnationId"],
+          "properties": {
+            "kind": { "const": "task" },
+            "taskId": { "type": "string", "minLength": 1, "maxLength": 200 },
+            "incarnationId": {
+              "type": "string",
+              "pattern": "^inc_[A-Za-z0-9][A-Za-z0-9._:-]{6,196}$"
+            }
+          }
+        }
+      ]
+    },
+    "authenticatedAt": { "type": "string", "format": "date-time" }
+  }
+}
