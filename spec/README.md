@@ -12,6 +12,9 @@ This directory contains machine-readable artifacts for the pre-alpha protocol.
 - [`threadmesh-audit-event.schema.json`](schema/threadmesh-audit-event.schema.json) — immutable transition evidence.
 - [`threadmesh-types.schema.json`](schema/threadmesh-types.schema.json) — shared task, actor, freshness, delivery, evidence, and reason types.
 - [`threadmesh-conformance-manifest.schema.json`](schema/threadmesh-conformance-manifest.schema.json) — executable fixture manifest.
+- [`threadmesh-auth-context.schema.json`](schema/threadmesh-auth-context.schema.json) — transport-authenticated operation identity.
+- [`threadmesh-relationship-proposal.schema.json`](schema/threadmesh-relationship-proposal.schema.json) — non-authoritative agent proposal.
+- [`threadmesh-jsonrpc.schema.json`](schema/threadmesh-jsonrpc.schema.json) — JSON-RPC requests, success responses, and typed errors.
 
 The schemas are exploratory and use the version label `0.0-draft`. They are not a compatibility promise.
 
@@ -32,11 +35,9 @@ fixture, checks envelope chronology, and evaluates the draft state machines.
 
 ## Planned additions
 
-- authenticated JSON-RPC or MCP operation binding;
-- task registration, incarnation rotation, and receiver mailbox schemas;
 - durable receipts and outcome-unknown reconciliation;
 - typed interruption results and verification attestations;
-- adapter behavior scenarios across two distinct mock harness profiles.
+- additional live adapter behavior profiles.
 
-The SQLite/ACP prototype supplies implementation feedback for these additions,
-but its in-process methods are not the normative binding.
+The executable JSON-RPC binding supplies local implementation evidence. It is
+not an Internet-facing server or a production credential verifier.

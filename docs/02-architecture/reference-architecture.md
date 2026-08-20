@@ -56,17 +56,19 @@ The initial implementation may run as a local daemon with adapters in separate p
 
 ## Current implementation slice
 
-The repository currently implements only a trusted in-process slice of this
+The repository currently implements a local authenticated slice of this
 architecture:
 
 - [`SqliteCoordinator`](../../src/coordinator/sqlite-coordinator.mjs) combines a
-  minimal registry, owner-scoped grants, mailbox, dispositions, admission
-  claims, and audit events in one process;
+  registry, proposals, effective grants, summaries, mailbox, durable claims,
+  dispositions, operation replay, and audit events in one process;
+- [`ThreadMeshJsonRpcBinding`](../../src/bindings/jsonrpc.mjs) derives operation
+  principals from a host authenticator and exposes typed public methods;
 - [`AcpStdioAdapter`](../../src/adapters/acp-stdio.mjs) binds a registered ACP
   session, denies permission requests, and returns prompt evidence;
-- the caller manually composes prepare, adapter dispatch, and confirmation;
-- no user/product UI, event-stream inspector, authenticated service boundary,
-  or OS sandbox is included.
+- the caller still composes prepare, adapter dispatch, and confirmation;
+- no user/product UI, event-stream inspector, production network credential
+  verifier, or OS sandbox is included.
 
 This slice validates failure semantics and informs the target architecture. It
 is not yet the independently deployable control plane shown above.

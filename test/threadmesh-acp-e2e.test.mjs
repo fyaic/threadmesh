@@ -44,7 +44,7 @@ test("moves a trusted in-process peer suggestion into its registered ACP receive
       },
       owner,
     );
-    coordinator.installGrant(
+    coordinator.issueGrant(
       {
         specVersion: "0.0-draft",
         grantId: "grant_task_a_b",
@@ -57,9 +57,13 @@ test("moves a trusted in-process peer suggestion into its registered ACP receive
         allowedDeliveryModes: ["checkpoint-offer"],
         summaryVisibility: "coordination",
         structuredGateResponses: false,
-        grantedBy: { actorType: "user", actorId: "owner" },
         createdAt: "2026-08-20T08:00:00Z",
         expiresAt: "2026-08-20T10:00:00Z",
+      },
+      {
+        decisionId: "decision_task_a_b",
+        authenticationId: "authn_owner_e2e01",
+        decidedAt: "2026-08-20T08:00:00Z",
       },
       owner,
     );

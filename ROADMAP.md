@@ -14,14 +14,16 @@ snapshot and ordered workstreams.
 - [x] Publish draft envelope and capability schemas.
 - [x] Resolve the initial design questions captured by ADRs 0004–0007.
 - [x] Run distributed-systems, safety, and adapter internal review lanes.
-- [ ] Resolve normative review blockers
-  [#15](https://github.com/fyaic/threadmesh/issues/15)–
-  [#17](https://github.com/fyaic/threadmesh/issues/17) and
+- [x] Publish authenticated authority and executable operation bindings
+  ([#15](https://github.com/fyaic/threadmesh/issues/15),
+  [#17](https://github.com/fyaic/threadmesh/issues/17)).
+- [ ] Resolve remaining normative review blockers
+  [#16](https://github.com/fyaic/threadmesh/issues/16) and
   [#19](https://github.com/fyaic/threadmesh/issues/19).
 - [x] Enforce summary, relationship, disposition, and capability coherence (#18).
 - [ ] Accept two independent design reviews.
 
-Current accounting: 6 milestone issues closed and 5 open. The internal reviews
+Current accounting: 8 milestone issues closed and 3 open. The internal reviews
 approved the conservative experimental prototype after fixes, but they do not
 satisfy [#7](https://github.com/fyaic/threadmesh/issues/7).
 

@@ -51,6 +51,11 @@ target: `supervisor`, `parent`, `child`, `peer`, `dependency`, or `observer`.
 Ownership is stored separately. Bidirectional peer authority requires one grant
 in each direction.
 
+Agents may create a separate expiring `RelationshipProposal`. It contains the
+requested relationship and a reason but no authority. An effective relationship
+grant adds an authenticated owner/policy decision and canonical integrity
+digest.
+
 ## Task summary projection
 
 ```text
@@ -61,9 +66,32 @@ TaskSummaryProjection
   summary_visibility { state-only | coordination | objective-hint }
 ```
 
-The projection is part of the signed or authenticated read context in a future
-binding. A consumer reauthorizes it against the current effective grant before
-returning relationship-scoped fields.
+The projection is part of the authenticated JSON-RPC read context. A consumer
+reauthorizes it against the current effective grant before returning
+relationship-scoped fields.
+
+## Operation replay and mailbox claims
+
+```text
+OperationReplay
+  authentication_id
+  method
+  idempotency_key
+  request_digest
+  result
+
+MailboxClaim
+  message_identity
+  receiver_task_incarnation
+  expected_disposition_revision
+  random_claim_token
+  state { claimed | acknowledged }
+  expires_at
+```
+
+Operation replay makes database mutations durable across binding restarts.
+Mailbox claims coordinate receiver workers and remain distinct from irreversible
+adapter-effect admission claims.
 
 ## Coordination envelope
 

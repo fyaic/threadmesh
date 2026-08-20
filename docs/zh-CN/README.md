@@ -28,10 +28,11 @@ ThreadMesh 并不赋予 agent 任意修改其他 session 的权力。它提供�
 
 ## 进度说明
 
-当前仓库已从纯文档研究进入实验原型阶段，但规范进度仍落后于代码：
+当前仓库已从纯文档研究进入可执行协议与实验原型阶段：
 
-- SQLite/ACP suggestion 路径已有自动化测试；
+- SQLite/JSON-RPC/ACP suggestion 路径已有自动化测试；
+- authenticated principal、effective grant、task lifecycle、mailbox 与 typed
+  JSON-RPC error 已有公开 schema 和两类 mock harness；
 - Kimi ACP 握手通过，真实模型调用仍受额度阻塞；
-- M0 的认证、binding、一致性、reconciliation、interrupt/verification 和
-  外部 review 尚未完成；
+- M0 仍待 reconciliation、interrupt/verification 和外部 review；
 - 在 M0 稳定前，不把更多 live adapter 当作主线完成度。

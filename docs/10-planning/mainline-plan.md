@@ -33,6 +33,11 @@ same vocabulary.
 Primary issues: [#15](https://github.com/fyaic/threadmesh/issues/15) and
 [#17](https://github.com/fyaic/threadmesh/issues/17).
 
+Status: completed in the authenticated JSON-RPC binding change. Claimed
+authorship is checked against transport-derived principals; proposals and
+effective grants are distinct; lifecycle, mailbox, response, wait, disposition,
+and audit methods are executable through two serialized mock harness profiles.
+
 - separate claimed authorship from authenticated operation identity;
 - define effective grants and proposal/approval boundaries;
 - publish task registration, incarnation rotation, mailbox read/claim, respond,
@@ -110,11 +115,10 @@ After M0 closes and M1 has an observable coordinator:
 
 Keep each change independently reviewable:
 
-1. `spec: publish authenticated task and mailbox operation binding`
-2. `spec: define receipts, in-flight claims, and outcome reconciliation`
-3. `spec: add interruption results and verification attestations`
-4. `docs: publish the external M0 reviewer packet`
-5. `feat: complete the M1 storage and migration contract`
+1. `spec: define receipts, in-flight claims, and outcome reconciliation`
+2. `spec: add interruption results and verification attestations`
+3. `docs: publish the external M0 reviewer packet`
+4. `feat: complete the M1 storage and migration contract`
 
 ## Mainline guardrails
 

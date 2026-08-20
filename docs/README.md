@@ -13,10 +13,11 @@ The documentation is organized from intent to implementation. New readers should
 7. [Context sovereignty](01-concepts/context-sovereignty.md)
 8. [Reference architecture](02-architecture/reference-architecture.md)
 9. [Protocol overview](03-protocol/README.md)
-10. [Threat model](04-safety/threat-model.md)
-11. [Adapter contract](05-adapters/adapter-contract.md)
-12. [Design reviews](09-reviews/README.md)
-13. [Mainline plan](10-planning/mainline-plan.md)
+10. [JSON-RPC binding](03-protocol/jsonrpc-binding.md)
+11. [Threat model](04-safety/threat-model.md)
+12. [Adapter contract](05-adapters/adapter-contract.md)
+13. [Design reviews](09-reviews/README.md)
+14. [Mainline plan](10-planning/mainline-plan.md)
 
 ## Directory guide
 

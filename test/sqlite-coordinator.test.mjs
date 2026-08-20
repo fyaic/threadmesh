@@ -4,7 +4,11 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-import { SqliteCoordinator } from "../src/coordinator/sqlite-coordinator.mjs";
+import {
+  createEffectiveGrant,
+  SqliteCoordinator,
+} from "../src/coordinator/sqlite-coordinator.mjs";
+import { grantAuthorizationDigest } from "../src/protocol-validator.mjs";
 
 const NOW = Date.parse("2026-08-20T09:00:00Z");
 const owner = { kind: "user", principalId: "owner" };
@@ -23,6 +27,11 @@ const receiverPrincipal = {
   taskId: "task_receiver",
   incarnationId: "inc_receiver01",
 };
+const grantDecision = {
+  decisionId: "decision_sender_receiver",
+  authenticationId: "authn_owner_test01",
+  decidedAt: "2026-08-20T08:00:00Z",
+};
 
 function grant() {
   return {
@@ -37,7 +46,6 @@ function grant() {
     allowedDeliveryModes: ["checkpoint-offer"],
     summaryVisibility: "coordination",
     structuredGateResponses: false,
-    grantedBy: { actorType: "user", actorId: "owner" },
     createdAt: "2026-08-20T08:00:00Z",
     expiresAt: "2026-08-20T10:00:00Z",
   };
@@ -95,7 +103,7 @@ function createCoordinator(filename = ":memory:", clock = () => NOW) {
     },
     owner,
   );
-  coordinator.installGrant(grant(), owner);
+  coordinator.issueGrant(grant(), grantDecision, owner);
   return coordinator;
 }
 
@@ -173,12 +181,13 @@ test("does not revive an older grant after a newer version is revoked", () => {
   const coordinator = createCoordinator();
   try {
     coordinator.submit(envelope(), senderPrincipal);
-    coordinator.installGrant(
+    coordinator.issueGrant(
       {
         ...grant(),
         grantId: "grant_sender_receiver_v2",
         grantVersion: 2,
       },
+      { ...grantDecision, decisionId: "decision_sender_receiver_v2" },
       owner,
     );
     let pending = coordinator.listPending(
@@ -330,6 +339,7 @@ test("does not trust sender-claimed control-plane provenance", () => {
           taskId: "task_sender",
           incarnationId: "inc_sender01",
           actorType,
+          ...(["user", "policy"].includes(actorType) ? { actorId: "owner" } : {}),
           harness: "harness-a",
         },
       });
@@ -343,7 +353,7 @@ test("does not trust sender-claimed control-plane provenance", () => {
   }
 });
 
-test("does not install self-issued or mismatched grants", () => {
+test("does not install self-issued, mismatched, or tampered grants", () => {
   const coordinator = new SqliteCoordinator({ clock: () => NOW });
   try {
     coordinator.registerTask(
@@ -354,29 +364,40 @@ test("does not install self-issued or mismatched grants", () => {
       { taskId: "task_receiver", incarnationId: "inc_receiver01", harness: "harness-b" },
       owner,
     );
+    const effective = createEffectiveGrant(grant(), grantDecision, owner);
+    const selfIssued = {
+      ...effective,
+      grantedBy: { actorType: "agent", actorId: "task_sender" },
+      authorization: {
+        ...effective.authorization,
+        principal: { actorType: "agent", actorId: "task_sender" },
+      },
+    };
+    selfIssued.authorization.integrity = {
+      algorithm: "sha-256",
+      digest: grantAuthorizationDigest(selfIssued),
+    };
     assert.throws(
-      () =>
-        coordinator.installGrant(
-          { ...grant(), grantedBy: { actorType: "agent", actorId: "task_sender" } },
-          owner,
-        ),
+      () => coordinator.installGrant(selfIssued, owner),
+      { code: "threadmesh_grant_invalid" },
+    );
+    assert.throws(
+      () => coordinator.installGrant(effective, {
+        kind: "user",
+        principalId: "different-owner",
+      }),
       { code: "threadmesh_grant_issuer_invalid" },
     );
     assert.throws(
-      () =>
-        coordinator.installGrant(grant(), {
-          kind: "user",
-          principalId: "different-owner",
-        }),
-      { code: "threadmesh_grant_issuer_invalid" },
-    );
-    assert.throws(
-      () =>
-        coordinator.installGrant(
-          { ...grant(), grantedBy: { actorType: "user" } },
-          owner,
-        ),
-      { code: "threadmesh_grant_issuer_invalid" },
+      () => coordinator.installGrant(
+        {
+          ...effective,
+          allowedIntents: ["notify"],
+          allowedDeliveryModes: ["side-channel"],
+        },
+        owner,
+      ),
+      { code: "threadmesh_grant_invalid" },
     );
   } finally {
     coordinator.close();
@@ -397,8 +418,9 @@ test("enforces task ownership for user-issued grants", () => {
       alice,
     );
     assert.throws(
-      () => coordinator.installGrant(
-        { ...grant(), grantedBy: { actorType: "user", actorId: "bob" } },
+      () => coordinator.issueGrant(
+        grant(),
+        { ...grantDecision, decisionId: "decision_bob_grant" },
         bob,
       ),
       { code: "threadmesh_grant_scope_not_authorized" },
@@ -440,10 +462,14 @@ test("rejects inverted envelope and grant lifetimes at runtime", () => {
       owner,
     );
     assert.throws(
-      () => coordinator.installGrant({ ...grant(), expiresAt: grant().createdAt }, owner),
+      () => coordinator.issueGrant(
+        { ...grant(), expiresAt: grant().createdAt },
+        grantDecision,
+        owner,
+      ),
       { code: "threadmesh_grant_invalid" },
     );
-    coordinator.installGrant(grant(), owner);
+    coordinator.issueGrant(grant(), grantDecision, owner);
     assert.throws(
       () => coordinator.submit(envelope({ expiresAt: envelope().createdAt }), senderPrincipal),
       { code: "threadmesh_envelope_invalid" },

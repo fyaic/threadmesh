@@ -22,6 +22,11 @@ All notable changes will be documented here. The project follows Keep a Changelo
 - Evidence-backed project status and mainline execution plan.
 - Negative conformance fixtures for summary disclosure, relationship direction,
   disposition reasons, capability freshness, cancellation, and idle wake.
+- Transport-authenticated JSON-RPC schemas and an executable local binding with
+  typed errors, durable idempotency, CAS, and cursor-based reads.
+- Relationship proposals, owner/policy-generated effective grants, task attach
+  and incarnation rotation, projected summaries, and mailbox claim/ack.
+- Pull-mailbox and event-watching mock harness clients with restart recovery.
 
 ### Changed
 
@@ -31,3 +36,5 @@ All notable changes will be documented here. The project follows Keep a Changelo
 - Task-summary projections now bind relationship, grant version, and disclosure
   level; relationship grants, dispositions, and adapter capabilities reject
   incoherent combinations at schema validation time.
+- Claimed request authorship is separated from transport-authenticated operation
+  identity; canonical effective-grant decision digests are recomputed.

@@ -1,0 +1,21 @@
+{
+  "specVersion": "0.0-draft",
+  "grantId": "grant_missing_authorization",
+  "grantVersion": 1,
+  "relationshipId": "rel_missing_authorization",
+  "relationshipType": "peer",
+  "source": {
+    "taskId": "task_fixture_sender",
+    "incarnationId": "inc_fixture_sender01"
+  },
+  "target": {
+    "taskId": "task_fixture_target",
+    "incarnationId": "inc_fixture_target01"
+  },
+  "allowedIntents": ["suggest"],
+  "allowedDeliveryModes": ["checkpoint-offer"],
+  "summaryVisibility": "coordination",
+  "structuredGateResponses": false,
+  "grantedBy": { "actorType": "user", "actorId": "owner" },
+  "createdAt": "2026-08-20T09:00:00Z"
+}

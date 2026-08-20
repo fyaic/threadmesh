@@ -5,6 +5,11 @@ experimental ACP implementation now lives in
 [`src/adapters/acp-stdio.mjs`](../../src/adapters/acp-stdio.mjs); it is evidence,
 not a production compatibility claim.
 
+For the portable control-plane surface, start with the
+[JSON-RPC binding](../03-protocol/jsonrpc-binding.md). Keep transport credentials
+outside JSON-RPC params and map verified identity to an `AuthContext` before
+dispatch.
+
 For a deliberately conservative ACP example, see the
 [Kimi Code experiment](../05-adapters/kimi-code.md) and its
 [smoke evidence](../09-reviews/2026-08-20-kimi-code-smoke.md).

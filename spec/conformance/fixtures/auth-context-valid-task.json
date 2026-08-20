@@ -1,0 +1,11 @@
+{
+  "specVersion": "0.0-draft",
+  "authenticationId": "authn_fixture_task01",
+  "mechanism": "host-attested",
+  "principal": {
+    "kind": "task",
+    "taskId": "task_fixture_sender",
+    "incarnationId": "inc_fixture_sender01"
+  },
+  "authenticatedAt": "2026-08-20T09:00:00Z"
+}

@@ -17,6 +17,7 @@
     "summaryVisibility",
     "structuredGateResponses",
     "grantedBy",
+    "authorization",
     "createdAt"
   ],
   "properties": {
@@ -59,7 +60,62 @@
     },
     "structuredGateResponses": { "const": false },
     "grantedBy": {
-      "$ref": "https://threadmesh.dev/spec/0.0-draft/types.schema.json#/$defs/actorRef"
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["actorType", "actorId"],
+      "properties": {
+        "actorType": { "enum": ["user", "policy"] },
+        "actorId": { "type": "string", "minLength": 1, "maxLength": 200 }
+      }
+    },
+    "authorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "authority",
+        "authenticationId",
+        "decisionId",
+        "decidedAt",
+        "principal",
+        "integrity"
+      ],
+      "properties": {
+        "authority": { "enum": ["owner", "policy"] },
+        "authenticationId": {
+          "type": "string",
+          "pattern": "^authn_[A-Za-z0-9][A-Za-z0-9._:-]{4,190}$"
+        },
+        "decisionId": {
+          "type": "string",
+          "pattern": "^decision_[A-Za-z0-9][A-Za-z0-9._:-]{4,190}$"
+        },
+        "proposalId": {
+          "type": "string",
+          "pattern": "^proposal_[A-Za-z0-9][A-Za-z0-9._:-]{4,188}$"
+        },
+        "decidedAt": { "type": "string", "format": "date-time" },
+        "principal": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["actorType", "actorId"],
+          "properties": {
+            "actorType": { "enum": ["user", "policy"] },
+            "actorId": { "type": "string", "minLength": 1, "maxLength": 200 }
+          }
+        },
+        "integrity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["algorithm", "digest"],
+          "properties": {
+            "algorithm": { "const": "sha-256" },
+            "digest": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            }
+          }
+        }
+      }
     },
     "createdAt": { "type": "string", "format": "date-time" },
     "expiresAt": { "type": "string", "format": "date-time" },

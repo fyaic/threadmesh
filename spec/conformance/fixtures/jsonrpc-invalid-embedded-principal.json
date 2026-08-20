@@ -1,0 +1,15 @@
+{
+  "jsonrpc": "2.0",
+  "id": "fixture-injection-1",
+  "method": "tasks.get",
+  "params": {
+    "task": {
+      "taskId": "task_fixture_sender",
+      "incarnationId": "inc_fixture_sender01"
+    },
+    "principal": {
+      "kind": "policy",
+      "principalId": "attacker-claimed-policy"
+    }
+  }
+}

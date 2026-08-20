@@ -2,23 +2,36 @@
 
 > Draft normative document. Method names are transport-neutral logical operations.
 
-This document describes the intended portable surface. The SQLite prototype
-does not constitute a transport binding. Registration, mailbox reads,
-authenticated operation context, request/response schemas, and typed errors are
-tracked in [#17](https://github.com/fyaic/threadmesh/issues/17).
+This document describes the portable logical surface. The executable
+[JSON-RPC binding](jsonrpc-binding.md) supplies authenticated operation context,
+request/response schemas, typed errors, durable idempotency, CAS, and two mock
+harness scenarios. Other bindings must preserve the same authority and state
+semantics.
 
 ## Task registration
 
 ### `tasks.register`
 
 Registers a task incarnation, owner scope, harness identity, capabilities, and
-adapter-local reference. The normative identity proof, attach flow, and
-incarnation-rotation semantics are not yet defined.
+optional adapter-local reference. Registration is idempotent within the
+authenticated operation scope.
+
+### `tasks.attach`
+
+Binds an adapter-local reference to an active task under revision CAS. Only the
+task itself, its owner, or policy may attach it.
+
+### `tasks.rotateIncarnation`
+
+Atomically retires the previous incarnation and registers a new incarnation for
+the same logical task under owner/policy authority and revision CAS. Retiring an
+incarnation invalidates grants bound to it even if an old credential remains.
 
 ### `tasks.publishSummary`
 
 Publishes a privacy-bounded summary for relationship-scoped discovery. Summary
-visibility MUST remain constrained by the current effective grant.
+visibility MUST remain constrained by the current effective grant. Publication
+uses summary-version CAS.
 
 ## Discovery
 
@@ -40,9 +53,18 @@ than returning fields authorized by an older grant version.
 ### `mailbox.listPending`
 
 Returns receiver-owned, currently authorized pending messages using an opaque
-cursor. The portable claim, acknowledgement, expiry, and restart behavior is
-not yet specified; the experimental coordinator provides only an in-process
-method.
+cursor. Expired, revoked, superseded-grant, and retired-incarnation messages are
+not disclosed.
+
+### `mailbox.claim`
+
+Creates or replays a bounded persistent receiver claim for one message and
+disposition revision. A claim grants no adapter-effect authority.
+
+### `mailbox.ack`
+
+Acknowledges a claimed message with the exact claim token and records an
+accepted, rejected, or deferred receiver decision under revision CAS.
 
 ### `messages.send`
 
@@ -82,26 +104,33 @@ Waits for task state, new disposition, or checkpoint events. Implementations SHO
 
 ### `relationships.propose`
 
-Proposes a dependency or peer edge. Proposal alone grants no task visibility or write authority.
+Proposes a relationship edge. Proposal alone grants no task visibility or write
+authority and expires independently.
 
 ### `relationships.grant`
 
-Creates or updates an authorized relationship. Only an appropriate owner or policy actor may grant it.
+Creates or updates an authorized relationship. Only an authenticated owner or
+policy actor may grant it. The effective grant binds issuer, decision ID,
+version, optional proposal ID, and canonical integrity digest.
 
 ### `relationships.revoke`
 
 Revokes future authority. Queued, unapplied state-changing messages MUST be re-evaluated after revocation.
 
-## Experimental implementation mapping
+## Reference JSON-RPC mapping
 
-| Portable concern | Current in-process method | Limitation |
+| Portable concern | Public JSON-RPC method | Current limitation |
 |---|---|---|
-| Task registration | `registerTask` | Trusted principal injection, no attach/rotation binding |
-| Task resolution | `getTask` | No relationship-scoped summary projection |
-| Grant install/revoke | `installGrant`, `revokeGrant` | Owner checks are local, not transport-authenticated |
-| Envelope send | `submit` | Suggestion-focused prototype |
-| Mailbox read | `listPending` | No published wire schema |
-| Receiver decision | `respond` | Subset of normative disposition states |
-| External dispatch claim | `prepareContextAdmission` | ACP-specific adapter reference |
-| Delivery confirmation | `confirmContextAdmission` | Trusted process evidence, not signed attestation |
-| Disposition/audit read | `getDisposition`, `auditEvents` | No cursor event stream or redaction projection |
+| Task lifecycle | `tasks.register`, `tasks.attach`, `tasks.rotateIncarnation` | Local token authenticator only |
+| Summary projection | `tasks.publishSummary`, `tasks.getSummary` | Relationship-scoped profile only |
+| Grant proposal/decision | `relationships.propose`, `relationships.grant`, `relationships.revoke` | No signed remote attestation |
+| Envelope send | `messages.send` | Core state remains suggestion-focused |
+| Mailbox receive | `mailbox.listPending`, `mailbox.claim`, `mailbox.ack` | Fixed 60-second local claim window |
+| Receiver decision | `messages.respond` | Reference runtime supports accepted/rejected/deferred |
+| Event observation | `tasks.wait` | Immediate cursor poll, not hosted long-poll |
+| Disposition/audit read | `messages.getDisposition`, `audit.list` | Sender/receiver task projection only |
+
+External adapter dispatch still uses the trusted-process
+`prepareContextAdmission` and `confirmContextAdmission` methods. Durable receipt
+and outcome reconciliation are tracked in
+[#19](https://github.com/fyaic/threadmesh/issues/19).

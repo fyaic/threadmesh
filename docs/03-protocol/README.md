@@ -46,13 +46,14 @@ Cancellation request. A receiver MUST verify elevated authority and report wheth
 
 - [Message envelope](message-envelope.md)
 - [Operations](operations.md)
+- [JSON-RPC binding](jsonrpc-binding.md)
 - [Delivery semantics](delivery-semantics.md)
 - [Permission model](../04-safety/permission-model.md)
 - [Adapter contract](../05-adapters/adapter-contract.md)
 
 ## Current conformance boundary
 
-`npm test` validates schema compilation, 29 positive/negative fixture cases,
-and 7 transition cases. It does not yet validate an authenticated wire binding,
-two harness profiles, interruption results, verification attestations, or crash
-reconciliation. Those are mainline M0 work rather than inferred behavior.
+`npm test` validates schema compilation, 38 positive/negative fixture cases,
+7 transition cases, an authenticated serialized JSON-RPC path, and two mock
+harness profiles. It does not yet validate interruption results, verification
+attestations, production network authentication, or crash reconciliation.

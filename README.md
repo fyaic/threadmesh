@@ -8,14 +8,15 @@
 > coordinator and ACP adapter exist for conformance work, but no production
 > adapter has been released.
 
-The coordinator is currently a trusted, in-process, single-user experiment.
-Caller-supplied principal objects are identity injection points, not an
-authenticator; any network wrapper must bind them to authenticated transports.
+The executable JSON-RPC reference derives principals from a host authenticator
+outside the request body. Its static-token mechanism is local-only; production
+network credential verification and process isolation are not supplied.
 
 New: [Codex implementation deep dive](docs/07-research/codex-orchestration-deep-dive.md) ·
 [community evidence](docs/07-research/community-signals.md) ·
 [ecosystem landscape](docs/07-research/ecosystem-landscape.md) ·
 [design reviews](docs/09-reviews/README.md) ·
+[authenticated JSON-RPC binding](docs/03-protocol/jsonrpc-binding.md) ·
 [Kimi Code smoke evidence](docs/09-reviews/2026-08-20-kimi-code-smoke.md) ·
 [mainline plan](docs/10-planning/mainline-plan.md) ·
 [中文调研摘要](docs/zh-CN/research-summary.md)
@@ -91,28 +92,32 @@ spec/
   schema/            Machine-readable draft schemas
 src/
   adapters/          Experimental harness adapters
+  bindings/          Executable authenticated operation bindings
+  client/            Reference clients and mock harness profiles
   coordinator/       Experimental reference coordinator
 test/                Behavioral and conformance tests
 ```
 
 ## Current progress
 
-The repository now contains an executable `0.0-draft` specification and a
-reviewed experimental path through SQLite and ACP. Pull request
+The repository now contains an executable `0.0-draft` specification and
+reviewed experimental paths through SQLite, JSON-RPC, and ACP. Pull request
 [#20](https://github.com/fyaic/threadmesh/pull/20) added durable task and message
 state, owner-scoped grants, idempotency and CAS, single-use admission claims, a
-registered-session ACP adapter, and runtime coherence validation.
+registered-session ACP adapter, and runtime coherence validation. The current
+binding adds transport-derived principals, effective grant decisions, durable
+operation replay, receiver claims, and two public-path mock harness profiles.
 
 The implementation is deliberately narrower than the product vision:
 
-- M0 has 6 closed and 5 open issues after the coherence work in #18;
-- authenticated transport, normative reconciliation, typed
-  interruption/verification, and external review remain open;
+- M0 has 8 closed and 3 open issues after #15/#17;
+- normative reconciliation, typed interruption/verification, and external
+  review remain open;
 - M1 has partial prototype evidence, but all six acceptance issues remain open;
 - Kimi Code ACP initialization passed, while the real model-turn marker test is
   blocked by account quota and is not counted as a pass.
 
-The mainline is now protocol stabilization (#15/#17, #19, #16), followed
+The mainline is now protocol stabilization (#19, #16), followed
 by independent M0 review (#7) and completion of the local M1 coordinator. See
 the [project status](docs/10-planning/project-status.md),
 [mainline plan](docs/10-planning/mainline-plan.md), and

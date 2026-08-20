@@ -8,6 +8,12 @@
       "valid": true
     },
     {
+      "name": "reject user provenance without authenticated actor id",
+      "schema": "schema/threadmesh-envelope.schema.json",
+      "fixture": "conformance/fixtures/envelope-invalid-user-without-actor-id.json",
+      "valid": false
+    },
+    {
       "name": "valid freshness-bound steer",
       "schema": "schema/threadmesh-envelope.schema.json",
       "fixture": "conformance/fixtures/envelope-valid-steer.json",
@@ -110,6 +116,24 @@
       "valid": true
     },
     {
+      "name": "reject effective grant without authorization decision",
+      "schema": "schema/threadmesh-relationship-grant.schema.json",
+      "fixture": "conformance/fixtures/grant-invalid-missing-authorization.json",
+      "valid": false
+    },
+    {
+      "name": "reject agent-issued effective grant",
+      "schema": "schema/threadmesh-relationship-grant.schema.json",
+      "fixture": "conformance/fixtures/grant-invalid-agent-issued.json",
+      "valid": false
+    },
+    {
+      "name": "reject effective grant with tampered integrity digest",
+      "schema": "schema/threadmesh-relationship-grant.schema.json",
+      "fixture": "conformance/fixtures/grant-invalid-integrity-digest.json",
+      "valid": false
+    },
+    {
       "name": "reject steer grant without active steer mode",
       "schema": "schema/threadmesh-relationship-grant.schema.json",
       "fixture": "conformance/fixtures/grant-invalid-steer-mode.json",
@@ -174,6 +198,36 @@
       "schema": "schema/threadmesh-audit-event.schema.json",
       "fixture": "conformance/fixtures/audit-event-valid.json",
       "valid": true
+    },
+    {
+      "name": "valid transport-authenticated task context",
+      "schema": "schema/threadmesh-auth-context.schema.json",
+      "fixture": "conformance/fixtures/auth-context-valid-task.json",
+      "valid": true
+    },
+    {
+      "name": "valid non-authoritative relationship proposal",
+      "schema": "schema/threadmesh-relationship-proposal.schema.json",
+      "fixture": "conformance/fixtures/relationship-proposal-valid.json",
+      "valid": true
+    },
+    {
+      "name": "reject proposal whose claimed author is not its source",
+      "schema": "schema/threadmesh-relationship-proposal.schema.json",
+      "fixture": "conformance/fixtures/relationship-proposal-invalid-author.json",
+      "valid": false
+    },
+    {
+      "name": "valid JSON-RPC message send request",
+      "schema": "schema/threadmesh-jsonrpc.schema.json",
+      "fixture": "conformance/fixtures/jsonrpc-valid-send.json",
+      "valid": true
+    },
+    {
+      "name": "reject principal injection inside JSON-RPC params",
+      "schema": "schema/threadmesh-jsonrpc.schema.json",
+      "fixture": "conformance/fixtures/jsonrpc-invalid-embedded-principal.json",
+      "valid": false
     }
   ],
   "transitionCases": [

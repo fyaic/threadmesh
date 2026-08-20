@@ -40,8 +40,10 @@ Required follow-up:
 - return the original disposition for the same digest;
 - return `idempotency-conflict` for a different digest.
 
-The experimental SQLite coordinator now demonstrates this conservative rule,
-but it is not yet a versioned normative binding.
+The experimental SQLite coordinator demonstrated this conservative rule. The
+later JSON-RPC binding makes the sender-authenticated operation scope, canonical
+request digest, replay, and conflict behavior executable and normative for the
+draft.
 
 ### Orthogonal states need cross-state invariants and CAS
 
