@@ -53,3 +53,20 @@ Maps ThreadMesh task, run, checkpoint, and intent semantics onto the harness. It
 ## Deployment shapes
 
 The initial implementation may run as a local daemon with adapters in separate processes. Future deployments may embed the coordinator in one harness or place it behind a service boundary. Protocol semantics should not depend on the deployment shape.
+
+## Current implementation slice
+
+The repository currently implements only a trusted in-process slice of this
+architecture:
+
+- [`SqliteCoordinator`](../../src/coordinator/sqlite-coordinator.mjs) combines a
+  minimal registry, owner-scoped grants, mailbox, dispositions, admission
+  claims, and audit events in one process;
+- [`AcpStdioAdapter`](../../src/adapters/acp-stdio.mjs) binds a registered ACP
+  session, denies permission requests, and returns prompt evidence;
+- the caller manually composes prepare, adapter dispatch, and confirmation;
+- no user/product UI, event-stream inspector, authenticated service boundary,
+  or OS sandbox is included.
+
+This slice validates failure semantics and informs the target architecture. It
+is not yet the independently deployable control plane shown above.

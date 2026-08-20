@@ -4,18 +4,19 @@ The documentation is organized from intent to implementation. New readers should
 
 ## Start here
 
-1. [Vision](00-overview/vision.md)
-2. [Scope](00-overview/scope.md)
-3. [Design principles](00-overview/principles.md)
-4. [Terminology](00-overview/terminology.md)
-5. [Proactive coordination](01-concepts/proactive-coordination.md)
-6. [Context sovereignty](01-concepts/context-sovereignty.md)
-7. [Reference architecture](02-architecture/reference-architecture.md)
-8. [Protocol overview](03-protocol/README.md)
-9. [Threat model](04-safety/threat-model.md)
-10. [Adapter contract](05-adapters/adapter-contract.md)
-11. [Research synthesis](07-research/research-synthesis.md)
+1. [Current project status](10-planning/project-status.md)
+2. [Vision](00-overview/vision.md)
+3. [Scope](00-overview/scope.md)
+4. [Design principles](00-overview/principles.md)
+5. [Terminology](00-overview/terminology.md)
+6. [Proactive coordination](01-concepts/proactive-coordination.md)
+7. [Context sovereignty](01-concepts/context-sovereignty.md)
+8. [Reference architecture](02-architecture/reference-architecture.md)
+9. [Protocol overview](03-protocol/README.md)
+10. [Threat model](04-safety/threat-model.md)
+11. [Adapter contract](05-adapters/adapter-contract.md)
 12. [Design reviews](09-reviews/README.md)
+13. [Mainline plan](10-planning/mainline-plan.md)
 
 ## Directory guide
 
@@ -31,6 +32,7 @@ The documentation is organized from intent to implementation. New readers should
 | `07-research` | Prior art and unresolved questions | No |
 | `08-decisions` | Accepted Architecture Decision Records | Decision record |
 | `09-reviews` | Reviewer evidence, verdicts, and test limitations | No |
+| `10-planning` | Current status, milestone accounting, and execution plan | No |
 | `zh-CN` | Chinese orientation documents | No; English is canonical |
 
 Machine-readable schemas live under [`spec/schema`](../spec/schema).
@@ -42,6 +44,10 @@ Machine-readable schemas live under [`spec/schema`](../spec/schema).
 - [Ecosystem landscape](07-research/ecosystem-landscape.md)
 - [Research synthesis and project direction](07-research/research-synthesis.md)
 - [Open questions](07-research/open-questions.md)
+
+Research dossiers explain why the project chose its direction. Current
+execution priority is maintained separately in the
+[mainline plan](10-planning/mainline-plan.md).
 
 ## Normative language
 

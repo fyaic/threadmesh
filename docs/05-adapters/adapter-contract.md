@@ -36,6 +36,11 @@ Capabilities include:
 
 The draft schema is in [`spec/schema/threadmesh-capabilities.schema.json`](../../spec/schema/threadmesh-capabilities.schema.json).
 
+The checked-in Kimi ACP profile intentionally advertises only `suggest` with
+receiver-mediated `checkpoint-offer`. It advertises no checkpoint events,
+disposition callbacks, steer, interrupt, model-turn cancellation, or subprocess
+cancellation. See the [Kimi experiment](kimi-code.md).
+
 ## Forbidden approximations
 
 An adapter MUST NOT:
@@ -51,3 +56,12 @@ An adapter MUST NOT:
 ## Graceful degradation
 
 If a harness supports only new-turn messages, the adapter may support `notify` and `suggest` while declaring `steer` and `interrupt` unavailable. Portability is achieved through honest capability negotiation, not lowest-common-denominator ambiguity.
+
+## Current implementation status
+
+The ACP adapter is conformance evidence for session binding, replay separation,
+permission denial, timeout cleanup, and model-visible provenance labels. ACP v1
+still carries the peer object over an ordinary prompt surface, and the spawned
+agent retains native process privileges. Production adapter acceptance requires
+authenticated binding, OS isolation guidance, two-profile behavior tests, and
+the normative receipt/reconciliation contract.

@@ -1,5 +1,9 @@
 # Data model
 
+> The structures below describe the target model. The current SQLite prototype
+> implements a deliberately smaller subset in
+> [`src/coordinator/sqlite-coordinator.mjs`](../../src/coordinator/sqlite-coordinator.mjs).
+
 ## Task
 
 ```text
@@ -85,9 +89,42 @@ machines. The receiver uses stable reason codes for automation and optional
 detail for people. `adapter-submitted` and `context-admitted` deliberately do
 not claim that a model followed the content.
 
+## Admission claim
+
+```text
+AdmissionClaim
+  sender_incarnation_id
+  message_id
+  nonce
+  admission_token
+  expected_revision
+  grant_id
+  grant_version
+  adapter_ref
+  adapter_ref_digest
+  state { in-flight | completed | outcome-unknown? }
+  claimed_at
+  completed_at?
+```
+
+The experimental coordinator persists one claim per message before an external
+ACP dispatch. The claim is the revocation linearization boundary and prevents a
+second worker or restart from automatically redelivering the same prompt. A
+crash can leave a claim `in-flight`; the normative `outcome-unknown` and
+reconciliation rules remain open in
+[#19](https://github.com/fyaic/threadmesh/issues/19).
+
 ## Audit event
 
 Every state transition emits an event containing its subject, event type,
 actor, revision, timestamp, and optional previous-event hash or equivalent
 integrity reference. The initial implementation need not use a blockchain or
 distributed ledger.
+
+## Prototype-to-target gaps
+
+The prototype does not yet persist objective summaries, objective versions,
+sensitivity projections, typed failure reasons, evidence attestations, actor
+authentication, or hash-linked audit integrity. Storage migration, rollback,
+retention, and deletion policy remain part of
+[#9](https://github.com/fyaic/threadmesh/issues/9).

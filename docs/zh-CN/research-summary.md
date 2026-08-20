@@ -153,12 +153,18 @@ ThreadMesh 不应该再造一个 agent framework、工作流引擎或消息队�
 
 ## 推荐实施顺序
 
-1. 先完成 envelope、capability、mailbox、audit 和 conformance simulator；
-2. 做 Codex-to-Codex adapter，但先只开放 `notify` 和 receiver-mediated `suggest`；
-3. mailbox 稳定后再做 `wake-idle`；
-4. `steer` 和 `interrupt` 必须有显式 grant、freshness 和硬预算；
-5. 第二个 adapter 必须选择控制面不同的 harness，真正验证 cross-harness；
-6. 最后再做 A2A mapping 和远程 transport。
+调研后的第一轮 SQLite/ACP 实验已经完成。当前主线调整为：
+
+1. 先收紧 summary、relationship、reason code 和 capability schema；
+2. 联合定义 authenticated principal、effective grant 与 task/mailbox binding；
+3. 固化 admission claim、durable receipt 和 `outcome-unknown` reconciliation；
+4. 增加 typed interruption result 与 verification attestation；
+5. 完成至少一次组织外 independent review，关闭 M0；
+6. 再完成 M1 storage、policy、dispatcher、inspector 和双 mock harness；
+7. 最后扩展 Codex 与第二类真实 harness adapter，再做主动发现评估。
+
+详见[当前项目状态](../10-planning/project-status.md)与
+[主线计划](../10-planning/mainline-plan.md)。
 
 ## 完整文档
 
@@ -166,3 +172,5 @@ ThreadMesh 不应该再造一个 agent framework、工作流引擎或消息队�
 - [社区讨论证据](../07-research/community-signals.md)
 - [相似项目与协议版图](../07-research/ecosystem-landscape.md)
 - [调研综合与项目方向](../07-research/research-synthesis.md)
+- [当前项目状态](../10-planning/project-status.md)
+- [后续主线计划](../10-planning/mainline-plan.md)

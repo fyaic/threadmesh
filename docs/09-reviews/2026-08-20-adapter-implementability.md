@@ -54,3 +54,18 @@ profile is deliberately narrower and currently exposes only:
 
 Publish a typed mailbox and task-registration binding, add restart and
 provenance scenarios, and keep unsupported state-changing behavior explicit.
+
+## Prototype follow-up
+
+Pull request [#20](https://github.com/fyaic/threadmesh/pull/20) added stored ACP
+session references, persistent fake-session reload with unknown-session
+rejection, separation of load replay from the new turn, strict live-marker
+classification, runtime chronology checks, permission and timeout fixtures, and
+a schema-valid conservative capability profile. The reviewer approved the
+experimental adapter path after re-review.
+
+The public task/mailbox binding, two-harness behavior suite, and normative
+receipt semantics remain open in
+[#17](https://github.com/fyaic/threadmesh/issues/17),
+[#18](https://github.com/fyaic/threadmesh/issues/18), and
+[#19](https://github.com/fyaic/threadmesh/issues/19).

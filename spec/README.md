@@ -32,5 +32,12 @@ fixture, checks envelope chronology, and evaluates the draft state machines.
 
 ## Planned additions
 
-- JSON-RPC binding;
-- adapter behavior scenarios against live mock harnesses.
+- authenticated JSON-RPC or MCP operation binding;
+- task registration, incarnation rotation, and receiver mailbox schemas;
+- coherent summary, relationship, reason-code, and capability constraints;
+- durable receipts and outcome-unknown reconciliation;
+- typed interruption results and verification attestations;
+- adapter behavior scenarios across two distinct mock harness profiles.
+
+The SQLite/ACP prototype supplies implementation feedback for these additions,
+but its in-process methods are not the normative binding.

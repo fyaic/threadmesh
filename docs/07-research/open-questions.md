@@ -1,6 +1,12 @@
 # Open questions
 
-## Resolved M0 blockers
+## Resolved initial M0 questions
+
+These ADR-backed questions are resolved, but M0 remains open because the later
+review round identified normative blockers in
+[#15](https://github.com/fyaic/threadmesh/issues/15)–
+[#19](https://github.com/fyaic/threadmesh/issues/19) and independent review
+[#7](https://github.com/fyaic/threadmesh/issues/7) is incomplete.
 
 ### What is the minimum portable task summary?
 
@@ -37,6 +43,9 @@ the protocol has no bare `applied` state.
 - How should authority transfer work when a child becomes user-owned?
 - Can cross-harness adapters preserve provenance under incompatible role systems?
 - Which subset maps cleanly to A2A extensions?
+
+For ordered execution work rather than open-ended research, see the
+[mainline plan](../10-planning/mainline-plan.md).
 
 ## Evaluation dimensions
 
