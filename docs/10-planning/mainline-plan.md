@@ -170,7 +170,8 @@ preflight passes against CLI `0.145.0` in Draft
 [#39](https://github.com/fyaic/threadmesh/pull/39). The live first turn remains
 gated. The Kimi hardening candidate also passes a real no-model
 create/list/delete/absence lifecycle with exact binary digest; its live marker
-remains quota-blocked and gated.
+remains quota-blocked and gated in Draft
+[#40](https://github.com/fyaic/threadmesh/pull/40).
 
 After M0 closes and the M1 stack is merged and revalidated:
 

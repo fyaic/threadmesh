@@ -102,6 +102,8 @@ GitHub is authoritative for milestone closure.
   materially different third harness [#38](https://github.com/fyaic/threadmesh/issues/38).
 - Draft [#39](https://github.com/fyaic/threadmesh/pull/39) contains the Codex
   candidate and is stacked on retention Draft #35.
+- Draft [#40](https://github.com/fyaic/threadmesh/pull/40) contains the Kimi
+  lifecycle hardening candidate and is stacked on #39.
 - The Codex candidate implements suggestion-only capability negotiation,
   receiver-acceptance enforcement, exact turn evidence, server-request denial,
   timeout cleanup, generated-schema digesting, and a real no-model product
