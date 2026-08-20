@@ -123,6 +123,93 @@ export class AcpStdioAdapter {
     });
   }
 
+  async sessionExists({
+    command,
+    args = [],
+    cwd,
+    env = {},
+    sessionId,
+    timeoutMs = 15_000,
+  }) {
+    assertInvocation(command, args, cwd, env);
+    if (typeof sessionId !== "string" || sessionId.length === 0) {
+      throw codedError("acp_session_id_invalid");
+    }
+    return this.#withAgent({ command, args, cwd, env, timeoutMs }, async (ctx, control) => {
+      const initialization = projectInitialization(
+        await ctx.request(acp.methods.agent.initialize, initializationRequest(), {
+          cancellationSignal: control.signal,
+        }),
+      );
+      if (!initialization.agentCapabilities.sessionCapabilities?.list) {
+        throw codedError("acp_session_list_not_supported");
+      }
+      let cursor = null;
+      let pageCount = 0;
+      do {
+        pageCount += 1;
+        if (pageCount > 100) throw codedError("acp_session_list_limit");
+        const response = await ctx.request(
+          acp.methods.agent.session.list,
+          { cwd, ...(cursor ? { cursor } : {}) },
+          { cancellationSignal: control.signal },
+        );
+        if (!Array.isArray(response.sessions)) {
+          throw codedError("acp_session_list_invalid");
+        }
+        if (response.sessions.some((session) => session.sessionId === sessionId)) {
+          return {
+            sessionId,
+            exists: true,
+            pageCount,
+            snapshotDigest: initialization.snapshotDigest,
+          };
+        }
+        cursor = response.nextCursor ?? null;
+      } while (cursor);
+      return {
+        sessionId,
+        exists: false,
+        pageCount,
+        snapshotDigest: initialization.snapshotDigest,
+      };
+    });
+  }
+
+  async deleteSession({
+    command,
+    args = [],
+    cwd,
+    env = {},
+    sessionId,
+    timeoutMs = 15_000,
+  }) {
+    assertInvocation(command, args, cwd, env);
+    if (typeof sessionId !== "string" || sessionId.length === 0) {
+      throw codedError("acp_session_id_invalid");
+    }
+    return this.#withAgent({ command, args, cwd, env, timeoutMs }, async (ctx, control) => {
+      const initialization = projectInitialization(
+        await ctx.request(acp.methods.agent.initialize, initializationRequest(), {
+          cancellationSignal: control.signal,
+        }),
+      );
+      if (!initialization.agentCapabilities.sessionCapabilities?.delete) {
+        throw codedError("acp_session_delete_not_supported");
+      }
+      await ctx.request(
+        acp.methods.agent.session.delete,
+        { sessionId },
+        { cancellationSignal: control.signal },
+      );
+      return {
+        sessionId,
+        deleted: true,
+        snapshotDigest: initialization.snapshotDigest,
+      };
+    });
+  }
+
   async runPrompt({ command, args = [], cwd, env = {}, sessionId = null, promptText, timeoutMs = 120_000 }) {
     assertInvocation(command, args, cwd, env);
     if (typeof promptText !== "string" || promptText.length === 0) {

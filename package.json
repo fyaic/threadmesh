@@ -11,6 +11,7 @@
     "smoke:codex": "node scripts/smoke-codex.mjs",
     "smoke:codex:live": "THREADMESH_CODEX_LIVE=1 node scripts/smoke-codex.mjs",
     "smoke:kimi": "node scripts/smoke-kimi.mjs",
+    "smoke:kimi:live": "THREADMESH_KIMI_LIVE=1 node scripts/smoke-kimi.mjs",
     "test": "npm run validate:spec && npm run test:unit && npm run lint:docs"
   },
   "devDependencies": {

@@ -20,7 +20,8 @@ incarnation 轮换和两类 mock harness 都有自动化测试。
 - 本地静态 token 认证不是生产级网络认证；
 - ACP 中的 peer 内容仍通过普通 prompt surface；
 - steer/interrupt 未启用；
-- Kimi ACP 握手已通过，但真实模型调用因账户额度被阻塞，未计为成功。
+- Kimi ACP 握手以及真实 session 的 create/list/delete/absence 校验已通过；
+  早先的真实模型调用仍因账户额度被阻塞，未计为成功。
 - Codex CLI `0.145.0` 的真实 App Server 初始化、协议 schema 摘要和空的
   read-only thread 启动已通过；真实模型 marker 尚未运行，也未计为成功。
 

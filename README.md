@@ -126,7 +126,8 @@ The implementation is deliberately narrower than the product vision:
   real CLI `0.145.0` no-model handshake/thread-start preflight; its exact live
   marker, persisted resume, cleanup, and coordinator-mediated A-to-B path are
   implemented or planned but intentionally not counted as run;
-- Kimi Code ACP initialization passed, while the real model-turn marker test is
+- Kimi Code ACP initialization and exact create/list/delete/absence lifecycle
+  passed against the real product, while the earlier model-turn marker remains
   blocked by account quota and is not counted as a pass.
 
 The mainline is now independent M0 review (#7), sequential merge and `main`

@@ -40,7 +40,7 @@ test("runs a prompt and aggregates labelled ACP output", async () => {
   assert.equal(result.evidence.permissionDeniedCount, 0);
 });
 
-test("creates and reloads the same logical ACP session", async () => {
+test("creates, reloads, lists, and deletes the same logical ACP session", async () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "threadmesh-acp-"));
   const stateFile = path.join(directory, "sessions.json");
   const env = { FAKE_ACP_STATE_FILE: stateFile };
@@ -65,6 +65,34 @@ test("creates and reloads the same logical ACP session", async () => {
   assert.doesNotMatch(result.text, /REPLAY:/);
   assert.equal(result.evidence.sessionId, created.sessionId);
   assert.equal(result.evidence.sessionLoaded, true);
+  assert.equal(
+    (await adapter.sessionExists({
+      command: process.execPath,
+      args: [fixture],
+      cwd: root,
+      env,
+      sessionId: created.sessionId,
+    })).exists,
+    true,
+  );
+  const deleted = await adapter.deleteSession({
+    command: process.execPath,
+    args: [fixture],
+    cwd: root,
+    env,
+    sessionId: created.sessionId,
+  });
+  assert.equal(deleted.deleted, true);
+  assert.equal(
+    (await adapter.sessionExists({
+      command: process.execPath,
+      args: [fixture],
+      cwd: root,
+      env,
+      sessionId: created.sessionId,
+    })).exists,
+    false,
+  );
   await assert.rejects(
     adapter.runPrompt({
       command: process.execPath,

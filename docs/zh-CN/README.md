@@ -49,7 +49,8 @@ ThreadMesh 并不赋予 agent 任意修改其他 session 的权力。它提供�
   accept/reject/defer、stale/unsupported steer 与 interrupt、撤权和审计矩阵；
 - schema v3 retention purge 会墓碑化过期内容和失效引用，保留原始 digest，并
   跳过 `outcome-unknown` 或仍需人工对账的外部效果；
-- Kimi ACP 握手通过，真实模型调用仍受额度阻塞；
+- Kimi ACP 握手及真实 session 的创建、列出、删除、确认消失均已通过；真实
+  模型调用仍受额度阻塞；
 - Codex CLI `0.145.0` 的 App Server 真实无模型预检通过，已记录 273 个生成
   schema 文件的摘要、初始化摘要和空 read-only thread；真实模型 marker、
   持久 resume 和清理仍受门禁约束；

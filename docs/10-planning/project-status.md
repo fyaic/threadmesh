@@ -31,8 +31,8 @@ maintainer organization.
 | Local persistence | SQLite registry, proposals, grants, summaries, mailbox, claims, receipts, reconciliation, replay, audit, retention tombstones | Experimental |
 | Safety boundary | Authenticated authorship checks, effective-grant decisions, revocation, CAS | Executable local policy |
 | ACP adapter | ACP v1 initialize, session create/load, prompt aggregation, permission denial, timeout cleanup | Experimental |
-| Kimi Code | CLI 0.36.1 handshake and capability snapshot | Handshake verified |
-| Live Kimi model behavior | Prompt reached provider but returned billing-cycle quota exhaustion | Blocked, not passed |
+| Kimi Code | CLI 0.36.1 handshake plus exact create/list/delete/absence lifecycle | Real no-model preflight passed |
+| Live Kimi model behavior | Earlier prompt reached provider but returned billing-cycle quota exhaustion | Blocked, not passed |
 | Codex App Server | CLI 0.145.0, 273 generated-schema files, JSONL handshake, empty read-only thread start | Real no-model preflight passed |
 | Codex live model behavior | Exact marker, persisted resume, and cleanup script prepared | Gated, not run |
 | Independent review | Three internal lanes complete; external reviewer packet and public template published | Awaiting two external verdicts |
@@ -106,6 +106,9 @@ GitHub is authoritative for milestone closure.
   receiver-acceptance enforcement, exact turn evidence, server-request denial,
   timeout cleanup, generated-schema digesting, and a real no-model product
   preflight.
+- The Kimi hardening candidate now hashes the exact binary, timestamps each
+  run, verifies one real session through create/list/delete/list, and separates
+  the gated live marker from the default no-model preflight.
 - Codex `0.145.0` does not persist an empty thread before its first turn. The
   live script therefore keeps create plus first accepted turn on one connection,
   then separately verifies resume and exact-thread deletion.

@@ -68,7 +68,9 @@ typed cancellation contract is implemented.
 - [ ] One production-oriented adapter for a non-Codex harness.
 - [ ] Adapter capability negotiation and graceful degradation.
 
-The Kimi ACP work is experimental evidence, not an M2 completion claim.
+The Kimi ACP candidate now proves a real no-model create/list/delete/absence
+lifecycle with exact binary and capability digests. Its earlier live marker is
+quota-blocked, so this remains experimental evidence rather than M2 completion.
 The Codex App Server candidate now has deterministic tests and a real no-model
 CLI `0.145.0` preflight. Its live first turn, persisted resume, exact cleanup,
 and coordinator-mediated A-to-B scenario remain gated and therefore do not
