@@ -1,0 +1,182 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://threadmesh.dev/spec/0.0-draft/envelope.schema.json",
+  "title": "ThreadMesh coordination envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "specVersion",
+    "messageId",
+    "intent",
+    "sender",
+    "target",
+    "relationshipId",
+    "content",
+    "reason",
+    "createdAt",
+    "expiresAt"
+  ],
+  "properties": {
+    "specVersion": {
+      "const": "0.0-draft"
+    },
+    "messageId": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 200
+    },
+    "intent": {
+      "enum": ["notify", "suggest", "steer", "interrupt"]
+    },
+    "sender": {
+      "$ref": "#/$defs/sender"
+    },
+    "target": {
+      "$ref": "#/$defs/target"
+    },
+    "relationshipId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "content": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 20000
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000
+    },
+    "evidenceRefs": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "type": "string",
+        "maxLength": 2000
+      },
+      "uniqueItems": true
+    },
+    "freshness": {
+      "$ref": "#/$defs/freshness"
+    },
+    "causality": {
+      "$ref": "#/$defs/causality"
+    },
+    "delivery": {
+      "$ref": "#/$defs/delivery"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expiresAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "intent": {
+            "enum": ["steer", "interrupt"]
+          }
+        },
+        "required": ["intent"]
+      },
+      "then": {
+        "required": ["freshness"]
+      }
+    }
+  ],
+  "$defs": {
+    "sender": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["taskId", "actorType", "harness"],
+      "properties": {
+        "taskId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "actorType": {
+          "enum": ["user", "agent", "service", "policy"]
+        },
+        "harness": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["taskId"],
+      "properties": {
+        "taskId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    },
+    "freshness": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "expectedRunId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "expectedObjectiveVersion": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "expectedCheckpoint": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    },
+    "causality": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "traceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "parentMessageId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "hopCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 32
+        }
+      }
+    },
+    "delivery": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "modelVisibility": {
+          "enum": ["none", "checkpoint", "immediate-if-authorized"]
+        },
+        "requiresDisposition": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

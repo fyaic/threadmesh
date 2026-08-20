@@ -1,0 +1,38 @@
+name: Documentation or protocol defect
+description: Report an ambiguity, contradiction, broken example, or implementation defect.
+title: "[Bug]: "
+labels: [bug, triage]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for helping make ThreadMesh precise and testable.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What is incorrect, ambiguous, or broken?
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: input
+    id: location
+    attributes:
+      label: Document, schema, or component
+      placeholder: docs/03-protocol/operations.md
+  - type: textarea
+    id: safety
+    attributes:
+      label: Safety or compatibility impact
+      description: Include any effect on permissions, context sovereignty, or adapters.
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy check
+      options:
+        - label: I removed credentials and private task content.
+          required: true

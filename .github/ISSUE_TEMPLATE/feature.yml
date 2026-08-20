@@ -1,0 +1,33 @@
+name: Design proposal
+description: Propose a protocol, safety, adapter, or implementation capability.
+title: "[Proposal]: "
+labels: [proposal, triage]
+body:
+  - type: textarea
+    id: use_case
+    attributes:
+      label: Use case
+      description: Which agent relationship and outcome require this change?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: textarea
+    id: failure
+    attributes:
+      label: Failure and abuse cases
+      description: Explain stale-state, permission, privacy, and interruption risks.
+    validations:
+      required: true
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: Harness and compatibility impact
