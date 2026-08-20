@@ -425,7 +425,7 @@ test("quarantines revoked queued content on the public mailbox path", () => {
         expectedRevision: 0,
         idempotencyKey: "idem_claim_rpc_revoked",
       }),
-      { code: "threadmesh_grant_not_active" },
+      { code: "threadmesh_policy_denied", rpcCode: -32003 },
     );
   } finally {
     api.coordinator.close();

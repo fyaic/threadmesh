@@ -22,7 +22,7 @@ maintainer organization.
 | Area | Current evidence | Status |
 |---|---|---|
 | Research and problem framing | Codex deep dive, community signals, ecosystem comparison, ADRs | Established |
-| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 45 unit tests | Executable draft |
+| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 52 unit tests | Executable draft |
 | Local binding | Schema-validated JSON-RPC, transport-derived principals, typed errors | Executable local reference |
 | Local persistence | SQLite registry, proposals, grants, summaries, mailbox, claims, submission receipts, reconciliation, replay, audit | Experimental |
 | Safety boundary | Authenticated authorship checks, effective-grant decisions, revocation, CAS | Executable local policy |
@@ -63,7 +63,10 @@ GitHub is authoritative for milestone closure.
   retention/deletion contract are prepared under #9 but remain gated by #7.
 - A stacked #10 candidate adds durable audited expiry and an explicit negative
   test for unrestricted task enumeration; it also remains gated by #7.
-- Purge execution, complete policy reason codes, complete disposition handling,
+- A stacked #11 candidate extracts a fail-closed policy engine, uses a
+  non-disclosing public denial, reauthorizes adapter submission, and atomically
+  invalidates queued state-changing work on revocation; it remains gated by #7.
+- Purge execution, complete disposition handling,
   hosted event streaming, an inspector, and the complete M1 behavior matrix
   remain unfinished.
 
@@ -94,6 +97,10 @@ can:
     tool-call, and subprocess coverage;
 16. reject arbitrary evidence, adapter-forged attestations, tampered digests,
     invalid signatures, and untrusted verifier keys.
+17. default-deny missing, revoked, expired, stale-incarnation, superseded, and
+    insufficient-authority policy cases without disclosing hidden grant state;
+18. atomically invalidate queued state-changing work when its grant is revoked,
+    while preserving unknown external attempts for reconciliation.
 
 It does not prove autonomous task discovery, useful model behavior, native
 provider-role isolation, exactly-once external effects, production remote

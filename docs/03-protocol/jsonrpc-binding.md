@@ -174,6 +174,11 @@ Errors use a JSON-RPC numeric category plus stable ThreadMesh data:
 
 Clients branch on `data.threadmeshCode`, not on free-form text.
 
+Relationship authorization failures use `threadmesh_policy_denied` with
+numeric category `-32003`. The response intentionally does not reveal whether
+the underlying grant is missing, revoked, expired, superseded, or too weak.
+Authenticated operator audit may retain the bounded internal reason.
+
 ## Executable reference path
 
 [`jsonrpc.mjs`](../../src/bindings/jsonrpc.mjs) implements schema validation,

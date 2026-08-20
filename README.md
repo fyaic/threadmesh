@@ -95,6 +95,7 @@ src/
   bindings/          Executable authenticated operation bindings
   client/            Reference clients and mock harness profiles
   coordinator/       Experimental reference coordinator
+  policy/            Pure fail-closed relationship authorization
 test/                Behavioral and conformance tests
 ```
 
@@ -113,7 +114,8 @@ The implementation is deliberately narrower than the product vision:
 - M0 has 10 closed and 1 open issue after typed interruption and signed
   verification in #16;
 - only the independent external review gate remains open for M0;
-- M1 has partial prototype evidence, but all six acceptance issues remain open;
+- M1 storage, audited expiry, and relationship-policy candidates are prepared
+  as stacked Draft PRs, but all six acceptance issues remain open behind #7;
 - Kimi Code ACP initialization passed, while the real model-turn marker test is
   blocked by account quota and is not counted as a pass.
 

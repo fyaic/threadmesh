@@ -9,6 +9,10 @@ import {
   codedError,
   grantAuthorizationDigest,
 } from "../protocol-validator.mjs";
+import {
+  evaluateRelationshipPolicy,
+  isStateChangingIntent,
+} from "../policy/relationship-policy.mjs";
 
 const SAFE_DECISIONS = new Set(["accepted", "rejected", "deferred"]);
 export const SQLITE_SCHEMA_VERSION = 1;
@@ -972,10 +976,54 @@ export class SqliteCoordinator {
         .prepare("UPDATE grants SET revoked_at = ? WHERE grant_id = ? AND revoked_at IS NULL")
         .run(revokedAt, grantId);
       if (result.changes !== 1) throw codedError("threadmesh_grant_not_active", grantId);
+      const queued = this.db
+        .prepare(
+          `SELECT m.sender_incarnation_id, m.message_id, m.envelope_json,
+                  d.revision, d.delivery_state, d.decision_state
+           FROM messages m JOIN dispositions d
+             USING (sender_incarnation_id, message_id)
+           LEFT JOIN adapter_submissions s
+             USING (sender_incarnation_id, message_id)
+           WHERE m.grant_id = ? AND m.grant_version = ?
+             AND d.delivery_state NOT IN ('adapter-submitted', 'failed', 'expired')
+             AND d.decision_state IN ('pending', 'deferred', 'accepted')
+             AND COALESCE(s.state, '') NOT IN ('outcome-unknown', 'receipt-recorded')`,
+        )
+        .all(grantId, grant.grant_version)
+        .filter((message) =>
+          isStateChangingIntent(JSON.parse(message.envelope_json).intent),
+        );
+      for (const message of queued) {
+        const updated = this.db
+          .prepare(
+            `UPDATE dispositions SET revision = revision + 1,
+               decision_state = 'revoked', updated_at = ?
+             WHERE sender_incarnation_id = ? AND message_id = ?
+               AND revision = ?
+               AND decision_state IN ('pending', 'deferred', 'accepted')
+               AND delivery_state NOT IN ('adapter-submitted', 'failed', 'expired')`,
+          )
+          .run(
+            revokedAt,
+            message.sender_incarnation_id,
+            message.message_id,
+            message.revision,
+          );
+        if (updated.changes === 1) {
+          this.#audit(
+            message.sender_incarnation_id,
+            message.message_id,
+            "authorization-revoked",
+            message.revision + 1,
+            { grantId, grantVersion: grant.grant_version },
+          );
+        }
+      }
       return {
         grantId,
         grantVersion: grant.grant_version,
         revokedAt,
+        invalidatedMessages: queued.length,
         replay: false,
       };
     }).immediate();
@@ -1945,7 +1993,7 @@ export class SqliteCoordinator {
   }
 
   #activeGrantFor(envelope) {
-    const grant = this.db
+    const grantRow = this.db
       .prepare(
         `SELECT * FROM grants WHERE relationship_id = ?
            AND source_task_id = ? AND source_incarnation_id = ?
@@ -1959,27 +2007,51 @@ export class SqliteCoordinator {
         envelope.target.taskId,
         envelope.target.incarnationId,
       );
-    if (!grant) throw codedError("threadmesh_grant_not_active");
-    if (grant.revoked_at) throw codedError("threadmesh_grant_not_active");
-    this.#assertTaskActive(envelope.sender);
-    this.#assertTaskActive(envelope.target);
-    if (grant.expires_at && Date.parse(grant.expires_at) <= this.clock()) {
-      throw codedError("threadmesh_grant_expired");
+    const taskSnapshot = (ref) => {
+      const row = this.db
+        .prepare(
+          `SELECT t.task_id AS taskId, t.incarnation_id AS incarnationId,
+                  m.retired_at AS retiredAt
+           FROM tasks t JOIN task_metadata m USING (task_id, incarnation_id)
+           WHERE t.task_id = ? AND t.incarnation_id = ?`,
+        )
+        .get(ref.taskId, ref.incarnationId);
+      return row ?? null;
+    };
+    const grant = grantRow
+      ? {
+          ...JSON.parse(grantRow.grant_json),
+          revokedAt: grantRow.revoked_at ?? undefined,
+        }
+      : null;
+    const decision = evaluateRelationshipPolicy({
+      envelope,
+      grant,
+      currentGrant: grant,
+      sourceTask: taskSnapshot(envelope.sender),
+      targetTask: taskSnapshot(envelope.target),
+      now: this.clock(),
+    });
+    if (decision.decision !== "allow") {
+      const error = codedError(decision.publicErrorCode);
+      error.policyDecision = decision;
+      throw error;
     }
-    if (!JSON.parse(grant.allowed_intents_json).includes(envelope.intent)) {
-      throw codedError("threadmesh_intent_not_allowed", envelope.intent);
-    }
-    if (!JSON.parse(grant.allowed_modes_json).includes(envelope.delivery.requestedMode)) {
-      throw codedError("threadmesh_delivery_mode_not_allowed", envelope.delivery.requestedMode);
-    }
-    return grant;
+    return grantRow;
   }
 
   #assertCurrentAuthorization(row) {
     const envelope = JSON.parse(row.envelope_json);
     const grant = this.#activeGrantFor(envelope);
     if (grant.grant_id !== row.grant_id || grant.grant_version !== row.grant_version) {
-      throw codedError("threadmesh_grant_version_changed");
+      const error = codedError("threadmesh_policy_denied");
+      error.policyDecision = {
+        decision: "deny",
+        reasonCode: "policy-denied",
+        publicErrorCode: "threadmesh_policy_denied",
+        internalReasonCode: "grant-superseded",
+      };
+      throw error;
     }
   }
 

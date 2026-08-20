@@ -43,8 +43,12 @@ and distributed-systems boundaries.
 - [ ] Two-profile mock-harness conformance kit.
 
 Prototype evidence already exists for task registration, mailbox persistence,
-grant checks, CAS, admission claims, ACP session reload, and provenance. All M1
-issues remain open because their full acceptance criteria are not yet met.
+grant checks, CAS, admission claims, ACP session reload, and provenance. Stacked
+Draft PRs now cover the versioned storage baseline, audited expiry, and a
+fail-closed policy engine with non-disclosing denials and transactional
+state-changing revocation. All M1 issues remain open because merge is gated by
+[issue #7](https://github.com/fyaic/threadmesh/issues/7) and the remaining
+acceptance criteria are not yet met.
 
 Exit: two mock harnesses can discover, notify, suggest, accept, reject, defer,
 and explicitly decline unsupported steer/interrupt behavior with a complete

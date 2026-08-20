@@ -162,6 +162,9 @@ version, optional proposal ID, and canonical integrity digest.
 ### `relationships.revoke`
 
 Revokes future authority. Queued, unapplied state-changing messages MUST be re-evaluated after revocation.
+The reference coordinator atomically marks eligible queued `steer` and
+`interrupt` decisions revoked and records audit evidence. Attempts already past
+the durable `outcome-unknown` boundary remain quarantined for reconciliation.
 
 ## Reference JSON-RPC mapping
 

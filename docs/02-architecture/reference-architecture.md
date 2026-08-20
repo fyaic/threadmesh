@@ -62,6 +62,9 @@ architecture:
 - the [SQLite storage contract](sqlite-storage-contract.md) maps protocol
   objects to tables and defines migration, rollback, concurrency, retention,
   and deletion rules;
+- the [relationship policy engine](relationship-policy-engine.md) evaluates
+  exact incarnations, current grants, relationship authority, intents, and
+  modes with a non-disclosing public denial surface;
 
 - [`SqliteCoordinator`](../../src/coordinator/sqlite-coordinator.mjs) combines a
   registry, proposals, effective grants, summaries, mailbox, durable claims,

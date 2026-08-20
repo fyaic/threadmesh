@@ -108,6 +108,24 @@ function createCoordinator(filename = ":memory:", clock = () => NOW) {
   return coordinator;
 }
 
+function steerGrant() {
+  return {
+    ...grant(),
+    relationshipType: "supervisor",
+    allowedIntents: ["steer"],
+    allowedDeliveryModes: ["active-steer"],
+  };
+}
+
+function steerEnvelope() {
+  return envelope({
+    messageType: "action-request",
+    intent: "steer",
+    freshness: { expectedObjectiveVersion: 3 },
+    delivery: { requestedMode: "active-steer", requiresDisposition: true },
+  });
+}
+
 test("replays identical submissions and rejects conflicting payloads", () => {
   const coordinator = createCoordinator();
   try {
@@ -171,7 +189,77 @@ test("uses CAS and reauthorizes before context admission", () => {
           1,
           receiverPrincipal,
         ),
-      { code: "threadmesh_grant_not_active" },
+      { code: "threadmesh_policy_denied" },
+    );
+  } finally {
+    coordinator.close();
+  }
+});
+
+test("revocation invalidates queued state-changing work before adapter submission", () => {
+  const coordinator = new SqliteCoordinator({ clock: () => NOW });
+  try {
+    coordinator.registerTask(
+      {
+        taskId: "task_sender",
+        incarnationId: "inc_sender01",
+        harness: "harness-a",
+        state: "running",
+      },
+      owner,
+    );
+    coordinator.registerTask(
+      {
+        taskId: "task_receiver",
+        incarnationId: "inc_receiver01",
+        harness: "harness-b",
+        state: "running",
+        adapterRef: receiverAdapterRef,
+      },
+      owner,
+    );
+    coordinator.issueGrant(steerGrant(), grantDecision, owner);
+    coordinator.submit(steerEnvelope(), senderPrincipal);
+    coordinator.respond("inc_sender01", "msg_sender01", "accepted", 0, receiverPrincipal);
+    const prepared = coordinator.prepareAdapterSubmission(
+      "inc_sender01",
+      "msg_sender01",
+      1,
+      receiverPrincipal,
+    );
+
+    const revoked = coordinator.revokeGrant(
+      "grant_sender_receiver",
+      1,
+      owner,
+    );
+    assert.equal(revoked.invalidatedMessages, 1);
+    const disposition = coordinator.getDisposition(
+      "inc_sender01",
+      "msg_sender01",
+      receiverPrincipal,
+    );
+    assert.equal(disposition.decision, "revoked");
+    assert.equal(disposition.revision, 2);
+    assert.throws(
+      () =>
+        coordinator.beginAdapterSubmission(
+          prepared.submission.submissionId,
+          1,
+          receiverPrincipal,
+        ),
+      { code: "threadmesh_policy_denied" },
+    );
+    assert.deepEqual(
+      coordinator
+        .auditEvents("inc_sender01", "msg_sender01", receiverPrincipal)
+        .map((event) => event.eventType),
+      [
+        "message-durably-received",
+        "receiver-decided",
+        "adapter-submission-prepared",
+        "authorization-revoked",
+      ],
     );
   } finally {
     coordinator.close();
@@ -512,7 +600,7 @@ test("treats the durable admission claim as the revocation boundary", () => {
         2,
         receiverPrincipal,
       ),
-      { code: "threadmesh_grant_not_active" },
+      { code: "threadmesh_policy_denied" },
     );
   } finally {
     coordinator.close();

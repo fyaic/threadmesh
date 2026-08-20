@@ -8,7 +8,11 @@ const RETRYABLE_CODES = new Set([
 
 function rpcCode(code) {
   if (code === "threadmesh_authentication_required") return -32001;
-  if (code.includes("not_authorized") || code.includes("authority_required")) {
+  if (
+    code === "threadmesh_policy_denied" ||
+    code.includes("not_authorized") ||
+    code.includes("authority_required")
+  ) {
     return -32003;
   }
   if (code.includes("not_found") || code.includes("not_registered")) return -32004;

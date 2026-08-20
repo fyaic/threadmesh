@@ -126,6 +126,12 @@ the disposition and audit event atomically, excludes irreversible in-flight
 effects, exposes no global task list, and exercises the behavior through the
 authenticated JSON-RPC surface. Its merge is also gated by #7.
 
+The stacked #11 candidate extracts a deterministic relationship policy engine,
+separates trusted internal causes from one non-disclosing public denial,
+rechecks authority immediately before native submission, and couples grant
+revocation with audited invalidation of queued `steer`/`interrupt` work. Its
+merge is also gated by #7.
+
 ### 7. Resume live adapter expansion
 
 After M0 closes and M1 has an observable coordinator:
