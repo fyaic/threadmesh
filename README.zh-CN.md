@@ -29,6 +29,8 @@ incarnation 轮换和两类 mock harness 都有自动化测试。
   但尚未获得 provider key 授权，因此模型调用是 `not-run`。
 - ACP、Codex、Gemini 已在同一个 deterministic matrix 中复用 mailbox acceptance、
   durable admission claim 和各自严格的 evidence confirmation，不再绕过 coordinator。
+- 统一验证 runner 已在三种 fake product 上走通 mailbox claim、receiver acceptance、
+  精确 marker、evidence、audit 与资源清理；真实模式在 #7 前默认返回 `not-run`。
 
 M1 已形成存储迁移、过期审计、默认拒绝 policy、crash-safe dispatcher，以及
 可重启事件游标、权限化 provenance inspector 和两类 mock harness 行为矩阵的
@@ -37,7 +39,8 @@ M1 已形成存储迁移、过期审计、默认拒绝 policy、crash-safe dispa
 合并后在 `main` 重验，再依次执行 Codex、Kimi 和 Gemini 的真实
 agent 产品验证。Codex 的 live 脚本已准备好，但会继续遵守门禁。详见
 [项目状态](docs/10-planning/project-status.md)和
-[主线计划](docs/10-planning/mainline-plan.md)。
+[主线计划](docs/10-planning/mainline-plan.md)，真实执行步骤见
+[产品验证手册](docs/09-reviews/real-product-e2e-runbook.md)。
 
 ThreadMesh 关注一种具体能力：Agent A 在执行过程中发现 Agent B 的任务与自己的目标存在依赖，于是主动发起通知、建议、纠偏或停止请求。
 

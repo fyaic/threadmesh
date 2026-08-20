@@ -72,3 +72,6 @@ No API key has been authorized for this project, so the live result remains
 `not-run`. A stacked deterministic test now runs the same coordinator admission
 claim through ACP, Codex, and Gemini. See the
 [selection and preflight evidence](../09-reviews/2026-08-20-third-harness-selection.md).
+The shared live runner additionally requires the external-review acknowledgement
+and removes its exact isolated home; see the
+[real product runbook](../09-reviews/real-product-e2e-runbook.md).

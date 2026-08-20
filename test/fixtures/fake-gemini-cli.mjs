@@ -38,6 +38,10 @@ if (process.env.FAKE_GEMINI_AUTH === "1") {
 if (process.env.FAKE_GEMINI_TOOL === "1") {
   send({ type: "tool_use", tool_name: "write_file", parameters: { path: "forbidden" } });
 }
-send({ type: "message", role: "assistant", content: "FAKE_GEMINI:" });
-send({ type: "message", role: "assistant", content: input });
+if (process.env.FAKE_GEMINI_EXACT_MARKER) {
+  send({ type: "message", role: "assistant", content: process.env.FAKE_GEMINI_EXACT_MARKER });
+} else {
+  send({ type: "message", role: "assistant", content: "FAKE_GEMINI:" });
+  send({ type: "message", role: "assistant", content: input });
+}
 send({ type: "result", status: "success", stats: { models: {} } });

@@ -39,7 +39,7 @@ function completeTurn(turn) {
       threadId: turn.threadId,
       turnId: turn.turnId,
       itemId: "fake-agent-message",
-      delta: `FAKE_CODEX:${turn.prompt}`,
+      delta: process.env.FAKE_CODEX_EXACT_MARKER ?? `FAKE_CODEX:${turn.prompt}`,
     },
   });
   send({

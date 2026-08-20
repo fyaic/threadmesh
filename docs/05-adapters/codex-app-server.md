@@ -93,9 +93,13 @@ evidence and the gate are recorded in the
 
 - Admission arguments are trusted-process evidence until wired to the merged
   coordinator claim/receipt state machine. The stacked multi-product candidate
-  now supplies that wiring and deterministic evidence; merge remains gated.
+  supplies that wiring, and the gated validation runner exercises it
+  deterministically; merge and live execution remain gated.
 - No OS container or process sandbox is supplied.
 - The first real model marker and existing-receiver A-to-B scenario remain
   gated by M0 review and the M1 stack.
 - App Server compatibility is pinned to `>=0.145 <0.146` until another generated
   schema and product run are recorded.
+
+The post-gate coordinator-mediated command and cleanup contract are documented
+in the [real product runbook](../09-reviews/real-product-e2e-runbook.md).

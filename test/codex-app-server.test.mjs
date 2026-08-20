@@ -282,7 +282,12 @@ test("classifies only recognized product quota errors as blocked", async () => {
         admission: admission(),
         adapterIdempotencyKey: "idem_codex_quota01",
       }),
-      { code: "codex_app_server_quota_error" },
+      (error) => {
+        assert.equal(error.code, "codex_app_server_quota_error");
+        assert.equal(error.adapterRef.kind, "codex-app-server");
+        assert.match(error.adapterRef.threadId, /^fake-thread-/);
+        return true;
+      },
     );
   } finally {
     fs.rmSync(state.directory, { recursive: true, force: true });

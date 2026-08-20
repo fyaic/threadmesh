@@ -90,6 +90,16 @@ const app = acp
       });
       permissionPrefix = response.outcome.outcome === "cancelled" ? "PERMISSION_CANCELLED:" : "";
     }
+    if (process.env.FAKE_ACP_EXACT_MARKER) {
+      await client.notify(acp.methods.client.session.update, {
+        sessionId: params.sessionId,
+        update: {
+          sessionUpdate: "agent_message_chunk",
+          content: { type: "text", text: process.env.FAKE_ACP_EXACT_MARKER },
+        },
+      });
+      return { stopReason: "end_turn" };
+    }
     await client.notify(acp.methods.client.session.update, {
       sessionId: params.sessionId,
       update: {

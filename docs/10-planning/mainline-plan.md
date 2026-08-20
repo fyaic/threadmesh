@@ -182,6 +182,12 @@ evidence confirmation across all three adapter kinds; this is deterministic
 preparation in Draft [#43](https://github.com/fyaic/threadmesh/pull/43), not a
 substitute for the post-gate real model run.
 
+Issue [#44](https://github.com/fyaic/threadmesh/issues/44) adds the final shared
+execution surface: fake-all and live modes now traverse the same mailbox claim,
+receiver acceptance, admission token, exact marker, strict evidence, audit, and
+cleanup path. Fake-all passes. Live mode remains mechanically `not-run` unless
+the operator supplies the exact post-review acknowledgement.
+
 After M0 closes and the M1 stack is merged and revalidated:
 
 - merge and revalidate the conservative Codex App Server adapter;
@@ -198,6 +204,9 @@ After M0 closes and the M1 stack is merged and revalidated:
 - measure useful coordination and interference cost before enabling proactive
   discovery.
 
+Use the [real product runbook](../09-reviews/real-product-e2e-runbook.md) for the
+gate, commands, result taxonomy, cleanup requirements, and evidence record.
+
 The validation ledger must distinguish `passed`, `blocked`, `failed`, and
 `not-run`. A handshake, a fake server, or an unavailable quota is never promoted
 to a live-model pass.
@@ -212,7 +221,8 @@ Keep each change independently reviewable:
 4. `test: complete the two-profile M1 conformance kit`
 5. `feat: implement retention-driven sensitive-content purge`
 6. `feat: add Codex App Server adapter and no-model product preflight`
-7. `test: run real product adapters after normative and M1 completion`
+7. `test: add one gated coordinator-mediated product validation runner`
+8. `test: run real product adapters after normative and M1 completion`
 
 ## Mainline guardrails
 

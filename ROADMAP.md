@@ -83,6 +83,10 @@ A stacked conformance slice now removes the coordinator's ACP-only admission
 assumption and executes the same accepted suggestion across ACP, Codex, and
 Gemini fake products with kind-specific evidence. Real products remain required
 for M2 exit.
+A further gated runner rehearses the full mailbox, receiver acceptance,
+admission, exact marker, evidence, audit, and cleanup path across all three fake
+products. It defaults every live product to `not-run` until the external-review
+gate is explicitly acknowledged.
 
 Exit: the same scenario runs across at least two different harness families.
 

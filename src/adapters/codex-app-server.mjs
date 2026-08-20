@@ -182,14 +182,18 @@ function appendBoundedText(state, delta) {
 
 function classifyFailure(error, stderr) {
   const detail = `${error?.message ?? String(error)}\n${stderr}`;
+  let classified;
   if (/usage.?limit|quota|billing.?cycle/i.test(detail)) {
-    return codedError("codex_app_server_quota_error", error?.message ?? String(error));
+    classified = codedError("codex_app_server_quota_error", error?.message ?? String(error));
+  } else if (/unauthorized|authentication|not logged in|http\s*401|http\s*403/i.test(detail)) {
+    classified = codedError("codex_app_server_auth_error", error?.message ?? String(error));
+  } else if (typeof error?.code === "string") {
+    classified = error;
+  } else {
+    classified = codedError("codex_app_server_error", error?.message ?? String(error));
   }
-  if (/unauthorized|authentication|not logged in|http\s*401|http\s*403/i.test(detail)) {
-    return codedError("codex_app_server_auth_error", error?.message ?? String(error));
-  }
-  if (typeof error?.code === "string") return error;
-  return codedError("codex_app_server_error", error?.message ?? String(error));
+  if (error?.adapterRef) classified.adapterRef = error.adapterRef;
+  return classified;
 }
 
 async function waitForExit(child, timeoutMs) {
@@ -498,15 +502,20 @@ export class CodexAppServerAdapter {
       );
       const adapterRef = projectThread(started, initialization);
       validateAdmission(envelope, admission, adapterRef);
-      const result = await this.#runTurn(
-        peer,
-        initialization,
-        adapterRef,
-        envelope,
-        admission,
-        adapterIdempotencyKey,
-      );
-      return { ...result, adapterRef };
+      try {
+        const result = await this.#runTurn(
+          peer,
+          initialization,
+          adapterRef,
+          envelope,
+          admission,
+          adapterIdempotencyKey,
+        );
+        return { ...result, adapterRef };
+      } catch (error) {
+        error.adapterRef = adapterRef;
+        throw error;
+      }
     });
   }
 

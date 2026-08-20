@@ -132,6 +132,9 @@ The implementation is deliberately narrower than the product vision:
   while model execution awaits an explicitly authorized provider key;
 - a common deterministic matrix now takes the same accepted mailbox suggestion
   through ACP, Codex, and Gemini admission claims and kind-specific evidence;
+- one mechanically gated runner now rehearses mailbox claim, receiver
+  acceptance, exact marker, evidence, audit, and cleanup across all three fake
+  products; real mode defaults to `not-run` before #7;
 - Kimi Code ACP initialization and exact create/list/delete/absence lifecycle
   passed against the real product, while the earlier model-turn marker remains
   blocked by account quota and is not counted as a pass.
@@ -141,6 +144,7 @@ revalidation of the M1 stack, then real Codex, Kimi, and Gemini product
 validation. See
 the [project status](docs/10-planning/project-status.md),
 [mainline plan](docs/10-planning/mainline-plan.md), and
+[real product validation runbook](docs/09-reviews/real-product-e2e-runbook.md), and
 [roadmap](ROADMAP.md).
 
 ## Non-goals

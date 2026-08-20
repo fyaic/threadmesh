@@ -82,4 +82,7 @@ blocked by the account's billing-cycle quota. A later real no-model run created,
 listed, deleted, and proved absence of one exact session. The deterministic
 fake-agent session reload, permission-denial and delivery behavior also passed.
 The stacked multi-product matrix runs this same admission claim beside Codex and
-Gemini. See the [smoke evidence](../09-reviews/2026-08-20-kimi-code-smoke.md).
+Gemini. A shared runner now rehearses the exact session cleanup and full
+coordinator path before any live turn. See the
+[smoke evidence](../09-reviews/2026-08-20-kimi-code-smoke.md) and
+[real product runbook](../09-reviews/real-product-e2e-runbook.md).

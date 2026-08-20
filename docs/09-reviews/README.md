@@ -30,6 +30,7 @@ Three independent read-only review lanes examined
 - [Kimi Code integration evidence](2026-08-20-kimi-code-smoke.md)
 - [Codex App Server preflight evidence](2026-08-20-codex-app-server-preflight.md)
 - [Third harness selection and Gemini preflight](2026-08-20-third-harness-selection.md)
+- [Real agent-product validation runbook](real-product-e2e-runbook.md)
 
 These are independent review passes but not organizationally independent
 external reviews. They therefore do not, by themselves, satisfy the external

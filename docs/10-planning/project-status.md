@@ -2,9 +2,10 @@
 
 > Snapshot: 2026-08-20, including authenticated operations, crash-safe adapter
 > submission, typed interruption results, signed verification attestations,
-> the stacked local event-stream/inspector candidate, and the two-profile M1
-> conformance matrix, the retention-driven purge candidate, and the first real
-> Codex App Server no-model preflight.
+> the stacked local event-stream/inspector candidate, the two-profile M1
+> conformance matrix, the retention-driven purge candidate, three real
+> no-model product preflights, and the gated coordinator-mediated validation
+> runner.
 
 ## Executive summary
 
@@ -12,9 +13,9 @@ ThreadMesh is a pre-alpha protocol and reference-runtime experiment. The
 repository has progressed beyond documentation-only research: it contains
 machine-readable schemas, deterministic conformance fixtures, an authenticated
 local JSON-RPC binding, an experimental SQLite coordinator, and conservative
-ACP and Codex App Server adapters. Kimi ACP has a real handshake; Codex App
-Server has deterministic JSONL tests and a real CLI initialize/thread-start
-preflight. Neither real model path counts as passed yet.
+ACP, Codex App Server, and Gemini headless adapters. All three have real
+no-model product evidence and share one deterministic coordinator-mediated
+validation runner. No current real model path counts as passed.
 
 The implementation is not a production coordinator and does not establish
 cross-product interoperability. The normative M0 blockers are resolved; M0
@@ -26,7 +27,7 @@ maintainer organization.
 | Area | Current evidence | Status |
 |---|---|---|
 | Research and problem framing | Codex deep dive, community signals, ecosystem comparison, ADRs | Established |
-| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 94 unit/subtests | Executable draft |
+| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 96 unit/subtests | Executable draft |
 | Local binding | Schema-validated JSON-RPC, transport-derived principals, typed errors | Executable local reference |
 | Local persistence | SQLite registry, proposals, grants, summaries, mailbox, claims, receipts, reconciliation, replay, audit, retention tombstones | Experimental |
 | Safety boundary | Authenticated authorship checks, effective-grant decisions, revocation, CAS | Executable local policy |
@@ -38,6 +39,7 @@ maintainer organization.
 | Gemini CLI headless | Official package 0.56.0 integrity, required flags, isolated-home cleanup | Real no-model preflight passed |
 | Gemini live model behavior | Exact marker script requires explicit provider key | Not authorized, not run |
 | Multi-product admission | One mailbox/acceptance/claim/evidence path across ACP, Codex, and Gemini fakes | Stacked deterministic candidate |
+| Product validation runner | One fake/live entry point with exact review acknowledgement, marker, audit, and cleanup checks | Fake-all passed; live gated |
 | Independent review | Three internal lanes complete; external reviewer packet and public template published | Awaiting two external verdicts |
 | Production authentication | Local static-token reference; no TLS/OAuth verifier supplied | Host integration required |
 | OS isolation | No child-process sandbox supplied by ThreadMesh | Not implemented |
@@ -100,10 +102,11 @@ GitHub is authoritative for milestone closure.
 
 ### M2 — First real adapters
 
-- 4 issues open: Codex App Server [#36](https://github.com/fyaic/threadmesh/issues/36),
+- 5 issues open: Codex App Server [#36](https://github.com/fyaic/threadmesh/issues/36),
   Kimi ACP hardening [#37](https://github.com/fyaic/threadmesh/issues/37), and a
   materially different third harness [#38](https://github.com/fyaic/threadmesh/issues/38),
-  plus shared multi-product admission [#42](https://github.com/fyaic/threadmesh/issues/42).
+  shared multi-product admission [#42](https://github.com/fyaic/threadmesh/issues/42),
+  and gated product validation [#44](https://github.com/fyaic/threadmesh/issues/44).
 - Draft [#39](https://github.com/fyaic/threadmesh/pull/39) contains the Codex
   candidate and is stacked on retention Draft #35.
 - Draft [#40](https://github.com/fyaic/threadmesh/pull/40) contains the Kimi
@@ -112,6 +115,9 @@ GitHub is authoritative for milestone closure.
   headless candidate and is stacked on #40.
 - Draft [#43](https://github.com/fyaic/threadmesh/pull/43) contains shared
   multi-product context admission and is stacked on #41.
+- The #44 candidate adds one mechanically gated runner over the exact mailbox,
+  acceptance, admission, evidence, audit, and cleanup path. Its fake-all mode
+  passes all three products; live mode remains `not-run` before #7.
 - The Codex candidate implements suggestion-only capability negotiation,
   receiver-acceptance enforcement, exact turn evidence, server-request denial,
   timeout cleanup, generated-schema digesting, and a real no-model product
@@ -185,6 +191,10 @@ can:
 27. run the same receiver-accepted suggestion through one durable admission
     claim across ACP, Codex, and Gemini fake products, rejecting cross-kind or
     mismatched evidence and storing only bounded audit projections.
+28. run one reusable validation entry point across all three fake products,
+    requiring mailbox acknowledgement, exact markers, evidence confirmation,
+    bounded audit, and exact product-resource cleanup while refusing live turns
+    without the external-review acknowledgement.
 
 It does not prove autonomous task discovery, useful model behavior, native
 provider-role isolation, exactly-once external effects, production remote

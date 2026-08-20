@@ -35,8 +35,15 @@ Run the deterministic matrix with:
 
 ```sh
 node --test test/threadmesh-multi-product-e2e.test.mjs
+npm run validate:products:fake
 ```
 
+The first command focuses on coordinator evidence rejection. The second uses a
+single product-validation runner and additionally proves mailbox claim and
+acknowledgement, exact marker matching, bounded audit projection, and exact
+product-resource cleanup for all three fake endpoints.
+
 The matrix uses fake product endpoints to prove coordinator/adapter semantics.
-It does not prove real model behavior. Post-gate live scripts must use the same
-claim, envelope, admission, evidence, and confirmation path.
+It does not prove real model behavior. The mechanically gated live commands use
+the same runner and are documented in the
+[real product runbook](../09-reviews/real-product-e2e-runbook.md).

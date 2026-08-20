@@ -14,6 +14,10 @@
     "smoke:gemini:live": "THREADMESH_GEMINI_LIVE=1 node scripts/smoke-gemini.mjs",
     "smoke:kimi": "node scripts/smoke-kimi.mjs",
     "smoke:kimi:live": "THREADMESH_KIMI_LIVE=1 node scripts/smoke-kimi.mjs",
+    "validate:products:fake": "node scripts/validate-products-e2e.mjs --fake-all",
+    "validate:products:live:codex": "node scripts/validate-products-e2e.mjs --live codex",
+    "validate:products:live:kimi": "node scripts/validate-products-e2e.mjs --live kimi",
+    "validate:products:live:gemini": "node scripts/validate-products-e2e.mjs --live gemini",
     "test": "npm run validate:spec && npm run test:unit && npm run lint:docs"
   },
   "devDependencies": {
