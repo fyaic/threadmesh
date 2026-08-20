@@ -110,6 +110,8 @@ GitHub is authoritative for milestone closure.
   lifecycle hardening candidate and is stacked on #39.
 - Draft [#41](https://github.com/fyaic/threadmesh/pull/41) contains the Gemini
   headless candidate and is stacked on #40.
+- Draft [#43](https://github.com/fyaic/threadmesh/pull/43) contains shared
+  multi-product context admission and is stacked on #41.
 - The Codex candidate implements suggestion-only capability negotiation,
   receiver-acceptance enforcement, exact turn evidence, server-request denial,
   timeout cleanup, generated-schema digesting, and a real no-model product

@@ -179,7 +179,8 @@ provider credential authorization in Draft
 [#41](https://github.com/fyaic/threadmesh/pull/41).
 A further stacked slice generalizes the coordinator's admission claim and exact
 evidence confirmation across all three adapter kinds; this is deterministic
-preparation, not a substitute for the post-gate real model run.
+preparation in Draft [#43](https://github.com/fyaic/threadmesh/pull/43), not a
+substitute for the post-gate real model run.
 
 After M0 closes and the M1 stack is merged and revalidated:
 
