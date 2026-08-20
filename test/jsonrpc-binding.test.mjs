@@ -289,6 +289,58 @@ test("rejects payload principal injection and cross-task impersonation", () => {
   }
 });
 
+test("exposes crash-safe adapter submission receipts through authenticated JSON-RPC", () => {
+  const api = transport(":memory:");
+  try {
+    bootstrap(api);
+    api.b.call("tasks.attach", {
+      task: taskB,
+      adapterRef: {
+        kind: "mock-session",
+        sessionId: "mock-session-1",
+        snapshotDigest: `sha256:${"c".repeat(64)}`,
+      },
+      expectedRevision: 0,
+      idempotencyKey: "idem_attach_rpc_b_submission",
+    });
+    api.a.call("messages.send", {
+      envelope: envelope("msg_rpc_receipt01"),
+      idempotencyKey: "idem_send_rpc_receipt01",
+    });
+    const accepted = new PullMailboxHarness(api.b, taskB).acceptNext();
+    assert.equal(accepted.accepted.value.revision, 1);
+    const prepared = api.b.call("adapter.prepareSubmission", {
+      senderIncarnationId: taskA.incarnationId,
+      messageId: "msg_rpc_receipt01",
+      expectedRevision: 1,
+      idempotencyKey: "idem_prepare_rpc_receipt01",
+    });
+    const submissionId = prepared.value.submission.submissionId;
+    const begun = api.b.call("adapter.beginSubmission", {
+      submissionId,
+      expectedRevision: 1,
+      idempotencyKey: "idem_begin_rpc_receipt01",
+    });
+    assert.equal(begun.value.submission.state, "outcome-unknown");
+    const recorded = api.b.call("adapter.recordReceipt", {
+      submissionId,
+      expectedRevision: 1,
+      receipt: {
+        adapterOperationId: "rpc-native-operation-1",
+        acceptedAt: "2026-08-20T09:00:01Z",
+      },
+      idempotencyKey: "idem_record_rpc_receipt01",
+    });
+    assert.equal(recorded.value.disposition.delivery, "adapter-submitted");
+    assert.equal(
+      api.a.call("adapter.getSubmission", { submissionId }).state,
+      "receipt-recorded",
+    );
+  } finally {
+    api.coordinator.close();
+  }
+});
+
 test("quarantines revoked queued content on the public mailbox path", () => {
   const api = transport(":memory:");
   try {

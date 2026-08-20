@@ -33,6 +33,8 @@ ThreadMesh 并不赋予 agent 任意修改其他 session 的权力。它提供�
 - SQLite/JSON-RPC/ACP suggestion 路径已有自动化测试；
 - authenticated principal、effective grant、task lifecycle、mailbox 与 typed
   JSON-RPC error 已有公开 schema 和两类 mock harness；
+- 原生 harness 调用已有持久化 `outcome-unknown` 边界、稳定幂等键、receipt、
+  disposition CAS 与重启后对账；未知结果不会被自动重试；
 - Kimi ACP 握手通过，真实模型调用仍受额度阻塞；
-- M0 仍待 reconciliation、interrupt/verification 和外部 review；
+- M0 仍待 interrupt/verification 和外部 review；
 - 在 M0 稳定前，不把更多 live adapter 当作主线完成度。

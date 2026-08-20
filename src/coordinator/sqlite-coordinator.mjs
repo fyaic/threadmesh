@@ -198,6 +198,23 @@ export class SqliteCoordinator {
         PRIMARY KEY (sender_incarnation_id, message_id)
       );
 
+      CREATE TABLE IF NOT EXISTS adapter_submissions (
+        sender_incarnation_id TEXT NOT NULL,
+        message_id TEXT NOT NULL,
+        submission_id TEXT NOT NULL UNIQUE,
+        expected_revision INTEGER NOT NULL,
+        envelope_digest TEXT NOT NULL,
+        adapter_ref_digest TEXT NOT NULL,
+        adapter_idempotency_key TEXT NOT NULL UNIQUE,
+        state TEXT NOT NULL,
+        prepared_at TEXT NOT NULL,
+        attempt_started_at TEXT,
+        receipt_json TEXT,
+        reconciliation_json TEXT,
+        updated_at TEXT NOT NULL,
+        PRIMARY KEY (sender_incarnation_id, message_id)
+      );
+
       CREATE TABLE IF NOT EXISTS mailbox_claims (
         sender_incarnation_id TEXT NOT NULL,
         message_id TEXT NOT NULL,
@@ -1240,6 +1257,258 @@ export class SqliteCoordinator {
     }).immediate();
   }
 
+  prepareAdapterSubmission(senderIncarnationId, messageId, expectedRevision, principal) {
+    return this.db.transaction(() => {
+      const row = this.#message(senderIncarnationId, messageId);
+      assertTaskPrincipal(principal, row.target_task_id, row.target_incarnation_id);
+      this.#assertCurrentAuthorization(row);
+      if (Date.parse(row.expires_at) <= this.clock()) {
+        throw codedError("threadmesh_message_expired");
+      }
+      this.#assertAdapterSubmissionState(row, expectedRevision);
+      const existing = this.db
+        .prepare(
+          `SELECT * FROM adapter_submissions
+           WHERE sender_incarnation_id = ? AND message_id = ?`,
+        )
+        .get(senderIncarnationId, messageId);
+      if (existing && existing.state !== "confirmed-not-submitted") {
+        if (existing.state === "prepared" && existing.expected_revision === expectedRevision) {
+          return { replay: true, submission: this.#adapterSubmission(existing, row) };
+        }
+        throw codedError("threadmesh_adapter_submission_in_flight", existing.state);
+      }
+
+      const task = this.db
+        .prepare(
+          `SELECT adapter_ref_json FROM tasks
+           WHERE task_id = ? AND incarnation_id = ?`,
+        )
+        .get(row.target_task_id, row.target_incarnation_id);
+      if (!task?.adapter_ref_json) throw codedError("threadmesh_target_adapter_not_bound");
+      const adapterRefDigest = sha256Digest(JSON.parse(task.adapter_ref_json));
+      const at = nowIso(this.clock);
+      const submissionId = `sub_${randomUUID()}`;
+      const adapterIdempotencyKey = `adp_${randomUUID()}`;
+      if (existing) {
+        this.db
+          .prepare(
+            `DELETE FROM adapter_submissions
+             WHERE sender_incarnation_id = ? AND message_id = ?
+               AND state = 'confirmed-not-submitted'`,
+          )
+          .run(senderIncarnationId, messageId);
+      }
+      this.db
+        .prepare(
+          `INSERT INTO adapter_submissions (
+             sender_incarnation_id, message_id, submission_id,
+             expected_revision, envelope_digest, adapter_ref_digest,
+             adapter_idempotency_key, state, prepared_at, updated_at
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, 'prepared', ?, ?)`,
+        )
+        .run(
+          senderIncarnationId,
+          messageId,
+          submissionId,
+          expectedRevision,
+          row.envelope_digest,
+          adapterRefDigest,
+          adapterIdempotencyKey,
+          at,
+          at,
+        );
+      const submission = this.db
+        .prepare("SELECT * FROM adapter_submissions WHERE submission_id = ?")
+        .get(submissionId);
+      this.#audit(senderIncarnationId, messageId, "adapter-submission-prepared", expectedRevision, {
+        submissionId,
+        adapterIdempotencyKey,
+        envelopeDigest: row.envelope_digest,
+        adapterRefDigest,
+      });
+      return { replay: false, submission: this.#adapterSubmission(submission, row) };
+    }).immediate();
+  }
+
+  beginAdapterSubmission(submissionId, expectedRevision, principal) {
+    return this.db.transaction(() => {
+      const { submission, message } = this.#submissionWithMessage(submissionId);
+      assertTaskPrincipal(principal, message.target_task_id, message.target_incarnation_id);
+      this.#assertCurrentAuthorization(message);
+      if (Date.parse(message.expires_at) <= this.clock()) {
+        throw codedError("threadmesh_message_expired");
+      }
+      this.#assertAdapterSubmissionState(message, expectedRevision);
+      if (submission.expected_revision !== expectedRevision) {
+        throw codedError("threadmesh_revision_or_state_conflict");
+      }
+      if (submission.state === "outcome-unknown") {
+        return { replay: true, submission: this.#adapterSubmission(submission, message) };
+      }
+      const at = nowIso(this.clock);
+      const result = this.db
+        .prepare(
+          `UPDATE adapter_submissions
+           SET state = 'outcome-unknown', attempt_started_at = ?, updated_at = ?
+           WHERE submission_id = ? AND state = 'prepared' AND expected_revision = ?`,
+        )
+        .run(at, at, submissionId, expectedRevision);
+      if (result.changes !== 1) throw codedError("threadmesh_adapter_submission_state_conflict");
+      const updated = this.db
+        .prepare("SELECT * FROM adapter_submissions WHERE submission_id = ?")
+        .get(submissionId);
+      this.#audit(message.sender_incarnation_id, message.message_id, "adapter-attempt-started", expectedRevision, {
+        submissionId,
+        adapterIdempotencyKey: submission.adapter_idempotency_key,
+      });
+      return { replay: false, submission: this.#adapterSubmission(updated, message) };
+    }).immediate();
+  }
+
+  recordAdapterReceipt(submissionId, expectedRevision, receipt, principal) {
+    if (
+      !receipt ||
+      typeof receipt.adapterOperationId !== "string" ||
+      receipt.adapterOperationId.length === 0 ||
+      !Number.isFinite(Date.parse(receipt.acceptedAt))
+    ) {
+      throw codedError("threadmesh_adapter_receipt_invalid");
+    }
+    return this.db.transaction(() => {
+      const { submission, message } = this.#submissionWithMessage(submissionId);
+      assertTaskPrincipal(principal, message.target_task_id, message.target_incarnation_id);
+      if (submission.state === "receipt-recorded") {
+        if (canonicalJson(JSON.parse(submission.receipt_json)) !== canonicalJson(receipt)) {
+          throw codedError("threadmesh_adapter_receipt_conflict");
+        }
+        return {
+          replay: true,
+          submission: this.#adapterSubmission(submission, message),
+          disposition: this.#disposition(message),
+        };
+      }
+      this.#assertAdapterSubmissionState(message, expectedRevision);
+      if (
+        submission.state !== "outcome-unknown" ||
+        submission.expected_revision !== expectedRevision
+      ) {
+        throw codedError("threadmesh_adapter_submission_state_conflict");
+      }
+      const at = nowIso(this.clock);
+      const dispositionResult = this.db
+        .prepare(
+          `UPDATE dispositions SET revision = revision + 1,
+             delivery_state = 'adapter-submitted', updated_at = ?
+           WHERE sender_incarnation_id = ? AND message_id = ? AND revision = ?
+             AND decision_state = 'accepted'
+             AND delivery_state IN ('durably-received', 'receiver-notified',
+               'checkpoint-offered', 'context-admitted')`,
+        )
+        .run(at, message.sender_incarnation_id, message.message_id, expectedRevision);
+      if (dispositionResult.changes !== 1) {
+        throw codedError("threadmesh_revision_or_state_conflict");
+      }
+      const submissionResult = this.db
+        .prepare(
+          `UPDATE adapter_submissions SET state = 'receipt-recorded',
+             receipt_json = ?, updated_at = ?
+           WHERE submission_id = ? AND state = 'outcome-unknown'`,
+        )
+        .run(canonicalJson(receipt), at, submissionId);
+      if (submissionResult.changes !== 1) {
+        throw codedError("threadmesh_adapter_submission_state_conflict");
+      }
+      const updatedMessage = this.#message(message.sender_incarnation_id, message.message_id);
+      const updated = this.db
+        .prepare("SELECT * FROM adapter_submissions WHERE submission_id = ?")
+        .get(submissionId);
+      this.#audit(message.sender_incarnation_id, message.message_id, "adapter-receipt-recorded", updatedMessage.revision, {
+        submissionId,
+        adapterOperationId: receipt.adapterOperationId,
+      });
+      return {
+        replay: false,
+        submission: this.#adapterSubmission(updated, updatedMessage),
+        disposition: this.#disposition(updatedMessage),
+      };
+    }).immediate();
+  }
+
+  reconcileAdapterSubmission(submissionId, expectedRevision, reconciliation, principal) {
+    const resolution = reconciliation?.resolution;
+    if (!["confirmed-submitted", "confirmed-not-submitted", "manual-required"].includes(resolution)) {
+      throw codedError("threadmesh_adapter_reconciliation_invalid");
+    }
+    if (!Array.isArray(reconciliation.evidenceRefs) || reconciliation.evidenceRefs.length === 0) {
+      throw codedError("threadmesh_adapter_reconciliation_evidence_required");
+    }
+    if (resolution === "confirmed-submitted") {
+      return this.recordAdapterReceipt(
+        submissionId,
+        expectedRevision,
+        {
+          ...reconciliation.receipt,
+          evidenceRefs:
+            reconciliation.receipt?.evidenceRefs ?? reconciliation.evidenceRefs,
+        },
+        principal,
+      );
+    }
+    return this.db.transaction(() => {
+      const { submission, message } = this.#submissionWithMessage(submissionId);
+      assertTaskPrincipal(principal, message.target_task_id, message.target_incarnation_id);
+      if (
+        submission.state !== "outcome-unknown" ||
+        submission.expected_revision !== expectedRevision ||
+        message.revision !== expectedRevision
+      ) {
+        throw codedError("threadmesh_adapter_submission_state_conflict");
+      }
+      const at = nowIso(this.clock);
+      const state = resolution === "confirmed-not-submitted"
+        ? "confirmed-not-submitted"
+        : "manual-reconciliation";
+      const record = {
+        resolution,
+        reconciledAt: at,
+        reconciledBy: {
+          actorType: "agent",
+          task: { taskId: principal.taskId, incarnationId: principal.incarnationId },
+        },
+        evidenceRefs: reconciliation.evidenceRefs,
+      };
+      const result = this.db
+        .prepare(
+          `UPDATE adapter_submissions SET state = ?, reconciliation_json = ?, updated_at = ?
+           WHERE submission_id = ? AND state = 'outcome-unknown'`,
+        )
+        .run(state, canonicalJson(record), at, submissionId);
+      if (result.changes !== 1) throw codedError("threadmesh_adapter_submission_state_conflict");
+      const updated = this.db
+        .prepare("SELECT * FROM adapter_submissions WHERE submission_id = ?")
+        .get(submissionId);
+      this.#audit(message.sender_incarnation_id, message.message_id, "adapter-submission-reconciled", expectedRevision, {
+        submissionId,
+        resolution,
+        evidenceRefs: reconciliation.evidenceRefs,
+      });
+      return { replay: false, submission: this.#adapterSubmission(updated, message) };
+    }).immediate();
+  }
+
+  getAdapterSubmission(submissionId, principal) {
+    const { submission, message } = this.#submissionWithMessage(submissionId);
+    const envelope = JSON.parse(message.envelope_json);
+    if (
+      !isTaskPrincipal(principal, envelope.sender.taskId, envelope.sender.incarnationId) &&
+      !isTaskPrincipal(principal, envelope.target.taskId, envelope.target.incarnationId)
+    ) {
+      throw codedError("threadmesh_adapter_submission_not_authorized");
+    }
+    return this.#adapterSubmission(submission, message);
+  }
+
   getDisposition(senderIncarnationId, messageId, principal) {
     const message = this.#message(senderIncarnationId, messageId);
     const envelope = JSON.parse(message.envelope_json);
@@ -1484,6 +1753,54 @@ export class SqliteCoordinator {
       grantVersion: row.grant_version,
       nonce,
       adapterRefDigest,
+    });
+  }
+
+  #assertAdapterSubmissionState(row, expectedRevision) {
+    if (
+      row.revision !== expectedRevision ||
+      row.decision_state !== "accepted" ||
+      !["durably-received", "receiver-notified", "checkpoint-offered", "context-admitted"].includes(
+        row.delivery_state,
+      )
+    ) {
+      throw codedError("threadmesh_revision_or_state_conflict");
+    }
+  }
+
+  #submissionWithMessage(submissionId) {
+    const submission = this.db
+      .prepare("SELECT * FROM adapter_submissions WHERE submission_id = ?")
+      .get(submissionId);
+    if (!submission) throw codedError("threadmesh_adapter_submission_not_found", submissionId);
+    return {
+      submission,
+      message: this.#message(submission.sender_incarnation_id, submission.message_id),
+    };
+  }
+
+  #adapterSubmission(row, message) {
+    return assertProtocolObject("adapter-submission", {
+      specVersion: "0.0-draft",
+      submissionId: row.submission_id,
+      messageId: row.message_id,
+      senderIncarnationId: row.sender_incarnation_id,
+      receiver: {
+        taskId: message.target_task_id,
+        incarnationId: message.target_incarnation_id,
+      },
+      envelopeDigest: row.envelope_digest,
+      adapterRefDigest: row.adapter_ref_digest,
+      adapterIdempotencyKey: row.adapter_idempotency_key,
+      expectedDispositionRevision: row.expected_revision,
+      state: row.state,
+      preparedAt: row.prepared_at,
+      ...(row.attempt_started_at ? { attemptStartedAt: row.attempt_started_at } : {}),
+      ...(row.receipt_json ? { receipt: JSON.parse(row.receipt_json) } : {}),
+      ...(row.reconciliation_json
+        ? { reconciliation: JSON.parse(row.reconciliation_json) }
+        : {}),
+      updatedAt: row.updated_at,
     });
   }
 

@@ -269,5 +269,53 @@
       ]
     },
     "updatedAt": { "type": "string", "format": "date-time" }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "delivery": {
+            "properties": {
+              "state": { "enum": ["context-admitted", "adapter-submitted"] }
+            },
+            "required": ["state"]
+          }
+        },
+        "required": ["delivery"]
+      },
+      "then": {
+        "properties": {
+          "decision": {
+            "properties": { "state": { "enum": ["accepted", "revoked"] } },
+            "required": ["state"]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "outcome": {
+            "properties": {
+              "state": { "enum": ["effect-observed", "externally-verified"] }
+            },
+            "required": ["state"]
+          }
+        },
+        "required": ["outcome"]
+      },
+      "then": {
+        "properties": {
+          "delivery": {
+            "properties": { "state": { "const": "adapter-submitted" } },
+            "required": ["state"]
+          },
+          "decision": {
+            "properties": { "state": { "enum": ["accepted", "revoked"] } },
+            "required": ["state"]
+          }
+        }
+      }
+    }
+  ]
 }

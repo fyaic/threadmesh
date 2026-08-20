@@ -15,6 +15,7 @@
     "contextAdmission": "none",
     "provenanceRendering": "none",
     "dispositionCallbacks": false,
-    "structuredGateResponses": "none"
+    "structuredGateResponses": "none",
+    "durableSubmissionIdempotency": "stable-key"
   }
 }

@@ -12,6 +12,11 @@ idempotent state-changing adapter submission.
 - Receivers MUST NOT submit the same state-changing message to an adapter more than once.
 - Acknowledgement of queueing MUST NOT be reported as receiver acceptance.
 
+Message identity is scoped to the authenticated sender incarnation plus
+`messageId`. A coordinator MUST persist the canonical envelope digest. Reuse of
+that scoped identity with a different digest is an idempotency conflict, not a
+new version of the message.
+
 ## Three orthogonal state machines
 
 ThreadMesh does not use one ambiguous linear status. A disposition snapshot
@@ -66,6 +71,47 @@ effect-observed → externally-verified
 request. `context-admitted` proves only that authorized peer content entered a
 model-visible rendering. Neither proves that the model followed the advice.
 `externally-verified` requires evidence references.
+
+## Durable adapter submission
+
+A state-changing harness call uses a separate durable submission record:
+
+```text
+prepared
+  → outcome-unknown
+    → receipt-recorded
+    → confirmed-not-submitted
+    → manual-reconciliation
+```
+
+`prepared` means no external-attempt boundary has been crossed. Immediately
+before calling the harness, the dispatcher MUST durably move the record to
+`outcome-unknown` and bind it to the envelope digest, receiver task,
+disposition revision, adapter reference digest, and stable adapter idempotency
+key. A crash after that write may have occurred before or after the external
+effect, so restart MUST NOT convert it back to `prepared` or blindly redeliver.
+
+A native harness acceptance becomes `receipt-recorded` only when its durable
+receipt is stored in the same transaction as the disposition CAS to
+`adapter-submitted`. An identical receipt may replay; a different receipt for
+the same submission is a conflict.
+
+Reconciliation of `outcome-unknown` requires evidence from a queryable adapter
+receipt, an operator, or another trusted binding. `confirmed-not-submitted` may
+authorize a fresh attempt with a new submission ID and idempotency key.
+`confirmed-submitted` records the receipt. `manual-required` remains
+quarantined. Local adapter evidence is not an independently verified outcome.
+
+## Cross-state invariants
+
+- `context-admitted` and `adapter-submitted` require an accepted or subsequently
+  revoked receiver decision.
+- `effect-observed` and `externally-verified` require
+  `delivery.state = adapter-submitted`.
+- An expired or rejected message cannot later become context-admitted or
+  adapter-submitted.
+- Every disposition mutation uses expected-revision CAS; reconciliation does
+  not bypass it.
 
 ## Expiry
 

@@ -173,6 +173,35 @@ export class ThreadMeshJsonRpcBinding {
             params.messageId,
             principal,
           );
+        case "adapter.prepareSubmission":
+          return this.coordinator.prepareAdapterSubmission(
+            params.senderIncarnationId,
+            params.messageId,
+            params.expectedRevision,
+            principal,
+          );
+        case "adapter.beginSubmission":
+          return this.coordinator.beginAdapterSubmission(
+            params.submissionId,
+            params.expectedRevision,
+            principal,
+          );
+        case "adapter.recordReceipt":
+          return this.coordinator.recordAdapterReceipt(
+            params.submissionId,
+            params.expectedRevision,
+            params.receipt,
+            principal,
+          );
+        case "adapter.reconcileSubmission":
+          return this.coordinator.reconcileAdapterSubmission(
+            params.submissionId,
+            params.expectedRevision,
+            params.reconciliation,
+            principal,
+          );
+        case "adapter.getSubmission":
+          return this.coordinator.getAdapterSubmission(params.submissionId, principal);
         case "mailbox.listPending":
           return this.coordinator.listPending(
             params.receiver,

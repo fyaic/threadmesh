@@ -49,6 +49,16 @@ adapter reference. Confirm it only with matching adapter evidence. If the
 process crashes while the claim is in flight, reconcile rather than blindly
 redeliver.
 
+For native state-changing operations, use the public submission sequence:
+
+1. call `adapter.prepareSubmission`;
+2. call `adapter.beginSubmission` and persist the returned
+   `outcome-unknown` state before touching the harness;
+3. pass its stable `adapterIdempotencyKey` to the harness;
+4. call `adapter.recordReceipt` only for an exact native acceptance receipt;
+5. after a crash, query the same key and call `adapter.reconcileSubmission`;
+6. create a fresh attempt only after `confirmed-not-submitted`.
+
 ## 8. Run conformance scenarios
 
 At minimum test:
@@ -63,6 +73,8 @@ At minimum test:
 - provenance preservation;
 - unsupported intent;
 - repeated interruption rate limit.
+- crash before native receipt, restart recovery, conflicting receipt, and
+  concurrent disposition CAS.
 
 The checked-in ACP fixture additionally tests persistent session reload,
 rejection of unknown sessions, historical replay isolation, permission denial,

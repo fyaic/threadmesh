@@ -517,3 +517,234 @@ test("treats the durable admission claim as the revocation boundary", () => {
     coordinator.close();
   }
 });
+
+test("persists outcome-unknown adapter attempts across restart without retry", () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "threadmesh-submission-"));
+  const filename = path.join(directory, "coordinator.sqlite");
+  let coordinator = createCoordinator(filename);
+  try {
+    coordinator.submit(envelope(), senderPrincipal);
+    coordinator.respond("inc_sender01", "msg_sender01", "accepted", 0, receiverPrincipal);
+    const prepared = coordinator.prepareAdapterSubmission(
+      "inc_sender01",
+      "msg_sender01",
+      1,
+      receiverPrincipal,
+    );
+    assert.equal(prepared.submission.state, "prepared");
+    const begun = coordinator.beginAdapterSubmission(
+      prepared.submission.submissionId,
+      1,
+      receiverPrincipal,
+    );
+    assert.equal(begun.submission.state, "outcome-unknown");
+    coordinator.close();
+
+    coordinator = new SqliteCoordinator({ filename, clock: () => NOW });
+    const recovered = coordinator.getAdapterSubmission(
+      prepared.submission.submissionId,
+      receiverPrincipal,
+    );
+    assert.equal(recovered.state, "outcome-unknown");
+    assert.equal(recovered.adapterIdempotencyKey, prepared.submission.adapterIdempotencyKey);
+    assert.throws(
+      () => coordinator.prepareAdapterSubmission(
+        "inc_sender01",
+        "msg_sender01",
+        1,
+        receiverPrincipal,
+      ),
+      { code: "threadmesh_adapter_submission_in_flight" },
+    );
+  } finally {
+    coordinator.close();
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("records one durable adapter receipt and rejects conflicting replay", () => {
+  const coordinator = createCoordinator();
+  try {
+    coordinator.submit(envelope(), senderPrincipal);
+    coordinator.respond("inc_sender01", "msg_sender01", "accepted", 0, receiverPrincipal);
+    const prepared = coordinator.prepareAdapterSubmission(
+      "inc_sender01",
+      "msg_sender01",
+      1,
+      receiverPrincipal,
+    );
+    coordinator.beginAdapterSubmission(
+      prepared.submission.submissionId,
+      1,
+      receiverPrincipal,
+    );
+    const receipt = {
+      adapterOperationId: "mock-operation-1",
+      acceptedAt: "2026-08-20T09:00:01Z",
+      evidenceRefs: ["adapter-receipt://mock-operation-1"],
+    };
+    const recorded = coordinator.recordAdapterReceipt(
+      prepared.submission.submissionId,
+      1,
+      receipt,
+      receiverPrincipal,
+    );
+    assert.equal(recorded.submission.state, "receipt-recorded");
+    assert.equal(recorded.disposition.delivery, "adapter-submitted");
+    assert.equal(recorded.disposition.revision, 2);
+    assert.equal(
+      coordinator.recordAdapterReceipt(
+        prepared.submission.submissionId,
+        1,
+        receipt,
+        receiverPrincipal,
+      ).replay,
+      true,
+    );
+    assert.throws(
+      () => coordinator.recordAdapterReceipt(
+        prepared.submission.submissionId,
+        1,
+        { ...receipt, adapterOperationId: "conflicting-operation" },
+        receiverPrincipal,
+      ),
+      { code: "threadmesh_adapter_receipt_conflict" },
+    );
+  } finally {
+    coordinator.close();
+  }
+});
+
+test("requires reconciliation evidence and disposition CAS before receipt", () => {
+  const coordinator = createCoordinator();
+  try {
+    coordinator.submit(envelope(), senderPrincipal);
+    coordinator.respond("inc_sender01", "msg_sender01", "accepted", 0, receiverPrincipal);
+    const admission = coordinator.prepareContextAdmission(
+      "inc_sender01",
+      "msg_sender01",
+      1,
+      receiverPrincipal,
+    );
+    const prepared = coordinator.prepareAdapterSubmission(
+      "inc_sender01",
+      "msg_sender01",
+      1,
+      receiverPrincipal,
+    );
+    coordinator.beginAdapterSubmission(
+      prepared.submission.submissionId,
+      1,
+      receiverPrincipal,
+    );
+    coordinator.confirmContextAdmission(
+      "inc_sender01",
+      "msg_sender01",
+      1,
+      admission.admissionToken,
+      {
+        sessionId: receiverAdapterRef.sessionId,
+        snapshotDigest: receiverAdapterRef.snapshotDigest,
+        stopReason: "end_turn",
+      },
+      receiverPrincipal,
+    );
+    assert.throws(
+      () => coordinator.recordAdapterReceipt(
+        prepared.submission.submissionId,
+        1,
+        {
+          adapterOperationId: "late-operation",
+          acceptedAt: "2026-08-20T09:00:02Z",
+        },
+        receiverPrincipal,
+      ),
+      { code: "threadmesh_revision_or_state_conflict" },
+    );
+    assert.throws(
+      () => coordinator.reconcileAdapterSubmission(
+        prepared.submission.submissionId,
+        1,
+        { resolution: "manual-required", evidenceRefs: [] },
+        receiverPrincipal,
+      ),
+      { code: "threadmesh_adapter_reconciliation_evidence_required" },
+    );
+  } finally {
+    coordinator.close();
+  }
+});
+
+test("confirmed-not-submitted reconciliation permits a fresh stable attempt", () => {
+  const coordinator = createCoordinator();
+  try {
+    coordinator.submit(envelope(), senderPrincipal);
+    coordinator.respond("inc_sender01", "msg_sender01", "accepted", 0, receiverPrincipal);
+    const first = coordinator.prepareAdapterSubmission(
+      "inc_sender01",
+      "msg_sender01",
+      1,
+      receiverPrincipal,
+    );
+    coordinator.beginAdapterSubmission(first.submission.submissionId, 1, receiverPrincipal);
+    const reconciled = coordinator.reconcileAdapterSubmission(
+      first.submission.submissionId,
+      1,
+      {
+        resolution: "confirmed-not-submitted",
+        evidenceRefs: ["adapter-query://mock/not-found"],
+      },
+      receiverPrincipal,
+    );
+    assert.equal(reconciled.submission.state, "confirmed-not-submitted");
+    const second = coordinator.prepareAdapterSubmission(
+      "inc_sender01",
+      "msg_sender01",
+      1,
+      receiverPrincipal,
+    );
+    assert.notEqual(second.submission.submissionId, first.submission.submissionId);
+    assert.notEqual(
+      second.submission.adapterIdempotencyKey,
+      first.submission.adapterIdempotencyKey,
+    );
+  } finally {
+    coordinator.close();
+  }
+});
+
+test("reconciles a crash-after-effect with an evidence-bound receipt", () => {
+  const coordinator = createCoordinator();
+  try {
+    coordinator.submit(envelope(), senderPrincipal);
+    coordinator.respond("inc_sender01", "msg_sender01", "accepted", 0, receiverPrincipal);
+    const prepared = coordinator.prepareAdapterSubmission(
+      "inc_sender01",
+      "msg_sender01",
+      1,
+      receiverPrincipal,
+    );
+    coordinator.beginAdapterSubmission(prepared.submission.submissionId, 1, receiverPrincipal);
+    const reconciled = coordinator.reconcileAdapterSubmission(
+      prepared.submission.submissionId,
+      1,
+      {
+        resolution: "confirmed-submitted",
+        evidenceRefs: ["adapter-query://mock/found"],
+        receipt: {
+          adapterOperationId: "recovered-operation-1",
+          acceptedAt: "2026-08-20T09:00:03Z",
+        },
+      },
+      receiverPrincipal,
+    );
+    assert.equal(reconciled.submission.state, "receipt-recorded");
+    assert.deepEqual(
+      reconciled.submission.receipt.evidenceRefs,
+      ["adapter-query://mock/found"],
+    );
+    assert.equal(reconciled.disposition.delivery, "adapter-submitted");
+  } finally {
+    coordinator.close();
+  }
+});

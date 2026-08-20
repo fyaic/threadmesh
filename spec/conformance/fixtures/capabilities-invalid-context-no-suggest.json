@@ -15,6 +15,7 @@
     "contextAdmission": "native",
     "provenanceRendering": "model-visible",
     "dispositionCallbacks": false,
-    "structuredGateResponses": "none"
+    "structuredGateResponses": "none",
+    "durableSubmissionIdempotency": "none"
   }
 }

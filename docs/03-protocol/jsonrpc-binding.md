@@ -56,6 +56,11 @@ client-supplied `AuthContext`.
 | `messages.send` | exact task or authenticated owner/policy author | message replay protection plus operation idempotency |
 | `messages.respond` | exact receiver task | disposition revision CAS and idempotency key |
 | `messages.getDisposition` | exact sender or receiver task | read only |
+| `adapter.prepareSubmission` | exact receiver task | disposition CAS, envelope and adapter digests, durable idempotency key |
+| `adapter.beginSubmission` | exact receiver task | durable pre-call `outcome-unknown` boundary and idempotency key |
+| `adapter.recordReceipt` | exact receiver task | exact receipt, disposition CAS, and idempotency key |
+| `adapter.reconcileSubmission` | exact receiver task | evidence-required resolution and CAS where submitted |
+| `adapter.getSubmission` | exact sender or receiver task | read only |
 | `mailbox.listPending` | exact receiver task | opaque monotonic cursor, expiry and current-grant filtering |
 | `mailbox.claim` | exact receiver task | disposition revision CAS, 60-second bounded claim, idempotency key |
 | `mailbox.ack` | exact receiver task holding claim | claim token, disposition revision CAS, idempotency key |
@@ -98,6 +103,12 @@ Task attachment and rotation, summary publication, receiver responses, mailbox
 acknowledgement, and grant revocation use explicit expected revisions. A stale
 write returns `threadmesh_revision_conflict` and does not partially apply.
 
+Adapter submission adds a second idempotency scope. The control-plane replay key
+deduplicates the JSON-RPC operation, while `adapterIdempotencyKey` remains stable
+across the native harness call represented by one submission. The coordinator
+persists `outcome-unknown` before that call. It never infers safe retry merely
+because the process restarted.
+
 ## Mailbox claim and acknowledgement
 
 `mailbox.listPending` filters expired messages and any message whose exact grant
@@ -110,6 +121,20 @@ token and performs the receiver decision under CAS. Mailbox claims are distinct
 from adapter-effect admission claims: the former coordinate receiver workers;
 the latter are the irreversible dispatch boundary described in the delivery
 semantics.
+
+## Submission receipts and reconciliation
+
+The receiver prepares a submission, durably begins it, invokes the harness with
+the returned `adapterIdempotencyKey`, then records the native acceptance receipt.
+Receipt storage and the disposition transition to `adapter-submitted` share one
+transaction and expected revision. If the process dies after begin and before
+receipt storage, `adapter.getSubmission` still returns `outcome-unknown` after
+restart.
+
+Only an evidence-backed `confirmed-not-submitted` reconciliation permits a new
+attempt. `confirmed-submitted` requires and records a receipt;
+`manual-required` quarantines the message. These receipts are trusted binding
+evidence, not the independent verification attestations tracked by #16.
 
 ## Typed errors
 

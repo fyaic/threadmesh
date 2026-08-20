@@ -1,0 +1,167 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://threadmesh.dev/spec/0.0-draft/adapter-submission.schema.json",
+  "title": "ThreadMesh durable adapter submission record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "specVersion",
+    "submissionId",
+    "messageId",
+    "senderIncarnationId",
+    "receiver",
+    "envelopeDigest",
+    "adapterRefDigest",
+    "adapterIdempotencyKey",
+    "expectedDispositionRevision",
+    "state",
+    "preparedAt",
+    "updatedAt"
+  ],
+  "properties": {
+    "specVersion": { "const": "0.0-draft" },
+    "submissionId": {
+      "type": "string",
+      "pattern": "^sub_[A-Za-z0-9][A-Za-z0-9._:-]{6,196}$"
+    },
+    "messageId": {
+      "type": "string",
+      "pattern": "^msg_[A-Za-z0-9][A-Za-z0-9._:-]{6,196}$"
+    },
+    "senderIncarnationId": {
+      "type": "string",
+      "pattern": "^inc_[A-Za-z0-9][A-Za-z0-9._:-]{6,196}$"
+    },
+    "receiver": {
+      "$ref": "https://threadmesh.dev/spec/0.0-draft/types.schema.json#/$defs/taskRef"
+    },
+    "envelopeDigest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "adapterRefDigest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "adapterIdempotencyKey": {
+      "type": "string",
+      "pattern": "^adp_[A-Za-z0-9][A-Za-z0-9._:-]{6,196}$"
+    },
+    "expectedDispositionRevision": { "type": "integer", "minimum": 0 },
+    "state": {
+      "enum": [
+        "prepared",
+        "outcome-unknown",
+        "receipt-recorded",
+        "confirmed-not-submitted",
+        "manual-reconciliation"
+      ]
+    },
+    "preparedAt": { "type": "string", "format": "date-time" },
+    "attemptStartedAt": { "type": "string", "format": "date-time" },
+    "receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["adapterOperationId", "acceptedAt"],
+      "properties": {
+        "adapterOperationId": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "acceptedAt": { "type": "string", "format": "date-time" },
+        "evidenceRefs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "https://threadmesh.dev/spec/0.0-draft/types.schema.json#/$defs/evidenceRef"
+          }
+        }
+      }
+    },
+    "reconciliation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["resolution", "reconciledAt", "reconciledBy"],
+      "properties": {
+        "resolution": {
+          "enum": ["confirmed-submitted", "confirmed-not-submitted", "manual-required"]
+        },
+        "reconciledAt": { "type": "string", "format": "date-time" },
+        "reconciledBy": {
+          "$ref": "https://threadmesh.dev/spec/0.0-draft/types.schema.json#/$defs/actorRef"
+        },
+        "evidenceRefs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "https://threadmesh.dev/spec/0.0-draft/types.schema.json#/$defs/evidenceRef"
+          }
+        }
+      }
+    },
+    "updatedAt": { "type": "string", "format": "date-time" }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "state": {
+            "enum": [
+              "outcome-unknown",
+              "receipt-recorded",
+              "confirmed-not-submitted",
+              "manual-reconciliation"
+            ]
+          }
+        },
+        "required": ["state"]
+      },
+      "then": { "required": ["attemptStartedAt"] }
+    },
+    {
+      "if": {
+        "properties": { "state": { "const": "receipt-recorded" } },
+        "required": ["state"]
+      },
+      "then": { "required": ["receipt"] }
+    },
+    {
+      "if": {
+        "properties": {
+          "state": { "enum": ["confirmed-not-submitted", "manual-reconciliation"] }
+        },
+        "required": ["state"]
+      },
+      "then": { "required": ["reconciliation"] }
+    },
+    {
+      "if": {
+        "properties": { "state": { "const": "confirmed-not-submitted" } },
+        "required": ["state"]
+      },
+      "then": {
+        "properties": {
+          "reconciliation": {
+            "properties": { "resolution": { "const": "confirmed-not-submitted" } },
+            "required": ["resolution"]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "state": { "const": "manual-reconciliation" } },
+        "required": ["state"]
+      },
+      "then": {
+        "properties": {
+          "reconciliation": {
+            "properties": { "resolution": { "const": "manual-required" } },
+            "required": ["resolution"]
+          }
+        }
+      }
+    }
+  ]
+}

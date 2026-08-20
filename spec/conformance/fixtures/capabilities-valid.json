@@ -25,6 +25,7 @@
     "contextAdmission": "receiver-mediated",
     "provenanceRendering": "model-visible",
     "dispositionCallbacks": true,
-    "structuredGateResponses": "none"
+    "structuredGateResponses": "none",
+    "durableSubmissionIdempotency": "queryable-receipt"
   }
 }

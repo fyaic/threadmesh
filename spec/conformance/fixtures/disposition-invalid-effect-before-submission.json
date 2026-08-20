@@ -1,0 +1,31 @@
+{
+  "specVersion": "0.0-draft",
+  "dispositionId": "dsp_suggest01",
+  "messageId": "msg_suggest01",
+  "receiver": {
+    "taskId": "task_validation",
+    "incarnationId": "inc_validation01"
+  },
+  "revision": 3,
+  "delivery": {
+    "state": "context-admitted",
+    "observedAt": "2026-08-20T09:01:00Z"
+  },
+  "decision": {
+    "state": "accepted",
+    "decidedAt": "2026-08-20T09:00:50Z",
+    "decidedBy": {
+      "actorType": "agent",
+      "task": {
+        "taskId": "task_validation",
+        "incarnationId": "inc_validation01"
+      }
+    },
+    "reasonCode": "accepted"
+  },
+  "outcome": {
+    "state": "effect-observed",
+    "observedAt": "2026-08-20T09:01:00Z"
+  },
+  "updatedAt": "2026-08-20T09:01:00Z"
+}

@@ -39,6 +39,8 @@ Capability combinations are fail-closed. In particular:
 - `steer` requires task incarnation, objective freshness, and `active-steer`;
 - `interrupt` requires task incarnation, `interrupt-request`, and at least one
   real cancellation target;
+- `steer` and `interrupt` require durable submission idempotency declared as
+  `stable-key` or `queryable-receipt`;
 - `wake-idle` requires the idle-wake feature;
 - model-visible context admission requires `suggest` plus model-visible
   provenance;
@@ -67,6 +69,8 @@ An adapter MUST NOT:
 - advertise private task discovery as relationship-scoped discovery;
 - collapse sender identity into the target user identity.
 - parse peer prose as a structured approval or permission response.
+- retry an `outcome-unknown` external attempt without a queryable receipt or an
+  evidence-backed `confirmed-not-submitted` reconciliation.
 
 ## Graceful degradation
 
@@ -78,5 +82,7 @@ The ACP adapter is conformance evidence for session binding, replay separation,
 permission denial, timeout cleanup, and model-visible provenance labels. ACP v1
 still carries the peer object over an ordinary prompt surface, and the spawned
 agent retains native process privileges. Production adapter acceptance requires
-authenticated binding, OS isolation guidance, two-profile behavior tests, and
-the normative receipt/reconciliation contract.
+authenticated binding, OS isolation guidance, and product-level behavior
+tests. The normative receipt/reconciliation contract is executable, but the ACP
+profile honestly advertises `durableSubmissionIdempotency: none` and therefore
+cannot expose `steer` or `interrupt`.

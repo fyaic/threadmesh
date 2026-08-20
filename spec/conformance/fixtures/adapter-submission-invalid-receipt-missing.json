@@ -1,0 +1,18 @@
+{
+  "specVersion": "0.0-draft",
+  "submissionId": "sub_validation01",
+  "messageId": "msg_suggest01",
+  "senderIncarnationId": "inc_sender_validation01",
+  "receiver": {
+    "taskId": "task_validation",
+    "incarnationId": "inc_validation01"
+  },
+  "envelopeDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "adapterRefDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "adapterIdempotencyKey": "adp_validation01",
+  "expectedDispositionRevision": 3,
+  "state": "receipt-recorded",
+  "preparedAt": "2026-08-20T09:00:00Z",
+  "attemptStartedAt": "2026-08-20T09:00:01Z",
+  "updatedAt": "2026-08-20T09:00:02Z"
+}

@@ -18,6 +18,8 @@ binary and run receiver-mediated prompts.
 
 The experiment does not advertise `steer` or `interrupt`. ACP session
 cancellation alone cannot prove that tools or external subprocesses stopped.
+It also advertises `durableSubmissionIdempotency: none`: ACP v1 does not expose
+a stable prompt-operation key or queryable receipt in this integration.
 
 ## Run
 
@@ -47,6 +49,12 @@ dispatch; revocation after it cannot retract an already in-flight prompt. If a
 process crashes after dispatch but before confirmation, the persisted claim
 stays `in-flight` and requires reconciliation rather than automatic redelivery.
 Confirmation accepts only matching ACP session and capability evidence.
+
+This legacy admission claim is distinct from the public native submission
+receipt state machine. It safely prevents automatic duplicate prompt admission,
+but it cannot manufacture an ACP receipt query. Consequently the Kimi profile
+remains suggestion-only even though the coordinator can model crash-safe native
+receipts for harnesses that expose them.
 
 `session/load` notifications are treated as historical replay and cleared before
 the new prompt turn is collected.

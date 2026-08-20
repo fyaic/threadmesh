@@ -79,6 +79,9 @@
             "tasks.rotateIncarnation", "tasks.publishSummary", "tasks.getSummary",
             "relationships.propose", "relationships.grant", "relationships.revoke",
             "messages.send", "messages.respond", "messages.getDisposition",
+            "adapter.prepareSubmission", "adapter.beginSubmission",
+            "adapter.recordReceipt", "adapter.reconcileSubmission",
+            "adapter.getSubmission",
             "mailbox.listPending", "mailbox.claim", "mailbox.ack",
             "tasks.wait", "audit.list"
           ]
@@ -98,6 +101,11 @@
         { "$ref": "#/$defs/sendRequest" },
         { "$ref": "#/$defs/respondRequest" },
         { "$ref": "#/$defs/messageReadRequest" },
+        { "$ref": "#/$defs/prepareSubmissionRequest" },
+        { "$ref": "#/$defs/beginSubmissionRequest" },
+        { "$ref": "#/$defs/recordReceiptRequest" },
+        { "$ref": "#/$defs/reconcileSubmissionRequest" },
+        { "$ref": "#/$defs/getSubmissionRequest" },
         { "$ref": "#/$defs/listPendingRequest" },
         { "$ref": "#/$defs/claimRequest" },
         { "$ref": "#/$defs/ackRequest" },
@@ -238,6 +246,103 @@
         "properties": {
           "senderIncarnationId": { "type": "string", "pattern": "^inc_[A-Za-z0-9][A-Za-z0-9._:-]{6,196}$" },
           "messageId": { "type": "string", "pattern": "^msg_[A-Za-z0-9][A-Za-z0-9._:-]{6,196}$" }
+        }
+      } } }
+    },
+    "prepareSubmissionRequest": {
+      "if": { "properties": { "method": { "const": "adapter.prepareSubmission" } } },
+      "then": { "properties": { "params": {
+        "type": "object", "additionalProperties": false,
+        "required": ["senderIncarnationId", "messageId", "expectedRevision", "idempotencyKey"],
+        "properties": {
+          "senderIncarnationId": { "type": "string", "pattern": "^inc_[A-Za-z0-9][A-Za-z0-9._:-]{6,196}$" },
+          "messageId": { "type": "string", "pattern": "^msg_[A-Za-z0-9][A-Za-z0-9._:-]{6,196}$" },
+          "expectedRevision": { "type": "integer", "minimum": 0 },
+          "idempotencyKey": { "$ref": "#/$defs/idempotencyKey" }
+        }
+      } } }
+    },
+    "beginSubmissionRequest": {
+      "if": { "properties": { "method": { "const": "adapter.beginSubmission" } } },
+      "then": { "properties": { "params": {
+        "type": "object", "additionalProperties": false,
+        "required": ["submissionId", "expectedRevision", "idempotencyKey"],
+        "properties": {
+          "submissionId": { "type": "string", "pattern": "^sub_[A-Za-z0-9][A-Za-z0-9._:-]{6,196}$" },
+          "expectedRevision": { "type": "integer", "minimum": 0 },
+          "idempotencyKey": { "$ref": "#/$defs/idempotencyKey" }
+        }
+      } } }
+    },
+    "recordReceiptRequest": {
+      "if": { "properties": { "method": { "const": "adapter.recordReceipt" } } },
+      "then": { "properties": { "params": {
+        "type": "object", "additionalProperties": false,
+        "required": ["submissionId", "expectedRevision", "receipt", "idempotencyKey"],
+        "properties": {
+          "submissionId": { "type": "string", "pattern": "^sub_[A-Za-z0-9][A-Za-z0-9._:-]{6,196}$" },
+          "expectedRevision": { "type": "integer", "minimum": 0 },
+          "receipt": {
+            "type": "object", "additionalProperties": false,
+            "required": ["adapterOperationId", "acceptedAt"],
+            "properties": {
+              "adapterOperationId": { "type": "string", "minLength": 1, "maxLength": 500 },
+              "acceptedAt": { "type": "string", "format": "date-time" },
+              "evidenceRefs": {
+                "type": "array", "minItems": 1, "maxItems": 32, "uniqueItems": true,
+                "items": { "$ref": "https://threadmesh.dev/spec/0.0-draft/types.schema.json#/$defs/evidenceRef" }
+              }
+            }
+          },
+          "idempotencyKey": { "$ref": "#/$defs/idempotencyKey" }
+        }
+      } } }
+    },
+    "reconcileSubmissionRequest": {
+      "if": { "properties": { "method": { "const": "adapter.reconcileSubmission" } } },
+      "then": { "properties": { "params": {
+        "type": "object", "additionalProperties": false,
+        "required": ["submissionId", "expectedRevision", "reconciliation", "idempotencyKey"],
+        "properties": {
+          "submissionId": { "type": "string", "pattern": "^sub_[A-Za-z0-9][A-Za-z0-9._:-]{6,196}$" },
+          "expectedRevision": { "type": "integer", "minimum": 0 },
+          "reconciliation": {
+            "type": "object", "additionalProperties": false,
+            "required": ["resolution", "evidenceRefs"],
+            "properties": {
+              "resolution": { "enum": ["confirmed-submitted", "confirmed-not-submitted", "manual-required"] },
+              "evidenceRefs": {
+                "type": "array", "minItems": 1, "maxItems": 32, "uniqueItems": true,
+                "items": { "$ref": "https://threadmesh.dev/spec/0.0-draft/types.schema.json#/$defs/evidenceRef" }
+              },
+              "receipt": {
+                "type": "object", "additionalProperties": false,
+                "required": ["adapterOperationId", "acceptedAt"],
+                "properties": {
+                  "adapterOperationId": { "type": "string", "minLength": 1, "maxLength": 500 },
+                  "acceptedAt": { "type": "string", "format": "date-time" },
+                  "evidenceRefs": {
+                    "type": "array", "minItems": 1, "maxItems": 32, "uniqueItems": true,
+                    "items": { "$ref": "https://threadmesh.dev/spec/0.0-draft/types.schema.json#/$defs/evidenceRef" }
+                  }
+                }
+              }
+            },
+            "allOf": [{
+              "if": { "properties": { "resolution": { "const": "confirmed-submitted" } }, "required": ["resolution"] },
+              "then": { "required": ["receipt"] }
+            }]
+          },
+          "idempotencyKey": { "$ref": "#/$defs/idempotencyKey" }
+        }
+      } } }
+    },
+    "getSubmissionRequest": {
+      "if": { "properties": { "method": { "const": "adapter.getSubmission" } } },
+      "then": { "properties": { "params": {
+        "type": "object", "additionalProperties": false, "required": ["submissionId"],
+        "properties": {
+          "submissionId": { "type": "string", "pattern": "^sub_[A-Za-z0-9][A-Za-z0-9._:-]{6,196}$" }
         }
       } } }
     },
