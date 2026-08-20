@@ -106,6 +106,8 @@ GitHub is authoritative for milestone closure.
   candidate and is stacked on retention Draft #35.
 - Draft [#40](https://github.com/fyaic/threadmesh/pull/40) contains the Kimi
   lifecycle hardening candidate and is stacked on #39.
+- Draft [#41](https://github.com/fyaic/threadmesh/pull/41) contains the Gemini
+  headless candidate and is stacked on #40.
 - The Codex candidate implements suggestion-only capability negotiation,
   receiver-acceptance enforcement, exact turn evidence, server-request denial,
   timeout cleanup, generated-schema digesting, and a real no-model product

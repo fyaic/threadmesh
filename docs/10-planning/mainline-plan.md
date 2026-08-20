@@ -174,7 +174,8 @@ remains quota-blocked and gated in Draft
 [#40](https://github.com/fyaic/threadmesh/pull/40).
 Gemini CLI headless `stream-json` is selected for #38; its pinned package and
 isolated no-model preflight pass, while model execution waits for explicit
-provider credential authorization.
+provider credential authorization in Draft
+[#41](https://github.com/fyaic/threadmesh/pull/41).
 
 After M0 closes and the M1 stack is merged and revalidated:
 
