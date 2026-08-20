@@ -131,6 +131,21 @@ portable operation returns one umbrella interrupt-success value.
 
 Waits for task state, new disposition, or checkpoint events. Implementations SHOULD use cursors to suppress already delivered events.
 
+## Maintenance
+
+### `maintenance.expireDue`
+
+Transitions due, non-terminal messages to expired under disposition CAS and
+appends one audit event in the same transaction. Pending and deferred receiver
+decisions become expired; a prior accepted decision remains historically
+accepted while delivery expires before adapter submission.
+
+Messages with an active irreversible context-admission claim or native
+`outcome-unknown` boundary are excluded. Expiry cannot overwrite an unknown
+external effect. The operation is control-plane-only, bounded, and idempotent.
+A user sweep covers only messages whose source and target tasks that user owns;
+cross-owner maintenance requires policy authority.
+
 ## Relationship management
 
 ### `relationships.propose`
@@ -160,6 +175,7 @@ Revokes future authority. Queued, unapplied state-changing messages MUST be re-e
 | Receiver decision | `messages.respond` | Reference runtime supports accepted/rejected/deferred |
 | Native submission | `adapter.prepareSubmission`, `adapter.beginSubmission`, `adapter.recordReceipt` | Trusted local receipt, not independent verification |
 | Unknown-outcome reconciliation | `adapter.reconcileSubmission`, `adapter.getSubmission` | Receiver task supplies evidence; no remote attestation yet |
+| Expiry maintenance | `maintenance.expireDue` | Control-plane-only bounded sweep; in-flight effects excluded |
 | Event observation | `tasks.wait` | Immediate cursor poll, not hosted long-poll |
 | Disposition/audit read | `messages.getDisposition`, `audit.list` | Sender/receiver task projection only |
 

@@ -61,6 +61,7 @@ client-supplied `AuthContext`.
 | `adapter.recordReceipt` | exact receiver task | exact receipt, disposition CAS, and idempotency key |
 | `adapter.reconcileSubmission` | exact receiver task | evidence-required resolution and CAS where submitted |
 | `adapter.getSubmission` | exact sender or receiver task | read only |
+| `maintenance.expireDue` | common source/target owner or policy | bounded deterministic expiry, operation idempotency key |
 | `mailbox.listPending` | exact receiver task | opaque monotonic cursor, expiry and current-grant filtering |
 | `mailbox.claim` | exact receiver task | disposition revision CAS, 60-second bounded claim, idempotency key |
 | `mailbox.ack` | exact receiver task holding claim | claim token, disposition revision CAS, idempotency key |
@@ -70,6 +71,10 @@ client-supplied `AuthContext`.
 The local `tasks.wait` implementation is a non-blocking cursor poll: an empty
 page returns `timedOut: true`. A network host may hold the request until an event
 or timeout while preserving the same cursor and response semantics.
+
+No `tasks.list` or equivalent global enumeration method exists in this profile.
+Task reads require an exact task reference, and summary discovery remains
+relationship scoped.
 
 ## Proposals and effective grants
 

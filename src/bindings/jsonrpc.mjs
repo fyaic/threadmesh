@@ -202,6 +202,11 @@ export class ThreadMeshJsonRpcBinding {
           );
         case "adapter.getSubmission":
           return this.coordinator.getAdapterSubmission(params.submissionId, principal);
+        case "maintenance.expireDue":
+          return this.coordinator.expireDueMessages(
+            { limit: params.limit },
+            principal,
+          );
         case "mailbox.listPending":
           return this.coordinator.listPending(
             params.receiver,

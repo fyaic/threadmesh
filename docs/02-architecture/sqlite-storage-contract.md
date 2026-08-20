@@ -65,6 +65,7 @@ state transition at a time while WAL readers continue.
 | Unknown-outcome reconciliation | submission resolution and audit event; confirmed-submitted reuses native receipt boundary |
 | Task rotation | retire previous incarnation and metadata revision, register next incarnation |
 | Summary publication | summary version CAS and current-grant projection |
+| Expiry sweep | due-message disposition CAS plus `message-expired` audit event; active irreversible claims excluded |
 
 No queue acknowledgement, adapter receipt, or audit event is emitted before its
 corresponding durable state commits. A transaction failure leaves every member
@@ -84,6 +85,8 @@ SQLite recovery is authoritative after process failure. In-memory locks,
 workers, and model sessions are not. Mailbox claims remain bounded by expiry.
 Native calls that crossed the durable pre-call boundary remain
 `outcome-unknown` and are never retried merely because a worker restarted.
+Due queued mail becomes explicitly expired through a bounded control-plane
+sweep; mailbox filtering does not substitute for a durable expiry transition.
 
 The database supplies local sequence order only. It does not claim global
 ordering across hosts or exactly-once external effects.

@@ -12,6 +12,7 @@ import { grantAuthorizationDigest } from "../src/protocol-validator.mjs";
 
 const NOW = Date.parse("2026-08-20T09:00:00Z");
 const owner = { kind: "user", principalId: "owner" };
+const policy = { kind: "policy", principalId: "policy" };
 const receiverAdapterRef = {
   kind: "acp-session",
   sessionId: "fake-1",
@@ -744,6 +745,107 @@ test("reconciles a crash-after-effect with an evidence-bound receipt", () => {
       ["adapter-query://mock/found"],
     );
     assert.equal(reconciled.disposition.delivery, "adapter-submitted");
+  } finally {
+    coordinator.close();
+  }
+});
+
+test("expires queued messages atomically with audit evidence", () => {
+  let currentTime = NOW;
+  const coordinator = createCoordinator(":memory:", () => currentTime);
+  try {
+    coordinator.submit(envelope(), senderPrincipal);
+    currentTime = Date.parse("2026-08-20T09:11:00Z");
+    const result = coordinator.expireDueMessages({}, owner);
+    assert.deepEqual(result.expired, [
+      {
+        senderIncarnationId: "inc_sender01",
+        messageId: "msg_sender01",
+        revision: 1,
+      },
+    ]);
+    const disposition = coordinator.getDisposition(
+      "inc_sender01",
+      "msg_sender01",
+      receiverPrincipal,
+    );
+    assert.equal(disposition.delivery, "expired");
+    assert.equal(disposition.decision, "expired");
+    assert.deepEqual(
+      coordinator
+        .auditEvents("inc_sender01", "msg_sender01", receiverPrincipal)
+        .map((event) => event.eventType),
+      ["message-durably-received", "message-expired"],
+    );
+    assert.throws(
+      () => coordinator.prepareContextAdmission(
+        "inc_sender01",
+        "msg_sender01",
+        1,
+        receiverPrincipal,
+      ),
+      { code: "threadmesh_message_expired" },
+    );
+  } finally {
+    coordinator.close();
+  }
+});
+
+test("does not expire an adapter attempt after the irreversible boundary", () => {
+  let currentTime = NOW;
+  const coordinator = createCoordinator(":memory:", () => currentTime);
+  try {
+    coordinator.submit(envelope(), senderPrincipal);
+    coordinator.respond("inc_sender01", "msg_sender01", "accepted", 0, receiverPrincipal);
+    const prepared = coordinator.prepareAdapterSubmission(
+      "inc_sender01",
+      "msg_sender01",
+      1,
+      receiverPrincipal,
+    );
+    coordinator.beginAdapterSubmission(
+      prepared.submission.submissionId,
+      1,
+      receiverPrincipal,
+    );
+    currentTime = Date.parse("2026-08-20T09:11:00Z");
+    assert.equal(coordinator.expireDueMessages({}, owner).expired.length, 0);
+    assert.equal(
+      coordinator.getAdapterSubmission(
+        prepared.submission.submissionId,
+        receiverPrincipal,
+      ).state,
+      "outcome-unknown",
+    );
+  } finally {
+    coordinator.close();
+  }
+});
+
+test("requires policy authority to sweep messages across task owners", () => {
+  let currentTime = NOW;
+  const coordinator = new SqliteCoordinator({ clock: () => currentTime });
+  const alice = { kind: "user", principalId: "alice" };
+  const bob = { kind: "user", principalId: "bob" };
+  try {
+    coordinator.registerTask(
+      { taskId: "task_sender", incarnationId: "inc_sender01", harness: "a" },
+      alice,
+    );
+    coordinator.registerTask(
+      { taskId: "task_receiver", incarnationId: "inc_receiver01", harness: "b" },
+      bob,
+    );
+    coordinator.issueGrant(
+      grant(),
+      { ...grantDecision, authenticationId: "authn_policy_test01" },
+      policy,
+    );
+    coordinator.submit(envelope(), senderPrincipal);
+    currentTime = Date.parse("2026-08-20T09:11:00Z");
+    assert.equal(coordinator.expireDueMessages({}, alice).expired.length, 0);
+    assert.equal(coordinator.expireDueMessages({}, bob).expired.length, 0);
+    assert.equal(coordinator.expireDueMessages({}, policy).expired.length, 1);
   } finally {
     coordinator.close();
   }

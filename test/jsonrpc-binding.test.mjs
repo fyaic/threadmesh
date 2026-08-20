@@ -52,12 +52,12 @@ const credentials = [
   },
 ];
 
-function transport(filename) {
-  const coordinator = new SqliteCoordinator({ filename, clock: () => NOW });
+function transport(filename, clock = () => NOW) {
+  const coordinator = new SqliteCoordinator({ filename, clock });
   const binding = new ThreadMeshJsonRpcBinding({
     coordinator,
     authenticator: new StaticTokenAuthenticator(credentials),
-    clock: () => NOW,
+    clock,
   });
   const send = (request, context) =>
     JSON.parse(
@@ -289,6 +289,25 @@ test("rejects payload principal injection and cross-task impersonation", () => {
   }
 });
 
+test("does not expose unrestricted global task enumeration", () => {
+  const api = transport(":memory:");
+  try {
+    bootstrap(api);
+    const response = api.binding.handle(
+      {
+        jsonrpc: "2.0",
+        id: "global-list-1",
+        method: "tasks.list",
+        params: {},
+      },
+      { authorization: "Bearer owner-secret" },
+    );
+    assert.equal(response.error.data.threadmeshCode, "threadmesh_jsonrpc_invalid");
+  } finally {
+    api.coordinator.close();
+  }
+});
+
 test("exposes crash-safe adapter submission receipts through authenticated JSON-RPC", () => {
   const api = transport(":memory:");
   try {
@@ -335,6 +354,45 @@ test("exposes crash-safe adapter submission receipts through authenticated JSON-
     assert.equal(
       api.a.call("adapter.getSubmission", { submissionId }).state,
       "receipt-recorded",
+    );
+  } finally {
+    api.coordinator.close();
+  }
+});
+
+test("expires due mail through a control-plane-only idempotent operation", () => {
+  let currentTime = NOW;
+  const api = transport(":memory:", () => currentTime);
+  try {
+    bootstrap(api);
+    api.a.call("messages.send", {
+      envelope: envelope("msg_rpc_expiry01"),
+      idempotencyKey: "idem_send_rpc_expiry01",
+    });
+    currentTime = Date.parse("2026-08-20T09:11:00Z");
+    assert.throws(
+      () => api.b.call("maintenance.expireDue", {
+        idempotencyKey: "idem_task_expiry_denied",
+      }),
+      { code: "threadmesh_control_plane_authority_required" },
+    );
+    const expired = api.owner.call("maintenance.expireDue", {
+      limit: 10,
+      idempotencyKey: "idem_owner_expiry01",
+    });
+    assert.equal(expired.operationReplay, false);
+    assert.equal(expired.value.expired[0].messageId, "msg_rpc_expiry01");
+    const replay = api.owner.call("maintenance.expireDue", {
+      limit: 10,
+      idempotencyKey: "idem_owner_expiry01",
+    });
+    assert.equal(replay.operationReplay, true);
+    assert.equal(
+      api.a.call("messages.getDisposition", {
+        senderIncarnationId: taskA.incarnationId,
+        messageId: "msg_rpc_expiry01",
+      }).delivery,
+      "expired",
     );
   } finally {
     api.coordinator.close();

@@ -121,6 +121,11 @@ rejects newer or checksum-mismatched databases, rolls back failed adoption,
 configures durable WAL concurrency, and documents protocol/table mapping plus
 retention and operational rollback. Its merge remains gated by #7.
 
+The stacked #10 candidate adds a bounded control-plane expiry sweep that writes
+the disposition and audit event atomically, excludes irreversible in-flight
+effects, exposes no global task list, and exercises the behavior through the
+authenticated JSON-RPC surface. Its merge is also gated by #7.
+
 ### 7. Resume live adapter expansion
 
 After M0 closes and M1 has an observable coordinator:

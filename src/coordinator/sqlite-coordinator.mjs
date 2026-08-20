@@ -1681,6 +1681,92 @@ export class SqliteCoordinator {
     return this.#adapterSubmission(submission, message);
   }
 
+  expireDueMessages({ limit = 100 } = {}, principal) {
+    assertControlPlanePrincipal(principal);
+    const boundedLimit = Math.max(1, Math.min(Number(limit) || 100, 1000));
+    return this.db.transaction(() => {
+      const at = nowIso(this.clock);
+      const candidates = this.db
+        .prepare(
+          `SELECT m.sender_incarnation_id, m.message_id,
+                  d.revision, d.delivery_state, d.decision_state
+           FROM messages m
+           JOIN dispositions d USING (sender_incarnation_id, message_id)
+           JOIN tasks source_task
+             ON source_task.incarnation_id = m.sender_incarnation_id
+           JOIN tasks target_task
+             ON target_task.task_id = m.target_task_id
+            AND target_task.incarnation_id = m.target_incarnation_id
+           WHERE m.expires_at <= ?
+             AND (? = 'policy' OR (
+               source_task.owner_kind = ? AND source_task.owner_principal_id = ?
+               AND target_task.owner_kind = ? AND target_task.owner_principal_id = ?
+             ))
+             AND d.delivery_state NOT IN ('adapter-submitted', 'failed', 'expired')
+             AND NOT EXISTS (
+               SELECT 1 FROM admission_claims a
+               WHERE a.sender_incarnation_id = m.sender_incarnation_id
+                 AND a.message_id = m.message_id AND a.state = 'in-flight'
+             )
+             AND NOT EXISTS (
+               SELECT 1 FROM adapter_submissions s
+               WHERE s.sender_incarnation_id = m.sender_incarnation_id
+                 AND s.message_id = m.message_id AND s.state = 'outcome-unknown'
+             )
+           ORDER BY m.sequence ASC LIMIT ?`,
+        )
+        .all(
+          at,
+          principal.kind,
+          principal.kind,
+          principal.principalId,
+          principal.kind,
+          principal.principalId,
+          boundedLimit + 1,
+        );
+      const selected = candidates.slice(0, boundedLimit);
+      const expired = [];
+      for (const candidate of selected) {
+        const decision = ["pending", "deferred"].includes(candidate.decision_state)
+          ? "expired"
+          : candidate.decision_state;
+        const result = this.db
+          .prepare(
+            `UPDATE dispositions SET revision = revision + 1,
+               delivery_state = 'expired', decision_state = ?, updated_at = ?
+             WHERE sender_incarnation_id = ? AND message_id = ? AND revision = ?
+               AND delivery_state NOT IN ('adapter-submitted', 'failed', 'expired')`,
+          )
+          .run(
+            decision,
+            at,
+            candidate.sender_incarnation_id,
+            candidate.message_id,
+            candidate.revision,
+          );
+        if (result.changes !== 1) continue;
+        const revision = candidate.revision + 1;
+        this.#audit(
+          candidate.sender_incarnation_id,
+          candidate.message_id,
+          "message-expired",
+          revision,
+          {
+            expiredAt: at,
+            previousDelivery: candidate.delivery_state,
+            previousDecision: candidate.decision_state,
+          },
+        );
+        expired.push({
+          senderIncarnationId: candidate.sender_incarnation_id,
+          messageId: candidate.message_id,
+          revision,
+        });
+      }
+      return { expiredAt: at, expired, hasMore: candidates.length > boundedLimit };
+    }).immediate();
+  }
+
   getDisposition(senderIncarnationId, messageId, principal) {
     const message = this.#message(senderIncarnationId, messageId);
     const envelope = JSON.parse(message.envelope_json);
