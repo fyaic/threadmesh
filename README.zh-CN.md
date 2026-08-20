@@ -4,6 +4,14 @@
 
 [English](README.md) · [中文文档入口](docs/zh-CN/README.md) · [当前进度](docs/10-planning/project-status.md) · [JSON-RPC binding](docs/03-protocol/jsonrpc-binding.md) · [协议草案](spec/README.md) · [路线图](ROADMAP.md)
 
+> **正在征集独立外部 reviewer：** M0 需要 distributed-systems 与 agent-safety
+> 两类 verdict，其中至少一位 reviewer 来自 `fyaic` 组织之外。30–60 分钟阅读
+> 路径、精确 commit、复现命令和模板都在
+> [reviewer packet](docs/09-reviews/m0-external-reviewer-packet.md)；请提交到
+> [issue #7](https://github.com/fyaic/threadmesh/issues/7)，每项 finding 都会公开处置。
+
+---
+
 > 当前状态：pre-alpha。仓库已包含可执行协议草案、SQLite coordinator
 > 实验原型和 ACP adapter，但协议尚未稳定，也没有可用于生产的 adapter。
 
