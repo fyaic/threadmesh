@@ -182,7 +182,8 @@ evidence confirmation across all three adapter kinds; this is deterministic
 preparation in Draft [#43](https://github.com/fyaic/threadmesh/pull/43), not a
 substitute for the post-gate real model run.
 
-Issue [#44](https://github.com/fyaic/threadmesh/issues/44) adds the final shared
+Draft [#45](https://github.com/fyaic/threadmesh/pull/45), tracked by
+[#44](https://github.com/fyaic/threadmesh/issues/44), adds the final shared
 execution surface: fake-all and live modes now traverse the same mailbox claim,
 receiver acceptance, admission token, exact marker, strict evidence, audit, and
 cleanup path. Fake-all passes. Live mode remains mechanically `not-run` unless

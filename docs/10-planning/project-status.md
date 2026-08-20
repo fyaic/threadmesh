@@ -115,9 +115,10 @@ GitHub is authoritative for milestone closure.
   headless candidate and is stacked on #40.
 - Draft [#43](https://github.com/fyaic/threadmesh/pull/43) contains shared
   multi-product context admission and is stacked on #41.
-- The #44 candidate adds one mechanically gated runner over the exact mailbox,
-  acceptance, admission, evidence, audit, and cleanup path. Its fake-all mode
-  passes all three products; live mode remains `not-run` before #7.
+- Draft [#45](https://github.com/fyaic/threadmesh/pull/45), tracked by #44, adds
+  one mechanically gated runner over the exact mailbox, acceptance, admission,
+  evidence, audit, and cleanup path. Its fake-all mode passes all three
+  products; live mode remains `not-run` before #7.
 - The Codex candidate implements suggestion-only capability negotiation,
   receiver-acceptance enforcement, exact turn evidence, server-request denial,
   timeout cleanup, generated-schema digesting, and a real no-model product
