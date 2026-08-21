@@ -12,7 +12,7 @@ import {
 import { runCoordinatorProductScenario } from "../src/validation/coordinator-product-scenario.mjs";
 import {
   verifyExternalReviewGate,
-  verifyLiveRepositoryState,
+  verifyIsolatedExecutionState,
 } from "../src/validation/external-review-gate.mjs";
 
 export const LIVE_E2E_ACK = "issue-7-approved-for-live-product-validation";
@@ -163,7 +163,10 @@ export async function runLive(productId, env = process.env) {
       reviewGate,
     };
   }
-  const repository = verifyLiveRepositoryState({ root });
+  const repository = verifyIsolatedExecutionState({
+    root,
+    expectedSha: env.THREADMESH_ISOLATED_LIVE_SHA,
+  });
   if (!repository.satisfied) {
     return {
       mode: "live",
@@ -171,7 +174,7 @@ export async function runLive(productId, env = process.env) {
       finishedAt: new Date().toISOString(),
       state: "not-run",
       productId,
-      code: "live_repository_not_ready",
+      code: "isolated_live_repository_not_ready",
       reviewGate,
       repository,
     };
@@ -199,13 +202,13 @@ async function main() {
   const [mode, productId] = process.argv.slice(2);
   let result;
   if (mode === "--fake-all" && !productId) result = await runFakeAll();
-  else if (mode === "--live" && ["codex", "kimi", "gemini"].includes(productId)) {
+  else if (mode === "--isolated-live" && ["codex", "kimi", "gemini"].includes(productId)) {
     result = await runLive(productId);
   } else {
     result = {
       state: "not-run",
       code: "usage",
-      usage: "node scripts/validate-products-e2e.mjs --fake-all | --live <codex|kimi|gemini>",
+      usage: "node scripts/validate-products-e2e.mjs --fake-all | --isolated-live <codex|kimi|gemini>",
     };
   }
   console.log(JSON.stringify(result, null, 2));

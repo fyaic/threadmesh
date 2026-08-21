@@ -14,7 +14,11 @@ and must identify:
 - the exact M0 review target;
 - an approving verdict, a numeric issue-#7 comment permalink, and the canonical
   digest of that exact comment body;
-- every finding with a terminal disposition, rationale, and repository evidence.
+- a canonical reviewer-authored machine block that exactly binds the target,
+  lane, verdict, and original finding identities;
+- every finding with a separate authenticated maintainer disposition comment,
+  exact body digest and timestamp, rationale, and optional fix URL; and
+- for `resolved`, a merged PR or commit that is an ancestor of the candidate.
 
 Resolve the immutable source fields from the authenticated GitHub comment
 without printing its body:
@@ -37,12 +41,12 @@ After adding both records and their digests, change the manifest status from
 npm run validate:review-gate
 ```
 
-The operational verifier resolves each comment through authenticated GitHub
-API access. It rejects a missing comment, author-login or author-association
-mismatch, changed body or timestamp, a body that does not bind the exact commit,
-perspective, verdict, and transcribed findings, duplicate reviewers, missing
-perspectives, a missing outside reviewer, target mismatch, non-approving
-verdicts, nonexistent repository evidence URLs, and findings without terminal
-public dispositions. The checked-in
+The operational verifier resolves reviewer and disposition comments through
+authenticated GitHub API access. It rejects a missing comment, author-login or
+author-association mismatch, changed body or timestamp, missing, duplicate, or
+non-canonical machine blocks, record/block mismatch, duplicate reviewers,
+missing perspectives, a missing outside reviewer, target mismatch,
+non-approving verdicts, unauthenticated dispositions, and resolved fixes that
+are not merged into the candidate. The checked-in
 record digest protects repository transcription integrity; it is not treated as
 proof of reviewer identity.

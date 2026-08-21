@@ -48,6 +48,8 @@ Before dispatch, the coordinator atomically creates a durable, single-use
 admission claim bound to the message revision, grant version and registered ACP
 session/capability digest. The adapter independently revalidates the canonical
 envelope and matching receiver acceptance before sending its ordinary prompt.
+On the same ACP connection, it reinitializes and compares the current capability
+snapshot with the coordinator-bound adapter reference before loading the session.
 The
 claim is the revocation linearization boundary: revocation before it blocks the
 dispatch; revocation after it cannot retract an already in-flight prompt. If a

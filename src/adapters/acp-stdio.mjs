@@ -56,6 +56,10 @@ function childEnvironment(overrides = {}) {
   return { ...environment, ...overrides };
 }
 
+function nonEmptyString(value) {
+  return typeof value === "string" && value.length > 0;
+}
+
 function renderAcceptedSuggestion(envelope, admission) {
   assertProtocolObject("envelope", envelope);
   if (envelope.intent !== "suggest") throw codedError("acp_intent_unsupported");
@@ -238,23 +242,42 @@ export class AcpStdioAdapter {
     args = [],
     cwd,
     env = {},
-    sessionId,
+    adapterRef,
     envelope,
     admission,
     timeoutMs = 120_000,
   }) {
+    const promptText = renderAcceptedSuggestion(envelope, admission);
+    if (
+      !adapterRef ||
+      adapterRef.kind !== "acp-session" ||
+      !nonEmptyString(adapterRef.sessionId) ||
+      !/^sha256:[a-f0-9]{64}$/.test(adapterRef.snapshotDigest ?? "")
+    ) {
+      throw codedError("acp_adapter_ref_invalid");
+    }
     return this.runPrompt({
       command,
       args,
       cwd,
       env,
-      sessionId,
-      promptText: renderAcceptedSuggestion(envelope, admission),
+      sessionId: adapterRef.sessionId,
+      promptText,
+      expectedSnapshotDigest: adapterRef.snapshotDigest,
       timeoutMs,
     });
   }
 
-  async runPrompt({ command, args = [], cwd, env = {}, sessionId = null, promptText, timeoutMs = 120_000 }) {
+  async runPrompt({
+    command,
+    args = [],
+    cwd,
+    env = {},
+    sessionId = null,
+    promptText,
+    expectedSnapshotDigest = null,
+    timeoutMs = 120_000,
+  }) {
     assertInvocation(command, args, cwd, env);
     if (typeof promptText !== "string" || promptText.length === 0) {
       throw codedError("acp_prompt_invalid");
@@ -281,6 +304,9 @@ export class AcpStdioAdapter {
           cancellationSignal: control.signal,
         }),
       );
+      if (expectedSnapshotDigest && initialization.snapshotDigest !== expectedSnapshotDigest) {
+        throw codedError("acp_snapshot_mismatch");
+      }
       if (activeSessionId) {
         if (!initialization.agentCapabilities.loadSession) {
           throw codedError("acp_session_load_not_supported");

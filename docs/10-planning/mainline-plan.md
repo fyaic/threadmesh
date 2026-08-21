@@ -102,9 +102,10 @@ are still required; no internal agent review is counted toward this gate.
 - disposition every finding publicly.
 
 The operational gate must resolve each numeric issue-#7 comment through GitHub
-and verify the real author, organization association, timestamp, body digest,
-exact target, review lane, verdict, and transcribed findings. Repository-local
-identity fields and digests alone are not reviewer authentication.
+and compare one canonical reviewer-authored machine block. Every finding needs
+an authenticated maintainer disposition block; a resolved fix must be merged
+and contained in the candidate. Natural-language substring matching and
+repository-local identity fields are not reviewer authentication.
 
 M0 closes only after the resulting fixes and evidence are merged.
 
@@ -197,9 +198,11 @@ Draft [#45](https://github.com/fyaic/threadmesh/pull/45), tracked by
 execution surface: fake-all and live modes now traverse the same mailbox claim,
 receiver acceptance, admission token, exact marker, strict evidence, audit, and
 cleanup path. Fake-all passes. Live mode remains mechanically `not-run` unless
-two records resolve to qualifying GitHub review comments, the operator supplies
-the exact post-review acknowledgement, and the checkout is clean `main` whose
-`HEAD` equals GitHub `main`. Every legacy live alias delegates to this one path.
+two records resolve to qualifying GitHub machine blocks, the operator supplies
+the exact post-review acknowledgement, and a built-in-only bootstrap starts a
+fresh child from a detached worktree at clean verified GitHub `main`. Start and
+end snapshots must remain on the same SHA. Every legacy live alias delegates to
+this one path.
 
 After M0 closes and the M1 stack is merged and revalidated:
 

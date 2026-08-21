@@ -72,6 +72,8 @@ It invokes the common product runner. There is no product-specific live bypass.
 The adapter requires exactly one terminal `result` event with
 `status: "success"`; a `result` carrying `status: "error"` fails even if an
 earlier message happens to contain the expected marker.
+It also repeats the no-model capability probe and compares the snapshot with the
+coordinator-bound adapter reference before starting the model process.
 
 No API key has been authorized for this project, so the live result remains
 `not-run`. A stacked deterministic test now runs the same coordinator admission

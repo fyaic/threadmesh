@@ -16,7 +16,7 @@ const baseArgs = ["--yes", packageSpecifier];
 const temporaryHome = fs.mkdtempSync(path.join(os.tmpdir(), "threadmesh-gemini-home-"));
 const adapter = new GeminiHeadlessAdapter();
 const result = {
-  command,
+  commandName: path.basename(command),
   packageSpecifier,
   packageIntegrity: null,
   startedAt: new Date().toISOString(),

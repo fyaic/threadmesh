@@ -18,6 +18,11 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const fixture = path.join(root, "test", "fixtures", "fake-gemini-cli.mjs");
 const adapter = new GeminiHeadlessAdapter();
 const sessionId = "11111111-2222-4333-8444-555555555555";
+const expectedSnapshotDigest = (await adapter.probe({
+  command: process.execPath,
+  baseArgs: [fixture],
+  cwd: root,
+})).snapshotDigest;
 
 function envelope(content = "Review the dependency result.") {
   return {
@@ -96,6 +101,7 @@ test("runs an accepted suggestion through bounded stream-json", async () => {
     envelope: envelope(),
     admission: admission(),
     sessionId,
+    expectedSnapshotDigest,
   });
   assert.equal(result.state, "completed");
   assert.match(result.text, /^FAKE_GEMINI:THREADMESH_UNTRUSTED_PEER_CONTEXT_JSON_V1\n/);
@@ -124,8 +130,24 @@ test("requires explicit matching receiver acceptance", async () => {
       envelope: envelope(),
       admission: { ...admission(), decision: "deferred" },
       sessionId,
+      expectedSnapshotDigest,
     }),
     { code: "gemini_receiver_acceptance_required" },
+  );
+});
+
+test("rejects capability drift before starting a model process", async () => {
+  await assert.rejects(
+    adapter.runAcceptedSuggestion({
+      command: process.execPath,
+      baseArgs: [fixture],
+      cwd: root,
+      envelope: envelope(),
+      admission: admission(),
+      sessionId,
+      expectedSnapshotDigest: `sha256:${"a".repeat(64)}`,
+    }),
+    { code: "gemini_snapshot_mismatch" },
   );
 });
 
@@ -139,6 +161,7 @@ test("fails when a supposedly bounded marker attempts any tool", async () => {
       envelope: envelope(),
       admission: admission(),
       sessionId,
+      expectedSnapshotDigest,
     }),
     { code: "gemini_unexpected_tool_use" },
   );
@@ -154,6 +177,7 @@ test("fails closed on malformed stream-json", async () => {
       envelope: envelope(),
       admission: admission(),
       sessionId,
+      expectedSnapshotDigest,
     }),
     { code: "gemini_stream_protocol_error" },
   );
@@ -169,6 +193,7 @@ test("classifies explicit authentication failure", async () => {
       envelope: envelope(),
       admission: admission(),
       sessionId,
+      expectedSnapshotDigest,
     }),
     { code: "gemini_auth_error" },
   );
@@ -187,6 +212,7 @@ test("rejects an official error result even when output contains the exact marke
       envelope: envelope(),
       admission: admission(),
       sessionId,
+      expectedSnapshotDigest,
     }),
     { code: "gemini_auth_error" },
   );
@@ -220,6 +246,7 @@ test("times out and terminates an unresponsive Gemini child", async () => {
       envelope: envelope(),
       admission: admission(),
       sessionId,
+      expectedSnapshotDigest,
       timeoutMs: 500,
     }),
     { code: "gemini_operation_timeout" },

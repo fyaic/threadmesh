@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
-import { sha256Digest } from "../canonical-json.mjs";
+import { canonicalJson, sha256Digest } from "../canonical-json.mjs";
 
 const REPOSITORY = "fyaic/threadmesh";
 const ISSUE_URL = `https://github.com/${REPOSITORY}/issues/7`;
@@ -20,11 +20,57 @@ function nonEmpty(value) {
   return typeof value === "string" && value.trim().length > 0;
 }
 
-function sourceCommentId(sourceUrl) {
+function issueCommentId(url) {
   const match = /^https:\/\/github\.com\/fyaic\/threadmesh\/issues\/7#issuecomment-(\d+)$/.exec(
-    sourceUrl ?? "",
+    url ?? "",
   );
   return match?.[1] ?? null;
+}
+
+function extractCanonicalMachineBlock(body, name) {
+  if (!nonEmpty(body)) return null;
+  const opener = `<!-- ${name}\n`;
+  const closer = "\n-->";
+  const start = body.indexOf(opener);
+  if (start < 0 || body.indexOf(opener, start + opener.length) >= 0) return null;
+  const payloadStart = start + opener.length;
+  const end = body.indexOf(closer, payloadStart);
+  if (end < 0 || body.indexOf(closer, end + closer.length) >= 0) return null;
+  const payload = body.slice(payloadStart, end);
+  if (payload.includes("\n")) return null;
+  try {
+    const parsed = JSON.parse(payload);
+    return canonicalJson(parsed) === payload ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function reviewClaim(record) {
+  return {
+    findings: Array.isArray(record.findings)
+      ? record.findings.map((finding) => ({
+          id: finding.id,
+          location: finding.location,
+          summary: finding.summary,
+        }))
+      : null,
+    perspective: record.perspective,
+    reviewedCommit: record.reviewedCommit,
+    schemaVersion: 1,
+    verdict: record.verdict,
+  };
+}
+
+function dispositionClaim(record, finding) {
+  return {
+    disposition: finding.disposition,
+    findingId: finding.id,
+    fixUrl: finding.fixUrl ?? null,
+    rationale: finding.rationale,
+    reviewId: record.reviewId,
+    schemaVersion: 1,
+  };
 }
 
 function expectedRelationship(authorAssociation) {
@@ -33,26 +79,28 @@ function expectedRelationship(authorAssociation) {
     : "outside-maintainer-organization";
 }
 
-function bodyBindsReview(body, record) {
-  if (!nonEmpty(body)) return false;
-  const lane = record.perspective === "distributed-systems"
-    ? "distributed systems"
-    : "agent safety";
-  const lowerBody = body.toLowerCase();
-  const identityBound = body.includes(`Reviewed commit: ${record.reviewedCommit}`) &&
-    lowerBody.includes(`review lane: ${lane}`) &&
-    lowerBody.includes(`verdict: ${record.verdict}`);
-  const findingsBound = Array.isArray(record.findings) && record.findings.length > 0
-    ? record.findings.every((finding) =>
-        nonEmpty(finding?.location) &&
-        nonEmpty(finding?.summary) &&
-        body.includes(finding.location) &&
-        body.includes(finding.summary))
-    : /\bno findings\b/i.test(body);
-  return identityBound && findingsBound;
+function validateCommentIdentity(url, comment, errors, label) {
+  const commentId = issueCommentId(url);
+  if (!commentId) {
+    errors.push(`${label}: source must be a numeric issue #7 comment permalink`);
+    return false;
+  }
+  if (!comment) {
+    errors.push(`${label}: authenticated GitHub comment unavailable`);
+    return false;
+  }
+  if (
+    String(comment.commentDatabaseId) !== commentId ||
+    comment.url !== url ||
+    comment.issueUrl !== ISSUE_URL
+  ) {
+    errors.push(`${label}: GitHub comment repository, issue, or ID mismatch`);
+    return false;
+  }
+  return true;
 }
 
-function validateRecord(entry, record, source, verifiedEvidenceUrls, manifest, errors) {
+function validateRecord(entry, record, comments, verifiedFixes, manifest, errors) {
   const label = nonEmpty(entry?.path) ? entry.path : "<invalid-review-path>";
   if (!nonEmpty(entry?.path) ||
       !entry.path.startsWith(REVIEW_PATH_PREFIX) ||
@@ -78,23 +126,13 @@ function validateRecord(entry, record, source, verifiedEvidenceUrls, manifest, e
     errors.push(`${label}: reviewed commit differs from gate target`);
   }
   if (!ACCEPTED_VERDICTS.has(record?.verdict)) errors.push(`${label}: verdict is not accepted`);
-
-  const commentId = sourceCommentId(record?.sourceUrl);
-  if (!commentId) errors.push(`${label}: source must be a numeric issue #7 comment permalink`);
   if (!nonEmpty(record?.sourceBodyDigest)) errors.push(`${label}: sourceBodyDigest missing`);
   if (!nonEmpty(record?.reviewedAt) || Number.isNaN(Date.parse(record.reviewedAt))) {
     errors.push(`${label}: reviewedAt invalid`);
   }
 
-  if (!source) {
-    errors.push(`${label}: authenticated GitHub source unavailable`);
-  } else {
-    if (String(source.commentDatabaseId) !== commentId) {
-      errors.push(`${label}: GitHub comment database ID mismatch`);
-    }
-    if (source.url !== record.sourceUrl || source.issueUrl !== ISSUE_URL) {
-      errors.push(`${label}: GitHub source repository or issue mismatch`);
-    }
+  const source = comments.get(record?.sourceUrl);
+  if (validateCommentIdentity(record?.sourceUrl, source, errors, label)) {
     if (source.githubLogin !== record.reviewer?.githubLogin) {
       errors.push(`${label}: GitHub source author mismatch`);
     }
@@ -107,8 +145,9 @@ function validateRecord(entry, record, source, verifiedEvidenceUrls, manifest, e
     if (source.createdAt !== record.reviewedAt) {
       errors.push(`${label}: GitHub source timestamp mismatch`);
     }
-    if (!bodyBindsReview(source.body, record)) {
-      errors.push(`${label}: GitHub source body does not bind commit, perspective, and verdict`);
+    const machineReview = extractCanonicalMachineBlock(source.body, "threadmesh-review-v1");
+    if (canonicalJson(machineReview) !== canonicalJson(reviewClaim(record))) {
+      errors.push(`${label}: reviewer-authored machine block does not exactly match the record`);
     }
   }
 
@@ -124,12 +163,38 @@ function validateRecord(entry, record, source, verifiedEvidenceUrls, manifest, e
     if (!TERMINAL_DISPOSITIONS.has(finding?.disposition)) {
       errors.push(`${findingLabel}: disposition is not terminal`);
     }
-    if (!nonEmpty(finding?.rationale) || !/^https:\/\/github\.com\/fyaic\/threadmesh\//.test(
-      finding?.evidenceUrl ?? "",
-    )) {
-      errors.push(`${findingLabel}: rationale or repository evidence missing`);
-    } else if (!verifiedEvidenceUrls.has(finding.evidenceUrl)) {
-      errors.push(`${findingLabel}: repository evidence URL could not be verified`);
+    if (!nonEmpty(finding?.rationale)) errors.push(`${findingLabel}: rationale missing`);
+    if (!nonEmpty(finding?.evidenceBodyDigest)) {
+      errors.push(`${findingLabel}: evidenceBodyDigest missing`);
+    }
+    if (!nonEmpty(finding?.dispositionAt) || Number.isNaN(Date.parse(finding.dispositionAt))) {
+      errors.push(`${findingLabel}: dispositionAt invalid`);
+    }
+    const disposition = comments.get(finding?.evidenceUrl);
+    if (validateCommentIdentity(finding?.evidenceUrl, disposition, errors, findingLabel)) {
+      if (!INSIDE_ASSOCIATIONS.has(disposition.authorAssociation)) {
+        errors.push(`${findingLabel}: disposition source is not maintainer-associated`);
+      }
+      if (finding.evidenceBodyDigest !== sha256Digest(disposition.body)) {
+        errors.push(`${findingLabel}: disposition body digest mismatch`);
+      }
+      if (finding.dispositionAt !== disposition.createdAt) {
+        errors.push(`${findingLabel}: disposition timestamp mismatch`);
+      }
+      const machineDisposition = extractCanonicalMachineBlock(
+        disposition.body,
+        "threadmesh-disposition-v1",
+      );
+      if (canonicalJson(machineDisposition) !== canonicalJson(dispositionClaim(record, finding))) {
+        errors.push(`${findingLabel}: authenticated disposition block does not match the record`);
+      }
+    }
+    if (finding.disposition === "resolved") {
+      if (!nonEmpty(finding.fixUrl) || !verifiedFixes.get(finding.fixUrl)?.accepted) {
+        errors.push(`${findingLabel}: resolved fix is not merged into the current commit`);
+      }
+    } else if (finding.fixUrl !== null && finding.fixUrl !== undefined) {
+      errors.push(`${findingLabel}: non-resolved disposition must not claim a fix URL`);
     }
   }
 }
@@ -137,8 +202,8 @@ function validateRecord(entry, record, source, verifiedEvidenceUrls, manifest, e
 export function evaluateExternalReviewGate({
   manifest,
   records,
-  verifiedSources = new Map(),
-  verifiedEvidenceUrls = new Set(),
+  verifiedComments = new Map(),
+  verifiedFixes = new Map(),
   targetIsAncestor = true,
 }) {
   const errors = [];
@@ -163,21 +228,12 @@ export function evaluateExternalReviewGate({
     : [];
   const safeManifest = { ...manifest, requiredPerspectives };
   const safeRecords = records instanceof Map ? records : new Map();
-  const safeSources = verifiedSources instanceof Map ? verifiedSources : new Map();
-  const safeEvidenceUrls = verifiedEvidenceUrls instanceof Set
-    ? verifiedEvidenceUrls
-    : new Set();
+  const safeComments = verifiedComments instanceof Map ? verifiedComments : new Map();
+  const safeFixes = verifiedFixes instanceof Map ? verifiedFixes : new Map();
   for (const entry of entries) {
     const record = nonEmpty(entry?.path) ? safeRecords.get(entry.path) : null;
     if (!record) errors.push(`${entry?.path ?? "<invalid-review-path>"}: record missing`);
-    else validateRecord(
-      entry,
-      record,
-      safeSources.get(record.sourceUrl),
-      safeEvidenceUrls,
-      safeManifest,
-      errors,
-    );
+    else validateRecord(entry, record, safeComments, safeFixes, safeManifest, errors);
   }
 
   const loaded = entries
@@ -214,12 +270,14 @@ function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, "utf8"));
 }
 
-function fetchGithubSource(record) {
-  const commentId = sourceCommentId(record?.sourceUrl);
+function fetchGithubComment(url) {
+  const commentId = issueCommentId(url);
   if (!commentId) return null;
   try {
     const output = execFileSync("gh", [
       "api",
+      "--hostname",
+      "github.com",
       `repos/${REPOSITORY}/issues/comments/${commentId}`,
     ], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
     const comment = JSON.parse(output);
@@ -237,34 +295,46 @@ function fetchGithubSource(record) {
   }
 }
 
-function verifyGithubEvidenceUrl(value) {
+function verifyGithubFixUrl(value, root) {
   let url;
   try {
     url = new URL(value);
   } catch {
-    return false;
+    return { accepted: false };
   }
-  if (url.origin !== "https://github.com") return false;
-  if (url.hash || url.search) return false;
+  if (url.origin !== "https://github.com" || url.hash || url.search) return { accepted: false };
   const segments = url.pathname.split("/").filter(Boolean);
-  if (segments[0] !== "fyaic" || segments[1] !== "threadmesh") return false;
+  if (segments[0] !== "fyaic" || segments[1] !== "threadmesh") return { accepted: false };
   let apiPath;
-  if ((segments[2] === "pull" || segments[2] === "issues") && /^\d+$/.test(segments[3] ?? "")) {
-    apiPath = `repos/${REPOSITORY}/${segments[2] === "pull" ? "pulls" : "issues"}/${segments[3]}`;
+  let commit;
+  if (segments[2] === "pull" && /^\d+$/.test(segments[3] ?? "")) {
+    apiPath = `repos/${REPOSITORY}/pulls/${segments[3]}`;
   } else if (segments[2] === "commit" && /^[0-9a-f]{40}$/.test(segments[3] ?? "")) {
     apiPath = `repos/${REPOSITORY}/commits/${segments[3]}`;
+    commit = segments[3];
   } else {
-    return false;
+    return { accepted: false };
   }
   try {
-    const output = execFileSync("gh", ["api", apiPath], {
+    const output = execFileSync("gh", ["api", "--hostname", "github.com", apiPath], {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
     });
     const resource = JSON.parse(output);
-    return resource.html_url === `${url.origin}${url.pathname}`;
+    if (resource.html_url !== `${url.origin}${url.pathname}`) return { accepted: false };
+    if (segments[2] === "pull") {
+      if (!resource.merged_at || !/^[0-9a-f]{40}$/.test(resource.merge_commit_sha ?? "")) {
+        return { accepted: false };
+      }
+      commit = resource.merge_commit_sha;
+    }
+    execFileSync("git", ["merge-base", "--is-ancestor", commit, "HEAD"], {
+      cwd: root,
+      stdio: "ignore",
+    });
+    return { accepted: true, commit };
   } catch {
-    return false;
+    return { accepted: false };
   }
 }
 
@@ -272,8 +342,8 @@ export function verifyExternalReviewGate({ root }) {
   const manifestPath = path.join(root, "docs", "09-reviews", "m0-review-gate.json");
   let manifest;
   const records = new Map();
-  const verifiedSources = new Map();
-  const verifiedEvidenceUrls = new Set();
+  const verifiedComments = new Map();
+  const verifiedFixes = new Map();
   try {
     manifest = readJson(manifestPath);
     for (const entry of Array.isArray(manifest?.reviews) ? manifest.reviews : []) {
@@ -283,11 +353,17 @@ export function verifyExternalReviewGate({ root }) {
       if (!absolute.startsWith(`${reviewRoot}${path.sep}`)) continue;
       const record = readJson(absolute);
       records.set(entry.path, record);
-      const source = fetchGithubSource(record);
-      if (source) verifiedSources.set(record.sourceUrl, source);
+      for (const url of [
+        record.sourceUrl,
+        ...(Array.isArray(record.findings)
+          ? record.findings.map((finding) => finding.evidenceUrl)
+          : []),
+      ]) {
+        if (!verifiedComments.has(url)) verifiedComments.set(url, fetchGithubComment(url));
+      }
       for (const finding of Array.isArray(record.findings) ? record.findings : []) {
-        if (verifyGithubEvidenceUrl(finding.evidenceUrl)) {
-          verifiedEvidenceUrls.add(finding.evidenceUrl);
+        if (finding.fixUrl && !verifiedFixes.has(finding.fixUrl)) {
+          verifiedFixes.set(finding.fixUrl, verifyGithubFixUrl(finding.fixUrl, root));
         }
       }
     }
@@ -316,46 +392,47 @@ export function verifyExternalReviewGate({ root }) {
   return evaluateExternalReviewGate({
     manifest,
     records,
-    verifiedSources,
-    verifiedEvidenceUrls,
+    verifiedComments,
+    verifiedFixes,
     targetIsAncestor,
   });
 }
 
-export function evaluateLiveRepositoryState({ head, branch, clean, remoteMain, errors = [] }) {
-  const result = { satisfied: false, head, branch, clean, remoteMain, errors: [...errors] };
-  if (result.branch !== "main") result.errors.push("live validation requires branch main");
-  if (!result.clean) result.errors.push("live validation requires a clean worktree");
-  if (result.head !== result.remoteMain) {
-    result.errors.push("local HEAD must equal the current GitHub main commit");
-  }
-  result.satisfied = result.errors.length === 0;
-  return result;
-}
-
-export function verifyLiveRepositoryState({ root }) {
-  const snapshot = {
+export function verifyIsolatedExecutionState({ root, expectedSha }) {
+  const result = {
+    satisfied: false,
     head: null,
     branch: null,
     clean: false,
     remoteMain: null,
+    expectedSha: expectedSha ?? null,
     errors: [],
   };
   try {
-    snapshot.head = execFileSync("git", ["rev-parse", "HEAD"], {
+    result.head = execFileSync("git", ["rev-parse", "HEAD"], {
       cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"],
     }).trim();
-    snapshot.branch = execFileSync("git", ["branch", "--show-current"], {
+    result.branch = execFileSync("git", ["branch", "--show-current"], {
       cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"],
     }).trim();
-    snapshot.clean = execFileSync("git", ["status", "--porcelain"], {
+    result.clean = execFileSync("git", ["status", "--porcelain"], {
       cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"],
     }).length === 0;
-    snapshot.remoteMain = execFileSync("gh", [
-      "api", `repos/${REPOSITORY}/commits/main`, "--jq", ".sha",
+    result.remoteMain = execFileSync("gh", [
+      "api", "--hostname", "github.com", `repos/${REPOSITORY}/commits/main`, "--jq", ".sha",
     ], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
   } catch {
-    snapshot.errors.push("repository state or remote main could not be verified");
+    result.errors.push("isolated repository state could not be verified");
+    return result;
   }
-  return evaluateLiveRepositoryState(snapshot);
+  if (!/^[0-9a-f]{40}$/.test(result.expectedSha ?? "")) {
+    result.errors.push("isolated execution SHA missing or invalid");
+  }
+  if (result.branch !== "") result.errors.push("live child must run in a detached worktree");
+  if (!result.clean) result.errors.push("isolated live worktree is not clean");
+  if (result.head !== result.expectedSha || result.head !== result.remoteMain) {
+    result.errors.push("isolated execution does not match validated GitHub main");
+  }
+  result.satisfied = result.errors.length === 0;
+  return result;
 }

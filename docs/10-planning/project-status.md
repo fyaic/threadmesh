@@ -27,7 +27,7 @@ maintainer organization.
 | Area | Current evidence | Status |
 |---|---|---|
 | Research and problem framing | Codex deep dive, community signals, ecosystem comparison, ADRs | Established |
-| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 111 unit/subtests | Executable draft |
+| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 115 unit/subtests | Executable draft |
 | Local binding | Schema-validated JSON-RPC, transport-derived principals, typed errors | Executable local reference |
 | Local persistence | SQLite registry, proposals, grants, summaries, mailbox, claims, receipts, reconciliation, replay, audit, retention tombstones | Experimental |
 | Safety boundary | Authenticated authorship checks, effective-grant decisions, revocation, CAS | Executable local policy |
@@ -39,8 +39,8 @@ maintainer organization.
 | Gemini CLI headless | Official package 0.56.0 integrity, required flags, isolated-home cleanup | Real no-model preflight passed |
 | Gemini live model behavior | Exact marker script requires explicit provider key | Not authorized, not run |
 | Multi-product admission | One mailbox/acceptance/claim/evidence path across ACP, Codex, and Gemini fakes | Stacked deterministic candidate |
-| Product validation runner | One fake/live entry point with operator acknowledgement, clean synchronized `main`, marker, audit, and cleanup checks | Fake-all passed; live gated |
-| External-review gate | GitHub-authenticated comment author/body/timestamp checks plus record integrity, perspectives, outside reviewer, and target ancestry | Mechanically awaiting 2 records |
+| Product validation runner | Built-in bootstrap, isolated exact-main worktree, start/end SHA checks, acknowledgement, marker, audit, and cleanup | Fake-all passed; live gated |
+| External-review gate | GitHub-authenticated canonical review/disposition blocks, merged-fix ancestry, reviewer diversity, and target ancestry | Mechanically awaiting 2 records |
 | Independent review | Three internal lanes complete; external reviewer packet and public template published | Awaiting two external verdicts |
 | Production authentication | Local static-token reference; no TLS/OAuth verifier supplied | Host integration required |
 | OS isolation | No child-process sandbox supplied by ThreadMesh | Not implemented |
@@ -119,9 +119,10 @@ GitHub is authoritative for milestone closure.
 - Draft [#45](https://github.com/fyaic/threadmesh/pull/45), tracked by #44, adds
   one mechanically gated runner over the exact mailbox, acceptance, admission,
   evidence, audit, and cleanup path. Its fake-all mode passes all three
-  products; live mode requires GitHub-authenticated review sources, an exact
-  operator acknowledgement, and clean synchronized `main`, so it remains
-  `not-run` before #7 and merge.
+  products; live mode requires GitHub-authenticated canonical review and
+  disposition blocks, an exact operator acknowledgement, and execution from an
+  isolated synchronized-main worktree, so it remains `not-run` before #7 and
+  merge.
 - The Codex candidate implements suggestion-only capability negotiation,
   receiver-acceptance enforcement, exact turn evidence, server-request denial,
   timeout cleanup, generated-schema digesting, and a real no-model product
@@ -200,11 +201,12 @@ can:
     requiring mailbox acknowledgement, exact markers, evidence confirmation,
     bounded audit, and exact product-resource cleanup while refusing live turns
     without the external-review acknowledgement;
-29. reject self-authored external-review records by resolving the exact issue-#7
-    comment and checking author, association, timestamp, body digest, target,
-    lane, verdict, and findings;
-30. prevent every repository-provided live alias from starting a model unless
-    the unified runner sees a clean `main` equal to GitHub `main`;
+29. reject self-authored or semantically reversed external-review records by
+    resolving exact issue-#7 comments and comparing canonical reviewer and
+    disposition blocks, including merged-fix ancestry;
+30. prevent every repository-provided live alias from starting a model unless a
+    built-in bootstrap re-executes from a detached worktree at verified GitHub
+    `main` and the same SHA remains clean at completion;
 31. atomically approve a relationship proposal and install its single grant,
     rolling both back if the proposal CAS fails;
 32. reject Gemini terminal error results even when their stream contains the

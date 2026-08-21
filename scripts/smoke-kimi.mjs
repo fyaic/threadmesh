@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import fs from "node:fs";
+import path from "node:path";
 import process from "node:process";
 
 import { AcpStdioAdapter } from "../src/adapters/acp-stdio.mjs";
@@ -8,7 +9,7 @@ const command = process.env.KIMI_BIN ?? "/Users/veil/.kimi-code/bin/kimi";
 const adapter = new AcpStdioAdapter();
 const startedAt = new Date().toISOString();
 const result = {
-  command,
+  commandName: path.basename(command),
   commandDigest: null,
   startedAt,
   finishedAt: null,

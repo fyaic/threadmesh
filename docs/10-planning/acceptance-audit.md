@@ -32,11 +32,12 @@ external-review records.
 | Every finding dispositioned | Cannot begin until reviews arrive | Pending |
 
 `npm run validate:review-gate` truthfully exits 3 while these records are
-missing. Qualifying records must resolve to real issue-#7 comments and match the
-GitHub author, association, timestamp, body digest, exact review target, lane,
-verdict, and findings. The live-product runner also requires a separate exact
-operator acknowledgement and clean local `main` equal to GitHub `main`; none of
-these mechanisms can substitute for another.
+missing. Qualifying records must resolve to real issue-#7 comments and match one
+canonical reviewer-authored block plus authenticated per-finding disposition
+blocks; resolved fixes must be merged into the candidate. The live-product
+bootstrap also requires a separate exact operator acknowledgement and executes
+from a detached worktree at verified GitHub `main`, with start/end checks; none
+of these mechanisms can substitute for another.
 
 ## M1 — Local reference coordinator
 
@@ -103,7 +104,7 @@ to this sequential merged-state proof.
 | Issue | Current evidence | Audit status |
 |---|---|---|
 | #42 generalized admission | #43 validates ACP, Codex, and Gemini adapter refs and strict bounded evidence over one claimed envelope | Candidate-satisfied |
-| #44 unified runner | #45 fake-all passes mailbox claim/acceptance, exact marker, confirmation, audit, and cleanup; every live alias shares GitHub-authenticated review, operator, and clean-main gates | Candidate-satisfied implementation; real execution not-run |
+| #44 unified runner | #45 fake-all passes mailbox claim/acceptance, exact marker, confirmation, audit, and cleanup; every live alias uses canonical GitHub review/disposition gates and isolated exact-main bootstrap | Candidate-satisfied implementation; real execution not-run |
 
 ## Real-product evidence still required
 

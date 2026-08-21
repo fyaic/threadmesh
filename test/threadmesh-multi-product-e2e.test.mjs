@@ -81,13 +81,14 @@ async function productCase(kind, directory) {
         sessionId: created.sessionId,
         snapshotDigest: created.snapshotDigest,
       },
-      deliver: (prepared) => adapter.runPrompt({
+      deliver: (prepared) => adapter.runAcceptedSuggestion({
         command: process.execPath,
         args: [fakeAcp],
         cwd: root,
         env,
-        sessionId: prepared.adapterRef.sessionId,
-        promptText: prepared.rendering,
+        adapterRef: prepared.adapterRef,
+        envelope: prepared.envelope,
+        admission: prepared.admission,
       }),
       projectedKeys: ["kind", "sessionId", "snapshotDigest", "stopReason"],
     };
@@ -138,6 +139,7 @@ async function productCase(kind, directory) {
       envelope: prepared.envelope,
       admission: prepared.admission,
       sessionId: prepared.adapterRef.sessionId,
+      expectedSnapshotDigest: prepared.adapterRef.snapshotDigest,
     }),
     projectedKeys: [
       "exitCode",

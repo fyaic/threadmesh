@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 
+import { sha256Digest } from "../canonical-json.mjs";
 import { SqliteCoordinator } from "../coordinator/sqlite-coordinator.mjs";
 import { codedError } from "../protocol-validator.mjs";
 
@@ -15,6 +16,27 @@ const EVIDENCE_KEYS = Object.freeze({
     "toolUseCount",
   ],
 });
+
+const PRODUCT_METADATA_KEYS = Object.freeze({
+  "acp-session": ["protocolVersion", "agentName", "agentVersion"],
+  "codex-app-server": ["userAgent", "model", "modelProvider"],
+  "gemini-headless": ["version", "interface", "approvalMode", "sandboxRequested"],
+});
+const METADATA_STRING_LIMIT = 256;
+
+function boundedMetadataValue(value) {
+  if (value === null || typeof value === "boolean" || Number.isSafeInteger(value)) return value;
+  if (typeof value !== "string") return null;
+  const byteLength = Buffer.byteLength(value);
+  if (byteLength <= METADATA_STRING_LIMIT && !/[\u0000-\u001f\u007f]/u.test(value)) return value;
+  return { redacted: true, byteLength, digest: sha256Digest(value) };
+}
+
+export function sanitizeProductMetadata(adapterKind, metadata) {
+  const keys = PRODUCT_METADATA_KEYS[adapterKind] ?? [];
+  const source = metadata && typeof metadata === "object" ? metadata : {};
+  return Object.fromEntries(keys.map((key) => [key, boundedMetadataValue(source[key] ?? null)]));
+}
 
 function scenarioIds(productId, runId) {
   const suffix = `${productId}_${runId}`.replaceAll(/[^a-zA-Z0-9_]/g, "_");
@@ -189,7 +211,10 @@ export async function runCoordinatorProductScenario({
       markerMatched: true,
       evidenceKeys: Object.keys(admittedEvent.detail.adapterEvidence).sort(),
       adapterSnapshotDigest: product.adapterRef.snapshotDigest,
-      productMetadata: product.productMetadata ?? null,
+      productMetadata: sanitizeProductMetadata(
+        product.adapterRef.kind,
+        product.productMetadata,
+      ),
     };
   } catch (error) {
     failure = error;

@@ -75,6 +75,11 @@ test("ACP accepted-suggestion boundary rejects missing receiver acceptance", asy
       args: [fixture],
       cwd: root,
       envelope: envelope(),
+      adapterRef: {
+        kind: "acp-session",
+        sessionId: "fake-never-used",
+        snapshotDigest: `sha256:${"a".repeat(64)}`,
+      },
       admission: {
         decision: "pending",
         receiverIncarnationId: "inc_acp_receiver01",
@@ -82,6 +87,28 @@ test("ACP accepted-suggestion boundary rejects missing receiver acceptance", asy
       },
     }),
     { code: "acp_receiver_acceptance_required" },
+  );
+});
+
+test("ACP rejects capability drift before loading or prompting the session", async () => {
+  await assert.rejects(
+    adapter.runAcceptedSuggestion({
+      command: process.execPath,
+      args: [fixture],
+      cwd: root,
+      envelope: envelope(),
+      admission: {
+        decision: "accepted",
+        receiverIncarnationId: "inc_acp_receiver01",
+        revision: 0,
+      },
+      adapterRef: {
+        kind: "acp-session",
+        sessionId: "fake-never-loaded",
+        snapshotDigest: `sha256:${"a".repeat(64)}`,
+      },
+    }),
+    { code: "acp_snapshot_mismatch" },
   );
 });
 

@@ -31,13 +31,19 @@ least one outside reviewer, the exact review-target commit, approving verdicts,
 and terminal public dispositions for every finding. Each record is resolved
 back to its numeric issue-#7 comment through authenticated GitHub API access;
 the verifier checks the real author login and association, exact body digest and
-timestamp, and body bindings for commit, lane, verdict, and findings. A locally
-invented record, nonexistent disposition-evidence URL, or self-asserted
-environment variable cannot satisfy the gate.
+timestamp, and one canonical reviewer-authored machine block. Every finding has
+a separate authenticated maintainer disposition block. A resolved fix must be a
+merged PR or commit already contained in the candidate. Natural-language
+substring matching, locally invented records, unrelated evidence, and
+self-asserted environment variables cannot satisfy the gate.
 
-The live runner then requires a clean `main` worktree whose `HEAD` exactly
-matches GitHub's current `main`. The repository snapshot is checked immediately
-before the product driver is created and is included in the sanitized result.
+The live command is a minimal built-in-only bootstrap: before any project module
+is imported, it requires a clean `main` whose `HEAD` exactly matches GitHub
+`main`. It creates a detached worktree at that SHA, installs the exact lockfile,
+and starts a new child from that checkout. The child and bootstrap both verify
+the detached SHA and clean state. After product cleanup, both the isolated
+worktree and original `main` are checked again; any code or remote-main change
+downgrades the attempt to `failed` before evidence can count as a pass.
 
 After the review-record verifier passes, the exact operator acknowledgement is:
 
@@ -112,6 +118,8 @@ credential must never be relabelled as a live pass.
 For every live attempt, record:
 
 - exact repository commit and clean/dirty status;
+- start and end snapshots for both original `main` and the detached execution
+  worktree;
 - product version, sanitized product metadata, and capability snapshot digest;
 - UTC start and finish time;
 - result state and stable reason code;

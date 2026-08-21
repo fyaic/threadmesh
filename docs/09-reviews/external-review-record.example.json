@@ -19,7 +19,10 @@
       "summary": "Concise finding summary.",
       "disposition": "resolved",
       "rationale": "Concise public disposition rationale.",
-      "evidenceUrl": "https://github.com/fyaic/threadmesh/pull/20"
+      "evidenceUrl": "https://github.com/fyaic/threadmesh/issues/7#issuecomment-1234567891",
+      "evidenceBodyDigest": "sha256:replace-with-the-canonical-digest-of-the-exact-disposition-comment-body",
+      "dispositionAt": "2026-08-20T13:00:00Z",
+      "fixUrl": "https://github.com/fyaic/threadmesh/pull/20"
     }
   ]
 }

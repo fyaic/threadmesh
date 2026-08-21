@@ -16,7 +16,7 @@ let comment;
 try {
   comment = JSON.parse(execFileSync(
     "gh",
-    ["api", `repos/fyaic/threadmesh/issues/comments/${match[1]}`],
+    ["api", "--hostname", "github.com", `repos/fyaic/threadmesh/issues/comments/${match[1]}`],
     { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
   ));
 } catch {

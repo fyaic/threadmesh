@@ -6,7 +6,14 @@ import {
   runFakeAll,
   runLive,
 } from "../scripts/validate-products-e2e.mjs";
-import { runCoordinatorProductScenario } from "../src/validation/coordinator-product-scenario.mjs";
+import {
+  evaluateIsolatedCheckoutBoundary,
+  evaluateMainCheckoutBoundary,
+} from "../scripts/run-live-product-validation.mjs";
+import {
+  runCoordinatorProductScenario,
+  sanitizeProductMetadata,
+} from "../src/validation/coordinator-product-scenario.mjs";
 
 test("live product validation is refused without the exact review acknowledgement", async () => {
   const absent = await runLive("codex", {});
@@ -78,4 +85,45 @@ test("exact marker comparison rejects leading or trailing whitespace", async () 
     { code: "threadmesh_product_marker_mismatch" },
   );
   assert.equal(cleaned, true);
+});
+
+test("public product metadata is allowlisted and byte bounded", () => {
+  const metadata = sanitizeProductMetadata("acp-session", {
+    protocolVersion: 1,
+    agentName: `agent\n${"x".repeat(2_000_000)}`,
+    agentVersion: "1.0.0",
+    secret: "must-not-escape",
+  });
+  assert.deepEqual(Object.keys(metadata), ["protocolVersion", "agentName", "agentVersion"]);
+  assert.equal(metadata.agentName.redacted, true);
+  assert.equal(metadata.agentName.byteLength, 2_000_006);
+  assert.match(metadata.agentName.digest, /^sha256:[a-f0-9]{64}$/);
+  assert.doesNotMatch(JSON.stringify(metadata), /must-not-escape|x{100}/);
+});
+
+test("live bootstrap binds main and detached execution to one SHA", () => {
+  const sha = "a".repeat(40);
+  assert.equal(evaluateMainCheckoutBoundary({
+    head: sha,
+    branch: "main",
+    clean: true,
+    remoteMain: sha,
+    errors: [],
+  }).satisfied, true);
+  assert.equal(evaluateIsolatedCheckoutBoundary({
+    head: sha,
+    branch: "",
+    clean: true,
+    remoteMain: sha,
+    errors: [],
+  }, sha).satisfied, true);
+  const changed = evaluateIsolatedCheckoutBoundary({
+    head: sha,
+    branch: "",
+    clean: false,
+    remoteMain: "b".repeat(40),
+    errors: [],
+  }, sha);
+  assert.equal(changed.satisfied, false);
+  assert.equal(changed.errors.length, 2);
 });

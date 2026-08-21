@@ -10,7 +10,9 @@ through three different adapter boundaries:
 | `gemini-headless` | exact caller-selected session, capability snapshot, one successful result, exit 0, zero tool use |
 
 Each adapter revalidates the canonical envelope and matching receiver acceptance
-at its own boundary. The common flow is:
+at its own boundary. ACP and Gemini also compare the current no-model capability
+snapshot with the coordinator-bound adapter reference before their prompt/model
+process begins. The common flow is:
 
 ```text
 registered target adapter
@@ -47,6 +49,7 @@ product-resource cleanup for all three fake endpoints.
 The matrix uses fake product endpoints to prove coordinator/adapter semantics.
 It does not prove real model behavior. All live aliases use the same
 non-injectable runner. It also requires authenticated GitHub review-source
-verification plus a clean local `main` that matches GitHub `main`. The commands
-are documented in the
+verification, then re-executes from an isolated detached worktree at the clean
+local/GitHub `main` SHA and rechecks that SHA after execution. The commands are
+documented in the
 [real product runbook](../09-reviews/real-product-e2e-runbook.md).

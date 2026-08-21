@@ -28,7 +28,7 @@ export function acpProductDriver({ command, args, cwd, env = {} }) {
         args,
         cwd,
         env,
-        sessionId: prepared.adapterRef.sessionId,
+        adapterRef: prepared.adapterRef,
         envelope: prepared.envelope,
         admission: prepared.admission,
       }),
@@ -140,6 +140,7 @@ export function geminiProductDriver({
           envelope: prepared.envelope,
           admission: prepared.admission,
           sessionId: prepared.adapterRef.sessionId,
+          expectedSnapshotDigest: prepared.adapterRef.snapshotDigest,
         }),
         async cleanup() {
           fs.rmSync(isolatedHome, { recursive: true, force: false });

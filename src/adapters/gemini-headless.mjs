@@ -176,12 +176,21 @@ export class GeminiHeadlessAdapter {
     envelope,
     admission,
     sessionId,
+    expectedSnapshotDigest,
     timeoutMs = 120_000,
   }) {
     assertInvocation(command, baseArgs, cwd, env);
     validateAdmission(envelope, admission);
     if (typeof sessionId !== "string" || !/^[0-9a-f-]{36}$/i.test(sessionId)) {
       throw codedError("gemini_session_id_invalid");
+    }
+    if (!/^sha256:[a-f0-9]{64}$/.test(expectedSnapshotDigest ?? "")) {
+      throw codedError("gemini_snapshot_digest_required");
+    }
+
+    const probe = await this.probe({ command, baseArgs, cwd, env, timeoutMs: 30_000 });
+    if (probe.snapshotDigest !== expectedSnapshotDigest) {
+      throw codedError("gemini_snapshot_mismatch");
     }
 
     const events = [];
@@ -254,7 +263,6 @@ export class GeminiHeadlessAdapter {
         appendBounded(output, event.content ?? event.text);
       }
     }
-    const probe = await this.probe({ command, baseArgs, cwd, env, timeoutMs: 30_000 });
     return {
       state: "completed",
       text: Buffer.concat(output.chunks).toString("utf8"),
