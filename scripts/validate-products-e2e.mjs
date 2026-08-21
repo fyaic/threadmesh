@@ -24,8 +24,15 @@ const markers = Object.freeze({
   gemini: "GEMINI_THREADMESH_COORDINATOR_OK",
 });
 
+export function publicProductErrorCode(error) {
+  const code = error?.code;
+  return typeof code === "string" && /^[a-z0-9_]{1,128}$/.test(code)
+    ? code
+    : "unknown_error";
+}
+
 function classify(error, productId) {
-  const code = error?.code ?? "unknown_error";
+  const code = publicProductErrorCode(error);
   const blockedCodes = new Set([
     "acp_agent_quota_error",
     "codex_app_server_quota_error",

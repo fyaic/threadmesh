@@ -134,6 +134,7 @@ function projectReviewGate(gate) {
     gate?.satisfied !== true || gate.scope !== "m0-normative" ||
     gate.reviewTarget !== REVIEW_TARGET || gate.reviewCount !== 2 ||
     !Number.isSafeInteger(gate.externalReviewerCount) || gate.externalReviewerCount < 1 ||
+    gate.externalReviewerCount > gate.reviewCount ||
     JSON.stringify(gate.perspectives) !== JSON.stringify(["agent-safety", "distributed-systems"])
   ) return null;
   return {
@@ -174,6 +175,7 @@ function projectCleanup(productId, cleanup, { requireComplete }) {
     gemini: ["isolatedHomeRemoved"],
   }[productId] ?? [];
   for (const key of productFields) {
+    if (cleanup[key] === undefined && !requireComplete) continue;
     if (typeof cleanup[key] !== "boolean") return null;
     projected[key] = cleanup[key];
     if (requireComplete && cleanup[key] !== true) return null;

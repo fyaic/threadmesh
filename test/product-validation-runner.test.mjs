@@ -4,6 +4,7 @@ import test from "node:test";
 
 import {
   LIVE_E2E_ACK,
+  publicProductErrorCode,
   runFakeAll,
   runLive,
 } from "../scripts/validate-products-e2e.mjs";
@@ -277,4 +278,45 @@ test("live bootstrap projects public evidence and rejects false cleanup or inval
   }, { productId: "codex", executionSha: sha });
   assert.equal(invalidTime.accepted, false);
   assert.equal(invalidTime.code, "isolated_live_result_binding_mismatch");
+
+  for (const [productId, code] of [
+    ["codex", "codex_app_server_quota_error"],
+    ["kimi", "acp_agent_quota_error"],
+    ["gemini", "gemini_auth_error"],
+  ]) {
+    const blocked = validCodexChildResult(sha);
+    blocked.productId = productId;
+    blocked.state = "blocked";
+    blocked.code = code;
+    blocked.cleanup = { attempted: false, complete: false };
+    const blockedValidation = validateIsolatedLiveChild({
+      stdout: JSON.stringify(blocked), status: 2, signal: null, error: undefined,
+    }, { productId, executionSha: sha });
+    assert.equal(blockedValidation.accepted, true);
+    assert.deepEqual(blockedValidation.result.cleanup, {
+      attempted: false,
+      complete: false,
+    });
+  }
+  assert.equal(publicProductErrorCode({ code: "ENOENT" }), "unknown_error");
+  assert.equal(
+    publicProductErrorCode({ code: "acp_agent_quota_error" }),
+    "acp_agent_quota_error",
+  );
+
+  for (const [state, status, code] of [
+    ["failed", 1, "unknown_error"],
+    ["not-run", 3, "isolated_live_repository_not_ready"],
+  ]) {
+    const nonPass = validCodexChildResult(sha);
+    nonPass.state = state;
+    nonPass.code = code;
+    nonPass.cleanup = { attempted: false, complete: false };
+    const nonPassValidation = validateIsolatedLiveChild({
+      stdout: JSON.stringify(nonPass), status, signal: null, error: undefined,
+    }, { productId: "codex", executionSha: sha });
+    assert.equal(nonPassValidation.accepted, true);
+    assert.equal(nonPassValidation.result.state, state);
+    assert.equal(nonPassValidation.result.code, code);
+  }
 });
