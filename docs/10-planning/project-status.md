@@ -81,7 +81,9 @@ GitHub is authoritative for milestone closure.
   test for unrestricted task enumeration; it also remains gated by #7.
 - A stacked #11 candidate extracts a fail-closed policy engine, uses a
   non-disclosing public denial, reauthorizes adapter submission, and atomically
-  invalidates queued state-changing work on revocation; it remains gated by #7.
+  invalidates queued state-changing work on revocation. Proposal approval and
+  grant installation are now one reviewed immediate transaction at `61c15ae`,
+  propagated through the remaining stack; it remains gated by #7.
 - A stacked #12 candidate adds schema version 2, runtime freshness CAS, one
   shared transition table, explicit terminal reasons, and a dispatcher that
   persists unknown outcome before one native call and suppresses restart retry;

@@ -140,9 +140,11 @@ revocation with audited invalidation of queued `steer`/`interrupt` work. Its
 merge is also gated by #7.
 
 The #45 review found that proposal approval and grant installation were not one
-transaction. The remediation uses one immediate transaction and a checked
-pending-to-approved CAS. That commit must be propagated into the #11 slice
-before #30 is considered closure evidence.
+transaction. The remediation now lives in its owning #11 slice at reviewed
+commit `61c15ae`: one immediate transaction covers proposal validation, grant
+installation, and a checked pending-to-approved CAS. The same minimal patch is
+propagated through every descendant branch up to #43 so no stacked PR silently
+reverts the fix; all affected PRs are clean and their CI passes.
 
 The stacked #12 candidate introduces an append-only version-2 migration,
 runtime freshness snapshots under CAS, a transition table shared by conformance
