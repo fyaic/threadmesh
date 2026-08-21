@@ -109,6 +109,7 @@ implementation:
 
 ```sh
 npm run validate:products:live:codex
+npm run validate:proactive:live:codex
 npm run validate:products:live:kimi
 GEMINI_API_KEY=... npm run validate:products:live:gemini
 ```
@@ -120,6 +121,13 @@ creates and later deletes one ACP session and verifies its absence. Gemini uses
 the pinned official CLI package in an isolated home that is recursively removed;
 the API key is passed only as an explicit child-process override and is never
 included in the result.
+
+The proactive Codex command creates persisted A and B tasks. A must itself call
+the relationship-summary and bounded-send dynamic tools; the runner rejects a
+scripted submit, a second send, a non-ThreadMesh tool event, either marker
+mismatch, or incomplete cleanup of either task. B acceptance remains a
+deterministic receiver checkpoint policy in this first behavioral slice. See
+the [proactive validation guide](../06-guides/proactive-codex-validation.md).
 
 ## Result states
 

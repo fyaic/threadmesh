@@ -192,6 +192,91 @@ test("starts a new thread and its first accepted turn on one connection", async 
   }
 });
 
+test("lets the model choose bounded ThreadMesh dynamic tools on a resumed task", async () => {
+  const state = temporaryState();
+  const dynamicTools = [
+    {
+      type: "function",
+      name: "threadmesh_related_tasks",
+      description: "List relationship-scoped task summaries relevant to the current objective.",
+      inputSchema: { type: "object", additionalProperties: false },
+    },
+    {
+      type: "function",
+      name: "threadmesh_send_suggestion",
+      description: "Send at most one advisory suggestion to an explicitly related task.",
+      inputSchema: {
+        type: "object",
+        additionalProperties: false,
+        required: ["targetTaskId", "content", "reason"],
+        properties: {
+          targetTaskId: { type: "string" },
+          content: { type: "string" },
+          reason: { type: "string" },
+        },
+      },
+    },
+  ];
+  try {
+    const created = await adapter.createDynamicToolThread({
+      command: process.execPath,
+      args: [fixture],
+      cwd: root,
+      env: state.env,
+      dynamicTools,
+      developerInstructions: "Use ThreadMesh only when the related task materially helps.",
+    });
+    const handled = [];
+    const result = await adapter.runAutonomousToolTurn({
+      command: process.execPath,
+      args: [fixture],
+      cwd: root,
+      env: { ...state.env, FAKE_CODEX_AUTONOMOUS_TOOL: "1" },
+      adapterRef: created,
+      prompt: "Decide whether the related task is needed for this release decision.",
+      dynamicTools,
+      adapterIdempotencyKey: "idem_codex_proactive01",
+      onToolCall: ({ tool, arguments: value }) => {
+        handled.push({ tool, value });
+        return tool === "threadmesh_related_tasks"
+          ? { tasks: [{ taskId: "task_proactive_b", state: "completed" }] }
+          : { sent: true, messageId: "msg_proactive_a_b01" };
+      },
+    });
+    assert.equal(result.text, "THREADMESH_PROACTIVE_A_SENT");
+    assert.deepEqual(handled.map(({ tool }) => tool), [
+      "threadmesh_related_tasks",
+      "threadmesh_send_suggestion",
+    ]);
+    assert.equal(result.toolCalls.length, 2);
+    assert.equal(result.nonThreadMeshToolCalls, 0);
+    assert.equal(result.evidence.serverRequestDeniedCount, 0);
+    assert.equal(result.evidence.serverRequestHandledCount, 2);
+    await assert.rejects(
+      adapter.runAutonomousToolTurn({
+        command: process.execPath,
+        args: [fixture],
+        cwd: root,
+        env: {
+          ...state.env,
+          FAKE_CODEX_AUTONOMOUS_TOOL: "1",
+          FAKE_CODEX_UNEXPECTED_TOOL: "1",
+        },
+        adapterRef: created,
+        prompt: "Use only ThreadMesh for this second release decision.",
+        dynamicTools,
+        adapterIdempotencyKey: "idem_codex_proactive02",
+        onToolCall: ({ tool }) => tool === "threadmesh_related_tasks"
+          ? { tasks: [{ taskId: "task_proactive_b", state: "completed" }] }
+          : { sent: true, messageId: "msg_proactive_a_b02" },
+      }),
+      (error) => error.code === "codex_app_server_unexpected_autonomous_tool",
+    );
+  } finally {
+    fs.rmSync(state.directory, { recursive: true, force: true });
+  }
+});
+
 test("local validation bootstrap is not represented as peer admission", async () => {
   const state = temporaryState();
   try {
