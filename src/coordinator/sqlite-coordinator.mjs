@@ -9,11 +9,242 @@ import {
   codedError,
   grantAuthorizationDigest,
 } from "../protocol-validator.mjs";
+import {
+  evaluateRelationshipPolicy,
+  isStateChangingIntent,
+} from "../policy/relationship-policy.mjs";
+import {
+  isDecisionReasonAllowed,
+  isDispositionTransitionAllowed,
+} from "../state/disposition-transitions.mjs";
 
-const SAFE_DECISIONS = new Set(["accepted", "rejected", "deferred"]);
+const DEFAULT_DECISION_REASONS = Object.freeze({
+  accepted: "accepted",
+  rejected: "receiver-rejected",
+  deferred: "receiver-deferred",
+  stale: "stale-objective",
+  expired: "expired",
+  unsupported: "unsupported-intent",
+  revoked: "revoked",
+});
+const PURGED_TEXT = "Content purged by the ThreadMesh retention policy.";
+export const SQLITE_SCHEMA_VERSION = 3;
+export const SQLITE_SCHEMA_NAME = "threadmesh-retention-state";
+const SQLITE_SCHEMA_V2_MANIFEST = Object.freeze({
+  tables: {
+    tasks: [
+      "task_id", "incarnation_id", "harness", "state", "owner_kind",
+      "owner_principal_id", "adapter_ref_json", "created_at",
+    ],
+    task_metadata: [
+      "task_id", "incarnation_id", "revision", "retired_at", "run_id",
+      "objective_version", "checkpoint",
+    ],
+    relationship_proposals: [
+      "proposal_id", "proposal_digest", "source_task_id",
+      "source_incarnation_id", "target_task_id", "target_incarnation_id",
+      "proposal_json", "status", "created_at",
+    ],
+    task_summaries: [
+      "summary_id", "task_id", "incarnation_id", "relationship_id",
+      "grant_id", "grant_version", "summary_version", "summary_json",
+      "updated_at",
+    ],
+    grants: [
+      "grant_id", "grant_version", "relationship_id", "source_task_id",
+      "source_incarnation_id", "target_task_id", "target_incarnation_id",
+      "allowed_intents_json", "allowed_modes_json", "expires_at",
+      "revoked_at", "grant_json",
+    ],
+    messages: [
+      "sequence", "sender_incarnation_id", "message_id", "target_task_id",
+      "target_incarnation_id", "relationship_id", "grant_id",
+      "grant_version", "envelope_digest", "envelope_json", "expires_at",
+      "created_at",
+    ],
+    dispositions: [
+      "sender_incarnation_id", "message_id", "revision", "delivery_state",
+      "decision_state", "decision_reason_code", "delivery_failure_reason",
+      "outcome_state", "updated_at",
+    ],
+    admission_claims: [
+      "sender_incarnation_id", "message_id", "nonce", "admission_token",
+      "expected_revision", "grant_id", "grant_version", "adapter_ref_json",
+      "adapter_ref_digest", "state", "claimed_at", "completed_at",
+    ],
+    adapter_submissions: [
+      "sender_incarnation_id", "message_id", "submission_id",
+      "expected_revision", "envelope_digest", "adapter_ref_digest",
+      "adapter_idempotency_key", "state", "prepared_at",
+      "attempt_started_at", "receipt_json", "reconciliation_json",
+      "updated_at",
+    ],
+    mailbox_claims: [
+      "sender_incarnation_id", "message_id", "receiver_task_id",
+      "receiver_incarnation_id", "claim_token", "expected_revision", "state",
+      "claimed_at", "expires_at", "acknowledged_at",
+    ],
+    operation_replays: [
+      "authentication_id", "method", "idempotency_key", "request_digest",
+      "result_json", "completed_at",
+    ],
+    audit_events: [
+      "sequence", "event_id", "sender_incarnation_id", "message_id",
+      "event_type", "revision", "detail_json", "occurred_at",
+    ],
+  },
+  indexes: ["tasks_global_incarnation", "grants_relationship_version"],
+});
+const SQLITE_SCHEMA_V1_MANIFEST = Object.freeze({
+  ...SQLITE_SCHEMA_V2_MANIFEST,
+  tables: Object.freeze({
+    ...SQLITE_SCHEMA_V2_MANIFEST.tables,
+    task_metadata: Object.freeze([
+      "task_id", "incarnation_id", "revision", "retired_at",
+    ]),
+    dispositions: Object.freeze([
+      "sender_incarnation_id", "message_id", "revision", "delivery_state",
+      "decision_state", "outcome_state", "updated_at",
+    ]),
+  }),
+});
+export const SQLITE_SCHEMA_MANIFEST = Object.freeze({
+  ...SQLITE_SCHEMA_V2_MANIFEST,
+  tables: Object.freeze({
+    ...SQLITE_SCHEMA_V2_MANIFEST.tables,
+    tasks: Object.freeze([
+      ...SQLITE_SCHEMA_V2_MANIFEST.tables.tasks,
+      "adapter_ref_purged_at",
+    ]),
+    relationship_proposals: Object.freeze([
+      ...SQLITE_SCHEMA_V2_MANIFEST.tables.relationship_proposals,
+      "content_purged_at",
+    ]),
+    task_summaries: Object.freeze([
+      ...SQLITE_SCHEMA_V2_MANIFEST.tables.task_summaries,
+      "content_purged_at",
+    ]),
+    messages: Object.freeze([
+      ...SQLITE_SCHEMA_V2_MANIFEST.tables.messages,
+      "content_purged_at",
+      "claim_status",
+    ]),
+    admission_claims: Object.freeze([
+      ...SQLITE_SCHEMA_V2_MANIFEST.tables.admission_claims,
+      "adapter_ref_purged_at",
+    ]),
+    audit_events: Object.freeze([
+      ...SQLITE_SCHEMA_V2_MANIFEST.tables.audit_events,
+      "detail_purged_at",
+    ]),
+  }),
+});
+export const SQLITE_SCHEMA_MIGRATIONS = Object.freeze([
+  Object.freeze({
+    version: 1,
+    name: "threadmesh-coordinator-baseline",
+    manifest: SQLITE_SCHEMA_V1_MANIFEST,
+  }),
+  Object.freeze({
+    version: 2,
+    name: "threadmesh-dispatcher-state",
+    manifest: SQLITE_SCHEMA_V2_MANIFEST,
+  }),
+  Object.freeze({
+    version: 3,
+    name: SQLITE_SCHEMA_NAME,
+    manifest: SQLITE_SCHEMA_MANIFEST,
+  }),
+].map((migration) => Object.freeze({
+  ...migration,
+  checksum: sha256Digest({
+    version: migration.version,
+    name: migration.name,
+    manifest: migration.manifest,
+  }),
+})));
+export const SQLITE_SCHEMA_CHECKSUM = sha256Digest({
+  version: SQLITE_SCHEMA_VERSION,
+  name: SQLITE_SCHEMA_NAME,
+  manifest: SQLITE_SCHEMA_MANIFEST,
+});
 
 function nowIso(clock) {
   return new Date(clock()).toISOString();
+}
+
+function assertContextAdapterRef(adapterRef) {
+  const commonValid =
+    adapterRef &&
+    typeof adapterRef === "object" &&
+    typeof adapterRef.snapshotDigest === "string";
+  const kindValid =
+    (adapterRef?.kind === "acp-session" && typeof adapterRef.sessionId === "string") ||
+    (adapterRef?.kind === "codex-app-server" && typeof adapterRef.threadId === "string") ||
+    (adapterRef?.kind === "gemini-headless" && typeof adapterRef.sessionId === "string");
+  if (!commonValid || !kindValid) {
+    throw codedError("threadmesh_target_adapter_ref_invalid");
+  }
+  return adapterRef;
+}
+
+function projectContextAdapterEvidence(adapterRef, adapterEvidence) {
+  let projection;
+  if (adapterRef.kind === "acp-session") {
+    projection = {
+      kind: adapterRef.kind,
+      sessionId: adapterEvidence?.sessionId,
+      snapshotDigest: adapterEvidence?.snapshotDigest,
+      stopReason: adapterEvidence?.stopReason,
+    };
+    if (
+      projection.sessionId !== adapterRef.sessionId ||
+      projection.snapshotDigest !== adapterRef.snapshotDigest ||
+      projection.stopReason !== "end_turn"
+    ) {
+      throw codedError("threadmesh_adapter_evidence_mismatch");
+    }
+    return projection;
+  }
+  if (adapterRef.kind === "codex-app-server") {
+    projection = {
+      kind: adapterRef.kind,
+      threadId: adapterEvidence?.threadId,
+      turnId: adapterEvidence?.turnId,
+      turnStatus: adapterEvidence?.turnStatus,
+      snapshotDigest: adapterEvidence?.snapshotDigest,
+    };
+    if (
+      projection.threadId !== adapterRef.threadId ||
+      typeof projection.turnId !== "string" ||
+      projection.turnStatus !== "completed" ||
+      projection.snapshotDigest !== adapterRef.snapshotDigest
+    ) {
+      throw codedError("threadmesh_adapter_evidence_mismatch");
+    }
+    return projection;
+  }
+  if (adapterRef.kind === "gemini-headless") {
+    projection = {
+      kind: adapterRef.kind,
+      sessionId: adapterEvidence?.sessionId,
+      snapshotDigest: adapterEvidence?.snapshotDigest,
+      exitCode: adapterEvidence?.exitCode,
+      toolUseCount: adapterEvidence?.toolUseCount,
+      resultStatus: adapterEvidence?.resultStatus,
+    };
+    if (
+      projection.sessionId !== adapterRef.sessionId ||
+      projection.snapshotDigest !== adapterRef.snapshotDigest ||
+      projection.exitCode !== 0 ||
+      projection.toolUseCount !== 0 ||
+      projection.resultStatus !== "success"
+    ) {
+      throw codedError("threadmesh_adapter_evidence_mismatch");
+    }
+    return projection;
+  }
+  throw codedError("threadmesh_target_adapter_ref_invalid");
 }
 
 function assertControlPlanePrincipal(principal) {
@@ -24,6 +255,16 @@ function assertControlPlanePrincipal(principal) {
     principal.principalId.length === 0
   ) {
     throw codedError("threadmesh_control_plane_authority_required");
+  }
+}
+
+function assertPolicyPrincipal(principal) {
+  if (
+    principal?.kind !== "policy" ||
+    typeof principal.principalId !== "string" ||
+    principal.principalId.length === 0
+  ) {
+    throw codedError("threadmesh_policy_authority_required");
   }
 }
 
@@ -52,6 +293,65 @@ function parseRow(row) {
     ...row,
     envelope: row.envelope_json ? JSON.parse(row.envelope_json) : undefined,
   };
+}
+
+function assertRuntimeSnapshot(runtime, optional) {
+  if (runtime === undefined && optional) return;
+  if (
+    !runtime ||
+    typeof runtime !== "object" ||
+    Array.isArray(runtime) ||
+    (runtime.runId !== undefined &&
+      (typeof runtime.runId !== "string" || runtime.runId.length === 0)) ||
+    (runtime.objectiveVersion !== undefined &&
+      (!Number.isInteger(runtime.objectiveVersion) || runtime.objectiveVersion < 0)) ||
+    (runtime.checkpoint !== undefined &&
+      (typeof runtime.checkpoint !== "string" || runtime.checkpoint.length === 0)) ||
+    (runtime.runId === undefined &&
+      runtime.objectiveVersion === undefined &&
+      runtime.checkpoint === undefined)
+  ) {
+    throw codedError("threadmesh_task_runtime_invalid");
+  }
+}
+
+function runtimeSnapshot(metadata) {
+  return {
+    ...(metadata.run_id ? { runId: metadata.run_id } : {}),
+    ...(metadata.objective_version !== null
+      ? { objectiveVersion: metadata.objective_version }
+      : {}),
+    ...(metadata.checkpoint ? { checkpoint: metadata.checkpoint } : {}),
+  };
+}
+
+function tombstoneEnvelope(envelope) {
+  const tombstone = {
+    ...envelope,
+    content: PURGED_TEXT,
+    reason: PURGED_TEXT,
+    ...(envelope.claimStatus === "evidence-referenced"
+      ? { claimStatus: "unverified" }
+      : {}),
+  };
+  delete tombstone.evidenceRefs;
+  assertProtocolObject("envelope", tombstone);
+  return tombstone;
+}
+
+function tombstoneProposal(proposal) {
+  const tombstone = { ...proposal, reason: PURGED_TEXT };
+  assertProtocolObject("relationship-proposal", tombstone);
+  return tombstone;
+}
+
+function tombstoneSummary(summary) {
+  const tombstone = { ...summary };
+  delete tombstone.objective;
+  delete tombstone.blockerHint;
+  delete tombstone.dependencyHints;
+  assertProtocolObject("task-summary", tombstone);
+  return tombstone;
 }
 
 export function createEffectiveGrant(draft, decision, principal) {
@@ -84,11 +384,109 @@ export class SqliteCoordinator {
     this.db = new Database(filename);
     if (filename !== ":memory:") fs.chmodSync(filename, 0o600);
     this.db.pragma("journal_mode = WAL");
+    this.db.pragma("synchronous = FULL");
+    this.db.pragma("busy_timeout = 5000");
+    this.db.pragma("secure_delete = FAST");
     this.db.pragma("foreign_keys = ON");
-    this.#migrate();
+    try {
+      this.#migrate();
+    } catch (error) {
+      this.db.close();
+      throw error;
+    }
   }
 
   #migrate() {
+    const version = this.db.pragma("user_version", { simple: true });
+    if (version > SQLITE_SCHEMA_VERSION) {
+      throw codedError(
+        "threadmesh_storage_version_unsupported",
+        `${version} > ${SQLITE_SCHEMA_VERSION}`,
+      );
+    }
+    this.db.transaction(() => {
+      this.db.exec(`
+        CREATE TABLE IF NOT EXISTS schema_migrations (
+          version INTEGER PRIMARY KEY,
+          name TEXT NOT NULL,
+          checksum TEXT NOT NULL,
+          applied_at TEXT NOT NULL
+        );
+      `);
+      for (const migration of SQLITE_SCHEMA_MIGRATIONS) {
+        const recorded = this.db
+          .prepare("SELECT * FROM schema_migrations WHERE version = ?")
+          .get(migration.version);
+        if (recorded && recorded.checksum !== migration.checksum) {
+          throw codedError(
+            "threadmesh_storage_migration_checksum_mismatch",
+            String(migration.version),
+          );
+        }
+      }
+      if (version === 0) {
+        this.#initializeSchema();
+      }
+      if (version < 2) {
+        this.#addColumnIfMissing("task_metadata", "run_id", "TEXT");
+        this.#addColumnIfMissing("task_metadata", "objective_version", "INTEGER");
+        this.#addColumnIfMissing("task_metadata", "checkpoint", "TEXT");
+        this.#addColumnIfMissing("dispositions", "decision_reason_code", "TEXT");
+        this.#addColumnIfMissing("dispositions", "delivery_failure_reason", "TEXT");
+      }
+      if (version < 3) {
+        this.#addColumnIfMissing("tasks", "adapter_ref_purged_at", "TEXT");
+        this.#addColumnIfMissing(
+          "relationship_proposals",
+          "content_purged_at",
+          "TEXT",
+        );
+        this.#addColumnIfMissing("task_summaries", "content_purged_at", "TEXT");
+        this.#addColumnIfMissing("messages", "content_purged_at", "TEXT");
+        this.#addColumnIfMissing("messages", "claim_status", "TEXT");
+        this.db.exec(`
+          UPDATE messages SET claim_status = json_extract(envelope_json, '$.claimStatus')
+          WHERE claim_status IS NULL;
+        `);
+        this.#addColumnIfMissing(
+          "admission_claims",
+          "adapter_ref_purged_at",
+          "TEXT",
+        );
+        this.#addColumnIfMissing("audit_events", "detail_purged_at", "TEXT");
+      }
+      this.#assertSchemaCompatible();
+      for (const migration of SQLITE_SCHEMA_MIGRATIONS) {
+        this.db
+          .prepare(
+            `INSERT INTO schema_migrations (version, name, checksum, applied_at)
+             VALUES (?, ?, ?, ?)
+             ON CONFLICT(version) DO NOTHING`,
+          )
+          .run(
+            migration.version,
+            migration.name,
+            migration.checksum,
+            nowIso(this.clock),
+          );
+      }
+      this.db.pragma(`user_version = ${SQLITE_SCHEMA_VERSION}`);
+    }).immediate();
+  }
+
+  #addColumnIfMissing(table, column, declaration) {
+    const existing = new Set(
+      this.db
+        .prepare("SELECT name FROM pragma_table_info(?)")
+        .all(table)
+        .map((row) => row.name),
+    );
+    if (!existing.has(column)) {
+      this.db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${declaration}`);
+    }
+  }
+
+  #initializeSchema() {
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS tasks (
         task_id TEXT NOT NULL,
@@ -98,6 +496,7 @@ export class SqliteCoordinator {
         owner_kind TEXT NOT NULL,
         owner_principal_id TEXT NOT NULL,
         adapter_ref_json TEXT,
+        adapter_ref_purged_at TEXT,
         created_at TEXT NOT NULL,
         PRIMARY KEY (task_id, incarnation_id)
       );
@@ -110,6 +509,9 @@ export class SqliteCoordinator {
         incarnation_id TEXT NOT NULL,
         revision INTEGER NOT NULL DEFAULT 0,
         retired_at TEXT,
+        run_id TEXT,
+        objective_version INTEGER,
+        checkpoint TEXT,
         PRIMARY KEY (task_id, incarnation_id),
         FOREIGN KEY (task_id, incarnation_id)
           REFERENCES tasks (task_id, incarnation_id)
@@ -124,7 +526,8 @@ export class SqliteCoordinator {
         target_incarnation_id TEXT NOT NULL,
         proposal_json TEXT NOT NULL,
         status TEXT NOT NULL,
-        created_at TEXT NOT NULL
+        created_at TEXT NOT NULL,
+        content_purged_at TEXT
       );
 
       CREATE TABLE IF NOT EXISTS task_summaries (
@@ -137,6 +540,7 @@ export class SqliteCoordinator {
         summary_version INTEGER NOT NULL,
         summary_json TEXT NOT NULL,
         updated_at TEXT NOT NULL,
+        content_purged_at TEXT,
         UNIQUE (task_id, incarnation_id, relationship_id)
       );
 
@@ -168,6 +572,8 @@ export class SqliteCoordinator {
         envelope_json TEXT NOT NULL,
         expires_at TEXT NOT NULL,
         created_at TEXT NOT NULL,
+        content_purged_at TEXT,
+        claim_status TEXT NOT NULL,
         UNIQUE (sender_incarnation_id, message_id)
       );
 
@@ -177,6 +583,8 @@ export class SqliteCoordinator {
         revision INTEGER NOT NULL,
         delivery_state TEXT NOT NULL,
         decision_state TEXT NOT NULL,
+        decision_reason_code TEXT,
+        delivery_failure_reason TEXT,
         outcome_state TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         PRIMARY KEY (sender_incarnation_id, message_id)
@@ -195,6 +603,7 @@ export class SqliteCoordinator {
         state TEXT NOT NULL,
         claimed_at TEXT NOT NULL,
         completed_at TEXT,
+        adapter_ref_purged_at TEXT,
         PRIMARY KEY (sender_incarnation_id, message_id)
       );
 
@@ -247,7 +656,8 @@ export class SqliteCoordinator {
         event_type TEXT NOT NULL,
         revision INTEGER NOT NULL,
         detail_json TEXT NOT NULL,
-        occurred_at TEXT NOT NULL
+        occurred_at TEXT NOT NULL,
+        detail_purged_at TEXT
       );
 
       CREATE UNIQUE INDEX IF NOT EXISTS grants_relationship_version
@@ -262,11 +672,63 @@ export class SqliteCoordinator {
     `);
   }
 
+  #assertSchemaCompatible() {
+    for (const [table, expectedColumns] of Object.entries(SQLITE_SCHEMA_MANIFEST.tables)) {
+      const actualColumns = new Set(
+        this.db
+          .prepare("SELECT name FROM pragma_table_info(?)")
+          .all(table)
+          .map((row) => row.name),
+      );
+      const missing = expectedColumns.filter((column) => !actualColumns.has(column));
+      if (missing.length > 0) {
+        throw codedError(
+          "threadmesh_storage_schema_incompatible",
+          `${table} missing ${missing.join(",")}`,
+        );
+      }
+    }
+    const indexes = new Set(
+      this.db
+        .prepare("SELECT name FROM sqlite_master WHERE type = 'index'")
+        .all()
+        .map((row) => row.name),
+    );
+    const missingIndexes = SQLITE_SCHEMA_MANIFEST.indexes.filter(
+      (index) => !indexes.has(index),
+    );
+    if (missingIndexes.length > 0) {
+      throw codedError(
+        "threadmesh_storage_schema_incompatible",
+        `indexes missing ${missingIndexes.join(",")}`,
+      );
+    }
+  }
+
+  storageInfo() {
+    return {
+      schemaVersion: this.db.pragma("user_version", { simple: true }),
+      migrations: this.db
+        .prepare(
+          "SELECT version, name, checksum, applied_at AS appliedAt FROM schema_migrations ORDER BY version",
+        )
+        .all(),
+      pragmas: {
+        journalMode: this.db.pragma("journal_mode", { simple: true }),
+        synchronous: this.db.pragma("synchronous", { simple: true }),
+        busyTimeout: this.db.pragma("busy_timeout", { simple: true }),
+        foreignKeys: this.db.pragma("foreign_keys", { simple: true }),
+        secureDelete: this.db.pragma("secure_delete", { simple: true }),
+      },
+    };
+  }
+
   registerTask(task, principal) {
     assertControlPlanePrincipal(principal);
     if (!task?.taskId || !task?.incarnationId || !task?.harness) {
       throw codedError("threadmesh_task_invalid");
     }
+    assertRuntimeSnapshot(task.runtime, true);
 
     const incarnation = this.db
       .prepare("SELECT * FROM tasks WHERE incarnation_id = ?")
@@ -275,6 +737,7 @@ export class SqliteCoordinator {
       throw codedError("threadmesh_incarnation_id_conflict", task.incarnationId);
     }
     if (incarnation) {
+      const metadata = this.#taskMetadata(task);
       const same =
         incarnation.owner_kind === principal.kind &&
         incarnation.owner_principal_id === principal.principalId &&
@@ -282,9 +745,11 @@ export class SqliteCoordinator {
         incarnation.state === (task.state ?? "idle") &&
         canonicalJson(
           incarnation.adapter_ref_json ? JSON.parse(incarnation.adapter_ref_json) : null,
-        ) === canonicalJson(task.adapterRef ?? null);
+        ) === canonicalJson(task.adapterRef ?? null) &&
+        canonicalJson(runtimeSnapshot(metadata)) ===
+          canonicalJson(task.runtime ?? {});
       if (!same) throw codedError("threadmesh_idempotency_conflict", task.incarnationId);
-      return { ...task, revision: this.#taskMetadata(task).revision, replay: true };
+      return { ...task, runtime: runtimeSnapshot(metadata), revision: metadata.revision, replay: true };
     }
 
     this.db.transaction(() => {
@@ -307,10 +772,18 @@ export class SqliteCoordinator {
         );
       this.db
         .prepare(
-          `INSERT INTO task_metadata (task_id, incarnation_id, revision)
-           VALUES (?, ?, 0)`,
+          `INSERT INTO task_metadata (
+             task_id, incarnation_id, revision, run_id,
+             objective_version, checkpoint
+           ) VALUES (?, ?, 0, ?, ?, ?)`,
         )
-        .run(task.taskId, task.incarnationId);
+        .run(
+          task.taskId,
+          task.incarnationId,
+          task.runtime?.runId ?? null,
+          task.runtime?.objectiveVersion ?? null,
+          task.runtime?.checkpoint ?? null,
+        );
     }).immediate();
     return { ...task, revision: 0, replay: false };
   }
@@ -372,14 +845,45 @@ export class SqliteCoordinator {
     ) {
       throw codedError("threadmesh_task_not_authorized", task.task_id);
     }
+    const metadata = this.#taskMetadata(taskRef);
     return {
       taskId: task.task_id,
       incarnationId: task.incarnation_id,
       harness: task.harness,
       state: task.state,
       adapterRef: task.adapter_ref_json ? JSON.parse(task.adapter_ref_json) : null,
-      revision: this.#taskMetadata(taskRef).revision,
+      runtime: runtimeSnapshot(metadata),
+      revision: metadata.revision,
     };
+  }
+
+  updateTaskRuntime(taskRef, runtime, expectedRevision, principal) {
+    assertRuntimeSnapshot(runtime, false);
+    return this.db.transaction(() => {
+      const task = this.#taskRecord(taskRef);
+      this.#assertTaskOwnerOrSelf(task, principal);
+      const metadata = this.#taskMetadata(taskRef);
+      if (metadata.retired_at) throw codedError("threadmesh_task_retired");
+      if (metadata.revision !== expectedRevision) {
+        throw codedError("threadmesh_revision_conflict");
+      }
+      const result = this.db
+        .prepare(
+          `UPDATE task_metadata SET revision = revision + 1,
+             run_id = ?, objective_version = ?, checkpoint = ?
+           WHERE task_id = ? AND incarnation_id = ? AND revision = ?`,
+        )
+        .run(
+          runtime.runId ?? null,
+          runtime.objectiveVersion ?? null,
+          runtime.checkpoint ?? null,
+          taskRef.taskId,
+          taskRef.incarnationId,
+          expectedRevision,
+        );
+      if (result.changes !== 1) throw codedError("threadmesh_revision_conflict");
+      return this.getTask(taskRef, principal);
+    }).immediate();
   }
 
   attachTask(taskRef, adapterRef, expectedRevision, principal) {
@@ -410,6 +914,7 @@ export class SqliteCoordinator {
 
   rotateTaskIncarnation(previous, next, expectedRevision, principal) {
     assertControlPlanePrincipal(principal);
+    assertRuntimeSnapshot(next?.runtime, true);
     return this.db.transaction(() => {
       const current = this.#taskRecord(previous);
       if (
@@ -466,10 +971,18 @@ export class SqliteCoordinator {
         );
       this.db
         .prepare(
-          `INSERT INTO task_metadata (task_id, incarnation_id, revision)
-           VALUES (?, ?, 0)`,
+          `INSERT INTO task_metadata (
+             task_id, incarnation_id, revision, run_id,
+             objective_version, checkpoint
+           ) VALUES (?, ?, 0, ?, ?, ?)`,
         )
-        .run(next.taskId, next.incarnationId);
+        .run(
+          next.taskId,
+          next.incarnationId,
+          next.runtime?.runId ?? null,
+          next.runtime?.objectiveVersion ?? null,
+          next.runtime?.checkpoint ?? null,
+        );
       return {
         previous: { ...previous, revision: expectedRevision + 1, retiredAt: at },
         current: { ...next, revision: 0 },
@@ -614,48 +1127,59 @@ export class SqliteCoordinator {
   }
 
   issueGrant(draft, decision, principal) {
-    if (decision?.proposalId) {
-      const row = this.db
-        .prepare(
-          `SELECT proposal_json, status FROM relationship_proposals
-           WHERE proposal_id = ?`,
-        )
-        .get(decision.proposalId);
-      if (!row || row.status !== "pending") {
-        throw codedError("threadmesh_relationship_proposal_not_pending");
-      }
-      const proposal = JSON.parse(row.proposal_json);
-      if (Date.parse(proposal.expiresAt) <= this.clock()) {
-        throw codedError("threadmesh_relationship_proposal_expired");
-      }
-      const expected = {
-        relationshipType: proposal.relationshipType,
-        source: proposal.source,
-        target: proposal.target,
-        allowedIntents: proposal.requestedIntents,
-        allowedDeliveryModes: proposal.requestedDeliveryModes,
-        summaryVisibility: proposal.requestedSummaryVisibility,
-      };
-      for (const [key, value] of Object.entries(expected)) {
-        if (canonicalJson(draft[key]) !== canonicalJson(value)) {
-          throw codedError("threadmesh_grant_proposal_mismatch", key);
+    const grant = createEffectiveGrant(draft, decision, principal);
+    this.#assertGrantAuthority(grant, principal);
+    return this.db.transaction(() => {
+      if (decision?.proposalId) {
+        const row = this.db
+          .prepare(
+            `SELECT proposal_json, status FROM relationship_proposals
+             WHERE proposal_id = ?`,
+          )
+          .get(decision.proposalId);
+        if (!row || row.status !== "pending") {
+          throw codedError("threadmesh_relationship_proposal_not_pending");
+        }
+        const proposal = JSON.parse(row.proposal_json);
+        if (Date.parse(proposal.expiresAt) <= this.clock()) {
+          throw codedError("threadmesh_relationship_proposal_expired");
+        }
+        const expected = {
+          relationshipType: proposal.relationshipType,
+          source: proposal.source,
+          target: proposal.target,
+          allowedIntents: proposal.requestedIntents,
+          allowedDeliveryModes: proposal.requestedDeliveryModes,
+          summaryVisibility: proposal.requestedSummaryVisibility,
+        };
+        for (const [key, value] of Object.entries(expected)) {
+          if (canonicalJson(draft[key]) !== canonicalJson(value)) {
+            throw codedError("threadmesh_grant_proposal_mismatch", key);
+          }
         }
       }
-    }
-    const grant = createEffectiveGrant(draft, decision, principal);
-    const installed = this.installGrant(grant, principal);
-    if (decision?.proposalId) {
-      this.db
-        .prepare(
-          `UPDATE relationship_proposals SET status = 'approved'
-           WHERE proposal_id = ? AND status = 'pending'`,
-        )
-        .run(decision.proposalId);
-    }
-    return installed;
+      const installed = this.#installGrant(grant, principal);
+      if (decision?.proposalId) {
+        const approved = this.db
+          .prepare(
+            `UPDATE relationship_proposals SET status = 'approved'
+             WHERE proposal_id = ? AND status = 'pending'`,
+          )
+          .run(decision.proposalId);
+        if (approved.changes !== 1) {
+          throw codedError("threadmesh_relationship_proposal_not_pending");
+        }
+      }
+      return installed;
+    }).immediate();
   }
 
   installGrant(grant, principal) {
+    this.#assertGrantAuthority(grant, principal);
+    return this.db.transaction(() => this.#installGrant(grant, principal)).immediate();
+  }
+
+  #assertGrantAuthority(grant, principal) {
     assertControlPlanePrincipal(principal);
     assertProtocolObject("grant", grant);
     if (
@@ -677,7 +1201,9 @@ export class SqliteCoordinator {
     ) {
       throw codedError("threadmesh_grant_authorization_invalid");
     }
+  }
 
+  #installGrant(grant, principal) {
     const existingId = this.db
       .prepare("SELECT grant_json FROM grants WHERE grant_id = ?")
       .get(grant.grantId);
@@ -704,52 +1230,49 @@ export class SqliteCoordinator {
       );
     if (existingVersion) throw codedError("threadmesh_revision_conflict");
 
-    const transaction = this.db.transaction(() => {
-      for (const ref of [grant.source, grant.target]) {
-        const task = this.db
-          .prepare(
-            `SELECT t.owner_kind, t.owner_principal_id, m.retired_at
-             FROM tasks t JOIN task_metadata m USING (task_id, incarnation_id)
-             WHERE t.task_id = ? AND t.incarnation_id = ?`,
-          )
-          .get(ref.taskId, ref.incarnationId);
-        if (!task) throw codedError("threadmesh_task_not_registered", ref.taskId);
-        if (task.retired_at) throw codedError("threadmesh_task_retired", ref.taskId);
-        if (
-          principal.kind !== "policy" &&
-          (task.owner_kind !== principal.kind ||
-            task.owner_principal_id !== principal.principalId)
-        ) {
-          throw codedError("threadmesh_grant_scope_not_authorized", ref.taskId);
-        }
-      }
-
-      this.db
+    for (const ref of [grant.source, grant.target]) {
+      const task = this.db
         .prepare(
-          `INSERT INTO grants (
-             grant_id, grant_version, relationship_id,
-             source_task_id, source_incarnation_id,
-             target_task_id, target_incarnation_id,
-             allowed_intents_json, allowed_modes_json,
-             expires_at, revoked_at, grant_json
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          `SELECT t.owner_kind, t.owner_principal_id, m.retired_at
+           FROM tasks t JOIN task_metadata m USING (task_id, incarnation_id)
+           WHERE t.task_id = ? AND t.incarnation_id = ?`,
         )
-        .run(
-          grant.grantId,
-          grant.grantVersion,
-          grant.relationshipId,
-          grant.source.taskId,
-          grant.source.incarnationId,
-          grant.target.taskId,
-          grant.target.incarnationId,
-          JSON.stringify(grant.allowedIntents),
-          JSON.stringify(grant.allowedDeliveryModes),
-          grant.expiresAt ?? null,
-          grant.revokedAt ?? null,
-          JSON.stringify(grant),
-        );
-    });
-    transaction();
+        .get(ref.taskId, ref.incarnationId);
+      if (!task) throw codedError("threadmesh_task_not_registered", ref.taskId);
+      if (task.retired_at) throw codedError("threadmesh_task_retired", ref.taskId);
+      if (
+        principal.kind !== "policy" &&
+        (task.owner_kind !== principal.kind ||
+          task.owner_principal_id !== principal.principalId)
+      ) {
+        throw codedError("threadmesh_grant_scope_not_authorized", ref.taskId);
+      }
+    }
+
+    this.db
+      .prepare(
+        `INSERT INTO grants (
+           grant_id, grant_version, relationship_id,
+           source_task_id, source_incarnation_id,
+           target_task_id, target_incarnation_id,
+           allowed_intents_json, allowed_modes_json,
+           expires_at, revoked_at, grant_json
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        grant.grantId,
+        grant.grantVersion,
+        grant.relationshipId,
+        grant.source.taskId,
+        grant.source.incarnationId,
+        grant.target.taskId,
+        grant.target.incarnationId,
+        JSON.stringify(grant.allowedIntents),
+        JSON.stringify(grant.allowedDeliveryModes),
+        grant.expiresAt ?? null,
+        grant.revokedAt ?? null,
+        JSON.stringify(grant),
+      );
     return grant;
   }
 
@@ -800,10 +1323,64 @@ export class SqliteCoordinator {
         .prepare("UPDATE grants SET revoked_at = ? WHERE grant_id = ? AND revoked_at IS NULL")
         .run(revokedAt, grantId);
       if (result.changes !== 1) throw codedError("threadmesh_grant_not_active", grantId);
+      const queued = this.db
+        .prepare(
+          `SELECT m.sender_incarnation_id, m.message_id, m.envelope_json,
+                  d.revision, d.delivery_state, d.decision_state
+           FROM messages m JOIN dispositions d
+             USING (sender_incarnation_id, message_id)
+           LEFT JOIN adapter_submissions s
+             USING (sender_incarnation_id, message_id)
+           WHERE m.grant_id = ? AND m.grant_version = ?
+             AND d.delivery_state NOT IN ('adapter-submitted', 'failed', 'expired')
+             AND d.decision_state IN ('pending', 'deferred', 'accepted')
+             AND COALESCE(s.state, '') NOT IN ('outcome-unknown', 'receipt-recorded')`,
+        )
+        .all(grantId, grant.grant_version)
+        .filter((message) =>
+          isStateChangingIntent(JSON.parse(message.envelope_json).intent),
+        );
+      for (const message of queued) {
+        if (
+          !isDispositionTransitionAllowed(
+            "decision",
+            message.decision_state,
+            "revoked",
+          )
+        ) {
+          throw codedError("threadmesh_revision_or_state_conflict");
+        }
+        const updated = this.db
+          .prepare(
+          `UPDATE dispositions SET revision = revision + 1,
+               decision_state = 'revoked', decision_reason_code = 'revoked',
+               updated_at = ?
+             WHERE sender_incarnation_id = ? AND message_id = ?
+               AND revision = ?
+               AND decision_state IN ('pending', 'deferred', 'accepted')
+               AND delivery_state NOT IN ('adapter-submitted', 'failed', 'expired')`,
+          )
+          .run(
+            revokedAt,
+            message.sender_incarnation_id,
+            message.message_id,
+            message.revision,
+          );
+        if (updated.changes === 1) {
+          this.#audit(
+            message.sender_incarnation_id,
+            message.message_id,
+            "authorization-revoked",
+            message.revision + 1,
+            { grantId, grantVersion: grant.grant_version },
+          );
+        }
+      }
       return {
         grantId,
         grantVersion: grant.grant_version,
         revokedAt,
+        invalidatedMessages: queued.length,
         replay: false,
       };
     }).immediate();
@@ -849,7 +1426,9 @@ export class SqliteCoordinator {
     return this.db.transaction(() => {
       const existing = this.db
         .prepare(
-          `SELECT m.*, d.revision, d.delivery_state, d.decision_state, d.outcome_state
+          `SELECT m.*, d.revision, d.delivery_state, d.decision_state,
+                  d.decision_reason_code, d.delivery_failure_reason,
+                  d.outcome_state
            FROM messages m JOIN dispositions d USING (sender_incarnation_id, message_id)
            WHERE m.sender_incarnation_id = ? AND m.message_id = ?`,
         )
@@ -876,8 +1455,9 @@ export class SqliteCoordinator {
           `INSERT INTO messages (
              sender_incarnation_id, message_id, target_task_id,
              target_incarnation_id, relationship_id, grant_id, grant_version,
-             envelope_digest, envelope_json, expires_at, created_at
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             envelope_digest, envelope_json, expires_at, created_at,
+             claim_status
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .run(
           envelope.sender.incarnationId,
@@ -891,6 +1471,7 @@ export class SqliteCoordinator {
           JSON.stringify(envelope),
           envelope.expiresAt,
           envelope.createdAt,
+          envelope.claimStatus,
         );
       this.db
         .prepare(
@@ -918,7 +1499,9 @@ export class SqliteCoordinator {
     this.#assertTaskActive(target);
     const rows = this.db
       .prepare(
-        `SELECT m.*, d.revision, d.delivery_state, d.decision_state, d.outcome_state,
+        `SELECT m.*, d.revision, d.delivery_state, d.decision_state,
+                d.decision_reason_code, d.delivery_failure_reason,
+                d.outcome_state,
                 c.state AS claim_state, c.expires_at AS claim_expires_at
          FROM messages m JOIN dispositions d USING (sender_incarnation_id, message_id)
          LEFT JOIN mailbox_claims c USING (sender_incarnation_id, message_id)
@@ -1073,28 +1656,105 @@ export class SqliteCoordinator {
     }).immediate();
   }
 
-  respond(senderIncarnationId, messageId, decision, expectedRevision, principal) {
-    if (!SAFE_DECISIONS.has(decision)) {
-      throw codedError("threadmesh_decision_unsupported", decision);
+  respond(
+    senderIncarnationId,
+    messageId,
+    decision,
+    expectedRevision,
+    principal,
+    reasonCode = DEFAULT_DECISION_REASONS[decision],
+  ) {
+    if (!isDecisionReasonAllowed(decision, reasonCode)) {
+      throw codedError("threadmesh_decision_reason_invalid", `${decision}:${reasonCode}`);
     }
     return this.db.transaction(() => {
       const row = this.#message(senderIncarnationId, messageId);
       assertTaskPrincipal(principal, row.target_task_id, row.target_incarnation_id);
-      this.#assertCurrentAuthorization(row);
-      if (Date.parse(row.expires_at) <= this.clock()) {
+      if (["accepted", "deferred"].includes(decision)) {
+        this.#assertCurrentAuthorization(row);
+      }
+      if (decision !== "expired" && Date.parse(row.expires_at) <= this.clock()) {
         throw codedError("threadmesh_message_expired");
+      }
+      if (row.revision !== expectedRevision) {
+        throw codedError("threadmesh_revision_conflict");
+      }
+      if (!isDispositionTransitionAllowed("decision", row.decision_state, decision)) {
+        throw codedError("threadmesh_revision_or_state_conflict");
       }
       const result = this.db
         .prepare(
-          `UPDATE dispositions SET revision = revision + 1, decision_state = ?, updated_at = ?
+          `UPDATE dispositions SET revision = revision + 1,
+             decision_state = ?, decision_reason_code = ?, updated_at = ?
            WHERE sender_incarnation_id = ? AND message_id = ? AND revision = ?
-             AND decision_state IN ('pending', 'deferred')`,
+             AND decision_state = ?`,
         )
-        .run(decision, nowIso(this.clock), senderIncarnationId, messageId, expectedRevision);
-      if (result.changes !== 1) throw codedError("threadmesh_revision_conflict");
+        .run(
+          decision,
+          reasonCode,
+          nowIso(this.clock),
+          senderIncarnationId,
+          messageId,
+          expectedRevision,
+          row.decision_state,
+        );
+      if (result.changes !== 1) throw codedError("threadmesh_revision_or_state_conflict");
       const updated = this.#getDisposition(senderIncarnationId, messageId);
       this.#audit(senderIncarnationId, messageId, "receiver-decided", updated.revision, {
         decision,
+        reasonCode,
+      });
+      return updated;
+    }).immediate();
+  }
+
+  failDelivery(
+    senderIncarnationId,
+    messageId,
+    expectedRevision,
+    failureReason,
+    principal,
+  ) {
+    if (typeof failureReason !== "string" || failureReason.length === 0) {
+      throw codedError("threadmesh_delivery_failure_reason_invalid");
+    }
+    return this.db.transaction(() => {
+      const row = this.#message(senderIncarnationId, messageId);
+      assertTaskPrincipal(principal, row.target_task_id, row.target_incarnation_id);
+      if (
+        row.revision !== expectedRevision ||
+        !isDispositionTransitionAllowed("delivery", row.delivery_state, "failed")
+      ) {
+        throw codedError("threadmesh_revision_or_state_conflict");
+      }
+      const unknown = this.db
+        .prepare(
+          `SELECT 1 FROM adapter_submissions
+           WHERE sender_incarnation_id = ? AND message_id = ?
+             AND state IN ('outcome-unknown', 'receipt-recorded')`,
+        )
+        .get(senderIncarnationId, messageId);
+      if (unknown) throw codedError("threadmesh_external_outcome_unknown");
+      const at = nowIso(this.clock);
+      const result = this.db
+        .prepare(
+          `UPDATE dispositions SET revision = revision + 1,
+             delivery_state = 'failed', delivery_failure_reason = ?, updated_at = ?
+           WHERE sender_incarnation_id = ? AND message_id = ?
+             AND revision = ? AND delivery_state = ?`,
+        )
+        .run(
+          failureReason.slice(0, 2000),
+          at,
+          senderIncarnationId,
+          messageId,
+          expectedRevision,
+          row.delivery_state,
+        );
+      if (result.changes !== 1) throw codedError("threadmesh_revision_or_state_conflict");
+      const updated = this.#getDisposition(senderIncarnationId, messageId);
+      this.#audit(senderIncarnationId, messageId, "delivery-failed", updated.revision, {
+        failureReason: failureReason.slice(0, 2000),
       });
       return updated;
     }).immediate();
@@ -1122,14 +1782,7 @@ export class SqliteCoordinator {
       if (!task?.adapter_ref_json) {
         throw codedError("threadmesh_target_adapter_not_bound");
       }
-      const adapterRef = JSON.parse(task.adapter_ref_json);
-      if (
-        adapterRef.kind !== "acp-session" ||
-        typeof adapterRef.sessionId !== "string" ||
-        typeof adapterRef.snapshotDigest !== "string"
-      ) {
-        throw codedError("threadmesh_target_adapter_ref_invalid");
-      }
+      const adapterRef = assertContextAdapterRef(JSON.parse(task.adapter_ref_json));
       const nonce = randomUUID();
       const adapterRefDigest = sha256Digest(adapterRef);
       const admissionToken = this.#admissionToken(
@@ -1166,9 +1819,16 @@ export class SqliteCoordinator {
         { admissionToken, adapterRefDigest, grantId: row.grant_id, grantVersion: row.grant_version },
       );
       const envelope = JSON.parse(row.envelope_json);
+      const admission = {
+        decision: "accepted",
+        receiverIncarnationId: envelope.target.incarnationId,
+        revision: expectedRevision,
+      };
       return {
         admissionToken,
         adapterRef,
+        envelope,
+        admission,
         revision: expectedRevision,
         rendering: `THREADMESH_UNTRUSTED_PEER_CONTEXT_JSON_V1\n${canonicalJson({
           type: "threadmesh.peer-suggestion",
@@ -1220,14 +1880,11 @@ export class SqliteCoordinator {
       ) {
         throw codedError("threadmesh_revision_or_state_conflict");
       }
-      const adapterRef = JSON.parse(claim.adapter_ref_json);
-      if (
-        adapterEvidence?.sessionId !== adapterRef.sessionId ||
-        adapterEvidence?.snapshotDigest !== adapterRef.snapshotDigest ||
-        adapterEvidence?.stopReason !== "end_turn"
-      ) {
-        throw codedError("threadmesh_adapter_evidence_mismatch");
-      }
+      const adapterRef = assertContextAdapterRef(JSON.parse(claim.adapter_ref_json));
+      const projectedAdapterEvidence = projectContextAdapterEvidence(
+        adapterRef,
+        adapterEvidence,
+      );
       const result = this.db
         .prepare(
           `UPDATE dispositions SET revision = revision + 1,
@@ -1251,7 +1908,7 @@ export class SqliteCoordinator {
       const disposition = this.#getDisposition(senderIncarnationId, messageId);
       this.#audit(senderIncarnationId, messageId, "context-admitted", disposition.revision, {
         admissionToken,
-        adapterEvidence: adapterEvidence ?? null,
+        adapterEvidence: projectedAdapterEvidence,
       });
       return disposition;
     }).immediate();
@@ -1261,24 +1918,30 @@ export class SqliteCoordinator {
     return this.db.transaction(() => {
       const row = this.#message(senderIncarnationId, messageId);
       assertTaskPrincipal(principal, row.target_task_id, row.target_incarnation_id);
-      this.#assertCurrentAuthorization(row);
-      if (Date.parse(row.expires_at) <= this.clock()) {
-        throw codedError("threadmesh_message_expired");
-      }
-      this.#assertAdapterSubmissionState(row, expectedRevision);
       const existing = this.db
         .prepare(
           `SELECT * FROM adapter_submissions
            WHERE sender_incarnation_id = ? AND message_id = ?`,
         )
         .get(senderIncarnationId, messageId);
-      if (existing && existing.state !== "confirmed-not-submitted") {
-        if (existing.state === "prepared" && existing.expected_revision === expectedRevision) {
-          return { replay: true, submission: this.#adapterSubmission(existing, row) };
+      if (
+        existing &&
+        existing.state !== "prepared" &&
+        existing.state !== "confirmed-not-submitted"
+      ) {
+        if (existing.expected_revision !== expectedRevision) {
+          throw codedError("threadmesh_adapter_submission_in_flight", existing.state);
         }
-        throw codedError("threadmesh_adapter_submission_in_flight", existing.state);
+        return {
+          replay: true,
+          submission: this.#adapterSubmission(existing, row),
+        };
       }
-
+      this.#assertCurrentAuthorization(row);
+      if (Date.parse(row.expires_at) <= this.clock()) {
+        throw codedError("threadmesh_message_expired");
+      }
+      this.#assertAdapterSubmissionState(row, expectedRevision);
       const task = this.db
         .prepare(
           `SELECT adapter_ref_json FROM tasks
@@ -1286,7 +1949,19 @@ export class SqliteCoordinator {
         )
         .get(row.target_task_id, row.target_incarnation_id);
       if (!task?.adapter_ref_json) throw codedError("threadmesh_target_adapter_not_bound");
-      const adapterRefDigest = sha256Digest(JSON.parse(task.adapter_ref_json));
+      const adapterRef = JSON.parse(task.adapter_ref_json);
+      if (existing && existing.state !== "confirmed-not-submitted") {
+        if (existing.expected_revision === expectedRevision) {
+          return {
+            replay: true,
+            adapterRef,
+            envelope: JSON.parse(row.envelope_json),
+            submission: this.#adapterSubmission(existing, row),
+          };
+        }
+        throw codedError("threadmesh_adapter_submission_in_flight", existing.state);
+      }
+      const adapterRefDigest = sha256Digest(adapterRef);
       const at = nowIso(this.clock);
       const submissionId = `sub_${randomUUID()}`;
       const adapterIdempotencyKey = `adp_${randomUUID()}`;
@@ -1327,7 +2002,12 @@ export class SqliteCoordinator {
         envelopeDigest: row.envelope_digest,
         adapterRefDigest,
       });
-      return { replay: false, submission: this.#adapterSubmission(submission, row) };
+      return {
+        replay: false,
+        adapterRef,
+        envelope: JSON.parse(row.envelope_json),
+        submission: this.#adapterSubmission(submission, row),
+      };
     }).immediate();
   }
 
@@ -1346,6 +2026,17 @@ export class SqliteCoordinator {
       if (submission.state === "outcome-unknown") {
         return { replay: true, submission: this.#adapterSubmission(submission, message) };
       }
+      const task = this.db
+        .prepare(
+          `SELECT adapter_ref_json FROM tasks
+           WHERE task_id = ? AND incarnation_id = ?`,
+        )
+        .get(message.target_task_id, message.target_incarnation_id);
+      if (!task?.adapter_ref_json) throw codedError("threadmesh_target_adapter_not_bound");
+      const adapterRef = JSON.parse(task.adapter_ref_json);
+      if (sha256Digest(adapterRef) !== submission.adapter_ref_digest) {
+        throw codedError("threadmesh_adapter_ref_changed");
+      }
       const at = nowIso(this.clock);
       const result = this.db
         .prepare(
@@ -1362,7 +2053,14 @@ export class SqliteCoordinator {
         submissionId,
         adapterIdempotencyKey: submission.adapter_idempotency_key,
       });
-      return { replay: false, submission: this.#adapterSubmission(updated, message) };
+      return {
+        replay: false,
+        submission: this.#adapterSubmission(updated, message),
+        dispatch: {
+          adapterRef,
+          envelope: JSON.parse(message.envelope_json),
+        },
+      };
     }).immediate();
   }
 
@@ -1509,6 +2207,492 @@ export class SqliteCoordinator {
     return this.#adapterSubmission(submission, message);
   }
 
+  inspectMessage(senderIncarnationId, messageId, principal) {
+    const row = this.db
+      .prepare(
+        `SELECT m.*, d.revision, d.delivery_state, d.decision_state,
+                d.decision_reason_code, d.delivery_failure_reason,
+                d.outcome_state,
+                source.owner_kind AS source_owner_kind,
+                source.owner_principal_id AS source_owner_principal_id,
+                target.owner_kind AS target_owner_kind,
+                target.owner_principal_id AS target_owner_principal_id
+         FROM messages m
+         JOIN dispositions d USING (sender_incarnation_id, message_id)
+         JOIN tasks source ON source.incarnation_id = m.sender_incarnation_id
+         JOIN tasks target ON target.task_id = m.target_task_id
+                          AND target.incarnation_id = m.target_incarnation_id
+         WHERE m.sender_incarnation_id = ? AND m.message_id = ?`,
+      )
+      .get(senderIncarnationId, messageId);
+    // Keep missing and unauthorized records indistinguishable to callers. The
+    // inspector is deliberately not a message-ID enumeration surface.
+    if (!row) throw codedError("threadmesh_inspection_not_authorized");
+    const envelope = JSON.parse(row.envelope_json);
+    const taskParticipant =
+      isTaskPrincipal(
+        principal,
+        envelope.sender.taskId,
+        envelope.sender.incarnationId,
+      ) ||
+      isTaskPrincipal(
+        principal,
+        envelope.target.taskId,
+        envelope.target.incarnationId,
+      );
+    const ownerParticipant =
+      principal?.kind === "user" &&
+      ((row.source_owner_kind === principal.kind &&
+        row.source_owner_principal_id === principal.principalId) ||
+        (row.target_owner_kind === principal.kind &&
+          row.target_owner_principal_id === principal.principalId));
+    const policyViewer = principal?.kind === "policy";
+    if (!taskParticipant && !ownerParticipant && !policyViewer) {
+      throw codedError("threadmesh_inspection_not_authorized");
+    }
+
+    const expired = Date.parse(row.expires_at) <= this.clock();
+    const purged = row.content_purged_at !== null;
+    let currentlyAuthorized = false;
+    try {
+      this.#assertCurrentAuthorization(row);
+      currentlyAuthorized = true;
+    } catch (error) {
+      if (error?.code !== "threadmesh_policy_denied") throw error;
+      currentlyAuthorized = false;
+    }
+    const contentVisible =
+      !purged && !expired && currentlyAuthorized && !policyViewer &&
+      (taskParticipant || ownerParticipant);
+    let redactionReason = "authorization-no-longer-current";
+    if (policyViewer) redactionReason = "metadata-only-policy-view";
+    if (expired) redactionReason = "expired";
+    if (purged) redactionReason = "purged";
+    const evidenceRefs = envelope.evidenceRefs ?? [];
+    const submission = this.db
+      .prepare(
+        `SELECT submission_id, state, envelope_digest, adapter_ref_digest,
+                adapter_idempotency_key, updated_at
+         FROM adapter_submissions
+         WHERE sender_incarnation_id = ? AND message_id = ?`,
+      )
+      .get(senderIncarnationId, messageId);
+    const events = this.db
+      .prepare(
+        `SELECT sequence AS cursor, event_type AS eventType, revision,
+                occurred_at AS occurredAt
+         FROM audit_events
+         WHERE sender_incarnation_id = ? AND message_id = ?
+         ORDER BY sequence ASC`,
+      )
+      .all(senderIncarnationId, messageId);
+    const actorType = envelope.sender.actorType;
+    return {
+      specVersion: "0.0-draft",
+      messageId,
+      provenance: {
+        authorship:
+          actorType === "user"
+            ? "user-authored"
+            : actorType === "agent"
+              ? "peer-authored"
+              : `${actorType}-authored`,
+        actor: {
+          actorType,
+          ...(envelope.sender.actorId
+            ? { actorId: envelope.sender.actorId }
+            : {}),
+        },
+        source: {
+          taskId: envelope.sender.taskId,
+          incarnationId: envelope.sender.incarnationId,
+          harness: envelope.sender.harness,
+        },
+        target: envelope.target,
+        relationshipId: envelope.relationshipId,
+        intent: envelope.intent,
+        claimStatus: row.claim_status ?? envelope.claimStatus,
+      },
+      evidence: contentVisible
+        ? { state: "visible", refs: evidenceRefs }
+        : { state: "redacted", count: evidenceRefs.length, reason: redactionReason },
+      content: contentVisible
+        ? { state: "visible", reason: envelope.reason, value: envelope.content }
+        : { state: "redacted", reason: redactionReason },
+      lifecycle: {
+        createdAt: envelope.createdAt,
+        expiresAt: envelope.expiresAt,
+        expired,
+        ...(purged ? { contentPurgedAt: row.content_purged_at } : {}),
+      },
+      disposition: this.#disposition(row),
+      adapterSubmission: submission
+        ? {
+            submissionId: submission.submission_id,
+            state: submission.state,
+            envelopeDigest: submission.envelope_digest,
+            adapterRefDigest: submission.adapter_ref_digest,
+            adapterIdempotencyKeyDigest: sha256Digest(
+              submission.adapter_idempotency_key,
+            ),
+            updatedAt: submission.updated_at,
+          }
+        : null,
+      events,
+    };
+  }
+
+  purgeSensitiveContent({ before, limit = 100 } = {}, principal) {
+    assertPolicyPrincipal(principal);
+    const cutoffTime = Date.parse(before);
+    if (!Number.isFinite(cutoffTime) || cutoffTime > this.clock()) {
+      throw codedError("threadmesh_retention_cutoff_invalid");
+    }
+    if (!Number.isInteger(limit) || limit < 1 || limit > 1000) {
+      throw codedError("threadmesh_retention_limit_invalid");
+    }
+    const cutoff = new Date(cutoffTime).toISOString();
+    const boundedLimit = limit;
+    return this.db.transaction(() => {
+      const purgedAt = nowIso(this.clock);
+      const messages = this.db
+        .prepare(
+          `SELECT m.sender_incarnation_id, m.message_id, m.envelope_json,
+                  d.revision
+           FROM messages m
+           JOIN dispositions d USING (sender_incarnation_id, message_id)
+           LEFT JOIN admission_claims a
+             USING (sender_incarnation_id, message_id)
+           LEFT JOIN adapter_submissions s
+             USING (sender_incarnation_id, message_id)
+           WHERE m.content_purged_at IS NULL
+             AND m.expires_at <= ?
+             AND COALESCE(a.state, '') != 'in-flight'
+             AND COALESCE(s.state, '') NOT IN (
+               'outcome-unknown', 'manual-reconciliation'
+             )
+           ORDER BY m.sequence ASC LIMIT ?`,
+        )
+        .all(cutoff, boundedLimit);
+      for (const message of messages) {
+        const tombstone = tombstoneEnvelope(JSON.parse(message.envelope_json));
+        const updated = this.db
+          .prepare(
+            `UPDATE messages SET envelope_json = ?, content_purged_at = ?
+             WHERE sender_incarnation_id = ? AND message_id = ?
+               AND content_purged_at IS NULL`,
+          )
+          .run(
+            canonicalJson(tombstone),
+            purgedAt,
+            message.sender_incarnation_id,
+            message.message_id,
+          );
+        if (updated.changes !== 1) {
+          throw codedError("threadmesh_retention_state_conflict");
+        }
+        this.db
+          .prepare(
+            `UPDATE audit_events SET
+               detail_json = ?, detail_purged_at = ?
+             WHERE sender_incarnation_id = ? AND message_id = ?
+               AND detail_purged_at IS NULL`,
+          )
+          .run(
+            canonicalJson({ redacted: true, reason: "retention-policy" }),
+            purgedAt,
+            message.sender_incarnation_id,
+            message.message_id,
+          );
+        this.db
+          .prepare(
+            `DELETE FROM mailbox_claims
+             WHERE sender_incarnation_id = ? AND message_id = ?`,
+          )
+          .run(message.sender_incarnation_id, message.message_id);
+        this.#audit(
+          message.sender_incarnation_id,
+          message.message_id,
+          "content-purged",
+          message.revision,
+          { retentionCutoff: cutoff },
+        );
+      }
+
+      const proposals = this.db
+        .prepare(
+          `SELECT proposal_id, proposal_json FROM relationship_proposals
+           WHERE content_purged_at IS NULL
+             AND json_extract(proposal_json, '$.expiresAt') <= ?
+           ORDER BY proposal_id ASC LIMIT ?`,
+        )
+        .all(cutoff, boundedLimit);
+      for (const proposal of proposals) {
+        this.db
+          .prepare(
+            `UPDATE relationship_proposals
+             SET proposal_json = ?, content_purged_at = ?
+             WHERE proposal_id = ? AND content_purged_at IS NULL`,
+          )
+          .run(
+            canonicalJson(tombstoneProposal(JSON.parse(proposal.proposal_json))),
+            purgedAt,
+            proposal.proposal_id,
+          );
+      }
+
+      const summaries = this.db
+        .prepare(
+          `SELECT s.summary_id, s.summary_json
+           FROM task_summaries s
+           LEFT JOIN grants g
+             ON g.grant_id = s.grant_id AND g.grant_version = s.grant_version
+           LEFT JOIN task_metadata t
+             ON t.task_id = s.task_id AND t.incarnation_id = s.incarnation_id
+           WHERE s.content_purged_at IS NULL AND s.updated_at <= ?
+             AND (
+               (g.revoked_at IS NOT NULL AND g.revoked_at <= ?) OR
+               (g.expires_at IS NOT NULL AND g.expires_at <= ?) OR
+               (t.retired_at IS NOT NULL AND t.retired_at <= ?)
+             )
+           ORDER BY s.summary_id ASC LIMIT ?`,
+        )
+        .all(cutoff, cutoff, cutoff, cutoff, boundedLimit);
+      for (const summary of summaries) {
+        this.db
+          .prepare(
+            `UPDATE task_summaries
+             SET summary_json = ?, content_purged_at = ?
+             WHERE summary_id = ? AND content_purged_at IS NULL`,
+          )
+          .run(
+            canonicalJson(tombstoneSummary(JSON.parse(summary.summary_json))),
+            purgedAt,
+            summary.summary_id,
+          );
+      }
+
+      const adapterRefs = this.db
+        .prepare(
+          `SELECT t.task_id, t.incarnation_id
+           FROM tasks t JOIN task_metadata tm
+             USING (task_id, incarnation_id)
+           WHERE t.adapter_ref_json IS NOT NULL
+             AND t.adapter_ref_purged_at IS NULL
+             AND tm.retired_at IS NOT NULL AND tm.retired_at <= ?
+             AND NOT EXISTS (
+               SELECT 1 FROM messages m
+               JOIN adapter_submissions s
+                 USING (sender_incarnation_id, message_id)
+               WHERE m.target_task_id = t.task_id
+                 AND m.target_incarnation_id = t.incarnation_id
+                 AND s.state IN ('outcome-unknown', 'manual-reconciliation')
+             )
+             AND NOT EXISTS (
+               SELECT 1 FROM messages m
+               JOIN admission_claims a
+                 USING (sender_incarnation_id, message_id)
+               WHERE m.target_task_id = t.task_id
+                 AND m.target_incarnation_id = t.incarnation_id
+                 AND a.state = 'in-flight'
+             )
+           ORDER BY t.task_id, t.incarnation_id LIMIT ?`,
+        )
+        .all(cutoff, boundedLimit);
+      for (const task of adapterRefs) {
+        this.db
+          .prepare(
+            `UPDATE tasks SET adapter_ref_json = NULL,
+               adapter_ref_purged_at = ?
+             WHERE task_id = ? AND incarnation_id = ?
+               AND adapter_ref_purged_at IS NULL`,
+          )
+          .run(purgedAt, task.task_id, task.incarnation_id);
+      }
+
+      const admissionRefs = this.db
+        .prepare(
+          `SELECT a.sender_incarnation_id, a.message_id
+           FROM admission_claims a
+           JOIN messages m USING (sender_incarnation_id, message_id)
+           JOIN task_metadata tm
+             ON tm.task_id = m.target_task_id
+            AND tm.incarnation_id = m.target_incarnation_id
+           WHERE a.adapter_ref_purged_at IS NULL
+             AND a.state != 'in-flight'
+             AND tm.retired_at IS NOT NULL AND tm.retired_at <= ?
+           ORDER BY a.sender_incarnation_id, a.message_id LIMIT ?`,
+        )
+        .all(cutoff, boundedLimit);
+      for (const claim of admissionRefs) {
+        this.db
+          .prepare(
+            `UPDATE admission_claims SET adapter_ref_json = ?,
+               adapter_ref_purged_at = ?
+             WHERE sender_incarnation_id = ? AND message_id = ?
+               AND adapter_ref_purged_at IS NULL`,
+          )
+          .run(
+            canonicalJson({ kind: "purged" }),
+            purgedAt,
+            claim.sender_incarnation_id,
+            claim.message_id,
+          );
+      }
+
+      const replayRecords = this.db
+        .prepare(
+          `SELECT authentication_id, method, idempotency_key
+           FROM operation_replays
+           WHERE method IN (
+             'relationships.propose', 'tasks.publishSummary', 'messages.send',
+             'tasks.register', 'tasks.attach', 'tasks.rotateIncarnation'
+           )
+             AND completed_at <= ?
+           ORDER BY completed_at, authentication_id, method, idempotency_key
+           LIMIT ?`,
+        )
+        .all(cutoff, boundedLimit);
+      for (const replay of replayRecords) {
+        this.db
+          .prepare(
+            `DELETE FROM operation_replays
+             WHERE authentication_id = ? AND method = ? AND idempotency_key = ?`,
+          )
+          .run(
+            replay.authentication_id,
+            replay.method,
+            replay.idempotency_key,
+          );
+      }
+
+      return {
+        purgedAt,
+        retentionCutoff: cutoff,
+        messages: messages.map((message) => ({
+          senderIncarnationId: message.sender_incarnation_id,
+          messageId: message.message_id,
+        })),
+        proposalIds: proposals.map((proposal) => proposal.proposal_id),
+        summaryIds: summaries.map((summary) => summary.summary_id),
+        adapterRefs: adapterRefs.map((task) => ({
+          taskId: task.task_id,
+          incarnationId: task.incarnation_id,
+        })),
+        admissionClaimRefs: admissionRefs.map((claim) => ({
+          senderIncarnationId: claim.sender_incarnation_id,
+          messageId: claim.message_id,
+        })),
+        replayRecordsDeleted: replayRecords.length,
+      };
+    }).immediate();
+  }
+
+  expireDueMessages({ limit = 100 } = {}, principal) {
+    assertControlPlanePrincipal(principal);
+    const boundedLimit = Math.max(1, Math.min(Number(limit) || 100, 1000));
+    return this.db.transaction(() => {
+      const at = nowIso(this.clock);
+      const candidates = this.db
+        .prepare(
+          `SELECT m.sender_incarnation_id, m.message_id,
+                  d.revision, d.delivery_state, d.decision_state
+           FROM messages m
+           JOIN dispositions d USING (sender_incarnation_id, message_id)
+           JOIN tasks source_task
+             ON source_task.incarnation_id = m.sender_incarnation_id
+           JOIN tasks target_task
+             ON target_task.task_id = m.target_task_id
+            AND target_task.incarnation_id = m.target_incarnation_id
+           WHERE m.expires_at <= ?
+             AND (? = 'policy' OR (
+               source_task.owner_kind = ? AND source_task.owner_principal_id = ?
+               AND target_task.owner_kind = ? AND target_task.owner_principal_id = ?
+             ))
+             AND d.delivery_state NOT IN ('adapter-submitted', 'failed', 'expired')
+             AND NOT EXISTS (
+               SELECT 1 FROM admission_claims a
+               WHERE a.sender_incarnation_id = m.sender_incarnation_id
+                 AND a.message_id = m.message_id AND a.state = 'in-flight'
+             )
+             AND NOT EXISTS (
+               SELECT 1 FROM adapter_submissions s
+               WHERE s.sender_incarnation_id = m.sender_incarnation_id
+                 AND s.message_id = m.message_id AND s.state = 'outcome-unknown'
+             )
+           ORDER BY m.sequence ASC LIMIT ?`,
+        )
+        .all(
+          at,
+          principal.kind,
+          principal.kind,
+          principal.principalId,
+          principal.kind,
+          principal.principalId,
+          boundedLimit + 1,
+        );
+      const selected = candidates.slice(0, boundedLimit);
+      const expired = [];
+      for (const candidate of selected) {
+        const decision = ["pending", "deferred"].includes(candidate.decision_state)
+          ? "expired"
+          : candidate.decision_state;
+        if (
+          !isDispositionTransitionAllowed(
+            "delivery",
+            candidate.delivery_state,
+            "expired",
+          ) ||
+          (decision !== candidate.decision_state &&
+            !isDispositionTransitionAllowed(
+              "decision",
+              candidate.decision_state,
+              decision,
+            ))
+        ) {
+          throw codedError("threadmesh_revision_or_state_conflict");
+        }
+        const result = this.db
+          .prepare(
+            `UPDATE dispositions SET revision = revision + 1,
+               delivery_state = 'expired', decision_state = ?,
+               decision_reason_code = CASE
+                 WHEN ? = 'expired' THEN 'expired' ELSE decision_reason_code END,
+               updated_at = ?
+             WHERE sender_incarnation_id = ? AND message_id = ? AND revision = ?
+               AND delivery_state NOT IN ('adapter-submitted', 'failed', 'expired')`,
+          )
+          .run(
+            decision,
+            decision,
+            at,
+            candidate.sender_incarnation_id,
+            candidate.message_id,
+            candidate.revision,
+          );
+        if (result.changes !== 1) continue;
+        const revision = candidate.revision + 1;
+        this.#audit(
+          candidate.sender_incarnation_id,
+          candidate.message_id,
+          "message-expired",
+          revision,
+          {
+            expiredAt: at,
+            previousDelivery: candidate.delivery_state,
+            previousDecision: candidate.decision_state,
+          },
+        );
+        expired.push({
+          senderIncarnationId: candidate.sender_incarnation_id,
+          messageId: candidate.message_id,
+          revision,
+        });
+      }
+      return { expiredAt: at, expired, hasMore: candidates.length > boundedLimit };
+    }).immediate();
+  }
+
   getDisposition(senderIncarnationId, messageId, principal) {
     const message = this.#message(senderIncarnationId, messageId);
     const envelope = JSON.parse(message.envelope_json);
@@ -1598,7 +2782,8 @@ export class SqliteCoordinator {
   #taskMetadata(taskRef) {
     const metadata = this.db
       .prepare(
-        `SELECT revision, retired_at FROM task_metadata
+        `SELECT revision, retired_at, run_id, objective_version, checkpoint
+         FROM task_metadata
          WHERE task_id = ? AND incarnation_id = ?`,
       )
       .get(taskRef.taskId, taskRef.incarnationId);
@@ -1687,7 +2872,7 @@ export class SqliteCoordinator {
   }
 
   #activeGrantFor(envelope) {
-    const grant = this.db
+    const grantRow = this.db
       .prepare(
         `SELECT * FROM grants WHERE relationship_id = ?
            AND source_task_id = ? AND source_incarnation_id = ?
@@ -1701,27 +2886,53 @@ export class SqliteCoordinator {
         envelope.target.taskId,
         envelope.target.incarnationId,
       );
-    if (!grant) throw codedError("threadmesh_grant_not_active");
-    if (grant.revoked_at) throw codedError("threadmesh_grant_not_active");
-    this.#assertTaskActive(envelope.sender);
-    this.#assertTaskActive(envelope.target);
-    if (grant.expires_at && Date.parse(grant.expires_at) <= this.clock()) {
-      throw codedError("threadmesh_grant_expired");
+    const taskSnapshot = (ref) => {
+      const row = this.db
+        .prepare(
+          `SELECT t.task_id AS taskId, t.incarnation_id AS incarnationId,
+                  m.retired_at AS retiredAt, m.run_id AS runId,
+                  m.objective_version AS objectiveVersion,
+                  m.checkpoint AS checkpoint
+           FROM tasks t JOIN task_metadata m USING (task_id, incarnation_id)
+           WHERE t.task_id = ? AND t.incarnation_id = ?`,
+        )
+        .get(ref.taskId, ref.incarnationId);
+      return row ?? null;
+    };
+    const grant = grantRow
+      ? {
+          ...JSON.parse(grantRow.grant_json),
+          revokedAt: grantRow.revoked_at ?? undefined,
+        }
+      : null;
+    const decision = evaluateRelationshipPolicy({
+      envelope,
+      grant,
+      currentGrant: grant,
+      sourceTask: taskSnapshot(envelope.sender),
+      targetTask: taskSnapshot(envelope.target),
+      now: this.clock(),
+    });
+    if (decision.decision !== "allow") {
+      const error = codedError(decision.publicErrorCode);
+      error.policyDecision = decision;
+      throw error;
     }
-    if (!JSON.parse(grant.allowed_intents_json).includes(envelope.intent)) {
-      throw codedError("threadmesh_intent_not_allowed", envelope.intent);
-    }
-    if (!JSON.parse(grant.allowed_modes_json).includes(envelope.delivery.requestedMode)) {
-      throw codedError("threadmesh_delivery_mode_not_allowed", envelope.delivery.requestedMode);
-    }
-    return grant;
+    return grantRow;
   }
 
   #assertCurrentAuthorization(row) {
     const envelope = JSON.parse(row.envelope_json);
     const grant = this.#activeGrantFor(envelope);
     if (grant.grant_id !== row.grant_id || grant.grant_version !== row.grant_version) {
-      throw codedError("threadmesh_grant_version_changed");
+      const error = codedError("threadmesh_policy_denied");
+      error.policyDecision = {
+        decision: "deny",
+        reasonCode: "policy-denied",
+        publicErrorCode: "threadmesh_policy_denied",
+        internalReasonCode: "grant-superseded",
+      };
+      throw error;
     }
   }
 
@@ -1737,7 +2948,11 @@ export class SqliteCoordinator {
     if (
       row.revision !== expectedRevision ||
       row.decision_state !== "accepted" ||
-      !["durably-received", "checkpoint-offered"].includes(row.delivery_state)
+      !isDispositionTransitionAllowed(
+        "delivery",
+        row.delivery_state,
+        "context-admitted",
+      )
     ) {
       throw codedError("threadmesh_revision_or_state_conflict");
     }
@@ -1760,8 +2975,10 @@ export class SqliteCoordinator {
     if (
       row.revision !== expectedRevision ||
       row.decision_state !== "accepted" ||
-      !["durably-received", "receiver-notified", "checkpoint-offered", "context-admitted"].includes(
+      !isDispositionTransitionAllowed(
+        "delivery",
         row.delivery_state,
+        "adapter-submitted",
       )
     ) {
       throw codedError("threadmesh_revision_or_state_conflict");
@@ -1807,7 +3024,9 @@ export class SqliteCoordinator {
   #message(senderIncarnationId, messageId) {
     const row = this.db
       .prepare(
-        `SELECT m.*, d.revision, d.delivery_state, d.decision_state, d.outcome_state
+        `SELECT m.*, d.revision, d.delivery_state, d.decision_state,
+                d.decision_reason_code, d.delivery_failure_reason,
+                d.outcome_state
          FROM messages m JOIN dispositions d USING (sender_incarnation_id, message_id)
          WHERE m.sender_incarnation_id = ? AND m.message_id = ?`,
       )
@@ -1821,6 +3040,12 @@ export class SqliteCoordinator {
       revision: row.revision,
       delivery: row.delivery_state,
       decision: row.decision_state,
+      ...(row.decision_reason_code
+        ? { decisionReasonCode: row.decision_reason_code }
+        : {}),
+      ...(row.delivery_failure_reason
+        ? { deliveryFailureReason: row.delivery_failure_reason }
+        : {}),
       outcome: row.outcome_state,
     };
   }
@@ -1842,6 +3067,16 @@ export class SqliteCoordinator {
         JSON.stringify(detail),
         nowIso(this.clock),
       );
+  }
+
+  checkpointStorage(principal) {
+    assertPolicyPrincipal(principal);
+    const result = this.db.pragma("wal_checkpoint(TRUNCATE)")[0];
+    return {
+      busy: result.busy,
+      logFrames: result.log,
+      checkpointedFrames: result.checkpointed,
+    };
   }
 
   close() {

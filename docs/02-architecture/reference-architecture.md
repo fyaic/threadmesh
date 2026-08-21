@@ -59,6 +59,19 @@ The initial implementation may run as a local daemon with adapters in separate p
 The repository currently implements a local authenticated slice of this
 architecture:
 
+- the [SQLite storage contract](sqlite-storage-contract.md) maps protocol
+  objects to tables and defines migration, rollback, concurrency, retention,
+  and deletion rules; the stacked retention slice executes bounded policy-only
+  tombstoning while preserving replay and unresolved-effect evidence;
+- the [relationship policy engine](relationship-policy-engine.md) evaluates
+  exact incarnations, current grants, relationship authority, intents, and
+  modes with a non-disclosing public denial surface;
+- the [durable dispatcher](durable-dispatcher.md) centralizes legal state
+  transitions, freshness revalidation, the pre-call unknown-outcome boundary,
+  one native call, and exact receipt recording;
+- the [provenance inspector](provenance-inspector.md) adds a restart-safe local
+  cursor stream and an authorization-aware, content-redacting message snapshot;
+
 - [`SqliteCoordinator`](../../src/coordinator/sqlite-coordinator.mjs) combines a
   registry, proposals, effective grants, summaries, mailbox, durable claims,
   dispositions, operation replay, and audit events in one process;
@@ -66,8 +79,9 @@ architecture:
   principals from a host authenticator and exposes typed public methods;
 - [`AcpStdioAdapter`](../../src/adapters/acp-stdio.mjs) binds a registered ACP
   session, denies permission requests, and returns prompt evidence;
-- the caller still composes prepare, adapter dispatch, and confirmation;
-- no user/product UI, event-stream inspector, production network credential
+- context-admission callers still compose the older ACP prepare/prompt/confirm
+  experiment; native-effect calls use the dispatcher;
+- no user/product UI, hosted event service, production network credential
   verifier, or OS sandbox is included.
 
 This slice validates failure semantics and informs the target architecture. It

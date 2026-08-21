@@ -29,6 +29,7 @@ const app = acp
     agentCapabilities: {
       loadSession: true,
       promptCapabilities: { image: false, audio: false },
+      sessionCapabilities: { list: {}, delete: {} },
     },
     authMethods: [],
     agentInfo: { name: "threadmesh-fake-agent", version: "1.0.0" },
@@ -58,6 +59,22 @@ const app = acp
     });
     return {};
   })
+  .onRequest(acp.methods.agent.session.list, () => ({
+    sessions: Object.keys(readState()).map((sessionId) => ({
+      sessionId,
+      cwd: process.cwd(),
+    })),
+  }))
+  .onRequest(acp.methods.agent.session.delete, ({ params }) => {
+    const state = readState();
+    if (!state[params.sessionId]) throw new Error("unknown persisted session");
+    delete state[params.sessionId];
+    writeState(state);
+    sessions.delete(params.sessionId);
+    sentinels.delete(params.sessionId);
+    loadedSessions.delete(params.sessionId);
+    return {};
+  })
   .onRequest(acp.methods.agent.session.prompt, async ({ params, client }) => {
     if (!sessions.has(params.sessionId)) throw new Error("unknown session");
     if (process.env.FAKE_ACP_HANG === "1") {
@@ -72,6 +89,16 @@ const app = acp
         options: [{ optionId: "allow", name: "Allow", kind: "allow_once" }],
       });
       permissionPrefix = response.outcome.outcome === "cancelled" ? "PERMISSION_CANCELLED:" : "";
+    }
+    if (process.env.FAKE_ACP_EXACT_MARKER) {
+      await client.notify(acp.methods.client.session.update, {
+        sessionId: params.sessionId,
+        update: {
+          sessionUpdate: "agent_message_chunk",
+          content: { type: "text", text: process.env.FAKE_ACP_EXACT_MARKER },
+        },
+      });
+      return { stopReason: "end_turn" };
     }
     await client.notify(acp.methods.client.session.update, {
       sessionId: params.sessionId,

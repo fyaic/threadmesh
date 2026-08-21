@@ -60,6 +60,12 @@ receiver-mediated `checkpoint-offer`. It advertises no checkpoint events,
 disposition callbacks, steer, interrupt, model-turn cancellation, or subprocess
 cancellation. See the [Kimi experiment](kimi-code.md).
 
+The checked-in Codex App Server profile is similarly suggestion-only even
+though the native API exposes steer and interrupt methods. It requires explicit
+receiver acceptance, sends canonical labelled JSON through `turn/start`, and
+correlates exact terminal turn evidence. See the
+[Codex experiment](codex-app-server.md).
+
 ## Forbidden approximations
 
 An adapter MUST NOT:
@@ -91,3 +97,19 @@ authenticated binding, OS isolation guidance, and product-level behavior
 tests. The normative receipt/reconciliation contract is executable, but the ACP
 profile honestly advertises `durableSubmissionIdempotency: none` and therefore
 cannot expose `steer` or `interrupt`.
+
+The Codex App Server adapter adds deterministic JSONL, denial, timeout, and
+provenance tests plus a real no-model product preflight. Its live first-turn and
+existing-receiver tests remain gated; it also advertises no steer, interrupt,
+or durable submission idempotency.
+
+The Gemini headless adapter exercises a materially different one-process JSONL
+event boundary. It runs in plan mode, requests the product sandbox, requires an
+explicit accepted suggestion, and fails a bounded marker if any tool-use event
+appears. It likewise advertises no steer, interrupt, or durable submission
+idempotency. See the [Gemini experiment](gemini-cli.md).
+
+All three suggestion paths share the reference coordinator's durable admission
+claim. Confirmation is kind-specific and persists only an allowlisted evidence
+projection. See the
+[multi-product conformance guide](../06-guides/multi-product-admission-conformance.md).

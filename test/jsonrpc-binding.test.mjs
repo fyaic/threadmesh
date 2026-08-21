@@ -52,12 +52,12 @@ const credentials = [
   },
 ];
 
-function transport(filename) {
-  const coordinator = new SqliteCoordinator({ filename, clock: () => NOW });
+function transport(filename, clock = () => NOW) {
+  const coordinator = new SqliteCoordinator({ filename, clock });
   const binding = new ThreadMeshJsonRpcBinding({
     coordinator,
     authenticator: new StaticTokenAuthenticator(credentials),
-    clock: () => NOW,
+    clock,
   });
   const send = (request, context) =>
     JSON.parse(
@@ -102,6 +102,26 @@ function proposal() {
     expiresAt: "2026-08-20T10:00:00Z",
   };
 }
+
+test("authenticated RPC errors never echo internal exception text", () => {
+  const binding = new ThreadMeshJsonRpcBinding({
+    coordinator: {
+      getTask() {
+        throw new Error("sqlite: /private/db; provider_secret=TOP-SECRET");
+      },
+    },
+    authenticator: new StaticTokenAuthenticator(credentials),
+  });
+  const response = binding.handle({
+    jsonrpc: "2.0",
+    id: "redaction-1",
+    method: "tasks.get",
+    params: { task: taskA },
+  }, { authorization: "Bearer owner-secret" });
+  assert.equal(response.error.data.threadmeshCode, "threadmesh_internal_error");
+  assert.equal("detail" in response.error.data, false);
+  assert.doesNotMatch(JSON.stringify(response), /TOP-SECRET|private\/db/);
+});
 
 function grantDraft() {
   return {
@@ -289,6 +309,25 @@ test("rejects payload principal injection and cross-task impersonation", () => {
   }
 });
 
+test("does not expose unrestricted global task enumeration", () => {
+  const api = transport(":memory:");
+  try {
+    bootstrap(api);
+    const response = api.binding.handle(
+      {
+        jsonrpc: "2.0",
+        id: "global-list-1",
+        method: "tasks.list",
+        params: {},
+      },
+      { authorization: "Bearer owner-secret" },
+    );
+    assert.equal(response.error.data.threadmeshCode, "threadmesh_jsonrpc_invalid");
+  } finally {
+    api.coordinator.close();
+  }
+});
+
 test("exposes crash-safe adapter submission receipts through authenticated JSON-RPC", () => {
   const api = transport(":memory:");
   try {
@@ -341,6 +380,45 @@ test("exposes crash-safe adapter submission receipts through authenticated JSON-
   }
 });
 
+test("expires due mail through a control-plane-only idempotent operation", () => {
+  let currentTime = NOW;
+  const api = transport(":memory:", () => currentTime);
+  try {
+    bootstrap(api);
+    api.a.call("messages.send", {
+      envelope: envelope("msg_rpc_expiry01"),
+      idempotencyKey: "idem_send_rpc_expiry01",
+    });
+    currentTime = Date.parse("2026-08-20T09:11:00Z");
+    assert.throws(
+      () => api.b.call("maintenance.expireDue", {
+        idempotencyKey: "idem_task_expiry_denied",
+      }),
+      { code: "threadmesh_control_plane_authority_required" },
+    );
+    const expired = api.owner.call("maintenance.expireDue", {
+      limit: 10,
+      idempotencyKey: "idem_owner_expiry01",
+    });
+    assert.equal(expired.operationReplay, false);
+    assert.equal(expired.value.expired[0].messageId, "msg_rpc_expiry01");
+    const replay = api.owner.call("maintenance.expireDue", {
+      limit: 10,
+      idempotencyKey: "idem_owner_expiry01",
+    });
+    assert.equal(replay.operationReplay, true);
+    assert.equal(
+      api.a.call("messages.getDisposition", {
+        senderIncarnationId: taskA.incarnationId,
+        messageId: "msg_rpc_expiry01",
+      }).delivery,
+      "expired",
+    );
+  } finally {
+    api.coordinator.close();
+  }
+});
+
 test("quarantines revoked queued content on the public mailbox path", () => {
   const api = transport(":memory:");
   try {
@@ -367,8 +445,188 @@ test("quarantines revoked queued content on the public mailbox path", () => {
         expectedRevision: 0,
         idempotencyKey: "idem_claim_rpc_revoked",
       }),
-      { code: "threadmesh_grant_not_active" },
+      { code: "threadmesh_policy_denied", rpcCode: -32003 },
     );
+  } finally {
+    api.coordinator.close();
+  }
+});
+
+test("exposes explicit unsupported and pre-effect failure results", () => {
+  const api = transport(":memory:");
+  try {
+    bootstrap(api);
+    api.a.call("messages.send", {
+      envelope: envelope("msg_rpc_unsupported01"),
+      idempotencyKey: "idem_send_rpc_unsupported01",
+    });
+    const unsupported = api.b.call("messages.respond", {
+      senderIncarnationId: taskA.incarnationId,
+      messageId: "msg_rpc_unsupported01",
+      decision: "unsupported",
+      reasonCode: "unsupported-delivery-mode",
+      expectedRevision: 0,
+      idempotencyKey: "idem_respond_rpc_unsupported01",
+    });
+    assert.equal(unsupported.value.decision, "unsupported");
+    assert.equal(
+      unsupported.value.decisionReasonCode,
+      "unsupported-delivery-mode",
+    );
+
+    api.a.call("messages.send", {
+      envelope: envelope("msg_rpc_delivery_failed01"),
+      idempotencyKey: "idem_send_rpc_delivery_failed01",
+    });
+    const failed = api.b.call("messages.failDelivery", {
+      senderIncarnationId: taskA.incarnationId,
+      messageId: "msg_rpc_delivery_failed01",
+      expectedRevision: 0,
+      failureReason: "adapter-preflight-failed",
+      idempotencyKey: "idem_fail_rpc_delivery01",
+    });
+    assert.equal(failed.value.delivery, "failed");
+    assert.equal(
+      failed.value.deliveryFailureReason,
+      "adapter-preflight-failed",
+    );
+  } finally {
+    api.coordinator.close();
+  }
+});
+
+test("inspects provenance and lifecycle without leaking revoked content", () => {
+  const api = transport(":memory:");
+  try {
+    bootstrap(api);
+    const inspectedEnvelope = envelope("msg_rpc_inspect01");
+    inspectedEnvelope.claimStatus = "evidence-referenced";
+    inspectedEnvelope.evidenceRefs = [
+      "artifact://task-a/dependency-result@revision-10",
+    ];
+    api.a.call("messages.send", {
+      envelope: inspectedEnvelope,
+      idempotencyKey: "idem_send_rpc_inspect01",
+    });
+    api.b.call("messages.respond", {
+      senderIncarnationId: taskA.incarnationId,
+      messageId: inspectedEnvelope.messageId,
+      decision: "accepted",
+      reasonCode: "accepted",
+      expectedRevision: 0,
+      idempotencyKey: "idem_respond_rpc_inspect01",
+    });
+
+    const snapshot = api.b.call("inspector.snapshot", {
+      senderIncarnationId: taskA.incarnationId,
+      messageId: inspectedEnvelope.messageId,
+    });
+    assert.deepEqual(snapshot.provenance, {
+      authorship: "peer-authored",
+      actor: { actorType: "agent" },
+      source: { ...taskA, harness: "mock-event" },
+      target: { ...taskB, harness: "mock-pull" },
+      relationshipId: "rel_rpc_a_b01",
+      intent: "suggest",
+      claimStatus: "evidence-referenced",
+    });
+    assert.deepEqual(snapshot.content, {
+      state: "visible",
+      reason: inspectedEnvelope.reason,
+      value: inspectedEnvelope.content,
+    });
+    assert.deepEqual(snapshot.evidence, {
+      state: "visible",
+      refs: inspectedEnvelope.evidenceRefs,
+    });
+    assert.equal(snapshot.disposition.delivery, "durably-received");
+    assert.equal(snapshot.disposition.decision, "accepted");
+    assert.equal(snapshot.disposition.decisionReasonCode, "accepted");
+    assert.equal(snapshot.disposition.outcome, "not-observed");
+    assert.deepEqual(snapshot.events.map((event) => event.eventType), [
+      "message-durably-received",
+      "receiver-decided",
+    ]);
+    assert.ok(snapshot.events[1].cursor > snapshot.events[0].cursor);
+    assert.equal("detail" in snapshot.events[0], false);
+
+    const policySnapshot = api.coordinator.inspectMessage(
+      taskA.incarnationId,
+      inspectedEnvelope.messageId,
+      { kind: "policy", principalId: "policy" },
+    );
+    assert.deepEqual(policySnapshot.content, {
+      state: "redacted",
+      reason: "metadata-only-policy-view",
+    });
+    assert.deepEqual(policySnapshot.evidence, {
+      state: "redacted",
+      count: 1,
+      reason: "metadata-only-policy-view",
+    });
+
+    const outsider = {
+      taskId: "task_rpc_outsider",
+      incarnationId: "inc_rpc_outsider01",
+    };
+    api.coordinator.registerTask(
+      { ...outsider, harness: "mock-outsider" },
+      { kind: "user", principalId: "other-owner" },
+    );
+    assert.throws(
+      () => api.coordinator.inspectMessage(
+        taskA.incarnationId,
+        inspectedEnvelope.messageId,
+        { kind: "task", ...outsider },
+      ),
+      { code: "threadmesh_inspection_not_authorized" },
+    );
+    assert.throws(
+      () => api.coordinator.inspectMessage(
+        taskA.incarnationId,
+        "msg_rpc_missing01",
+        { kind: "task", ...outsider },
+      ),
+      { code: "threadmesh_inspection_not_authorized" },
+    );
+
+    const userEnvelope = envelope("msg_rpc_inspect_user01");
+    userEnvelope.sender = {
+      ...userEnvelope.sender,
+      actorType: "user",
+      actorId: "owner",
+    };
+    api.owner.call("messages.send", {
+      envelope: userEnvelope,
+      idempotencyKey: "idem_send_rpc_inspect_user01",
+    });
+    assert.equal(
+      api.b.call("inspector.snapshot", {
+        senderIncarnationId: taskA.incarnationId,
+        messageId: userEnvelope.messageId,
+      }).provenance.authorship,
+      "user-authored",
+    );
+
+    api.owner.call("relationships.revoke", {
+      grantId: "grant_rpc_a_b01",
+      expectedGrantVersion: 1,
+      idempotencyKey: "idem_revoke_rpc_inspect01",
+    });
+    const revoked = api.b.call("inspector.snapshot", {
+      senderIncarnationId: taskA.incarnationId,
+      messageId: inspectedEnvelope.messageId,
+    });
+    assert.deepEqual(revoked.content, {
+      state: "redacted",
+      reason: "authorization-no-longer-current",
+    });
+    assert.deepEqual(revoked.evidence, {
+      state: "redacted",
+      count: 1,
+      reason: "authorization-no-longer-current",
+    });
+    assert.equal(revoked.disposition.decision, "accepted");
   } finally {
     api.coordinator.close();
   }
@@ -395,6 +653,18 @@ test("binds attach, summary projection, and incarnation rotation with CAS", () =
       }),
       { code: "threadmesh_revision_conflict" },
     );
+    const runtime = api.b.call("tasks.updateRuntime", {
+      task: taskB,
+      runtime: {
+        runId: "run_rpc_b01",
+        objectiveVersion: 7,
+        checkpoint: "checkpoint-rpc-b-7",
+      },
+      expectedRevision: 1,
+      idempotencyKey: "idem_runtime_rpc_b01",
+    });
+    assert.equal(runtime.value.revision, 2);
+    assert.equal(runtime.value.runtime.objectiveVersion, 7);
 
     const summary = {
       specVersion: "0.0-draft",
@@ -441,10 +711,10 @@ test("binds attach, summary projection, and incarnation rotation with CAS", () =
         harness: "mock-pull-v2",
         state: "idle",
       },
-      expectedRevision: 1,
+      expectedRevision: 2,
       idempotencyKey: "idem_rotate_rpc_b02",
     });
-    assert.equal(rotated.value.previous.revision, 2);
+    assert.equal(rotated.value.previous.revision, 3);
     assert.equal(rotated.value.current.incarnationId, "inc_rpc_task_b02");
     assert.throws(
       () => api.a.call("tasks.getSummary", {

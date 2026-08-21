@@ -18,7 +18,7 @@ multi-agent mailbox and a shipped Desktop surface for persistent cross-thread
 list/read/send/fork/archive operations. They are related but should not be
 treated as the same implementation boundary.
 
-Reference: [Codex App Server](https://learn.chatgpt.com/docs/app-server).
+Reference: [Codex App Server](https://developers.openai.com/codex/app-server/).
 
 ## Agent2Agent Protocol (A2A)
 

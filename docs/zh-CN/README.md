@@ -37,6 +37,33 @@ ThreadMesh 并不赋予 agent 任意修改其他 session 的权力。它提供�
   disposition CAS 与重启后对账；未知结果不会被自动重试；
 - interrupt 结果按 model turn、tool call、subprocess 分别报告，不存在笼统
   success；外部验证必须通过可信锚校验签名 attestation；
-- Kimi ACP 握手通过，真实模型调用仍受额度阻塞；
+- relationship policy 已抽成默认拒绝的纯决策引擎；公开错误不会泄露关系是
+  不存在、已撤销、已过期或被新版本取代，撤销与排队中的 steer/interrupt
+  失效在同一事务完成；
+- durable dispatcher 在真实 adapter 调用前先持久化 `outcome-unknown`，异常或
+  重启后绝不自动重试；run/objective/checkpoint freshness 会在接收和调用前各
+  校验一次，所有 terminal decision 与 failure reason 都显式保存；
+- 本地事件流可保存 cursor 并在 coordinator 重启后继续；provenance inspector
+  区分用户输入与 peer agent 输入，并在过期或撤权后脱敏内容和 evidence；
+- 两类能力声明不同的 mock harness 已覆盖 related summary、side-channel notify、
+  accept/reject/defer、stale/unsupported steer 与 interrupt、撤权和审计矩阵；
+- schema v3 retention purge 会墓碑化过期内容和失效引用，保留原始 digest，并
+  跳过 `outcome-unknown` 或仍需人工对账的外部效果；
+- Kimi ACP 握手及真实 session 的创建、列出、删除、确认消失均已通过；真实
+  模型调用仍受额度阻塞；
+- Codex CLI `0.145.0` 的 App Server 真实无模型预检通过，已记录 273 个生成
+  schema 文件的摘要、初始化摘要和空 read-only thread；真实模型 marker、
+  持久 resume 和清理仍受门禁约束；
+- Gemini CLI `0.56.0` 被选为第三种非 ACP harness，固定官方包的 integrity、
+  headless stream-json/plan/sandbox 表面与隔离 home 清理均已真实预检；没有
+  provider key 授权，所以模型调用仍为 `not-run`；
+- ACP、Codex、Gemini 的 fake product 已通过同一条 mailbox accepted → durable
+  admission claim → kind-specific evidence → context-admitted 矩阵；
+- 统一验证 runner 又增加了 mailbox claim/ack、精确 marker、受限 audit evidence
+  与精确资源清理；没有完整的可校验外部 review 记录和操作者确认时，真实模式
+  机械拒绝运行；
 - M0 只剩独立外部 review；
-- 在 M0 稳定前，不把更多 live adapter 当作主线完成度。
+- 下一步等待独立 review 与堆叠变更合并，在 `main` 重验后执行 Codex、Kimi
+  及 Gemini 的同场景真实产品验证；
+- 在 M0 稳定前，适配器代码和无模型预检可以准备，但不会把 live model 标为
+  已通过。

@@ -90,8 +90,11 @@ MailboxClaim
 ```
 
 Operation replay makes database mutations durable across binding restarts.
-Mailbox claims coordinate receiver workers and remain distinct from irreversible
-adapter-effect admission claims.
+Mailbox claims coordinate one receiver task and remain distinct from irreversible
+adapter-effect admission claims. The current record does not bind a worker
+instance: replicas authenticated as the same task may replay the same token,
+while acknowledgement CAS still allows one decision. Exclusive worker leasing
+and safe takeover remain production follow-up work.
 
 ## Coordination envelope
 
@@ -214,8 +217,11 @@ distributed ledger.
 
 ## Prototype-to-target gaps
 
-The prototype does not yet persist objective versions, complete typed failure
-reasons, verification attestations, production credential verification, or
-hash-linked audit integrity. Storage migration, rollback, retention, and
-deletion policy remain part of
-[#9](https://github.com/fyaic/threadmesh/issues/9).
+The prototype now persists objective versions and bounded terminal reasons, and
+the stacked storage work covers append-only migration plus retention
+tombstones. It still does not persist typed interruption results or verification
+attestations, supply production credential verification, provide hash-linked
+audit integrity, manage backup expiry, or promise forensic erasure. The storage
+contract is tracked by [#9](https://github.com/fyaic/threadmesh/issues/9) and
+retention execution by
+[#34](https://github.com/fyaic/threadmesh/issues/34).

@@ -200,7 +200,7 @@ OpenAI documents App Server as the interface used by rich Codex clients. It is a
 bidirectional JSON-RPC-like protocol over stdio JSONL, experimental WebSocket,
 or Unix-socket transports. It exposes persistent thread lifecycle, turns,
 streaming items, approvals, and interruptions. Reference:
-[Codex App Server](https://learn.chatgpt.com/docs/app-server).
+[Codex App Server](https://developers.openai.com/codex/app-server/).
 
 Relevant primitives include:
 
@@ -335,7 +335,7 @@ action.
 
 ## Primary sources
 
-- [Codex App Server documentation](https://learn.chatgpt.com/docs/app-server)
+- [Codex App Server documentation](https://developers.openai.com/codex/app-server/)
 - [Codex subagents documentation](https://learn.chatgpt.com/docs/agent-configuration/subagents)
 - [Codex as a platform](https://learn.chatgpt.com/blog/codex-as-a-platform)
 - [OpenAI Agents SDK: agent orchestration](https://openai.github.io/openai-agents-python/multi_agent/)

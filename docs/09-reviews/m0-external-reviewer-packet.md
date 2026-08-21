@@ -134,3 +134,9 @@ Disclose affiliation or relevant perspective and any material relationship to
 the maintainers. Findings should cite exact paths and, where practical, include
 a reproducer or invalid fixture. The maintainers will disposition every finding
 as accepted, resolved, deferred with rationale, or rejected with rationale.
+
+Reviewers may submit Markdown only. After public disposition, maintainers will
+transcribe the review into an integrity-bound machine record using the
+[external record format](external/README.md). The gate verifier never replaces
+the public source; it checks that two distinct, complete records point back to
+that source and to this exact review target.

@@ -47,6 +47,7 @@ client-supplied `AuthContext`.
 | `tasks.register` | user owner or policy | incarnation ID plus durable idempotency key |
 | `tasks.get` | owner, policy, or exact task | read only |
 | `tasks.attach` | owner, policy, or exact task | task revision CAS and idempotency key |
+| `tasks.updateRuntime` | owner, policy, or exact task | run/objective/checkpoint snapshot under task revision CAS |
 | `tasks.rotateIncarnation` | owner or policy | old task revision CAS and idempotency key |
 | `tasks.publishSummary` | owner, policy, or summarized task | summary version CAS, current grant projection, idempotency key |
 | `tasks.getSummary` | exact grant source task | current grant and version reauthorization |
@@ -54,22 +55,44 @@ client-supplied `AuthContext`.
 | `relationships.grant` | owner or policy | decision ID, optional proposal binding, integrity digest, idempotency key |
 | `relationships.revoke` | issuer, target owner, or policy | grant-version CAS and idempotency key |
 | `messages.send` | exact task or authenticated owner/policy author | message replay protection plus operation idempotency |
-| `messages.respond` | exact receiver task | disposition revision CAS and idempotency key |
+| `messages.respond` | exact receiver task | legal decision transition, state-constrained reason, disposition CAS and idempotency key |
+| `messages.failDelivery` | exact receiver task | legal delivery transition, no unknown external attempt, disposition CAS |
 | `messages.getDisposition` | exact sender or receiver task | read only |
 | `adapter.prepareSubmission` | exact receiver task | disposition CAS, envelope and adapter digests, durable idempotency key |
 | `adapter.beginSubmission` | exact receiver task | durable pre-call `outcome-unknown` boundary and idempotency key |
 | `adapter.recordReceipt` | exact receiver task | exact receipt, disposition CAS, and idempotency key |
 | `adapter.reconcileSubmission` | exact receiver task | evidence-required resolution and CAS where submitted |
 | `adapter.getSubmission` | exact sender or receiver task | read only |
+| `maintenance.expireDue` | common source/target owner or policy | bounded deterministic expiry, operation idempotency key |
+| `maintenance.purgeContent` | policy only | caller-supplied past cutoff, bounded tombstoning, unresolved-effect exclusion, operation idempotency key |
 | `mailbox.listPending` | exact receiver task | opaque monotonic cursor, expiry and current-grant filtering |
 | `mailbox.claim` | exact receiver task | disposition revision CAS, 60-second bounded claim, idempotency key |
 | `mailbox.ack` | exact receiver task holding claim | claim token, disposition revision CAS, idempotency key |
 | `tasks.wait` | exact task | cursor-based immediate event poll |
 | `audit.list` | exact sender or receiver task | read only |
+| `inspector.snapshot` | exact participant task, either task owner, or policy | read only; policy is metadata-only and expired/revoked content is redacted |
 
 The local `tasks.wait` implementation is a non-blocking cursor poll: an empty
 page returns `timedOut: true`. A network host may hold the request until an event
 or timeout while preserving the same cursor and response semantics.
+
+The reference `LocalTaskEventStream` wraps this method with bounded polling,
+strict cursor validation, cancellation, and a caller-owned restart checkpoint.
+It does not create a global event order or a hosted stream.
+
+No `tasks.list` or equivalent global enumeration method exists in this profile.
+Task reads require an exact task reference, and summary discovery remains
+relationship scoped.
+
+`inspector.snapshot` is keyed by exact sender incarnation and message ID. It
+distinguishes authenticated user authorship from peer-agent authorship and
+returns delivery, decision, and outcome independently. Participating tasks and
+their owners see content only while the envelope is unexpired and its exact
+grant remains current. Policy sees metadata only. Missing and unauthorized
+records deliberately share `threadmesh_inspection_not_authorized`; safe audit
+projections omit arbitrary detail and raw adapter idempotency keys.
+After retention purge, content and evidence use the stronger `purged` state;
+the original envelope digest remains available for replay defense.
 
 ## Proposals and effective grants
 
@@ -103,11 +126,21 @@ Task attachment and rotation, summary publication, receiver responses, mailbox
 acknowledgement, and grant revocation use explicit expected revisions. A stale
 write returns `threadmesh_revision_conflict` and does not partially apply.
 
+`tasks.updateRuntime` publishes the exact run, objective version, and checkpoint
+used by state-changing freshness checks. A later snapshot invalidates an older
+`steer`/`interrupt` both before acceptance and immediately before dispatch.
+
 Adapter submission adds a second idempotency scope. The control-plane replay key
 deduplicates the JSON-RPC operation, while `adapterIdempotencyKey` remains stable
 across the native harness call represented by one submission. The coordinator
 persists `outcome-unknown` before that call. It never infers safe retry merely
 because the process restarted.
+
+Retention purge deletes old operation replay payloads for methods whose stored
+results can contain envelope, proposal, summary, or adapter-reference content.
+Resource-level message digests, proposal digests, task identities, and revision
+checks continue to prevent silent duplication; callers must not treat operation
+replay retention as permanent archival storage.
 
 ## Mailbox claim and acknowledgement
 
@@ -121,6 +154,12 @@ token and performs the receiver decision under CAS. Mailbox claims are distinct
 from adapter-effect admission claims: the former coordinate receiver workers;
 the latter are the irreversible dispatch boundary described in the delivery
 semantics.
+
+The current trusted-process prototype does not bind the claim to a worker
+instance. Two replicas using the same task credential may receive the same
+token; only one can win acknowledgement CAS. Production worker coordination
+needs a claimant identity, idempotency key, busy result, and expiry-based
+takeover rule.
 
 ## Submission receipts and reconciliation
 
@@ -168,6 +207,11 @@ Errors use a JSON-RPC numeric category plus stable ThreadMesh data:
 | `-32000` | other typed ThreadMesh failure |
 
 Clients branch on `data.threadmeshCode`, not on free-form text.
+
+Relationship authorization failures use `threadmesh_policy_denied` with
+numeric category `-32003`. The response intentionally does not reveal whether
+the underlying grant is missing, revoked, expired, superseded, or too weak.
+Authenticated operator audit may retain the bounded internal reason.
 
 ## Executable reference path
 

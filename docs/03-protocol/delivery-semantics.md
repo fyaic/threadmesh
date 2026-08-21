@@ -70,6 +70,9 @@ effect-observed → externally-verified
 `adapter-submitted` proves only that a native harness operation accepted the
 request. `context-admitted` proves only that authorized peer content entered a
 model-visible rendering. Neither proves that the model followed the advice.
+The reference coordinator confirms context admission with adapter-specific
+evidence rather than a generic success flag: ACP binds session/end-turn, Codex
+binds thread/turn/completion, and Gemini headless binds session/exit/tool count.
 `externally-verified` requires evidence references plus at least one signed,
 trusted verification attestation whose subject matches the disposition message
 and receiver. An ordinary adapter receipt or evidence URI remains
@@ -121,6 +124,10 @@ quarantined. Local adapter evidence is not an independently verified outcome.
   adapter-submitted.
 - Every disposition mutation uses expected-revision CAS; reconciliation does
   not bypass it.
+
+The executable reference imports the same transition table as the conformance
+validator. Runtime and manifest legality therefore cannot drift through two
+independent hard-coded lists.
 
 ## Expiry
 

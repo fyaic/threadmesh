@@ -11,6 +11,7 @@ binary and run receiver-mediated prompts.
 
 - ACP initialization and capability snapshot digest;
 - creation and reload of a registered ACP session ID;
+- paginated exact-session lookup and deletion with absence verification;
 - streamed text aggregation;
 - canonical JSON rendering of untrusted peer suggestions;
 - fail-closed permission requests;
@@ -29,6 +30,8 @@ npm run smoke:kimi
 ```
 
 Set `KIMI_BIN` to override the default local binary path.
+The default smoke performs no model turn. The gated live alias
+`npm run smoke:kimi:live` invokes the common product runner.
 
 ## Provenance rule
 
@@ -43,12 +46,22 @@ role or higher/lower instruction precedence inside the receiving harness.
 
 Before dispatch, the coordinator atomically creates a durable, single-use
 admission claim bound to the message revision, grant version and registered ACP
-session/capability digest. A second worker cannot claim the same message. The
+session/capability digest. The adapter independently revalidates the canonical
+envelope and matching receiver acceptance before sending its ordinary prompt.
+On the same ACP connection, it reinitializes and compares the current capability
+snapshot with the coordinator-bound adapter reference before loading the session.
+The
 claim is the revocation linearization boundary: revocation before it blocks the
 dispatch; revocation after it cannot retract an already in-flight prompt. If a
 process crashes after dispatch but before confirmation, the persisted claim
 stays `in-flight` and requires reconciliation rather than automatic redelivery.
 Confirmation accepts only matching ACP session and capability evidence.
+
+Mailbox claims currently identify the receiver task, not a worker instance.
+Receiver replicas sharing the same authenticated task principal can replay the
+same bounded claim token; disposition CAS still permits only one acknowledgement.
+Per-worker claim ownership and takeover are required before a multi-worker
+deployment can claim exclusive work leasing.
 
 This legacy admission claim is distinct from the public native submission
 receipt state machine. It safely prevents automatic duplicate prompt admission,
@@ -75,6 +88,11 @@ OS sandbox or equivalent worktree isolation supplied by the operator.
 ## Current limitation
 
 The 2026-08-20 live prompt attempt reached the real Kimi ACP path but was
-blocked by the account's billing-cycle quota. The ACP handshake and deterministic
-fake-agent session reload, permission-denial and delivery behavior passed. See the
-[smoke evidence](../09-reviews/2026-08-20-kimi-code-smoke.md).
+blocked by the account's billing-cycle quota. A later real no-model run created,
+listed, deleted, and proved absence of one exact session. The deterministic
+fake-agent session reload, permission-denial and delivery behavior also passed.
+The stacked multi-product matrix runs this same admission claim beside Codex and
+Gemini. A shared runner now rehearses the exact session cleanup and full
+coordinator path before any live turn. See the
+[smoke evidence](../09-reviews/2026-08-20-kimi-code-smoke.md) and
+[real product runbook](../09-reviews/real-product-e2e-runbook.md).

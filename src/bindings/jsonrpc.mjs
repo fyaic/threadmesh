@@ -8,7 +8,11 @@ const RETRYABLE_CODES = new Set([
 
 function rpcCode(code) {
   if (code === "threadmesh_authentication_required") return -32001;
-  if (code.includes("not_authorized") || code.includes("authority_required")) {
+  if (
+    code === "threadmesh_policy_denied" ||
+    code.includes("not_authorized") ||
+    code.includes("authority_required")
+  ) {
     return -32003;
   }
   if (code.includes("not_found") || code.includes("not_registered")) return -32004;
@@ -32,9 +36,6 @@ function rpcError(id, error) {
       data: {
         threadmeshCode,
         retryable: RETRYABLE_CODES.has(threadmeshCode),
-        ...(error?.message && error.message !== threadmeshCode
-          ? { detail: error.message.slice(0, 2000) }
-          : {}),
       },
     },
   };
@@ -120,6 +121,13 @@ export class ThreadMeshJsonRpcBinding {
             params.expectedRevision,
             principal,
           );
+        case "tasks.updateRuntime":
+          return this.coordinator.updateTaskRuntime(
+            params.task,
+            params.runtime,
+            params.expectedRevision,
+            principal,
+          );
         case "tasks.rotateIncarnation":
           return this.coordinator.rotateTaskIncarnation(
             params.previous,
@@ -166,6 +174,15 @@ export class ThreadMeshJsonRpcBinding {
             params.decision,
             params.expectedRevision,
             principal,
+            params.reasonCode,
+          );
+        case "messages.failDelivery":
+          return this.coordinator.failDelivery(
+            params.senderIncarnationId,
+            params.messageId,
+            params.expectedRevision,
+            params.failureReason,
+            principal,
           );
         case "messages.getDisposition":
           return this.coordinator.getDisposition(
@@ -202,6 +219,16 @@ export class ThreadMeshJsonRpcBinding {
           );
         case "adapter.getSubmission":
           return this.coordinator.getAdapterSubmission(params.submissionId, principal);
+        case "maintenance.expireDue":
+          return this.coordinator.expireDueMessages(
+            { limit: params.limit },
+            principal,
+          );
+        case "maintenance.purgeContent":
+          return this.coordinator.purgeSensitiveContent(
+            { before: params.before, limit: params.limit },
+            principal,
+          );
         case "mailbox.listPending":
           return this.coordinator.listPending(
             params.receiver,
@@ -232,6 +259,12 @@ export class ThreadMeshJsonRpcBinding {
           );
         case "audit.list":
           return this.coordinator.auditEvents(
+            params.senderIncarnationId,
+            params.messageId,
+            principal,
+          );
+        case "inspector.snapshot":
+          return this.coordinator.inspectMessage(
             params.senderIncarnationId,
             params.messageId,
             principal,

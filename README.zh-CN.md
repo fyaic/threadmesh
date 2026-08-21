@@ -13,7 +13,8 @@
 ---
 
 > 当前状态：pre-alpha。仓库已包含可执行协议草案、SQLite coordinator
-> 实验原型和 ACP adapter，但协议尚未稳定，也没有可用于生产的 adapter。
+> 实验原型以及 ACP、Codex App Server adapter 候选，但协议尚未稳定，也没有
+> 可用于生产的 adapter。
 
 ## 当前进度
 
@@ -23,15 +24,33 @@ incarnation 轮换和两类 mock harness 都有自动化测试。
 
 当前不能把它称为跨 harness 产品能力：
 
-- M0 仍有 #7、#16、#19 三个开放 issue；
+- M0 的规范阻塞项已经解决，只剩 #7 的两份独立外部 review；
 - 本地静态 token 认证不是生产级网络认证；
 - ACP 中的 peer 内容仍通过普通 prompt surface；
 - steer/interrupt 未启用；
-- Kimi ACP 握手已通过，但真实模型调用因账户额度被阻塞，未计为成功。
+- Kimi ACP 握手以及真实 session 的 create/list/delete/absence 校验已通过；
+  早先的真实模型调用仍因账户额度被阻塞，未计为成功。
+- Codex CLI `0.145.0` 的真实 App Server 初始化、协议 schema 摘要和空的
+  read-only thread 启动已通过；真实模型 marker 尚未运行，也未计为成功。
+- Gemini CLI `0.56.0` 已被选为第三种非 ACP headless harness；官方固定版本、
+  registry integrity、stream-json/plan/sandbox 能力和隔离 home 清理预检通过，
+  但尚未获得 provider key 授权，因此模型调用是 `not-run`。
+- ACP、Codex、Gemini 已在同一个 deterministic matrix 中复用 mailbox acceptance、
+  durable admission claim 和各自严格的 evidence confirmation，不再绕过 coordinator。
+- 统一验证 runner 已在三种 fake product 上走通 mailbox claim、receiver acceptance、
+  精确 marker、evidence、audit 与资源清理；真实模式同时要求可校验 review 记录
+  和 operator acknowledgement，在 #7 前默认返回 `not-run`。
 
-后续主线是完成 crash reconciliation 和 interruption/verification，再完成外部 review 与 M1 本地
-coordinator。详见[项目状态](docs/10-planning/project-status.md)和
-[主线计划](docs/10-planning/mainline-plan.md)。
+M1 已形成存储迁移、过期审计、默认拒绝 policy、crash-safe dispatcher，以及
+可重启事件游标、权限化 provenance inspector 和两类 mock harness 行为矩阵的
+堆叠候选实现；schema v3 的 retention purge 也已加入候选，能够在保留 digest
+防重放的同时清除过期内容，并保护未知外部效果。后续主线是等待外部 review，
+合并后在 `main` 重验，再依次执行 Codex、Kimi 和 Gemini 的真实
+agent 产品验证。Codex 的 live 脚本已准备好，但会继续遵守门禁。详见
+[项目状态](docs/10-planning/project-status.md)和
+[主线计划](docs/10-planning/mainline-plan.md)，真实执行步骤见
+[产品验证手册](docs/09-reviews/real-product-e2e-runbook.md)，逐项完成度见
+[里程碑验收审计](docs/10-planning/acceptance-audit.md)。
 
 ThreadMesh 关注一种具体能力：Agent A 在执行过程中发现 Agent B 的任务与自己的目标存在依赖，于是主动发起通知、建议、纠偏或停止请求。
 

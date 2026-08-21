@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "reviewId": "review-example",
+  "reviewer": {
+    "githubLogin": "example-reviewer",
+    "affiliation": "Independent",
+    "organizationRelationship": "outside-maintainer-organization"
+  },
+  "perspective": "distributed-systems",
+  "reviewedCommit": "265e461f1b8714c56f7fe817795b81d895f732c6",
+  "verdict": "approve-with-resolved-findings",
+  "sourceUrl": "https://github.com/fyaic/threadmesh/issues/7#issuecomment-1234567890",
+  "sourceBodyDigest": "sha256:replace-with-the-canonical-digest-of-the-exact-github-comment-body",
+  "reviewedAt": "2026-08-20T12:00:00Z",
+  "findings": [
+    {
+      "id": "example-finding-1",
+      "location": "docs/03-protocol/delivery-semantics.md",
+      "summary": "Concise finding summary.",
+      "disposition": "resolved",
+      "rationale": "Concise public disposition rationale.",
+      "evidenceUrl": "https://github.com/fyaic/threadmesh/issues/7#issuecomment-1234567891",
+      "evidenceBodyDigest": "sha256:replace-with-the-canonical-digest-of-the-exact-disposition-comment-body",
+      "dispositionAt": "2026-08-20T13:00:00Z",
+      "fixUrl": "https://github.com/fyaic/threadmesh/pull/20"
+    }
+  ]
+}

@@ -41,10 +41,20 @@ and distributed-systems boundaries.
 - [ ] Complete freshness, idempotency, expiry, receipts, and reconciliation.
 - [ ] Local event stream and provenance inspector.
 - [ ] Two-profile mock-harness conformance kit.
+- [ ] Retention-driven sensitive-content purge.
 
 Prototype evidence already exists for task registration, mailbox persistence,
-grant checks, CAS, admission claims, ACP session reload, and provenance. All M1
-issues remain open because their full acceptance criteria are not yet met.
+grant checks, CAS, admission claims, ACP session reload, and provenance. Stacked
+Draft candidates now cover the versioned storage baseline, audited expiry,
+fail-closed policy, runtime freshness, crash-safe native dispatch, and a local
+restart-safe cursor stream with an authorization-aware provenance inspector.
+The final stacked candidate adds the deterministic two-profile behavior matrix
+and explicit unsupported degradation. A retention follow-up adds schema-v3
+tombstones, unknown-effect protection, replay preservation, and explicit WAL
+checkpoint behavior.
+All M1 issues remain open because merge is gated by
+[issue #7](https://github.com/fyaic/threadmesh/issues/7) and the remaining
+acceptance criteria are not yet met.
 
 Exit: two mock harnesses can discover, notify, suggest, accept, reject, defer,
 and explicitly decline unsupported steer/interrupt behavior with a complete
@@ -58,7 +68,25 @@ typed cancellation contract is implemented.
 - [ ] One production-oriented adapter for a non-Codex harness.
 - [ ] Adapter capability negotiation and graceful degradation.
 
-The Kimi ACP work is experimental evidence, not an M2 completion claim.
+The Kimi ACP candidate now proves a real no-model create/list/delete/absence
+lifecycle with exact binary and capability digests. Its earlier live marker is
+quota-blocked, so this remains experimental evidence rather than M2 completion.
+The Codex App Server candidate now has deterministic tests and a real no-model
+CLI `0.145.0` preflight. Its live first turn, persisted resume, exact cleanup,
+and coordinator-mediated A-to-B scenario remain gated and therefore do not
+complete the Codex checklist item.
+Gemini CLI headless `stream-json` is selected as the materially different third
+harness. Its pinned official package and no-model capability preflight pass;
+the checklist remains open until an explicitly authorized real model executes
+the shared scenario.
+A stacked conformance slice now removes the coordinator's ACP-only admission
+assumption and executes the same accepted suggestion across ACP, Codex, and
+Gemini fake products with kind-specific evidence. Real products remain required
+for M2 exit.
+A further gated runner rehearses the full mailbox, receiver acceptance,
+admission, exact marker, evidence, audit, and cleanup path across all three fake
+products. It defaults every live product to `not-run` until the external-review
+gate is explicitly acknowledged.
 
 Exit: the same scenario runs across at least two different harness families.
 

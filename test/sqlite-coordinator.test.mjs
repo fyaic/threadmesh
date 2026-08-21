@@ -8,10 +8,12 @@ import {
   createEffectiveGrant,
   SqliteCoordinator,
 } from "../src/coordinator/sqlite-coordinator.mjs";
+import { LocalTaskEventStream } from "../src/inspector/local-event-stream.mjs";
 import { grantAuthorizationDigest } from "../src/protocol-validator.mjs";
 
 const NOW = Date.parse("2026-08-20T09:00:00Z");
 const owner = { kind: "user", principalId: "owner" };
+const policy = { kind: "policy", principalId: "policy" };
 const receiverAdapterRef = {
   kind: "acp-session",
   sessionId: "fake-1",
@@ -107,6 +109,24 @@ function createCoordinator(filename = ":memory:", clock = () => NOW) {
   return coordinator;
 }
 
+function steerGrant() {
+  return {
+    ...grant(),
+    relationshipType: "supervisor",
+    allowedIntents: ["steer"],
+    allowedDeliveryModes: ["active-steer"],
+  };
+}
+
+function steerEnvelope() {
+  return envelope({
+    messageType: "action-request",
+    intent: "steer",
+    freshness: { expectedObjectiveVersion: 3 },
+    delivery: { requestedMode: "active-steer", requiresDisposition: true },
+  });
+}
+
 test("replays identical submissions and rejects conflicting payloads", () => {
   const coordinator = createCoordinator();
   try {
@@ -170,7 +190,250 @@ test("uses CAS and reauthorizes before context admission", () => {
           1,
           receiverPrincipal,
         ),
-      { code: "threadmesh_grant_not_active" },
+      { code: "threadmesh_policy_denied" },
+    );
+  } finally {
+    coordinator.close();
+  }
+});
+
+test("revocation invalidates queued state-changing work before adapter submission", () => {
+  const coordinator = new SqliteCoordinator({ clock: () => NOW });
+  try {
+    coordinator.registerTask(
+      {
+        taskId: "task_sender",
+        incarnationId: "inc_sender01",
+        harness: "harness-a",
+        state: "running",
+      },
+      owner,
+    );
+    coordinator.registerTask(
+      {
+        taskId: "task_receiver",
+        incarnationId: "inc_receiver01",
+        harness: "harness-b",
+        state: "running",
+        adapterRef: receiverAdapterRef,
+        runtime: { objectiveVersion: 3 },
+      },
+      owner,
+    );
+    coordinator.issueGrant(steerGrant(), grantDecision, owner);
+    coordinator.submit(steerEnvelope(), senderPrincipal);
+    coordinator.respond("inc_sender01", "msg_sender01", "accepted", 0, receiverPrincipal);
+    const prepared = coordinator.prepareAdapterSubmission(
+      "inc_sender01",
+      "msg_sender01",
+      1,
+      receiverPrincipal,
+    );
+
+    const revoked = coordinator.revokeGrant(
+      "grant_sender_receiver",
+      1,
+      owner,
+    );
+    assert.equal(revoked.invalidatedMessages, 1);
+    const disposition = coordinator.getDisposition(
+      "inc_sender01",
+      "msg_sender01",
+      receiverPrincipal,
+    );
+    assert.equal(disposition.decision, "revoked");
+    assert.equal(disposition.revision, 2);
+    assert.throws(
+      () =>
+        coordinator.beginAdapterSubmission(
+          prepared.submission.submissionId,
+          1,
+          receiverPrincipal,
+        ),
+      { code: "threadmesh_policy_denied" },
+    );
+    assert.deepEqual(
+      coordinator
+        .auditEvents("inc_sender01", "msg_sender01", receiverPrincipal)
+        .map((event) => event.eventType),
+      [
+        "message-durably-received",
+        "receiver-decided",
+        "adapter-submission-prepared",
+        "authorization-revoked",
+      ],
+    );
+  } finally {
+    coordinator.close();
+  }
+});
+
+test("records explicit deferred, stale, unsupported, revoked, and failed results", () => {
+  const coordinator = createCoordinator();
+  try {
+    coordinator.submit(envelope({ messageId: "msg_result_deferred01" }), senderPrincipal);
+    let disposition = coordinator.respond(
+      "inc_sender01",
+      "msg_result_deferred01",
+      "deferred",
+      0,
+      receiverPrincipal,
+      "backpressure",
+    );
+    assert.equal(disposition.decisionReasonCode, "backpressure");
+    disposition = coordinator.respond(
+      "inc_sender01",
+      "msg_result_deferred01",
+      "stale",
+      1,
+      receiverPrincipal,
+      "stale-run",
+    );
+    assert.equal(disposition.decision, "stale");
+    assert.equal(disposition.decisionReasonCode, "stale-run");
+
+    coordinator.submit(envelope({ messageId: "msg_result_unsupported01" }), senderPrincipal);
+    disposition = coordinator.respond(
+      "inc_sender01",
+      "msg_result_unsupported01",
+      "unsupported",
+      0,
+      receiverPrincipal,
+      "unsupported-delivery-mode",
+    );
+    assert.equal(disposition.decision, "unsupported");
+
+    coordinator.submit(envelope({ messageId: "msg_result_revoked01" }), senderPrincipal);
+    disposition = coordinator.respond(
+      "inc_sender01",
+      "msg_result_revoked01",
+      "revoked",
+      0,
+      receiverPrincipal,
+      "revoked",
+    );
+    assert.equal(disposition.decision, "revoked");
+
+    coordinator.submit(envelope({ messageId: "msg_result_failed01" }), senderPrincipal);
+    disposition = coordinator.failDelivery(
+      "inc_sender01",
+      "msg_result_failed01",
+      0,
+      "adapter-preflight-failed",
+      receiverPrincipal,
+    );
+    assert.equal(disposition.delivery, "failed");
+    assert.equal(disposition.deliveryFailureReason, "adapter-preflight-failed");
+
+    assert.throws(
+      () =>
+        coordinator.respond(
+          "inc_sender01",
+          "msg_result_unsupported01",
+          "accepted",
+          1,
+          receiverPrincipal,
+          "accepted",
+        ),
+      { code: "threadmesh_revision_or_state_conflict" },
+    );
+    assert.throws(
+      () =>
+        coordinator.respond(
+          "inc_sender01",
+          "msg_result_revoked01",
+          "applied",
+          1,
+          receiverPrincipal,
+        ),
+      { code: "threadmesh_decision_reason_invalid" },
+    );
+  } finally {
+    coordinator.close();
+  }
+});
+
+test("enforces objective freshness again immediately before adapter dispatch", () => {
+  const coordinator = new SqliteCoordinator({ clock: () => NOW });
+  try {
+    coordinator.registerTask(
+      {
+        taskId: "task_sender",
+        incarnationId: "inc_sender01",
+        harness: "harness-a",
+        state: "running",
+      },
+      owner,
+    );
+    coordinator.registerTask(
+      {
+        taskId: "task_receiver",
+        incarnationId: "inc_receiver01",
+        harness: "harness-b",
+        state: "running",
+        adapterRef: receiverAdapterRef,
+        runtime: { runId: "run-1", objectiveVersion: 3 },
+      },
+      owner,
+    );
+    coordinator.issueGrant(steerGrant(), grantDecision, owner);
+    coordinator.submit(steerEnvelope(), senderPrincipal);
+    coordinator.respond("inc_sender01", "msg_sender01", "accepted", 0, receiverPrincipal);
+    const prepared = coordinator.prepareAdapterSubmission(
+      "inc_sender01",
+      "msg_sender01",
+      1,
+      receiverPrincipal,
+    );
+    coordinator.updateTaskRuntime(
+      { taskId: "task_receiver", incarnationId: "inc_receiver01" },
+      { runId: "run-1", objectiveVersion: 4 },
+      0,
+      receiverPrincipal,
+    );
+    assert.throws(
+      () =>
+        coordinator.beginAdapterSubmission(
+          prepared.submission.submissionId,
+          1,
+          receiverPrincipal,
+        ),
+      { code: "threadmesh_policy_denied" },
+    );
+  } finally {
+    coordinator.close();
+  }
+});
+
+test("rejects adapter rebinding between prepare and the native-call boundary", () => {
+  const coordinator = createCoordinator();
+  try {
+    coordinator.submit(envelope(), senderPrincipal);
+    coordinator.respond("inc_sender01", "msg_sender01", "accepted", 0, receiverPrincipal);
+    const prepared = coordinator.prepareAdapterSubmission(
+      "inc_sender01",
+      "msg_sender01",
+      1,
+      receiverPrincipal,
+    );
+    coordinator.attachTask(
+      { taskId: "task_receiver", incarnationId: "inc_receiver01" },
+      {
+        kind: "acp-session",
+        sessionId: "different-session",
+        snapshotDigest: `sha256:${"b".repeat(64)}`,
+      },
+      0,
+      receiverPrincipal,
+    );
+    assert.throws(
+      () =>
+        coordinator.beginAdapterSubmission(
+          prepared.submission.submissionId,
+          1,
+          receiverPrincipal,
+        ),
+      { code: "threadmesh_adapter_ref_changed" },
     );
   } finally {
     coordinator.close();
@@ -330,6 +593,81 @@ test("persists mailbox state and renders provenance after restart", () => {
   }
 });
 
+test("resumes a cursor event stream in order after coordinator restart", async () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "threadmesh-events-"));
+  const filename = path.join(directory, "coordinator.sqlite");
+  let coordinator = createCoordinator(filename);
+  try {
+    coordinator.submit(envelope(), senderPrincipal);
+    let stream = new LocalTaskEventStream({
+      readPage: (options) => coordinator.waitTask(
+        { taskId: "task_sender", incarnationId: "inc_sender01" },
+        options,
+        senderPrincipal,
+      ),
+      pollIntervalMs: 1,
+    });
+    const first = await stream.next({ timeoutMs: 0 });
+    assert.deepEqual(first.events.map((event) => event.eventType), [
+      "message-durably-received",
+    ]);
+    const checkpoint = stream.checkpoint();
+    coordinator.close();
+
+    coordinator = new SqliteCoordinator({ filename, clock: () => NOW });
+    coordinator.respond(
+      "inc_sender01",
+      "msg_sender01",
+      "accepted",
+      0,
+      receiverPrincipal,
+    );
+    stream = new LocalTaskEventStream({
+      readPage: (options) => coordinator.waitTask(
+        { taskId: "task_sender", incarnationId: "inc_sender01" },
+        options,
+        senderPrincipal,
+      ),
+      afterCursor: checkpoint,
+      pollIntervalMs: 1,
+    });
+    const second = await stream.next({ timeoutMs: 0 });
+    assert.deepEqual(second.events.map((event) => event.eventType), [
+      "receiver-decided",
+    ]);
+    assert.ok(second.nextCursor > checkpoint);
+    const empty = await stream.next({ timeoutMs: 0 });
+    assert.equal(empty.timedOut, true);
+    assert.equal(empty.nextCursor, second.nextCursor);
+  } finally {
+    coordinator.close();
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("rejects invalid event order and observes stream cancellation", async () => {
+  const invalid = new LocalTaskEventStream({
+    readPage: async () => ({
+      events: [{ cursor: 2 }, { cursor: 1 }],
+      nextCursor: 2,
+    }),
+  });
+  await assert.rejects(
+    () => invalid.next({ timeoutMs: 0 }),
+    { code: "threadmesh_event_stream_order_invalid" },
+  );
+
+  const controller = new AbortController();
+  controller.abort();
+  const cancelled = new LocalTaskEventStream({
+    readPage: async () => ({ events: [], nextCursor: 0 }),
+  });
+  await assert.rejects(
+    () => cancelled.next({ timeoutMs: 0, signal: controller.signal }),
+    { code: "threadmesh_event_stream_cancelled" },
+  );
+});
+
 test("does not trust sender-claimed control-plane provenance", () => {
   const coordinator = createCoordinator();
   try {
@@ -430,6 +768,73 @@ test("enforces task ownership for user-issued grants", () => {
   }
 });
 
+test("approves a proposal and installs its grant in one immediate transaction", () => {
+  const coordinator = new SqliteCoordinator({ clock: () => NOW });
+  const proposal = {
+    specVersion: "0.0-draft",
+    proposalId: "proposal_atomic_grant01",
+    source: { taskId: "task_sender", incarnationId: "inc_sender01" },
+    target: { taskId: "task_receiver", incarnationId: "inc_receiver01" },
+    relationshipType: "peer",
+    requestedIntents: ["suggest"],
+    requestedDeliveryModes: ["checkpoint-offer"],
+    requestedSummaryVisibility: "coordination",
+    reason: "Exercise atomic proposal approval.",
+    proposedBy: {
+      actorType: "agent",
+      task: { taskId: "task_sender", incarnationId: "inc_sender01" },
+    },
+    createdAt: "2026-08-20T08:30:00Z",
+    expiresAt: "2026-08-20T10:00:00Z",
+  };
+  try {
+    coordinator.registerTask(
+      { taskId: "task_sender", incarnationId: "inc_sender01", harness: "a" },
+      owner,
+    );
+    coordinator.registerTask(
+      { taskId: "task_receiver", incarnationId: "inc_receiver01", harness: "b" },
+      owner,
+    );
+    coordinator.proposeRelationship(proposal, senderPrincipal);
+    coordinator.db.exec(`
+      CREATE TRIGGER reject_proposal_approval
+      BEFORE UPDATE OF status ON relationship_proposals
+      WHEN NEW.status = 'approved'
+      BEGIN
+        SELECT RAISE(ABORT, 'injected approval failure');
+      END
+    `);
+    assert.throws(() => coordinator.issueGrant(
+      grant(),
+      { ...grantDecision, proposalId: proposal.proposalId },
+      owner,
+    ));
+    assert.equal(coordinator.db.prepare("SELECT COUNT(*) AS count FROM grants").get().count, 0);
+    assert.equal(
+      coordinator.db
+        .prepare("SELECT status FROM relationship_proposals WHERE proposal_id = ?")
+        .get(proposal.proposalId).status,
+      "pending",
+    );
+    coordinator.db.exec("DROP TRIGGER reject_proposal_approval");
+    coordinator.issueGrant(
+      grant(),
+      { ...grantDecision, proposalId: proposal.proposalId },
+      owner,
+    );
+    assert.equal(coordinator.db.prepare("SELECT COUNT(*) AS count FROM grants").get().count, 1);
+    assert.equal(
+      coordinator.db
+        .prepare("SELECT status FROM relationship_proposals WHERE proposal_id = ?")
+        .get(proposal.proposalId).status,
+      "approved",
+    );
+  } finally {
+    coordinator.close();
+  }
+});
+
 test("JSON provenance keeps adversarial delimiters inside the content field", () => {
   const coordinator = createCoordinator();
   try {
@@ -511,7 +916,7 @@ test("treats the durable admission claim as the revocation boundary", () => {
         2,
         receiverPrincipal,
       ),
-      { code: "threadmesh_grant_not_active" },
+      { code: "threadmesh_policy_denied" },
     );
   } finally {
     coordinator.close();
@@ -547,15 +952,14 @@ test("persists outcome-unknown adapter attempts across restart without retry", (
     );
     assert.equal(recovered.state, "outcome-unknown");
     assert.equal(recovered.adapterIdempotencyKey, prepared.submission.adapterIdempotencyKey);
-    assert.throws(
-      () => coordinator.prepareAdapterSubmission(
-        "inc_sender01",
-        "msg_sender01",
-        1,
-        receiverPrincipal,
-      ),
-      { code: "threadmesh_adapter_submission_in_flight" },
+    const suppressed = coordinator.prepareAdapterSubmission(
+      "inc_sender01",
+      "msg_sender01",
+      1,
+      receiverPrincipal,
     );
+    assert.equal(suppressed.replay, true);
+    assert.equal(suppressed.submission.state, "outcome-unknown");
   } finally {
     coordinator.close();
     fs.rmSync(directory, { recursive: true, force: true });
@@ -744,6 +1148,107 @@ test("reconciles a crash-after-effect with an evidence-bound receipt", () => {
       ["adapter-query://mock/found"],
     );
     assert.equal(reconciled.disposition.delivery, "adapter-submitted");
+  } finally {
+    coordinator.close();
+  }
+});
+
+test("expires queued messages atomically with audit evidence", () => {
+  let currentTime = NOW;
+  const coordinator = createCoordinator(":memory:", () => currentTime);
+  try {
+    coordinator.submit(envelope(), senderPrincipal);
+    currentTime = Date.parse("2026-08-20T09:11:00Z");
+    const result = coordinator.expireDueMessages({}, owner);
+    assert.deepEqual(result.expired, [
+      {
+        senderIncarnationId: "inc_sender01",
+        messageId: "msg_sender01",
+        revision: 1,
+      },
+    ]);
+    const disposition = coordinator.getDisposition(
+      "inc_sender01",
+      "msg_sender01",
+      receiverPrincipal,
+    );
+    assert.equal(disposition.delivery, "expired");
+    assert.equal(disposition.decision, "expired");
+    assert.deepEqual(
+      coordinator
+        .auditEvents("inc_sender01", "msg_sender01", receiverPrincipal)
+        .map((event) => event.eventType),
+      ["message-durably-received", "message-expired"],
+    );
+    assert.throws(
+      () => coordinator.prepareContextAdmission(
+        "inc_sender01",
+        "msg_sender01",
+        1,
+        receiverPrincipal,
+      ),
+      { code: "threadmesh_message_expired" },
+    );
+  } finally {
+    coordinator.close();
+  }
+});
+
+test("does not expire an adapter attempt after the irreversible boundary", () => {
+  let currentTime = NOW;
+  const coordinator = createCoordinator(":memory:", () => currentTime);
+  try {
+    coordinator.submit(envelope(), senderPrincipal);
+    coordinator.respond("inc_sender01", "msg_sender01", "accepted", 0, receiverPrincipal);
+    const prepared = coordinator.prepareAdapterSubmission(
+      "inc_sender01",
+      "msg_sender01",
+      1,
+      receiverPrincipal,
+    );
+    coordinator.beginAdapterSubmission(
+      prepared.submission.submissionId,
+      1,
+      receiverPrincipal,
+    );
+    currentTime = Date.parse("2026-08-20T09:11:00Z");
+    assert.equal(coordinator.expireDueMessages({}, owner).expired.length, 0);
+    assert.equal(
+      coordinator.getAdapterSubmission(
+        prepared.submission.submissionId,
+        receiverPrincipal,
+      ).state,
+      "outcome-unknown",
+    );
+  } finally {
+    coordinator.close();
+  }
+});
+
+test("requires policy authority to sweep messages across task owners", () => {
+  let currentTime = NOW;
+  const coordinator = new SqliteCoordinator({ clock: () => currentTime });
+  const alice = { kind: "user", principalId: "alice" };
+  const bob = { kind: "user", principalId: "bob" };
+  try {
+    coordinator.registerTask(
+      { taskId: "task_sender", incarnationId: "inc_sender01", harness: "a" },
+      alice,
+    );
+    coordinator.registerTask(
+      { taskId: "task_receiver", incarnationId: "inc_receiver01", harness: "b" },
+      bob,
+    );
+    coordinator.issueGrant(
+      grant(),
+      { ...grantDecision, authenticationId: "authn_policy_test01" },
+      policy,
+    );
+    coordinator.submit(envelope(), senderPrincipal);
+    currentTime = Date.parse("2026-08-20T09:11:00Z");
+    assert.equal(coordinator.expireDueMessages({}, alice).expired.length, 0);
+    assert.equal(coordinator.expireDueMessages({}, bob).expired.length, 0);
+    assert.equal(coordinator.expireDueMessages({}, policy).expired.length, 1);
   } finally {
     coordinator.close();
   }

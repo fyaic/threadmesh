@@ -53,7 +53,12 @@ ID, and recomputable canonical integrity digest.
 
 ## Revocation
 
-Revoking a relationship invalidates queued state-changing messages. Adapters should also rotate or invalidate cached capability grants.
+Revoking a relationship invalidates queued state-changing messages. In the
+reference coordinator, revocation and the transition of eligible queued
+`steer`/`interrupt` decisions to `revoked` occur in one SQLite transaction with
+an audit event. A durable `outcome-unknown` external attempt is excluded because
+the effect may already have happened. Adapters should also rotate or invalidate
+cached capability grants.
 
 Mailbox reads, claims, decisions, summary reads, and adapter admission
 preparation reauthorize the exact current grant/version. Revoked or superseded
@@ -61,3 +66,8 @@ queued content is quarantined before envelope disclosure.
 
 Task recreation invalidates every grant bound to the previous incarnation,
 even if a harness reuses the same human-readable task ID.
+
+Public callers receive one stable `threadmesh_policy_denied` error for missing,
+revoked, expired, superseded, or insufficient relationship authority. Detailed
+causes remain on the trusted audit side so the API cannot be used to enumerate
+hidden relationships.

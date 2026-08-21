@@ -6,8 +6,8 @@ ThreadMesh defines coordination semantics between addressable tasks. It does not
 
 The draft is executable but incomplete. Schemas and fixtures cover envelopes,
 capabilities, dispositions, grants, summaries, audit events, adapter submission
-receipts, and selected state transitions. The remaining M0 normative gaps are summarized in the
-[project status](../10-planning/project-status.md).
+receipts, and selected state transitions. The remaining milestone and review
+gates are summarized in the [project status](../10-planning/project-status.md).
 
 ## Required concepts
 
@@ -54,7 +54,8 @@ Cancellation request. A receiver MUST verify elevated authority and report wheth
 ## Current conformance boundary
 
 `npm test` validates schema compilation, 55 positive/negative fixture cases,
-7 transition cases, an authenticated serialized JSON-RPC path, crash-safe
+7 transition cases, an authenticated serialized JSON-RPC path, a restart-safe
+local event stream and redacting provenance inspector, crash-safe
 submission reconciliation, typed partial interruption, real Ed25519
 attestation verification against a pinned conformance trust anchor, and two
 mock harness profiles. It does not yet validate production network

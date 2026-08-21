@@ -12,6 +12,7 @@ import {
   verifyExternallyVerifiedDisposition,
   verifyVerificationAttestation,
 } from "../src/protocol-validator.mjs";
+import { isDispositionTransitionAllowed } from "../src/state/disposition-transitions.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const specRoot = path.join(root, "spec");
@@ -48,61 +49,6 @@ const manifestSchema = ajv.getSchema(
 if (!manifestSchema(manifest)) {
   throw new Error(`Invalid conformance manifest:\n${ajv.errorsText(manifestSchema.errors)}`);
 }
-
-const transitions = {
-  delivery: {
-    "control-plane-accepted": ["durably-received", "failed", "expired"],
-    "durably-received": [
-      "receiver-notified",
-      "checkpoint-offered",
-      "context-admitted",
-      "adapter-submitted",
-      "failed",
-      "expired",
-    ],
-    "receiver-notified": [
-      "checkpoint-offered",
-      "context-admitted",
-      "adapter-submitted",
-      "failed",
-      "expired",
-    ],
-    "checkpoint-offered": [
-      "context-admitted",
-      "adapter-submitted",
-      "failed",
-      "expired",
-    ],
-    "context-admitted": ["adapter-submitted", "failed", "expired"],
-    "adapter-submitted": [],
-    failed: [],
-    expired: [],
-  },
-  decision: {
-    pending: [
-      "accepted",
-      "rejected",
-      "deferred",
-      "stale",
-      "expired",
-      "unsupported",
-      "revoked",
-    ],
-    deferred: ["accepted", "rejected", "stale", "expired", "revoked"],
-    accepted: ["revoked"],
-    rejected: [],
-    stale: [],
-    expired: [],
-    unsupported: [],
-    revoked: [],
-  },
-  outcome: {
-    "not-observed": ["effect-observed", "externally-verified", "failed"],
-    "effect-observed": ["externally-verified"],
-    "externally-verified": [],
-    failed: [],
-  },
-};
 
 let failures = 0;
 
@@ -183,8 +129,11 @@ for (const testCase of manifest.schemaCases) {
 }
 
 for (const testCase of manifest.transitionCases) {
-  const allowed = transitions[testCase.machine]?.[testCase.from];
-  const actual = Array.isArray(allowed) && allowed.includes(testCase.to);
+  const actual = isDispositionTransitionAllowed(
+    testCase.machine,
+    testCase.from,
+    testCase.to,
+  );
 
   if (actual !== testCase.valid) {
     failures += 1;

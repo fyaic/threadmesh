@@ -14,8 +14,8 @@
 ---
 
 > Status: pre-alpha. The protocol is not stable; an experimental SQLite
-> coordinator and ACP adapter exist for conformance work, but no production
-> adapter has been released.
+> coordinator plus ACP and Codex App Server adapter candidates exist for
+> conformance work, but no production adapter has been released.
 
 The executable JSON-RPC reference derives principals from a host authenticator
 outside the request body. Its static-token mechanism is local-only; production
@@ -27,6 +27,8 @@ New: [Codex implementation deep dive](docs/07-research/codex-orchestration-deep-
 [design reviews](docs/09-reviews/README.md) ·
 [authenticated JSON-RPC binding](docs/03-protocol/jsonrpc-binding.md) ·
 [Kimi Code smoke evidence](docs/09-reviews/2026-08-20-kimi-code-smoke.md) ·
+[Codex App Server preflight](docs/09-reviews/2026-08-20-codex-app-server-preflight.md) ·
+[Gemini third-harness selection](docs/09-reviews/2026-08-20-third-harness-selection.md) ·
 [mainline plan](docs/10-planning/mainline-plan.md) ·
 [中文调研摘要](docs/zh-CN/research-summary.md)
 
@@ -104,6 +106,10 @@ src/
   bindings/          Executable authenticated operation bindings
   client/            Reference clients and mock harness profiles
   coordinator/       Experimental reference coordinator
+  dispatcher/        Crash-safe native-effect orchestration
+  inspector/         Restart-safe local cursor stream
+  policy/            Pure fail-closed relationship authorization
+  state/             Shared disposition transition rules
 test/                Behavioral and conformance tests
 ```
 
@@ -122,14 +128,34 @@ The implementation is deliberately narrower than the product vision:
 - M0 has 10 closed and 1 open issue after typed interruption and signed
   verification in #16;
 - only the independent external review gate remains open for M0;
-- M1 has partial prototype evidence, but all six acceptance issues remain open;
-- Kimi Code ACP initialization passed, while the real model-turn marker test is
+- M1 storage, audited expiry, relationship policy, durable dispatcher,
+  provenance inspector, and two-profile conformance candidates are prepared as
+  stacked changes; a retention-purge follow-up is also implemented as a stacked
+  candidate, but all seven M1 issues remain open behind #7;
+- an M2 Codex App Server candidate now passes deterministic JSONL tests and a
+  real CLI `0.145.0` no-model handshake/thread-start preflight; its exact live
+  marker, persisted resume, cleanup, and coordinator-mediated A-to-B path are
+  implemented or planned but intentionally not counted as run;
+- Gemini CLI `0.56.0` is selected as the materially different non-ACP headless
+  harness; its official pinned package and isolated no-model preflight pass,
+  while model execution awaits an explicitly authorized provider key;
+- a common deterministic matrix now takes the same accepted mailbox suggestion
+  through ACP, Codex, and Gemini admission claims and kind-specific evidence;
+- one mechanically gated runner now rehearses mailbox claim, receiver
+  acceptance, exact marker, evidence, audit, and cleanup across all three fake
+  products; real mode requires integrity-bound review records plus an operator
+  acknowledgement and defaults to `not-run` before #7;
+- Kimi Code ACP initialization and exact create/list/delete/absence lifecycle
+  passed against the real product, while the earlier model-turn marker remains
   blocked by account quota and is not counted as a pass.
 
-The mainline is now independent M0 review (#7), followed by completion of the
-local M1 coordinator and then real agent-product validation. See
+The mainline is now independent M0 review (#7), sequential merge and `main`
+revalidation of the M1 stack, then real Codex, Kimi, and Gemini product
+validation. See
 the [project status](docs/10-planning/project-status.md),
 [mainline plan](docs/10-planning/mainline-plan.md), and
+[milestone acceptance audit](docs/10-planning/acceptance-audit.md),
+[real product validation runbook](docs/09-reviews/real-product-e2e-runbook.md), and
 [roadmap](ROADMAP.md).
 
 ## Non-goals

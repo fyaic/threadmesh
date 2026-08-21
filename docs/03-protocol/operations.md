@@ -27,6 +27,12 @@ Atomically retires the previous incarnation and registers a new incarnation for
 the same logical task under owner/policy authority and revision CAS. Retiring an
 incarnation invalidates grants bound to it even if an old credential remains.
 
+### `tasks.updateRuntime`
+
+Publishes the current run ID, objective version, and optional checkpoint under
+task revision CAS. State-changing envelopes are compared with this snapshot at
+admission and again immediately before native dispatch.
+
 ### `tasks.publishSummary`
 
 Publishes a privacy-bounded summary for relationship-scoped discovery. Summary
@@ -80,6 +86,12 @@ Records a receiver decision: accepted, rejected, deferred, stale, expired,
 unsupported, or revoked. Delivery and observed outcome are reported separately;
 there is no bare `applied` disposition.
 
+### `messages.failDelivery`
+
+Records a legal transition to delivery failure with a bounded reason. It is
+permitted only before `adapter-submitted` and when no native attempt is
+`outcome-unknown`; ambiguity must be reconciled, not relabelled as failure.
+
 ### `messages.recordDelivery`
 
 Records a substantiated delivery transition such as durable receipt,
@@ -129,7 +141,54 @@ portable operation returns one umbrella interrupt-success value.
 
 ### `tasks.wait`
 
-Waits for task state, new disposition, or checkpoint events. Implementations SHOULD use cursors to suppress already delivered events.
+Waits for task state, new disposition, or checkpoint events. Implementations
+SHOULD use cursors to suppress already delivered events. A local stream may
+persist the last cursor and resume after restart; downstream processing remains
+idempotent because cursor delivery is not a global exactly-once guarantee.
+
+## Inspection
+
+### `inspector.snapshot`
+
+Returns one authorized message's provenance, content visibility state,
+delivery, receiver decision, outcome, adapter-submission metadata, and bounded
+audit projection. It MUST distinguish user-authored from peer-authored input
+and MUST NOT collapse delivery, decision, and outcome into one status.
+
+Content and evidence references MUST be redacted after expiry or loss of the
+exact grant. A policy-only view is metadata-only. Missing and unauthorized
+records SHOULD be indistinguishable to prevent message-ID enumeration.
+
+## Maintenance
+
+### `maintenance.expireDue`
+
+Transitions due, non-terminal messages to expired under disposition CAS and
+appends one audit event in the same transaction. Pending and deferred receiver
+decisions become expired; a prior accepted decision remains historically
+accepted while delivery expires before adapter submission.
+
+Messages with an active irreversible context-admission claim or native
+`outcome-unknown` boundary are excluded. Expiry cannot overwrite an unknown
+external effect. The operation is control-plane-only, bounded, and idempotent.
+A user sweep covers only messages whose source and target tasks that user owns;
+cross-owner maintenance requires policy authority.
+
+### `maintenance.purgeContent`
+
+Applies a policy-selected retention cutoff to bounded storage classes. The
+operation replaces eligible content with tombstones while retaining message and
+task identities, original canonical digests, grant/version, dispositions,
+timestamps, and safe audit event metadata. It is policy-only and idempotent in
+the authenticated operation scope.
+
+The operation MUST exclude an in-flight context-admission claim and any native
+submission whose result is `outcome-unknown` or still requires manual
+reconciliation. Expired envelope content and evidence, associated audit detail,
+inactive proposal/summary content, completed admission references, and retired
+task adapter references may then be scrubbed. A future cutoff MUST fail closed.
+Physical WAL truncation is a separate operator checkpoint and is not proof of
+forensic erasure from backups or storage snapshots.
 
 ## Relationship management
 
@@ -147,20 +206,27 @@ version, optional proposal ID, and canonical integrity digest.
 ### `relationships.revoke`
 
 Revokes future authority. Queued, unapplied state-changing messages MUST be re-evaluated after revocation.
+The reference coordinator atomically marks eligible queued `steer` and
+`interrupt` decisions revoked and records audit evidence. Attempts already past
+the durable `outcome-unknown` boundary remain quarantined for reconciliation.
 
 ## Reference JSON-RPC mapping
 
 | Portable concern | Public JSON-RPC method | Current limitation |
 |---|---|---|
-| Task lifecycle | `tasks.register`, `tasks.attach`, `tasks.rotateIncarnation` | Local token authenticator only |
+| Task lifecycle | `tasks.register`, `tasks.attach`, `tasks.updateRuntime`, `tasks.rotateIncarnation` | Local token authenticator only |
 | Summary projection | `tasks.publishSummary`, `tasks.getSummary` | Relationship-scoped profile only |
 | Grant proposal/decision | `relationships.propose`, `relationships.grant`, `relationships.revoke` | No signed remote attestation |
 | Envelope send | `messages.send` | Core state remains suggestion-focused |
 | Mailbox receive | `mailbox.listPending`, `mailbox.claim`, `mailbox.ack` | Fixed 60-second local claim window |
-| Receiver decision | `messages.respond` | Reference runtime supports accepted/rejected/deferred |
+| Receiver decision | `messages.respond` | All legal decision states and constrained reasons; no structured approval gate |
+| Delivery failure | `messages.failDelivery` | Pre-effect failure only; unknown outcomes require reconciliation |
 | Native submission | `adapter.prepareSubmission`, `adapter.beginSubmission`, `adapter.recordReceipt` | Trusted local receipt, not independent verification |
 | Unknown-outcome reconciliation | `adapter.reconcileSubmission`, `adapter.getSubmission` | Receiver task supplies evidence; no remote attestation yet |
-| Event observation | `tasks.wait` | Immediate cursor poll, not hosted long-poll |
+| Expiry maintenance | `maintenance.expireDue` | Control-plane-only bounded sweep; in-flight effects excluded |
+| Retention maintenance | `maintenance.purgeContent` | Policy-only tombstoning; unresolved effects excluded; backups remain operator-managed |
+| Event observation | `tasks.wait` | Immediate cursor poll plus local restart checkpoint; not a hosted stream |
+| Provenance inspection | `inspector.snapshot` | Exact-message read; policy metadata-only; revoked/expired content redacted |
 | Disposition/audit read | `messages.getDisposition`, `audit.list` | Sender/receiver task projection only |
 
 The older trusted-process `prepareContextAdmission` and

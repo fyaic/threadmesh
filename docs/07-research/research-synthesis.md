@@ -144,6 +144,11 @@ Build no live steering yet.
 
 ### Phase M1: Codex-to-Codex reference adapter
 
+Status update: a conservative App Server candidate now implements
+receiver-mediated suggestion delivery and passes a real CLI `0.145.0` no-model
+preflight. The model marker and existing-receiver A-to-B scenario remain gated
+until the normative review and local coordinator stack are merged.
+
 - Use App Server thread/turn primitives where documented.
 - Start with `notify` and receiver-mediated `suggest`.
 - Implement `wake-idle` only after mailbox durability and audit are proven.

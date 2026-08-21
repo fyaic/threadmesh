@@ -1,0 +1,132 @@
+# Real agent-product validation runbook
+
+## Purpose
+
+This runbook validates that a real agent product can consume a suggestion only
+after the ThreadMesh receiver has accepted it. It is stricter than the
+product-specific no-model smoke scripts: the runner must traverse the coordinator's
+registry, effective grant, mailbox claim, receiver decision, durable context
+admission claim, adapter boundary, exact evidence confirmation, and audit path.
+
+Tracked by [issue #44](https://github.com/fyaic/threadmesh/issues/44). This is
+an experimental validation procedure, not an M0 normative requirement.
+
+## Mechanical gates
+
+Real model execution is disabled by default. Before setting the acknowledgement,
+a maintainer must verify all of the following:
+
+1. [M0 issue #7](https://github.com/fyaic/threadmesh/issues/7) contains two
+   qualifying independent verdicts, including one reviewer outside the
+   maintainer organization.
+2. Every review finding has a public disposition and required fixes are merged.
+3. The M1 and adapter stack is merged and `npm test` passes on `main`.
+4. The provider account, quota, and credential are explicitly authorized for
+   the bounded validation turn.
+
+The repository first verifies
+[`m0-review-gate.json`](m0-review-gate.json). It requires two integrity-bound
+public review records, two distinct reviewers, both review perspectives, at
+least one outside reviewer, the exact review-target commit, approving verdicts,
+and terminal public dispositions for every finding. Each record is resolved
+back to its numeric issue-#7 comment through authenticated GitHub API access;
+the verifier checks the real author login and association, exact body digest and
+timestamp, and one canonical reviewer-authored machine block. Every finding has
+a separate authenticated maintainer disposition block. A resolved fix must be a
+merged PR or commit already contained in the candidate. Natural-language
+substring matching, locally invented records, unrelated evidence, and
+self-asserted environment variables cannot satisfy the gate.
+
+The live command is a minimal built-in-only bootstrap: before any project module
+is imported, it requires a clean `main` whose `HEAD` exactly matches GitHub
+`main`. It creates a detached worktree at that SHA, installs the exact lockfile,
+and starts a new child from that checkout. The child and bootstrap both verify
+the detached SHA and clean state. After product cleanup, both the isolated
+worktree and original `main` are checked again; any code or remote-main change
+downgrades the attempt to `failed` before evidence can count as a pass.
+
+After the review-record verifier passes, the exact operator acknowledgement is:
+
+```sh
+export THREADMESH_LIVE_E2E_ACK=issue-7-approved-for-live-product-validation
+```
+
+This environment variable is an intentional second acknowledgement, not
+cryptographic proof of review. Without the exact value, every live command
+exits with code 3 and reports `not-run/external_review_gate_not_acknowledged`.
+With the variable but without valid records, it reports
+`not-run/external_review_records_incomplete`. Both outcomes occur before an
+adapter or model starts.
+
+## Deterministic rehearsal
+
+Run all three fake product endpoints through the same runner:
+
+```sh
+npm run validate:products:fake
+```
+
+A pass requires, per product:
+
+- one authorized message visible in the receiver mailbox;
+- one mailbox claim acknowledged as `accepted`;
+- one single-use context-admission claim;
+- an exact, untruncated product marker;
+- kind-specific evidence accepted by the coordinator;
+- a `context-admitted` audit event containing only the bounded evidence
+  projection; and
+- deletion of the exact temporary thread/session, or removal of Gemini's exact
+  isolated home.
+
+The rehearsal proves runner and adapter integration against deterministic fake
+endpoints. It does not prove useful model behavior.
+
+## Live commands
+
+After the gate is satisfied, run one product at a time. The legacy
+`smoke:*:live` aliases resolve to these same commands; there is no second live
+implementation:
+
+```sh
+npm run validate:products:live:codex
+npm run validate:products:live:kimi
+GEMINI_API_KEY=... npm run validate:products:live:gemini
+```
+
+Codex creates a local bounded bootstrap turn so the product thread is resumable,
+without representing that bootstrap as peer context, then
+uses that registered receiver for the coordinator-mediated suggestion. Kimi
+creates and later deletes one ACP session and verifies its absence. Gemini uses
+the pinned official CLI package in an isolated home that is recursively removed;
+the API key is passed only as an explicit child-process override and is never
+included in the result.
+
+## Result states
+
+| State | Meaning | Exit code |
+|---|---|---:|
+| `passed` | Full coordinator path, exact marker, evidence, audit, and cleanup passed | 0 |
+| `failed` | Protocol, marker, evidence, product, or cleanup invariant failed | 1 |
+| `blocked` | Recognized provider authentication or quota condition prevented the turn | 2 |
+| `not-run` | Gate was absent or command usage was invalid; no live product turn started | 3 |
+
+A handshake, no-model preflight, fake-product pass, quota error, or missing
+credential must never be relabelled as a live pass.
+
+## Evidence recording
+
+For every live attempt, record:
+
+- exact repository commit and clean/dirty status;
+- start and end snapshots for both original `main` and the detached execution
+  worktree;
+- product version, sanitized product metadata, and capability snapshot digest;
+- UTC start and finish time;
+- result state and stable reason code;
+- message ID, adapter kind, bounded evidence keys, and disposition;
+- cleanup attempt and exact absence/deletion result; and
+- links to CI and the relevant adapter issue.
+
+Do not publish credentials, raw environment variables, provider account data,
+full model transcripts, exception text, local home paths, or unbounded adapter
+evidence. Public failures contain stable codes rather than provider text.

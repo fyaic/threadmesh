@@ -8,6 +8,8 @@ where the repository is now and what work should happen next.
   experimental, blocked, and unstarted work.
 - [Mainline plan](mainline-plan.md) — ordered workstream from the current
   prototype to a reviewable protocol and complete local coordinator.
+- [Milestone acceptance audit](acceptance-audit.md) — criterion-by-criterion
+  evidence and the remaining merge, real-product, and evaluation gaps.
 
 Status statements are dated and should be updated whenever a pull request
 materially changes a milestone exit criterion. GitHub milestones and issues are
