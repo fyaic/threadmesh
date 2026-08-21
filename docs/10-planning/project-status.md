@@ -27,7 +27,7 @@ maintainer organization.
 | Area | Current evidence | Status |
 |---|---|---|
 | Research and problem framing | Codex deep dive, community signals, ecosystem comparison, ADRs | Established |
-| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 117 unit/subtests | Executable draft |
+| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 118 unit/subtests | Executable draft |
 | Local binding | Schema-validated JSON-RPC, transport-derived principals, typed errors | Executable local reference |
 | Local persistence | SQLite registry, proposals, grants, summaries, mailbox, claims, receipts, reconciliation, replay, audit, retention tombstones | Experimental |
 | Safety boundary | Authenticated authorship checks, effective-grant decisions, revocation, CAS | Executable local policy |
@@ -220,8 +220,8 @@ provider-role isolation, exactly-once external effects, production remote
 credential verification, safe interruption, managed backup expiry, or forensic
 erasure. The mailbox lease also remains task-scoped rather than worker-scoped,
 and crash recovery for a lost in-flight admission token still requires manual
-reconciliation. Public real-product evidence still needs strict result
-projection plus adapter-kind-specific cleanup/evidence validation.
+reconciliation. Strict public-result projection and adapter-kind-specific
+cleanup/evidence validation are implemented but still need independent review.
 
 ## Progress rule
 

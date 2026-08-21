@@ -17,6 +17,51 @@ import {
   sanitizeProductMetadata,
 } from "../src/validation/coordinator-product-scenario.mjs";
 
+const reviewTarget = "265e461f1b8714c56f7fe817795b81d895f732c6";
+
+function validCodexChildResult(sha) {
+  return {
+    mode: "live",
+    productId: "codex",
+    state: "passed",
+    startedAt: "2026-08-21T00:00:00.000Z",
+    finishedAt: "2026-08-21T00:00:01.000Z",
+    reviewGate: {
+      satisfied: true,
+      scope: "m0-normative",
+      reviewTarget,
+      reviewCount: 2,
+      externalReviewerCount: 1,
+      perspectives: ["agent-safety", "distributed-systems"],
+      errors: [],
+    },
+    repository: {
+      satisfied: true,
+      head: sha,
+      expectedSha: sha,
+      remoteMain: sha,
+      branch: "",
+      clean: true,
+      errors: [],
+    },
+    messageId: "msg_codex_validation01",
+    adapterKind: "codex-app-server",
+    mailbox: "claimed-and-accepted",
+    delivery: "context-admitted",
+    decision: "accepted",
+    outcome: "not-observed",
+    markerMatched: true,
+    evidenceKeys: ["kind", "snapshotDigest", "threadId", "turnId", "turnStatus"],
+    adapterSnapshotDigest: `sha256:${"b".repeat(64)}`,
+    productMetadata: {
+      userAgent: "codex_cli_rs/0.145.0",
+      model: "validation-model",
+      modelProvider: "openai",
+    },
+    cleanup: { attempted: true, complete: true, threadDeleted: true },
+  };
+}
+
 test("live product validation is refused without the exact review acknowledgement", async () => {
   const absent = await runLive("codex", {});
   assert.equal(absent.mode, "live");
@@ -132,26 +177,7 @@ test("live bootstrap binds main and detached execution to one SHA", () => {
 
 test("live bootstrap accepts only a clean exact-SHA child result with a matching exit", () => {
   const sha = "a".repeat(40);
-  const result = {
-    mode: "live",
-    productId: "codex",
-    state: "passed",
-    startedAt: "2026-08-21T00:00:00.000Z",
-    finishedAt: "2026-08-21T00:00:01.000Z",
-    reviewGate: { satisfied: true },
-    repository: {
-      satisfied: true,
-      head: sha,
-      expectedSha: sha,
-      remoteMain: sha,
-      branch: "",
-      clean: true,
-    },
-    mailbox: "claimed-and-accepted",
-    delivery: "context-admitted",
-    markerMatched: true,
-    cleanup: { complete: true },
-  };
+  const result = validCodexChildResult(sha);
   const validation = validateIsolatedLiveChild({
     stdout: JSON.stringify(result),
     status: 0,
@@ -159,31 +185,16 @@ test("live bootstrap accepts only a clean exact-SHA child result with a matching
     error: undefined,
   }, { productId: "codex", executionSha: sha });
   assert.equal(validation.accepted, true);
-  assert.deepEqual(validation.result, result);
+  assert.equal(validation.result.productId, "codex");
+  assert.equal(validation.result.reviewGate.reviewTarget, reviewTarget);
+  assert.equal(validation.result.repository.expectedSha, sha);
+  assert.equal(validation.result.cleanup.threadDeleted, true);
+  assert.equal(Object.hasOwn(validation.result.reviewGate, "errors"), false);
 });
 
 test("live bootstrap rejects passed stdout when the child times out", () => {
   const sha = "a".repeat(40);
-  const forgedPass = JSON.stringify({
-    mode: "live",
-    productId: "codex",
-    state: "passed",
-    startedAt: "2026-08-21T00:00:00.000Z",
-    finishedAt: "2026-08-21T00:00:01.000Z",
-    reviewGate: { satisfied: true },
-    repository: {
-      satisfied: true,
-      head: sha,
-      expectedSha: sha,
-      remoteMain: sha,
-      branch: "",
-      clean: true,
-    },
-    mailbox: "claimed-and-accepted",
-    delivery: "context-admitted",
-    markerMatched: true,
-    cleanup: { complete: true },
-  });
+  const forgedPass = JSON.stringify(validCodexChildResult(sha));
   const child = spawnSync(
     process.execPath,
     ["-e", "require('node:fs').writeSync(1, process.argv[1]); setInterval(() => {}, 1000)", forgedPass],
@@ -200,4 +211,70 @@ test("live bootstrap rejects passed stdout when the child times out", () => {
     accepted: false,
     code: "isolated_live_child_exit_mismatch",
   });
+});
+
+test("live bootstrap projects public evidence and rejects false cleanup or invalid time", () => {
+  const sha = "a".repeat(40);
+  const result = validCodexChildResult(sha);
+  result.modelTranscript = "must-not-escape";
+  result.localPath = "/Users/example/private";
+  result.cleanup.internalReceipt = "private-receipt";
+  const accepted = validateIsolatedLiveChild({
+    stdout: JSON.stringify(result),
+    status: 0,
+    signal: null,
+    error: undefined,
+  }, { productId: "codex", executionSha: sha });
+  assert.equal(accepted.accepted, true);
+  assert.doesNotMatch(JSON.stringify(accepted.result), /must-not-escape|private-receipt|Users/);
+
+  for (const product of [
+    {
+      productId: "kimi",
+      adapterKind: "acp-session",
+      evidenceKeys: ["kind", "sessionId", "snapshotDigest", "stopReason"],
+      productMetadata: { protocolVersion: 1, agentName: "kimi", agentVersion: "0.36.1" },
+      cleanup: {
+        attempted: true, complete: true, sessionDeleted: true, absenceVerified: true,
+      },
+    },
+    {
+      productId: "gemini",
+      adapterKind: "gemini-headless",
+      evidenceKeys: [
+        "exitCode", "kind", "resultStatus", "sessionId", "snapshotDigest", "toolUseCount",
+      ],
+      productMetadata: {
+        version: "0.56.0", interface: "headless-stream-json",
+        approvalMode: "plan", sandboxRequested: true,
+      },
+      cleanup: { attempted: true, complete: true, isolatedHomeRemoved: true },
+    },
+  ]) {
+    const productResult = {
+      ...validCodexChildResult(sha),
+      ...product,
+      messageId: `msg_${product.productId}_validation01`,
+    };
+    const productValidation = validateIsolatedLiveChild({
+      stdout: JSON.stringify(productResult), status: 0, signal: null, error: undefined,
+    }, { productId: product.productId, executionSha: sha });
+    assert.equal(productValidation.accepted, true);
+    assert.deepEqual(productValidation.result.cleanup, product.cleanup);
+  }
+
+  result.cleanup.threadDeleted = false;
+  const falseCleanup = validateIsolatedLiveChild({
+    stdout: JSON.stringify(result), status: 0, signal: null, error: undefined,
+  }, { productId: "codex", executionSha: sha });
+  assert.equal(falseCleanup.accepted, false);
+  assert.equal(falseCleanup.code, "isolated_live_result_binding_mismatch");
+
+  result.cleanup.threadDeleted = true;
+  result.startedAt = "not-an-iso-timestamp";
+  const invalidTime = validateIsolatedLiveChild({
+    stdout: JSON.stringify(result), status: 0, signal: null, error: undefined,
+  }, { productId: "codex", executionSha: sha });
+  assert.equal(invalidTime.accepted, false);
+  assert.equal(invalidTime.code, "isolated_live_result_binding_mismatch");
 });

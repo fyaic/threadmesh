@@ -7,6 +7,22 @@ import { fileURLToPath } from "node:url";
 
 const ACK = "issue-7-approved-for-live-product-validation";
 const REPOSITORY = "fyaic/threadmesh";
+const REVIEW_TARGET = "265e461f1b8714c56f7fe817795b81d895f732c6";
+const PRODUCT_ADAPTERS = Object.freeze({
+  codex: "codex-app-server",
+  kimi: "acp-session",
+  gemini: "gemini-headless",
+});
+const EVIDENCE_KEYS = Object.freeze({
+  codex: ["kind", "snapshotDigest", "threadId", "turnId", "turnStatus"],
+  kimi: ["kind", "sessionId", "snapshotDigest", "stopReason"],
+  gemini: ["exitCode", "kind", "resultStatus", "sessionId", "snapshotDigest", "toolUseCount"],
+});
+const METADATA_KEYS = Object.freeze({
+  codex: ["userAgent", "model", "modelProvider"],
+  kimi: ["protocolVersion", "agentName", "agentVersion"],
+  gemini: ["version", "interface", "approvalMode", "sandboxRequested"],
+});
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 function gitOutput(args, cwd) {
@@ -74,6 +90,157 @@ export function resultExitCode(state) {
   return null;
 }
 
+function isCanonicalIsoTimestamp(value) {
+  if (typeof value !== "string") return false;
+  const milliseconds = Date.parse(value);
+  return Number.isFinite(milliseconds) && new Date(milliseconds).toISOString() === value;
+}
+
+function boundedMetadataValue(value) {
+  if (value === null || typeof value === "boolean" || Number.isSafeInteger(value)) {
+    return { accepted: true, value };
+  }
+  if (typeof value === "string" && Buffer.byteLength(value) <= 256 &&
+      !/[\u0000-\u001f\u007f]/u.test(value)) {
+    return { accepted: true, value };
+  }
+  if (
+    value && typeof value === "object" && !Array.isArray(value) &&
+    value.redacted === true && Number.isSafeInteger(value.byteLength) && value.byteLength >= 0 &&
+    /^sha256:[a-f0-9]{64}$/.test(value.digest ?? "")
+  ) {
+    return {
+      accepted: true,
+      value: { redacted: true, byteLength: value.byteLength, digest: value.digest },
+    };
+  }
+  return { accepted: false };
+}
+
+function projectMetadata(productId, metadata) {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
+  const projected = {};
+  for (const key of METADATA_KEYS[productId] ?? []) {
+    if (!Object.hasOwn(metadata, key)) return null;
+    const bounded = boundedMetadataValue(metadata[key]);
+    if (!bounded.accepted) return null;
+    projected[key] = bounded.value;
+  }
+  return projected;
+}
+
+function projectReviewGate(gate) {
+  if (
+    gate?.satisfied !== true || gate.scope !== "m0-normative" ||
+    gate.reviewTarget !== REVIEW_TARGET || gate.reviewCount !== 2 ||
+    !Number.isSafeInteger(gate.externalReviewerCount) || gate.externalReviewerCount < 1 ||
+    JSON.stringify(gate.perspectives) !== JSON.stringify(["agent-safety", "distributed-systems"])
+  ) return null;
+  return {
+    satisfied: true,
+    scope: gate.scope,
+    reviewTarget: gate.reviewTarget,
+    reviewCount: gate.reviewCount,
+    externalReviewerCount: gate.externalReviewerCount,
+    perspectives: [...gate.perspectives],
+  };
+}
+
+function projectRepository(repository, executionSha) {
+  if (
+    repository?.satisfied !== true || repository.head !== executionSha ||
+    repository.expectedSha !== executionSha || repository.remoteMain !== executionSha ||
+    repository.branch !== "" || repository.clean !== true
+  ) return null;
+  return {
+    satisfied: true,
+    head: repository.head,
+    branch: "",
+    clean: true,
+    remoteMain: repository.remoteMain,
+    expectedSha: repository.expectedSha,
+    errors: [],
+  };
+}
+
+function projectCleanup(productId, cleanup, { requireComplete }) {
+  if (!cleanup || typeof cleanup !== "object" || Array.isArray(cleanup)) return null;
+  if (typeof cleanup.attempted !== "boolean" || typeof cleanup.complete !== "boolean") return null;
+  const projected = { attempted: cleanup.attempted, complete: cleanup.complete };
+  if (requireComplete && (cleanup.attempted !== true || cleanup.complete !== true)) return null;
+  const productFields = {
+    codex: ["threadDeleted"],
+    kimi: ["sessionDeleted", "absenceVerified"],
+    gemini: ["isolatedHomeRemoved"],
+  }[productId] ?? [];
+  for (const key of productFields) {
+    if (typeof cleanup[key] !== "boolean") return null;
+    projected[key] = cleanup[key];
+    if (requireComplete && cleanup[key] !== true) return null;
+  }
+  if (typeof cleanup.errorCode === "string" && /^[a-z0-9_]{1,128}$/.test(cleanup.errorCode)) {
+    projected.errorCode = cleanup.errorCode;
+  }
+  return projected;
+}
+
+function projectLiveChildResult(result, { productId, executionSha }) {
+  if (
+    result.mode !== "live" || result.productId !== productId ||
+    !isCanonicalIsoTimestamp(result.startedAt) || !isCanonicalIsoTimestamp(result.finishedAt) ||
+    Date.parse(result.finishedAt) < Date.parse(result.startedAt)
+  ) return null;
+  const reviewGate = projectReviewGate(result.reviewGate);
+  const repository = projectRepository(result.repository, executionSha);
+  if (!reviewGate || !repository) return null;
+  const projected = {
+    mode: "live",
+    productId,
+    state: result.state,
+    startedAt: result.startedAt,
+    finishedAt: result.finishedAt,
+    reviewGate,
+    repository,
+  };
+  if (result.state !== "passed") {
+    if (typeof result.code !== "string" || !/^[a-z0-9_]{1,128}$/.test(result.code)) return null;
+    projected.code = result.code;
+    if (result.cleanup !== undefined) {
+      const cleanup = projectCleanup(productId, result.cleanup, { requireComplete: false });
+      if (!cleanup) return null;
+      projected.cleanup = cleanup;
+    }
+    return projected;
+  }
+  const expectedEvidenceKeys = EVIDENCE_KEYS[productId];
+  const metadata = projectMetadata(productId, result.productMetadata);
+  const cleanup = projectCleanup(productId, result.cleanup, { requireComplete: true });
+  if (
+    result.adapterKind !== PRODUCT_ADAPTERS[productId] ||
+    typeof result.messageId !== "string" || !/^msg_[a-zA-Z0-9_]{1,240}$/.test(result.messageId) ||
+    result.mailbox !== "claimed-and-accepted" || result.delivery !== "context-admitted" ||
+    result.decision !== "accepted" || result.outcome !== "not-observed" ||
+    result.markerMatched !== true ||
+    JSON.stringify(result.evidenceKeys) !== JSON.stringify(expectedEvidenceKeys) ||
+    !/^sha256:[a-f0-9]{64}$/.test(result.adapterSnapshotDigest ?? "") ||
+    !metadata || !cleanup
+  ) return null;
+  return {
+    ...projected,
+    messageId: result.messageId,
+    adapterKind: result.adapterKind,
+    mailbox: result.mailbox,
+    delivery: result.delivery,
+    decision: result.decision,
+    outcome: result.outcome,
+    markerMatched: true,
+    evidenceKeys: [...result.evidenceKeys],
+    adapterSnapshotDigest: result.adapterSnapshotDigest,
+    productMetadata: metadata,
+    cleanup,
+  };
+}
+
 export function validateIsolatedLiveChild(child, { productId, executionSha }) {
   let result;
   try {
@@ -93,33 +260,11 @@ export function validateIsolatedLiveChild(child, { productId, executionSha }) {
   ) {
     return { accepted: false, code: "isolated_live_child_exit_mismatch" };
   }
-  if (
-    result.mode !== "live" ||
-    result.productId !== productId ||
-    typeof result.startedAt !== "string" ||
-    typeof result.finishedAt !== "string" ||
-    result.reviewGate?.satisfied !== true ||
-    result.repository?.satisfied !== true ||
-    result.repository?.head !== executionSha ||
-    result.repository?.expectedSha !== executionSha ||
-    result.repository?.remoteMain !== executionSha ||
-    result.repository?.branch !== "" ||
-    result.repository?.clean !== true
-  ) {
+  const projected = projectLiveChildResult(result, { productId, executionSha });
+  if (!projected) {
     return { accepted: false, code: "isolated_live_result_binding_mismatch" };
   }
-  if (result.state === "passed" && (
-    result.mailbox !== "claimed-and-accepted" ||
-    result.delivery !== "context-admitted" ||
-    result.markerMatched !== true ||
-    result.cleanup?.complete !== true
-  )) {
-    return { accepted: false, code: "isolated_live_result_binding_mismatch" };
-  }
-  if (result.state !== "passed" && typeof result.code !== "string") {
-    return { accepted: false, code: "isolated_live_result_binding_mismatch" };
-  }
-  return { accepted: true, result };
+  return { accepted: true, result: projected };
 }
 
 function stableResult(productId, code, startedAt, boundary = null) {

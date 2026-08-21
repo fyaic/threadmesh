@@ -218,9 +218,8 @@ After M0 closes and the M1 stack is merged and revalidated:
   an explicitly authorized provider credential;
 - keep every live product on the common mailbox acceptance, durable admission
   claim, kind-specific evidence, and context-admitted audit path;
-- before publishing real-product evidence, project child results through a
-  strict schema with ISO timestamps and adapter-kind-specific cleanup/evidence
-  checks instead of forwarding the complete child object;
+- preserve the strict projected child-result schema, ISO timestamps, and
+  adapter-kind-specific cleanup/evidence checks when recording public evidence;
 - run the same envelope, acceptance, provenance, restart, and cleanup assertions
   against at least two harness families;
 - measure useful coordination and interference cost before enabling proactive

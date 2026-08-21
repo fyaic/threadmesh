@@ -73,16 +73,18 @@ remain blockers for broader production claims:
   ACP session listing;
 - ordinary prompt provenance does not establish a provider-native lower-priority
   role, and ThreadMesh does not supply an OS sandbox.
-- before accepting public real-product evidence, replace whole-object child
-  passthrough with a strict projected result schema, ISO timestamp validation,
-  and adapter-kind-specific cleanup/evidence checks.
+- admission and mailbox recovery limitations above remain production work; the
+  strict child-result projection, ISO timestamp validation, and
+  adapter-kind-specific cleanup/evidence checks are now implemented as
+  pre-real-run hardening after the approval target.
 
 ## Verification snapshot
 
 At exact approved commit `84299b433ab5b6206088593c541f9716eb58bd76`,
-the candidate passes 14 schemas, 55 schema cases, 7 transition cases, and 117
-unit/subtests. Fake-all passes all three product fixtures, dependency audit
-reports zero vulnerabilities, and PR #45 conformance and link checks are green.
-The checked-in M0 manifest remains `awaiting` with zero qualifying external
-reviews and the verifier truthfully exits 3, so real model execution remains
-`not-run`.
+the candidate passed 14 schemas, 55 schema cases, 7 transition cases, and 117
+unit/subtests. The subsequent strict-result projection candidate raises that to
+118 and awaits focused internal re-review. Fake-all passes all three product
+fixtures, dependency audit reports zero vulnerabilities, and PR #45 conformance
+and link checks are green. The checked-in M0 manifest remains `awaiting` with
+zero qualifying external reviews and the verifier truthfully exits 3, so real
+model execution remains `not-run`.
