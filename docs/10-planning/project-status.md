@@ -26,19 +26,19 @@ maintainer organization.
 | Area | Current evidence | Status |
 |---|---|---|
 | Research and problem framing | Codex deep dive, community signals, ecosystem comparison, ADRs | Established |
-| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 120 unit/subtests | Executable draft |
+| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 121 unit/subtests | Executable draft |
 | Local binding | Schema-validated JSON-RPC, transport-derived principals, typed errors | Executable local reference |
 | Local persistence | SQLite registry, proposals, grants, summaries, mailbox, claims, receipts, reconciliation, replay, audit, retention tombstones | Experimental |
 | Safety boundary | Authenticated authorship checks, effective-grant decisions, revocation, CAS | Executable local policy |
 | ACP adapter | ACP v1 initialize, session create/load, prompt aggregation, permission denial, timeout cleanup | Experimental |
 | Kimi Code | CLI 0.36.1 handshake plus exact create/list/delete/absence lifecycle | Real no-model preflight passed |
-| Live Kimi model behavior | Earlier prompt reached provider but returned billing-cycle quota exhaustion | Blocked, not passed |
+| Live Kimi model behavior | Real ACP attempt completed session cleanup and absence verification | Failed: stable `acp_agent_error` |
 | Codex App Server | CLI 0.145.0, 273 generated-schema files, JSONL handshake, empty read-only thread start | Real no-model preflight passed |
-| Codex live model behavior | Exact marker, persisted resume, and cleanup script prepared | Gated, not run |
+| Codex live model behavior | Real turn reached; exact thread cleanup completed | Failed: exact marker mismatch |
 | Gemini CLI headless | Official package 0.56.0 integrity, required flags, isolated-home cleanup | Real no-model preflight passed |
 | Gemini live model behavior | Exact marker script requires explicit provider key | Not authorized, not run |
 | Multi-product admission | One mailbox/acceptance/claim/evidence path across ACP, Codex, and Gemini fakes | Merged experimental implementation |
-| Product validation runner | Built-in bootstrap, isolated exact-main worktree, start/end SHA checks, bounded child evidence, acknowledgement, marker, audit, and cleanup | Merged in #45; fake-all passed; maintainer-authorized live experiment next |
+| Product validation runner | Built-in bootstrap, isolated exact-main worktree, start/end SHA checks, bounded child evidence, acknowledgement, marker, audit, and cleanup | Merged in #45; fake-all passed; Codex and Kimi real attempts recorded |
 | External-review gate | GitHub-authenticated canonical review/disposition blocks, merged-fix ancestry, reviewer diversity, and target ancestry | Mechanically awaiting 2 records |
 | Independent review | Three internal lanes complete; external reviewer packet and public template published | Awaiting two external verdicts |
 | Production authentication | Local static-token reference; no TLS/OAuth verifier supplied | Host integration required |

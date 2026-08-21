@@ -74,7 +74,7 @@ its deterministic tests, while #7 continues to govern normative M0 acceptance.
 | Resume without a new turn | Fake resume passes; real product does not persist an empty thread; post-first-turn real resume is not run | Partial |
 | Acceptance, provenance, denial, bounded evidence, timeout/malformed behavior | Deterministic App Server tests and common admission matrix | Candidate-satisfied |
 | Conservative capability advertisement | Suggest-only; no steer/interrupt | Candidate-satisfied |
-| Real marker, durable resume, exact cleanup | Gated runner prepared; no real model turn executed | Not-run |
+| Real marker, durable resume, exact cleanup | Real turn reached and exact cleanup passed; marker differed | Failed: marker mismatch |
 
 ### #37 Kimi Code ACP
 
@@ -84,7 +84,7 @@ its deterministic tests, while #7 continues to govern normative M0 acceptance.
 | Session lifecycle and cleanup | Real create/list/delete/absence passes | Candidate-satisfied |
 | Reload without historical output contamination | Deterministic ACP test passes; a real accepted turn is needed for product proof | Partial |
 | Permission requests default-cancelled | Real adapter behavior covered by SDK fake agent | Candidate-satisfied |
-| Unique accepted marker | Earlier real request reached provider and returned billing-cycle HTTP 403 | Blocked, not passed |
+| Unique accepted marker | 2026-08-21 real ACP attempt returned `acp_agent_error`; cleanup and absence verification passed | Failed, not passed |
 | Reproducible timestamped report | Kimi evidence document and classified smoke output | Candidate-satisfied |
 
 ### #38 Gemini CLI headless
@@ -102,7 +102,7 @@ its deterministic tests, while #7 continues to govern normative M0 acceptance.
 | Issue | Current evidence | Audit status |
 |---|---|---|
 | #42 generalized admission | Merged #45 validates ACP, Codex, and Gemini adapter refs and strict bounded evidence over one claimed envelope | Merged implementation; real evidence pending |
-| #44 unified runner | Merged #45 fake-all passes mailbox claim/acceptance, exact marker, confirmation, audit, and cleanup; every live alias uses the isolated exact-main bootstrap | Merged implementation; maintainer-authorized real execution next |
+| #44 unified runner | Merged #45 fake-all passes; maintainer-authorized Codex and Kimi attempts ran from exact `dea644c` with complete cleanup and truthful failure states | Merged implementation; real execution demonstrated, no product pass yet |
 
 ## Real-product evidence still required
 
