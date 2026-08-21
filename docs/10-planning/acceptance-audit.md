@@ -74,7 +74,7 @@ its deterministic tests, while #7 continues to govern normative M0 acceptance.
 | Resume without a new turn | Fake resume passes; real product does not persist an empty thread; post-first-turn real resume is not run | Partial |
 | Acceptance, provenance, denial, bounded evidence, timeout/malformed behavior | Deterministic App Server tests and common admission matrix | Candidate-satisfied |
 | Conservative capability advertisement | Suggest-only; no steer/interrupt | Candidate-satisfied |
-| Real marker, durable resume, exact cleanup | Real turn reached and exact cleanup passed; marker differed | Failed: marker mismatch |
+| Real marker, durable resume, exact cleanup | Exact marker, evidence, audit, persisted receiver path, and exact cleanup passed at `0dda5a7` | Satisfied for maintainer-experimental product evidence |
 
 ### #37 Kimi Code ACP
 
@@ -84,7 +84,7 @@ its deterministic tests, while #7 continues to govern normative M0 acceptance.
 | Session lifecycle and cleanup | Real create/list/delete/absence passes | Candidate-satisfied |
 | Reload without historical output contamination | Deterministic ACP test passes; a real accepted turn is needed for product proof | Partial |
 | Permission requests default-cancelled | Real adapter behavior covered by SDK fake agent | Candidate-satisfied |
-| Unique accepted marker | 2026-08-21 real ACP attempt returned `acp_agent_error`; cleanup and absence verification passed | Failed, not passed |
+| Unique accepted marker | Rerun classified `acp_agent_quota_error`; cleanup and absence verification passed | Blocked, not passed |
 | Reproducible timestamped report | Kimi evidence document and classified smoke output | Candidate-satisfied |
 
 ### #38 Gemini CLI headless
@@ -102,7 +102,7 @@ its deterministic tests, while #7 continues to govern normative M0 acceptance.
 | Issue | Current evidence | Audit status |
 |---|---|---|
 | #42 generalized admission | Merged #45 validates ACP, Codex, and Gemini adapter refs and strict bounded evidence over one claimed envelope | Merged implementation; real evidence pending |
-| #44 unified runner | Merged #45 fake-all passes; maintainer-authorized Codex and Kimi attempts ran from exact `dea644c` with complete cleanup and truthful failure states | Merged implementation; real execution demonstrated, no product pass yet |
+| #44 unified runner | Merged #45 fake-all passes; real Codex passed from exact `0dda5a7`; Kimi was quota-blocked with complete cleanup | Merged implementation and first real product pass |
 
 ## Real-product evidence still required
 

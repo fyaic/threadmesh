@@ -230,6 +230,13 @@ Immediate execution order on merged `main`:
 - measure useful coordination and interference cost before enabling proactive
   discovery.
 
+Codex completed the first real maintainer-experimental pass at `0dda5a7`,
+including exact marker, evidence, audit, and cleanup. Kimi is currently
+quota-blocked with cleanup verified; Gemini remains unstarted without an
+explicit credential. The next M2 threshold is one additional materially
+different harness pass, followed by the proactive dependency/interference case
+rather than more runner scaffolding.
+
 Before production or parallel receiver replicas, add claimant-specific mailbox
 leases with expiry takeover, and a receiver-authenticated inspection and manual
 reconciliation operation for admission claims whose token is lost after a

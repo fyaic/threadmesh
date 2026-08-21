@@ -20,18 +20,27 @@ credentials, and local paths are intentionally not recorded.
 |---|---|---|---|---|
 | Codex App Server | 09:45:31–09:49:31 | `failed` | `threadmesh_product_marker_mismatch` | Exact thread deletion acknowledged |
 | Kimi Code ACP | 09:49:57–09:50:03 | `failed` | `acp_agent_error` | Session deleted and absence verified |
+| Codex App Server rerun | 09:56:17–10:00:03 | `passed` | — | Exact thread deletion acknowledged |
+| Kimi Code ACP rerun | 10:00:20–10:00:26 | `blocked` | `acp_agent_quota_error` | Session deleted and absence verified |
 | Gemini CLI | Not started | `not-run` | Explicit credential unavailable | No resource created |
 
 ## Interpretation
 
-The execution gate and exact-main bootstrap are no longer the blocker. Codex
-reached the real model boundary but did not return the exact marker. Kimi
-started the real ACP product path but returned a product error. Both failures
-were preserved as failures, and both cleanup checks passed. Gemini correctly
-remained unstarted because no explicit `GEMINI_API_KEY` was present.
+The execution gate and exact-main bootstrap are no longer the blocker. The
+first results produced a narrow cross-adapter correction: receiver-accepted
+content is presented as safe advisory task context without being elevated to
+user authority or permission to change external state, and ACP quota evidence
+is classified across both the protocol error and stderr boundary.
 
-The next mainline slice is intentionally narrow: improve the bounded Codex
-marker instruction without weakening exact comparison, classify the Kimi ACP
-failure to a stable actionable category without publishing provider text, then
-rerun the same immutable scenario. No result becomes `passed` until the exact
-marker, coordinator evidence, audit event, and cleanup all succeed.
+The rerun at `0dda5a7c999ff07e37b157c943be313886622c33` produced the first real
+ThreadMesh product pass. Codex `gpt-5.6-sol` traversed mailbox claim, receiver
+acceptance, durable admission, exact marker, kind-specific evidence,
+`context-admitted` audit, and exact thread cleanup. Kimi was truthfully
+classified as provider-quota blocked and again proved deletion plus absence.
+Gemini correctly remained unstarted because no explicit `GEMINI_API_KEY` was
+present.
+
+The next real-product threshold is a second materially different harness pass.
+That can be Kimi after quota becomes available or Gemini after an explicit
+credential is supplied. No blocked or credential-free attempt is promoted to a
+pass.
