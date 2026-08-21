@@ -8,8 +8,11 @@ agent-safety, and adapter-implementability perspectives. All three initially
 returned **request changes**. These reviews guide Draft PR #45 but are not
 organizationally independent external reviews and do not count toward issue #7.
 
-The remediation below is candidate work until it is committed, independently
-re-reviewed, merged, and rerun on `main`.
+After two remediation rounds, all three lanes independently approved exact
+commit `84299b433ab5b6206088593c541f9716eb58bd76` for the conservative #45
+experimental prototype. This is not normative M0 approval, does not count
+toward issue #7, and does not authorize a real model turn before the external
+gate and synchronized-main requirements are satisfied.
 
 The first remediation commit, `5921f3a19aec5137ddb789548f15c0892902aa1a`,
 also received three **request changes** verdicts. Reviewers found that
@@ -19,6 +22,10 @@ later clean-main snapshot, one Codex smoke import was missing, and public
 product metadata was not byte bounded. The second remediation replaces those
 surfaces with canonical machine blocks, authenticated dispositions, an isolated
 exact-SHA bootstrap, a tested schema-digest helper, and bounded metadata.
+Reviewers found one remaining fail-open in `7fa96dd483cd3237766e97a5be1625e1fffb1bf4`:
+a child could print a valid pass result and then time out or be killed while the
+bootstrap still propagated the JSON. Final remediation `84299b4` binds the
+result to the child process outcome and exact execution evidence.
 
 ## Merge-blocking findings and remediation
 
@@ -30,6 +37,7 @@ exact-SHA bootstrap, a tested schema-digest helper, and bounded metadata.
 | Gemini accepted an official terminal error result containing the marker | Provider failure could be reported as a pass | Require exactly one terminal `result` with `status: success`, project that status into coordinator evidence, and regress the official error shape |
 | Gemini cleanup accepted and recursively deleted a caller-owned directory | A failed validation could delete unrelated caller data | Accept only a temporary parent and always create and remove a driver-owned child directory |
 | Marker comparison normalized surrounding whitespace | A non-exact answer could pass an “exact” assertion | Compare the returned string directly without trimming |
+| Live child output was trusted independently of process termination | A child could print `passed`, then time out or receive a signal, and still be reported as successful | Require a known state with its exact exit code, no spawn error or signal, exact product/repository/review bindings, and pass-specific mailbox, admission, marker, and cleanup evidence |
 
 ## Additional hardening included
 
@@ -48,6 +56,8 @@ exact-SHA bootstrap, a tested schema-digest helper, and bounded metadata.
   strings are replaced by length plus stable digest.
 - Gemini terminal status, exact-marker, caller-root preservation, and atomic
   proposal approval all have deterministic regression coverage.
+- A real child-process regression writes a forged pass and then hangs; the
+  bootstrap observes `ETIMEDOUT`/`SIGTERM` and rejects it as an exit mismatch.
 
 ## Deferred production work
 
@@ -63,12 +73,16 @@ remain blockers for broader production claims:
   ACP session listing;
 - ordinary prompt provenance does not establish a provider-native lower-priority
   role, and ThreadMesh does not supply an OS sandbox.
+- before accepting public real-product evidence, replace whole-object child
+  passthrough with a strict projected result schema, ISO timestamp validation,
+  and adapter-kind-specific cleanup/evidence checks.
 
 ## Verification snapshot
 
-Before the second reviewer re-entry, the candidate passes 14 schemas, 55 schema cases,
-7 transition cases, and 117 unit/subtests. Fake-all also passes all three
-product fixtures, dependency audit reports zero vulnerabilities, and the
-external gate truthfully exits 3. The
-checked-in M0 manifest remains `awaiting` with zero qualifying external reviews,
-so real model execution remains `not-run`.
+At exact approved commit `84299b433ab5b6206088593c541f9716eb58bd76`,
+the candidate passes 14 schemas, 55 schema cases, 7 transition cases, and 117
+unit/subtests. Fake-all passes all three product fixtures, dependency audit
+reports zero vulnerabilities, and PR #45 conformance and link checks are green.
+The checked-in M0 manifest remains `awaiting` with zero qualifying external
+reviews and the verifier truthfully exits 3, so real model execution remains
+`not-run`.

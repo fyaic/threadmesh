@@ -39,7 +39,7 @@ maintainer organization.
 | Gemini CLI headless | Official package 0.56.0 integrity, required flags, isolated-home cleanup | Real no-model preflight passed |
 | Gemini live model behavior | Exact marker script requires explicit provider key | Not authorized, not run |
 | Multi-product admission | One mailbox/acceptance/claim/evidence path across ACP, Codex, and Gemini fakes | Stacked deterministic candidate |
-| Product validation runner | Built-in bootstrap, isolated exact-main worktree, start/end SHA checks, acknowledgement, marker, audit, and cleanup | Fake-all passed; live gated |
+| Product validation runner | Built-in bootstrap, isolated exact-main worktree, start/end SHA checks, child exit/result binding, acknowledgement, marker, audit, and cleanup | Internally approved at `84299b4`; fake-all passed; live gated |
 | External-review gate | GitHub-authenticated canonical review/disposition blocks, merged-fix ancestry, reviewer diversity, and target ancestry | Mechanically awaiting 2 records |
 | Independent review | Three internal lanes complete; external reviewer packet and public template published | Awaiting two external verdicts |
 | Production authentication | Local static-token reference; no TLS/OAuth verifier supplied | Host integration required |
@@ -211,13 +211,17 @@ can:
     rolling both back if the proposal CAS fails;
 32. reject Gemini terminal error results even when their stream contains the
     marker, and preserve caller-owned temporary roots during cleanup.
+33. reject a child that prints a forged pass before timing out or receiving a
+    signal, and bind every accepted live result to its exit code, product,
+    repository SHA, review gate, admission, exact marker, and cleanup evidence.
 
 It does not prove autonomous task discovery, useful model behavior, native
 provider-role isolation, exactly-once external effects, production remote
 credential verification, safe interruption, managed backup expiry, or forensic
 erasure. The mailbox lease also remains task-scoped rather than worker-scoped,
 and crash recovery for a lost in-flight admission token still requires manual
-reconciliation.
+reconciliation. Public real-product evidence still needs strict result
+projection plus adapter-kind-specific cleanup/evidence validation.
 
 ## Progress rule
 
