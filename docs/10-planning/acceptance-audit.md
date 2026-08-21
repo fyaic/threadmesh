@@ -104,6 +104,16 @@ its deterministic tests, while #7 continues to govern normative M0 acceptance.
 | #42 generalized admission | Merged #45 validates ACP, Codex, and Gemini adapter refs and strict bounded evidence over one claimed envelope | Merged implementation; real evidence pending |
 | #44 unified runner | Merged #45 fake-all passes; real Codex passed from exact `0dda5a7`; Kimi was quota-blocked with complete cleanup | Merged implementation and first real product pass |
 
+### #53 proactive Codex A-to-B case
+
+| Criterion group | Current evidence | Audit status |
+|---|---|---|
+| Model-selected communication | A called related-task discovery then bounded send; `scriptedSubmitCount` was zero | Satisfied for maintainer-experimental positive case at `248d650` |
+| Coordinator and receiver path | One authorized suggestion was claimed, accepted, admitted, audited, and consumed by persisted B | Satisfied for the positive case |
+| Tool and message budget | Exactly one related-task call, one send, and zero observed non-ThreadMesh tool calls | Satisfied for the positive case |
+| Cleanup and repository boundary | A and B deleted; clean main and detached child remained bound to exact `248d650` | Satisfied |
+| Irrelevant-task and interference controls | Not yet run | Open; blocks closing #53 as a behavioral evaluation |
+
 ## Real-product evidence still required
 
 The merged runner must now produce:

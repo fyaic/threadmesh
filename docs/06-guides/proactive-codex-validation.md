@@ -51,6 +51,20 @@ npm run validate:proactive:live:codex
 The live alias uses the same exact-main detached-worktree bootstrap and strict
 result projection as the receiver-only product validation.
 
+## Recorded live result
+
+The maintainer-experimental run on 2026-08-21 passed from clean synchronized
+`main` at `248d650ab06e6e34de9cc41ede641c841c1e36a3`. Codex `0.145.0` with
+`gpt-5.6-sol` produced the exact A and B markers. The projected evidence records
+one related-task call, one send call, zero scripted submits, zero observed
+non-ThreadMesh tool calls, `context-admitted` delivery, and deletion of both
+persisted tasks.
+
+The first attempt at `6a4b17a` failed safely before A's autonomous turn because
+an empty App Server thread has no resumable rollout. B was deleted. PR #55 then
+made A's local persistence bootstrap explicit; the successful rerun used that
+merged fix. Neither result satisfies the still-open normative review gate.
+
 ## What this does not prove
 
 - B's checkpoint decision is currently deterministic harness policy, not an

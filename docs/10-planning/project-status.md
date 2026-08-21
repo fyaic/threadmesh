@@ -1,9 +1,9 @@
 # Project status
 
-> Snapshot: 2026-08-21, after PR #45 was squash-merged to `main` at
-> `e761e98da83426a5ebae3b47a341f606186dfca6`. The merged tree includes the
-> local coordinator, two-profile conformance matrix, retention purge, three
-> product adapters, and the gated coordinator-mediated validation runner.
+> Snapshot: 2026-08-21, after proactive Codex PRs #54 and #55 were
+> squash-merged to `main` at `248d650ab06e6e34de9cc41ede641c841c1e36a3`.
+> The merged tree includes the local coordinator, three product adapters, the
+> gated runner, and a bounded model-selected A-to-B validation path.
 
 ## Executive summary
 
@@ -35,6 +35,7 @@ maintainer organization.
 | Live Kimi model behavior | Rerun classified provider quota and completed deletion plus absence verification | Blocked: `acp_agent_quota_error` |
 | Codex App Server | CLI 0.145.0, 273 generated-schema files, JSONL handshake, empty read-only thread start | Real no-model preflight passed |
 | Codex live model behavior | Exact marker, evidence, audit, persisted resume path, and exact thread cleanup at `0dda5a7` | Real maintainer-experimental pass |
+| Codex proactive A-to-B | A selected related-task discovery and one bounded send; B consumed admitted context; both tasks deleted at `248d650` | Real maintainer-experimental positive-case pass |
 | Gemini CLI headless | Official package 0.56.0 integrity, required flags, isolated-home cleanup | Real no-model preflight passed |
 | Gemini live model behavior | Exact marker script requires explicit provider key | Not authorized, not run |
 | Multi-product admission | One mailbox/acceptance/claim/evidence path across ACP, Codex, and Gemini fakes | Merged experimental implementation |
@@ -186,15 +187,19 @@ can:
 33. reject a child that prints a forged pass before timing out or receiving a
     signal, and bind every accepted live result to its exit code, product,
     repository SHA, review gate, admission, exact marker, and cleanup evidence.
+34. let a real persisted Codex Agent A select relationship discovery and one
+    bounded suggestion without harness-scripted submit, admit it to a real
+    persisted Agent B, and delete both exact tasks.
 
-It does not prove autonomous task discovery, useful model behavior, native
-provider-role isolation, exactly-once external effects, production remote
-credential verification, safe interruption, managed backup expiry, or forensic
-erasure. The mailbox lease also remains task-scoped rather than worker-scoped,
-and crash recovery for a lost in-flight admission token still requires manual
+It does not prove general autonomous discovery across unrelated tasks, outcome
+improvement, acceptable receiver-interference cost, native provider-role
+isolation, exactly-once external effects, production remote credential
+verification, safe interruption, managed backup expiry, or forensic erasure.
+The mailbox lease also remains task-scoped rather than worker-scoped, and crash
+recovery for a lost in-flight admission token still requires manual
 reconciliation. Strict public-result projection and adapter-kind-specific
-cleanup/evidence validation are implemented and internally reviewed for the
-trusted exact-checkout child; a hostile-worker boundary is not claimed.
+cleanup/evidence validation are implemented for the trusted exact-checkout
+child; a hostile-worker boundary is not claimed.
 
 ## Progress rule
 

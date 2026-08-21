@@ -2,9 +2,10 @@
 
 ## Scope
 
-These are real product attempts through the merged ThreadMesh coordinator at
-`dea644ce316be965651e42d1215f73948a54a25f`. The maintainer explicitly
-authorized the bounded experimental mode. The results are non-normative:
+These are real product attempts through the merged ThreadMesh coordinator,
+starting at `dea644ce316be965651e42d1215f73948a54a25f` and extending through the
+proactive path at `248d650ab06e6e34de9cc41ede641c841c1e36a3`. The maintainer
+explicitly authorized the bounded experimental mode. The results are non-normative:
 `authorization.mode` is `maintainer-experimental`,
 `normativeReviewSatisfied` is `false`, and issue #7 remains open with zero
 qualifying external reviews.
@@ -23,6 +24,8 @@ credentials, and local paths are intentionally not recorded.
 | Codex App Server rerun | 09:56:17–10:00:03 | `passed` | — | Exact thread deletion acknowledged |
 | Kimi Code ACP rerun | 10:00:20–10:00:26 | `blocked` | `acp_agent_quota_error` | Session deleted and absence verified |
 | Gemini CLI | Not started | `not-run` | Explicit credential unavailable | No resource created |
+| Codex proactive A-to-B, first attempt | 12:05:06–12:07:09 | `failed` | `codex_app_server_remote_error` | B deleted; empty A rollout did not persist |
+| Codex proactive A-to-B, persisted-A rerun | 12:13:19–12:19:35 | `passed` | — | Both exact tasks deleted |
 
 ## Interpretation
 
@@ -40,7 +43,17 @@ classified as provider-quota blocked and again proved deletion plus absence.
 Gemini correctly remained unstarted because no explicit `GEMINI_API_KEY` was
 present.
 
-The next real-product threshold is a second materially different harness pass.
-That can be Kimi after quota becomes available or Gemini after an explicit
-credential is supplied. No blocked or credential-free attempt is promoted to a
-pass.
+The proactive rerun at `248d650ab06e6e34de9cc41ede641c841c1e36a3` is the
+first real model-selected cross-task communication pass. Agent A called the
+relationship-summary tool and then the bounded suggestion tool exactly once;
+the harness performed zero scripted submits and observed zero non-ThreadMesh
+tool calls. Agent B consumed the coordinator-admitted suggestion and returned
+its exact marker. Both task deletions completed. The failed precursor at
+`6a4b17a` exposed the already known empty-thread persistence behavior and was
+fixed by PR #55 before the successful clean-main rerun.
+
+The next behavioral threshold is an irrelevant-task control and a measured
+receiver-interference case. The next portability threshold is still a second
+materially different harness pass, using Kimi after quota becomes available or
+Gemini after an explicit credential is supplied. No blocked or credential-free
+attempt is promoted to a pass.
