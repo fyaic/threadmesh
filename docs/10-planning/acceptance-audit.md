@@ -45,7 +45,7 @@ of these mechanisms can substitute for another.
 |---|---|---|
 | #9 storage and migration | #28; `sqlite-storage-contract.md`; migration manifest, adoption, upgrade, rollback, drift, WAL, retention tests | Candidate-satisfied |
 | #10 registry, mailbox, audit | #29; atomic submit/audit, replay, expiry, restart, scoped enumeration tests through JSON-RPC | Candidate-satisfied |
-| #11 relationship policy | #30 plus #45 remediation; fail-closed policy, stable denial, immediate reauthorization, revocation invalidation, atomic proposal-to-grant test | Candidate-satisfied; atomic fix must be propagated before #30 closure |
+| #11 relationship policy | #30 at reviewed `61c15ae`; fail-closed policy, stable denial, immediate reauthorization, revocation invalidation, atomic proposal-to-grant test | Candidate-satisfied; atomic fix propagated through every descendant stacked branch |
 | #12 dispatcher and disposition | #31; shared legal transition table, freshness/expiry CAS, durable idempotency key, outcome-unknown and reconciliation tests | Candidate-satisfied |
 | #13 stream and inspector | #32; restart-safe local cursor, complete provenance projection, authorization-aware redaction, deterministic snapshots | Candidate-satisfied |
 | #14 two harness profiles | #33; pull-mailbox and event-watching profiles, audit per transition, explicit degradation, deterministic database cleanup | Candidate-satisfied |
