@@ -74,36 +74,13 @@ The implementation stack was squash-merged by PR #45 and revalidated on
 a maintainer-approved experimental implementation decision; it does not turn
 the still-open M0 external-review requirement into a satisfied review.
 
-- 7 issues open: [#9](https://github.com/fyaic/threadmesh/issues/9)–
-  [#14](https://github.com/fyaic/threadmesh/issues/14), plus retention follow-up
-  [#34](https://github.com/fyaic/threadmesh/issues/34).
-- Pull request #20 and the authenticated binding supply partial implementation
-  evidence for #9–#14.
-- A versioned baseline, transactional migration rollback tests, and the
-  retention/deletion contract are prepared under #9 but remain gated by #7.
-- A stacked #10 candidate adds durable audited expiry and an explicit negative
-  test for unrestricted task enumeration; it also remains gated by #7.
-- A stacked #11 candidate extracts a fail-closed policy engine, uses a
-  non-disclosing public denial, reauthorizes adapter submission, and atomically
-  invalidates queued state-changing work on revocation. Proposal approval and
-  grant installation are now one reviewed immediate transaction at `61c15ae`,
-  propagated through the remaining stack; it remains gated by #7.
-- A stacked #12 candidate adds schema version 2, runtime freshness CAS, one
-  shared transition table, explicit terminal reasons, and a dispatcher that
-  persists unknown outcome before one native call and suppresses restart retry;
-  it remains gated by #7.
-- A stacked #13 candidate adds a restart-safe local cursor wrapper plus a
-  provenance snapshot that distinguishes user/peer authorship, redacts content
-  after expiry or revocation, and exposes delivery/decision/outcome separately;
-  it remains gated by #7.
-- A stacked #14 candidate runs two capability-valid profiles through the public
-  JSON-RPC path, including relationship-scoped discovery, side-channel notify,
-  suggestion decisions, stale/unsupported state changes, replay, revocation,
-  audit assertions, and deterministic test-database cleanup; it remains gated
-  by #7.
-- A stacked #34 candidate adds schema version 3 and executes policy-only,
-  bounded content tombstoning while preserving original digests and excluding
-  unresolved context/native effects; it remains gated by #7.
+- All seven implementation issues #9–#14 and #34 are closed.
+- The merged implementation includes versioned migrations and rollback,
+  registry/mailbox/audit, fail-closed relationship policy, atomic
+  proposal-to-grant approval, crash-safe dispatch and reconciliation, event
+  inspection, two-profile conformance, and retention-driven tombstoning.
+- The superseded stacked PRs #28–#35 are closed; PR #45 is the authoritative
+  integration history.
 - Hosted event streaming remains unfinished and is not required by an existing
   M1 acceptance issue.
 
@@ -114,40 +91,24 @@ product evidence: Codex first, Kimi second, and Gemini only when an explicit
 credential is already available. Maintainer-experimental results are kept
 distinct from normative M0 evidence.
 
-- 5 issues open: Codex App Server [#36](https://github.com/fyaic/threadmesh/issues/36),
-  Kimi ACP hardening [#37](https://github.com/fyaic/threadmesh/issues/37), and a
-  materially different third harness [#38](https://github.com/fyaic/threadmesh/issues/38),
-  shared multi-product admission [#42](https://github.com/fyaic/threadmesh/issues/42),
-  and gated product validation [#44](https://github.com/fyaic/threadmesh/issues/44).
-- Draft [#39](https://github.com/fyaic/threadmesh/pull/39) contains the Codex
-  candidate and is stacked on retention Draft #35.
-- Draft [#40](https://github.com/fyaic/threadmesh/pull/40) contains the Kimi
-  lifecycle hardening candidate and is stacked on #39.
-- Draft [#41](https://github.com/fyaic/threadmesh/pull/41) contains the Gemini
-  headless candidate and is stacked on #40.
-- Draft [#43](https://github.com/fyaic/threadmesh/pull/43) contains shared
-  multi-product context admission and is stacked on #41.
-- Draft [#45](https://github.com/fyaic/threadmesh/pull/45), tracked by #44, adds
-  one mechanically gated runner over the exact mailbox, acceptance, admission,
-  evidence, audit, and cleanup path. Its fake-all mode passes all three
-  products; live mode requires GitHub-authenticated canonical review and
-  disposition blocks, an exact operator acknowledgement, and execution from an
-  isolated synchronized-main worktree, so it remains `not-run` before #7 and
-  merge.
-- The Codex candidate implements suggestion-only capability negotiation,
+- Codex issue #36 is closed after a real pass at `0dda5a7`; Kimi issue #37
+  remains open and quota-blocked; Gemini issue #38 remains open pending an
+  explicit provider credential. Shared admission #42 and runner #44 are closed.
+- PR #45 merged the complete adapter/runner stack. Superseded stacked PRs
+  #39–#43 are closed.
+- The Codex implementation includes suggestion-only capability negotiation,
   receiver-acceptance enforcement, exact turn evidence, server-request denial,
   timeout cleanup, generated-schema digesting, and a real no-model product
   preflight.
-- The Kimi hardening candidate now hashes the exact binary, timestamps each
+- The Kimi implementation hashes the exact binary, timestamps each
   run, verifies one real session through create/list/delete/list, and separates
   the gated live marker from the default no-model preflight.
 - Gemini CLI headless `stream-json` is selected for #38 after the repository's
   Copilot assignability checks returned unavailable. The official pinned package
   passes a no-model version/flag/integrity probe and its fake-product matrix;
   no Google account or API key was inferred or created.
-- The next stacked candidate removes the coordinator's ACP-only admission
-  assumption. ACP, Codex, and Gemini now consume the same claimed envelope and
-  admission projection, then confirm with strict kind-specific evidence.
+- ACP, Codex, and Gemini consume the same claimed envelope and admission
+  projection, then confirm with strict kind-specific evidence.
 - Codex `0.145.0` does not persist an empty thread before its first turn. The
   live driver therefore keeps create plus a bounded local bootstrap turn on one
   connection, without presenting it as peer context, then separately validates

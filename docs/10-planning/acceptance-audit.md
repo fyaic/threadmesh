@@ -46,15 +46,15 @@ unsatisfied review-gate projection in every result.
 
 ## M1 — Local reference coordinator
 
-| Issue | Acceptance evidence in the stacked candidate | Audit status |
+| Issue | Acceptance evidence on merged `main` | Audit status |
 |---|---|---|
-| #9 storage and migration | #28; `sqlite-storage-contract.md`; migration manifest, adoption, upgrade, rollback, drift, WAL, retention tests | Candidate-satisfied |
-| #10 registry, mailbox, audit | #29; atomic submit/audit, replay, expiry, restart, scoped enumeration tests through JSON-RPC | Candidate-satisfied |
-| #11 relationship policy | #30 at reviewed `61c15ae`; fail-closed policy, stable denial, immediate reauthorization, revocation invalidation, atomic proposal-to-grant test | Candidate-satisfied; atomic fix propagated through every descendant stacked branch |
-| #12 dispatcher and disposition | #31; shared legal transition table, freshness/expiry CAS, durable idempotency key, outcome-unknown and reconciliation tests | Candidate-satisfied |
-| #13 stream and inspector | #32; restart-safe local cursor, complete provenance projection, authorization-aware redaction, deterministic snapshots | Candidate-satisfied |
-| #14 two harness profiles | #33; pull-mailbox and event-watching profiles, audit per transition, explicit degradation, deterministic database cleanup | Candidate-satisfied |
-| #34 retention purge | #35; append-only schema v3, bounded policy-only purge, unknown-effect exclusion, replay preservation, redaction, restart/WAL tests | Candidate-satisfied |
+| #9 storage and migration | `sqlite-storage-contract.md`; migration manifest, adoption, upgrade, rollback, drift, WAL, retention tests | Merged; issue closed |
+| #10 registry, mailbox, audit | Atomic submit/audit, replay, expiry, restart, scoped enumeration tests through JSON-RPC | Merged; issue closed |
+| #11 relationship policy | Fail-closed policy, stable denial, reauthorization, revocation invalidation, atomic proposal-to-grant test | Merged; issue closed |
+| #12 dispatcher and disposition | Shared legal transition table, freshness/expiry CAS, durable idempotency, outcome-unknown and reconciliation tests | Merged; issue closed |
+| #13 stream and inspector | Restart-safe cursor, provenance projection, authorization-aware redaction, deterministic snapshots | Merged; issue closed |
+| #14 two harness profiles | Pull-mailbox and event-watching profiles, transition audit, explicit degradation, deterministic cleanup | Merged; issue closed |
+| #34 retention purge | Append-only schema v3, bounded purge, unknown-effect exclusion, replay preservation, restart/WAL tests | Merged; issue closed |
 
 ### M1 integration result
 
@@ -71,7 +71,7 @@ its deterministic tests, while #7 continues to govern normative M0 acceptance.
 |---|---|---|
 | Version/protocol evidence | Real CLI 0.145.0, 273 generated files, stable schema and initialize digests | Candidate-satisfied |
 | Initialize and empty thread start | Real no-model preflight passes | Candidate-satisfied |
-| Resume without a new turn | Fake resume passes; real product does not persist an empty thread; post-first-turn real resume is not run | Partial |
+| Resume without a new turn | Real validation creates a persisted bootstrap thread, resumes it for accepted context, then deletes it | Satisfied for experimental product evidence |
 | Acceptance, provenance, denial, bounded evidence, timeout/malformed behavior | Deterministic App Server tests and common admission matrix | Candidate-satisfied |
 | Conservative capability advertisement | Suggest-only; no steer/interrupt | Candidate-satisfied |
 | Real marker, durable resume, exact cleanup | Exact marker, evidence, audit, persisted receiver path, and exact cleanup passed at `0dda5a7` | Satisfied for maintainer-experimental product evidence |
@@ -108,13 +108,14 @@ its deterministic tests, while #7 continues to govern normative M0 acceptance.
 
 The merged runner must now produce:
 
-1. Codex: exact bootstrap marker, registered persisted receiver, exact
-   coordinator marker, completed turn evidence, resume, and exact thread delete;
-2. Kimi: exact coordinator marker in the created ACP session, no permission
+Codex has completed its exact bootstrap marker, persisted receiver, coordinator
+marker, turn evidence, resume, audit, and exact deletion path. Remaining:
+
+1. Kimi: exact coordinator marker in the created ACP session, no permission
    grant, delete, and list-confirmed absence;
-3. Gemini: explicitly authorized key, exact coordinator marker, exit 0, zero
+2. Gemini: explicitly authorized key, exact coordinator marker, exit 0, zero
    tool use, and removal of the exact isolated home;
-4. a timestamped sanitized evidence record for every attempt, including
+3. a timestamped sanitized evidence record for every attempt, including
    `passed`, `blocked`, `failed`, or `not-run` and the exact repository commit.
 
 At least two materially different harness families must pass before M2 can
