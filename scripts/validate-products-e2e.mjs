@@ -11,6 +11,7 @@ import {
 } from "../src/validation/product-drivers.mjs";
 import { runCoordinatorProductScenario } from "../src/validation/coordinator-product-scenario.mjs";
 import {
+  PROACTIVE_A_BOOTSTRAP_MARKER,
   PROACTIVE_A_MARKER,
   PROACTIVE_B_BOOTSTRAP_MARKER,
   PROACTIVE_B_MARKER,
@@ -186,6 +187,7 @@ export async function runFakeProactive() {
         cwd: root,
         env: baseEnv,
         bootstrapEnv: { ...baseEnv, FAKE_CODEX_EXACT_MARKER: PROACTIVE_B_BOOTSTRAP_MARKER },
+        aBootstrapEnv: { ...baseEnv, FAKE_CODEX_EXACT_MARKER: PROACTIVE_A_BOOTSTRAP_MARKER },
         autonomousEnv: {
           ...baseEnv,
           FAKE_CODEX_AUTONOMOUS_TOOL: "1",

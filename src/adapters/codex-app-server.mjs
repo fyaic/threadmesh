@@ -454,14 +454,20 @@ export class CodexAppServerAdapter {
     env = {},
     dynamicTools,
     developerInstructions,
+    bootstrapMarker,
+    adapterIdempotencyKey,
     model = null,
-    timeoutMs = 15_000,
+    timeoutMs = 120_000,
   }) {
     assertInvocation(command, args, cwd, env);
     assertDynamicTools(dynamicTools);
     if (typeof developerInstructions !== "string" || developerInstructions.length < 1) {
       throw codedError("codex_app_server_developer_instructions_invalid");
     }
+    if (
+      typeof bootstrapMarker !== "string" || !/^[A-Z0-9_]{1,100}$/.test(bootstrapMarker) ||
+      typeof adapterIdempotencyKey !== "string" || adapterIdempotencyKey.length < 1
+    ) throw codedError("codex_app_server_bootstrap_invalid");
     return this.#withServer({ command, args, cwd, env, timeoutMs }, async (peer) => {
       const initialization = await this.#initialize(peer, { experimentalApi: true });
       const response = await peer.request("thread/start", threadStartParams(cwd, {
@@ -470,7 +476,23 @@ export class CodexAppServerAdapter {
         dynamicTools,
         developerInstructions,
       }));
-      return projectThread(response, initialization);
+      const adapterRef = projectThread(response, initialization);
+      try {
+        const bootstrap = await this.#runTurn(
+          peer,
+          initialization,
+          adapterRef,
+          `This is a local persistence bootstrap. Do not call tools. Reply with exactly ${bootstrapMarker}.`,
+          adapterIdempotencyKey,
+        );
+        if (bootstrap.truncated || bootstrap.text !== bootstrapMarker) {
+          throw codedError("codex_app_server_bootstrap_marker_mismatch");
+        }
+        return adapterRef;
+      } catch (error) {
+        error.adapterRef = adapterRef;
+        throw error;
+      }
     });
   }
 

@@ -6,6 +6,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 import {
+  PROACTIVE_A_BOOTSTRAP_MARKER,
   PROACTIVE_A_MARKER,
   PROACTIVE_B_BOOTSTRAP_MARKER,
   PROACTIVE_B_MARKER,
@@ -27,6 +28,10 @@ test("Agent A selects ThreadMesh tools before its suggestion reaches real-shaped
       bootstrapEnv: {
         ...baseEnv,
         FAKE_CODEX_EXACT_MARKER: PROACTIVE_B_BOOTSTRAP_MARKER,
+      },
+      aBootstrapEnv: {
+        ...baseEnv,
+        FAKE_CODEX_EXACT_MARKER: PROACTIVE_A_BOOTSTRAP_MARKER,
       },
       autonomousEnv: {
         ...baseEnv,

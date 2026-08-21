@@ -222,9 +222,11 @@ test("lets the model choose bounded ThreadMesh dynamic tools on a resumed task",
       command: process.execPath,
       args: [fixture],
       cwd: root,
-      env: state.env,
+      env: { ...state.env, FAKE_CODEX_EXACT_MARKER: "THREADMESH_PROACTIVE_A_READY" },
       dynamicTools,
       developerInstructions: "Use ThreadMesh only when the related task materially helps.",
+      bootstrapMarker: "THREADMESH_PROACTIVE_A_READY",
+      adapterIdempotencyKey: "idem_codex_proactive_bootstrap01",
     });
     const handled = [];
     const result = await adapter.runAutonomousToolTurn({
