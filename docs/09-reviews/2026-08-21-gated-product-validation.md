@@ -8,8 +8,9 @@ agent-safety, and adapter-implementability perspectives. All three initially
 returned **request changes**. These reviews guide Draft PR #45 but are not
 organizationally independent external reviews and do not count toward issue #7.
 
-After two remediation rounds, all three lanes independently approved exact
-commit `84299b433ab5b6206088593c541f9716eb58bd76` for the conservative #45
+After the remediation and pre-real-run hardening rounds, all three lanes
+independently approved exact commit
+`cf674bca1c2052b5572a8f603d9d366dfd335b69` for the conservative #45
 experimental prototype. This is not normative M0 approval, does not count
 toward issue #7, and does not authorize a real model turn before the external
 gate and synchronized-main requirements are satisfied.
@@ -73,18 +74,17 @@ remain blockers for broader production claims:
   ACP session listing;
 - ordinary prompt provenance does not establish a provider-native lower-priority
   role, and ThreadMesh does not supply an OS sandbox.
-- admission and mailbox recovery limitations above remain production work; the
-  strict child-result projection, ISO timestamp validation, and
-  adapter-kind-specific cleanup/evidence checks are now implemented as
-  pre-real-run hardening after the approval target.
+- the projected result trusts the child loaded from the exact verified checkout;
+  a future hostile-worker boundary should add field-semantic product schemas and
+  reject contradictory input error arrays rather than merely projecting them
+  away.
 
 ## Verification snapshot
 
-At exact approved commit `84299b433ab5b6206088593c541f9716eb58bd76`,
-the candidate passed 14 schemas, 55 schema cases, 7 transition cases, and 117
-unit/subtests. The subsequent strict-result projection candidate raises that to
-118 and awaits focused internal re-review. Fake-all passes all three product
-fixtures, dependency audit reports zero vulnerabilities, and PR #45 conformance
-and link checks are green. The checked-in M0 manifest remains `awaiting` with
-zero qualifying external reviews and the verifier truthfully exits 3, so real
-model execution remains `not-run`.
+At exact approved commit `cf674bca1c2052b5572a8f603d9d366dfd335b69`,
+the candidate passes 14 schemas, 55 schema cases, 7 transition cases, and 118
+unit/subtests. Fake-all passes all three product fixtures, dependency audit
+reports zero vulnerabilities, and PR #45 conformance and link checks are green.
+The checked-in M0 manifest remains `awaiting` with zero qualifying external
+reviews and the verifier truthfully exits 3, so real model execution remains
+`not-run`.

@@ -202,10 +202,10 @@ two records resolve to qualifying GitHub machine blocks, the operator supplies
 the exact post-review acknowledgement, and a built-in-only bootstrap starts a
 fresh child from a detached worktree at clean verified GitHub `main`. Start and
 end snapshots must remain on the same SHA. Every legacy live alias delegates to
-this one path. Three independent internal lanes approved exact commit `84299b4`
-for this conservative experimental scope after a final regression bound child
-stdout to error/signal/status, exact product and repository state, and the
-pass-specific admission, marker, and cleanup result.
+this one path. Three independent internal lanes approved exact commit `cf674bc`
+for this conservative experimental scope after final regressions bound child
+stdout to error/signal/status, exact product and repository state, bounded
+public projection, and all four result states with product-specific cleanup.
 
 After M0 closes and the M1 stack is merged and revalidated:
 

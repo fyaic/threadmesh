@@ -39,7 +39,7 @@ maintainer organization.
 | Gemini CLI headless | Official package 0.56.0 integrity, required flags, isolated-home cleanup | Real no-model preflight passed |
 | Gemini live model behavior | Exact marker script requires explicit provider key | Not authorized, not run |
 | Multi-product admission | One mailbox/acceptance/claim/evidence path across ACP, Codex, and Gemini fakes | Stacked deterministic candidate |
-| Product validation runner | Built-in bootstrap, isolated exact-main worktree, start/end SHA checks, child exit/result binding, acknowledgement, marker, audit, and cleanup | Internally approved at `84299b4`; fake-all passed; live gated |
+| Product validation runner | Built-in bootstrap, isolated exact-main worktree, start/end SHA checks, bounded child evidence, acknowledgement, marker, audit, and cleanup | Three internal approvals at `cf674bc`; fake-all passed; live gated |
 | External-review gate | GitHub-authenticated canonical review/disposition blocks, merged-fix ancestry, reviewer diversity, and target ancestry | Mechanically awaiting 2 records |
 | Independent review | Three internal lanes complete; external reviewer packet and public template published | Awaiting two external verdicts |
 | Production authentication | Local static-token reference; no TLS/OAuth verifier supplied | Host integration required |
@@ -221,7 +221,8 @@ credential verification, safe interruption, managed backup expiry, or forensic
 erasure. The mailbox lease also remains task-scoped rather than worker-scoped,
 and crash recovery for a lost in-flight admission token still requires manual
 reconciliation. Strict public-result projection and adapter-kind-specific
-cleanup/evidence validation are implemented but still need independent review.
+cleanup/evidence validation are implemented and internally reviewed for the
+trusted exact-checkout child; a hostile-worker boundary is not claimed.
 
 ## Progress rule
 
