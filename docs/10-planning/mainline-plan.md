@@ -153,7 +153,9 @@ Immediate execution order on merged `main`:
 - rerun Kimi when quota permits;
 - run Gemini only with an explicitly authorized provider credential;
 - extend the passed Codex path from a fixed marker into a coordinator-mediated
-  A-to-B dependency suggestion against an already persisted receiver;
+  A-to-B dependency suggestion against an already persisted receiver; the
+  implementation now has a deterministic rehearsal and is awaiting its real
+  merged-main run under issue #53;
 - keep every live product on the common mailbox acceptance, durable admission
   claim, kind-specific evidence, and context-admitted audit path;
 - preserve the strict projected child-result schema, ISO timestamps, and
@@ -166,9 +168,10 @@ Immediate execution order on merged `main`:
 Codex completed the first real maintainer-experimental pass at `0dda5a7`,
 including exact marker, evidence, audit, and cleanup. Kimi is currently
 quota-blocked with cleanup verified; Gemini remains unstarted without an
-explicit credential. The next M2 threshold is one additional materially
-different harness pass, followed by the proactive dependency/interference case
-rather than more runner scaffolding.
+explicit credential. The next behavioral threshold is the real Codex proactive
+dependency run, followed by irrelevant-task and receiver-interference controls.
+The portability threshold remains one additional materially different harness
+pass rather than more runner scaffolding.
 
 Before production or parallel receiver replicas, add claimant-specific mailbox
 leases with expiry takeover, and a receiver-authenticated inspection and manual

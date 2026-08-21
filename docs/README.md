@@ -23,14 +23,15 @@ The documentation is organized from intent to implementation. New readers should
 17. [Adapter contract](05-adapters/adapter-contract.md)
 18. [Mock harness conformance kit](06-guides/mock-harness-conformance.md)
 19. [Multi-product admission conformance](06-guides/multi-product-admission-conformance.md)
-20. [Design reviews](09-reviews/README.md)
-21. [Real agent-product validation runbook](09-reviews/real-product-e2e-runbook.md)
-22. [Codex App Server experiment](05-adapters/codex-app-server.md)
-23. [Codex App Server preflight](09-reviews/2026-08-20-codex-app-server-preflight.md)
-24. [Gemini CLI experiment](05-adapters/gemini-cli.md)
-25. [Third-harness selection](09-reviews/2026-08-20-third-harness-selection.md)
-26. [M0 external reviewer packet](09-reviews/m0-external-reviewer-packet.md)
-27. [Mainline plan](10-planning/mainline-plan.md)
+20. [Proactive Codex A-to-B validation](06-guides/proactive-codex-validation.md)
+21. [Design reviews](09-reviews/README.md)
+22. [Real agent-product validation runbook](09-reviews/real-product-e2e-runbook.md)
+23. [Codex App Server experiment](05-adapters/codex-app-server.md)
+24. [Codex App Server preflight](09-reviews/2026-08-20-codex-app-server-preflight.md)
+25. [Gemini CLI experiment](05-adapters/gemini-cli.md)
+26. [Third-harness selection](09-reviews/2026-08-20-third-harness-selection.md)
+27. [M0 external reviewer packet](09-reviews/m0-external-reviewer-packet.md)
+28. [Mainline plan](10-planning/mainline-plan.md)
 
 ## Directory guide
 

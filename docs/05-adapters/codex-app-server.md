@@ -14,12 +14,15 @@ Primary reference: [official Codex App Server documentation](https://developers.
 
 - `initialize` followed by `initialized`;
 - `thread/start`, `thread/resume`, and exact-target `thread/delete`;
+- experimental `dynamicTools` registration and bounded `item/tool/call`
+  handling for the proactive A-to-B validation;
 - a local bootstrap turn for persistence, plus accepted suggestion admission
   through `turn/start`;
 - bounded `item/agentMessage/delta` aggregation;
 - exact `turn/completed` correlation by thread and turn ID;
 - denial of every server-initiated approval, permission, elicitation, dynamic
-  tool, and structured-input request;
+  tool outside the explicitly installed proactive handlers, and structured-input
+  request;
 - absolute command/cwd validation, a minimal environment allowlist, timeout
   termination, bounded stderr, and typed failure categories.
 
@@ -106,3 +109,6 @@ evidence and the gate are recorded in the
 
 The post-gate coordinator-mediated command and cleanup contract are documented
 in the [real product runbook](../09-reviews/real-product-e2e-runbook.md).
+The model-selected sender experiment and its narrower proof boundary are
+documented in the
+[proactive Codex validation guide](../06-guides/proactive-codex-validation.md).

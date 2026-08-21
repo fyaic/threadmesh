@@ -39,7 +39,10 @@ function completeTurn(turn) {
       threadId: turn.threadId,
       turnId: turn.turnId,
       itemId: "fake-agent-message",
-      delta: process.env.FAKE_CODEX_EXACT_MARKER ?? `FAKE_CODEX:${turn.prompt}`,
+      delta: process.env.FAKE_CODEX_EXACT_MARKER ??
+        (turn.autonomousCompleted
+          ? (process.env.FAKE_CODEX_AUTONOMOUS_MARKER ?? "THREADMESH_PROACTIVE_A_SENT")
+          : `FAKE_CODEX:${turn.prompt}`),
     },
   });
   send({
@@ -90,7 +93,10 @@ lines.on("line", async (line) => {
   if (message.method === "thread/start") {
     const threadId = `fake-thread-${randomUUID()}`;
     const state = readState();
-    state.threads[threadId] = { created: true };
+    state.threads[threadId] = {
+      created: true,
+      dynamicTools: message.params.dynamicTools ?? [],
+    };
     writeState(state);
     send({ id: message.id, result: threadResponse(threadId) });
     return;
@@ -136,7 +142,30 @@ lines.on("line", async (line) => {
       id: message.id,
       result: { turn: { id: turnId, items: [], status: "inProgress" } },
     });
-    if (process.env.FAKE_CODEX_SERVER_REQUEST === "1") {
+    if (process.env.FAKE_CODEX_AUTONOMOUS_TOOL === "1") {
+      if (process.env.FAKE_CODEX_UNEXPECTED_TOOL === "1") {
+        send({
+          method: "item/started",
+          params: {
+            threadId: pendingTurn.threadId,
+            turnId,
+            item: { id: `item-command-${turnId}`, type: "commandExecution" },
+          },
+        });
+      }
+      pendingTurn.dynamicPhase = "related";
+      send({
+        id: `fake-dynamic-related-${turnId}`,
+        method: "item/tool/call",
+        params: {
+          threadId: pendingTurn.threadId,
+          turnId,
+          callId: `call-related-${turnId}`,
+          tool: "threadmesh_related_tasks",
+          arguments: {},
+        },
+      });
+    } else if (process.env.FAKE_CODEX_SERVER_REQUEST === "1") {
       send({
         id: "fake-server-request-1",
         method: "item/tool/requestUserInput",
@@ -150,6 +179,39 @@ lines.on("line", async (line) => {
   }
 
   if (message.id === "fake-server-request-1" && message.error && pendingTurn) {
+    completeTurn(pendingTurn);
+    pendingTurn = null;
+    return;
+  }
+
+  if (
+    pendingTurn?.dynamicPhase === "related" &&
+    message.id === `fake-dynamic-related-${pendingTurn.turnId}`
+  ) {
+    pendingTurn.dynamicPhase = "send";
+    send({
+      id: `fake-dynamic-send-${pendingTurn.turnId}`,
+      method: "item/tool/call",
+      params: {
+        threadId: pendingTurn.threadId,
+        turnId: pendingTurn.turnId,
+        callId: `call-send-${pendingTurn.turnId}`,
+        tool: "threadmesh_send_suggestion",
+        arguments: {
+          targetTaskId: "task_proactive_b",
+          content: "Reply with exactly THREADMESH_PROACTIVE_B_OK and do not use tools.",
+          reason: "The release decision depends on B's result.",
+        },
+      },
+    });
+    return;
+  }
+
+  if (
+    pendingTurn?.dynamicPhase === "send" &&
+    message.id === `fake-dynamic-send-${pendingTurn.turnId}`
+  ) {
+    pendingTurn.autonomousCompleted = true;
     completeTurn(pendingTurn);
     pendingTurn = null;
   }

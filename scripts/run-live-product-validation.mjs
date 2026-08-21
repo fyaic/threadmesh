@@ -12,16 +12,19 @@ const REPOSITORY = "fyaic/threadmesh";
 const REVIEW_TARGET = "265e461f1b8714c56f7fe817795b81d895f732c6";
 const PRODUCT_ADAPTERS = Object.freeze({
   codex: "codex-app-server",
+  "codex-proactive": "codex-app-server",
   kimi: "acp-session",
   gemini: "gemini-headless",
 });
 const EVIDENCE_KEYS = Object.freeze({
   codex: ["kind", "snapshotDigest", "threadId", "turnId", "turnStatus"],
+  "codex-proactive": ["kind", "snapshotDigest", "threadId", "turnId", "turnStatus"],
   kimi: ["kind", "sessionId", "snapshotDigest", "stopReason"],
   gemini: ["exitCode", "kind", "resultStatus", "sessionId", "snapshotDigest", "toolUseCount"],
 });
 const METADATA_KEYS = Object.freeze({
   codex: ["userAgent", "model", "modelProvider"],
+  "codex-proactive": ["userAgent", "model", "modelProvider"],
   kimi: ["protocolVersion", "agentName", "agentVersion"],
   gemini: ["version", "interface", "approvalMode", "sandboxRequested"],
 });
@@ -214,6 +217,7 @@ function projectCleanup(productId, cleanup, { requireComplete }) {
   if (requireComplete && (cleanup.attempted !== true || cleanup.complete !== true)) return null;
   const productFields = {
     codex: ["threadDeleted"],
+    "codex-proactive": ["threadDeleted", "aThreadDeleted", "bThreadDeleted"],
     kimi: ["sessionDeleted", "absenceVerified"],
     gemini: ["isolatedHomeRemoved"],
   }[productId] ?? [];
@@ -274,6 +278,10 @@ function projectLiveChildResult(result, {
     !/^sha256:[a-f0-9]{64}$/.test(result.adapterSnapshotDigest ?? "") ||
     !metadata || !cleanup
   ) return null;
+  const proactive = productId === "codex-proactive"
+    ? projectProactiveResult(result)
+    : null;
+  if (productId === "codex-proactive" && !proactive) return null;
   return {
     ...projected,
     messageId: result.messageId,
@@ -287,6 +295,30 @@ function projectLiveChildResult(result, {
     adapterSnapshotDigest: result.adapterSnapshotDigest,
     productMetadata: metadata,
     cleanup,
+    ...(proactive ? { proactive } : {}),
+  };
+}
+
+function projectProactiveResult(result) {
+  if (
+    result.modelSelectedCommunication !== true || result.scriptedSubmitCount !== 0 ||
+    result.relatedTaskCalls !== 1 || result.sendCalls !== 1 ||
+    result.nonThreadMeshToolCalls !== 0 ||
+    result.aMarkerMatched !== true || result.bMarkerMatched !== true ||
+    JSON.stringify(result.aToolCalls) !== JSON.stringify([
+      "threadmesh_related_tasks",
+      "threadmesh_send_suggestion",
+    ])
+  ) return null;
+  return {
+    modelSelectedCommunication: true,
+    scriptedSubmitCount: 0,
+    relatedTaskCalls: 1,
+    sendCalls: 1,
+    nonThreadMeshToolCalls: 0,
+    aMarkerMatched: true,
+    bMarkerMatched: true,
+    aToolCalls: [...result.aToolCalls],
   };
 }
 
@@ -342,7 +374,7 @@ function main() {
   const allowMaintainerExperimental =
     process.env.THREADMESH_MAINTAINER_EXPERIMENTAL_ACK === MAINTAINER_EXPERIMENTAL_ACK;
   let result;
-  if (!["codex", "kimi", "gemini"].includes(productId)) {
+  if (!["codex", "codex-proactive", "kimi", "gemini"].includes(productId)) {
     result = stableResult(productId ?? null, "usage", startedAt);
   } else if (process.env.THREADMESH_LIVE_E2E_ACK !== ACK) {
     result = {

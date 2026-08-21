@@ -57,7 +57,7 @@ function childEnvironment(overrides = {}) {
   return { ...environment, ...overrides };
 }
 
-function initializationRequest() {
+function initializationRequest({ experimentalApi = false } = {}) {
   return {
     clientInfo: {
       name: "threadmesh-codex-app-server-adapter",
@@ -65,7 +65,7 @@ function initializationRequest() {
       version: "0.0.0",
     },
     capabilities: {
-      experimentalApi: false,
+      experimentalApi,
       mcpServerOpenaiFormElicitation: false,
       requestAttestation: false,
     },
@@ -89,7 +89,12 @@ function projectInitialization(result) {
   return { ...projection, snapshotDigest: sha256Digest(projection) };
 }
 
-function threadStartParams(cwd, { ephemeral = false, model = null } = {}) {
+function threadStartParams(cwd, {
+  ephemeral = false,
+  model = null,
+  dynamicTools = null,
+  developerInstructions = null,
+} = {}) {
   return {
     cwd,
     approvalPolicy: "never",
@@ -97,7 +102,28 @@ function threadStartParams(cwd, { ephemeral = false, model = null } = {}) {
     ephemeral,
     serviceName: "threadmesh",
     ...(model ? { model } : {}),
+    ...(dynamicTools ? { dynamicTools } : {}),
+    ...(developerInstructions ? { developerInstructions } : {}),
   };
+}
+
+function assertDynamicTools(dynamicTools) {
+  if (
+    !Array.isArray(dynamicTools) || dynamicTools.length < 1 || dynamicTools.length > 4 ||
+    Buffer.byteLength(canonicalJson(dynamicTools)) > 32 * 1024
+  ) throw codedError("codex_app_server_dynamic_tools_invalid");
+  const names = new Set();
+  for (const tool of dynamicTools) {
+    if (
+      tool?.type !== "function" || typeof tool.name !== "string" ||
+      !/^[a-zA-Z][a-zA-Z0-9_]{0,63}$/.test(tool.name) || names.has(tool.name) ||
+      typeof tool.description !== "string" || tool.description.length < 1 ||
+      tool.description.length > 1000 || !tool.inputSchema ||
+      typeof tool.inputSchema !== "object" || Array.isArray(tool.inputSchema)
+    ) throw codedError("codex_app_server_dynamic_tools_invalid");
+    names.add(tool.name);
+  }
+  return names;
 }
 
 function threadResumeParams(threadId, cwd) {
@@ -144,6 +170,10 @@ function validateEnvelopeAdmission(envelope, admission) {
 
 function validateAdmission(envelope, admission, adapterRef) {
   validateEnvelopeAdmission(envelope, admission);
+  validateAdapterRef(adapterRef);
+}
+
+function validateAdapterRef(adapterRef) {
   if (
     !adapterRef ||
     adapterRef.kind !== "codex-app-server" ||
@@ -212,7 +242,9 @@ class JsonLinePeer {
     this.notifications = [];
     this.waiters = new Set();
     this.notificationHandlers = new Set();
+    this.requestHandlers = new Map();
     this.deniedRequestCount = 0;
+    this.handledRequestCount = 0;
     this.notificationCount = 0;
     this.closed = false;
     this.failure = null;
@@ -245,6 +277,14 @@ class JsonLinePeer {
   onNotification(handler) {
     this.notificationHandlers.add(handler);
     return () => this.notificationHandlers.delete(handler);
+  }
+
+  onRequest(method, handler) {
+    if (typeof method !== "string" || typeof handler !== "function") {
+      throw codedError("codex_app_server_request_handler_invalid");
+    }
+    this.requestHandlers.set(method, handler);
+    return () => this.requestHandlers.delete(method);
   }
 
   waitForNotification(method, predicate = () => true) {
@@ -306,11 +346,18 @@ class JsonLinePeer {
     }
 
     if (typeof message.method === "string" && Object.hasOwn(message, "id")) {
-      this.deniedRequestCount += 1;
-      if (this.deniedRequestCount > SERVER_REQUEST_LIMIT) {
+      const totalRequests = this.deniedRequestCount + this.handledRequestCount + 1;
+      if (totalRequests > SERVER_REQUEST_LIMIT) {
         this.#fail(codedError("codex_app_server_request_limit"));
         return;
       }
+      const handler = this.requestHandlers.get(message.method);
+      if (handler) {
+        this.handledRequestCount += 1;
+        void this.#resolveServerRequest(message, handler);
+        return;
+      }
+      this.deniedRequestCount += 1;
       this.#send({
         id: message.id,
         error: {
@@ -340,6 +387,23 @@ class JsonLinePeer {
     }
 
     this.#fail(codedError("codex_app_server_protocol_error", "unknown message shape"));
+  }
+
+  async #resolveServerRequest(message, handler) {
+    try {
+      const result = await handler(message.params);
+      this.#send({ id: message.id, result });
+    } catch (error) {
+      this.#send({
+        id: message.id,
+        error: {
+          code: -32004,
+          message: typeof error?.code === "string"
+            ? error.code
+            : "ThreadMesh dynamic tool failed",
+        },
+      });
+    }
   }
 
   #fail(error) {
@@ -380,6 +444,116 @@ export class CodexAppServerAdapter {
       const initialization = await this.#initialize(peer);
       const response = await peer.request("thread/start", threadStartParams(cwd, { ephemeral, model }));
       return projectThread(response, initialization);
+    });
+  }
+
+  async createDynamicToolThread({
+    command,
+    args = ["app-server", "--listen", "stdio://"],
+    cwd,
+    env = {},
+    dynamicTools,
+    developerInstructions,
+    model = null,
+    timeoutMs = 15_000,
+  }) {
+    assertInvocation(command, args, cwd, env);
+    assertDynamicTools(dynamicTools);
+    if (typeof developerInstructions !== "string" || developerInstructions.length < 1) {
+      throw codedError("codex_app_server_developer_instructions_invalid");
+    }
+    return this.#withServer({ command, args, cwd, env, timeoutMs }, async (peer) => {
+      const initialization = await this.#initialize(peer, { experimentalApi: true });
+      const response = await peer.request("thread/start", threadStartParams(cwd, {
+        ephemeral: false,
+        model,
+        dynamicTools,
+        developerInstructions,
+      }));
+      return projectThread(response, initialization);
+    });
+  }
+
+  async runAutonomousToolTurn({
+    command,
+    args = ["app-server", "--listen", "stdio://"],
+    cwd,
+    env = {},
+    adapterRef,
+    prompt,
+    dynamicTools,
+    onToolCall,
+    adapterIdempotencyKey,
+    timeoutMs = 120_000,
+  }) {
+    assertInvocation(command, args, cwd, env);
+    const allowedNames = assertDynamicTools(dynamicTools);
+    if (typeof prompt !== "string" || prompt.length < 1 || prompt.length > 20_000) {
+      throw codedError("codex_app_server_prompt_invalid");
+    }
+    if (typeof onToolCall !== "function") {
+      throw codedError("codex_app_server_tool_handler_invalid");
+    }
+    validateAdapterRef(adapterRef);
+    if (typeof adapterIdempotencyKey !== "string" || adapterIdempotencyKey.length < 1) {
+      throw codedError("codex_app_server_idempotency_key_invalid");
+    }
+    return this.#withServer({ command, args, cwd, env, timeoutMs }, async (peer) => {
+      const initialization = await this.#initialize(peer, { experimentalApi: true });
+      if (initialization.snapshotDigest !== adapterRef.snapshotDigest) {
+        throw codedError("codex_app_server_snapshot_mismatch");
+      }
+      await peer.request("thread/resume", threadResumeParams(adapterRef.threadId, cwd));
+      const calls = [];
+      const forbiddenToolItems = new Set();
+      const stopInspecting = peer.onNotification(({ method, params }) => {
+        if (
+          (method === "item/started" || method === "item/completed") &&
+          params?.threadId === adapterRef.threadId &&
+          [
+            "commandExecution",
+            "fileChange",
+            "mcpToolCall",
+            "collabToolCall",
+            "webSearch",
+            "imageView",
+          ].includes(params?.item?.type)
+        ) forbiddenToolItems.add(params.item.type);
+      });
+      const stopHandling = peer.onRequest("item/tool/call", async (params) => {
+        if (
+          params?.threadId !== adapterRef.threadId || typeof params.turnId !== "string" ||
+          typeof params.callId !== "string" || !allowedNames.has(params.tool)
+        ) throw codedError("codex_app_server_dynamic_tool_call_invalid");
+        if (calls.length >= 4) throw codedError("codex_app_server_dynamic_tool_budget_exceeded");
+        const value = await onToolCall({ tool: params.tool, arguments: params.arguments });
+        const text = canonicalJson(value);
+        if (Buffer.byteLength(text) > 16 * 1024) {
+          throw codedError("codex_app_server_dynamic_tool_output_too_large");
+        }
+        calls.push({
+          tool: params.tool,
+          argumentsDigest: sha256Digest(params.arguments),
+          outputDigest: sha256Digest(value),
+        });
+        return { success: true, contentItems: [{ type: "inputText", text }] };
+      });
+      try {
+        const turn = await this.#runTurn(
+          peer,
+          initialization,
+          adapterRef,
+          prompt,
+          adapterIdempotencyKey,
+        );
+        if (forbiddenToolItems.size > 0) {
+          throw codedError("codex_app_server_unexpected_autonomous_tool");
+        }
+        return { ...turn, toolCalls: calls, nonThreadMeshToolCalls: 0 };
+      } finally {
+        stopInspecting();
+        stopHandling();
+      }
     });
   }
 
@@ -639,6 +813,7 @@ export class CodexAppServerAdapter {
           userAgent: initialization.userAgent,
           snapshotDigest: initialization.snapshotDigest,
           serverRequestDeniedCount: peer.deniedRequestCount,
+          serverRequestHandledCount: peer.handledRequestCount,
           notificationCount: peer.notificationCount,
           deltaCount: output.deltaCount,
         },
@@ -648,9 +823,9 @@ export class CodexAppServerAdapter {
     }
   }
 
-  async #initialize(peer) {
+  async #initialize(peer, options = {}) {
     const initialization = projectInitialization(
-      await peer.request("initialize", initializationRequest()),
+      await peer.request("initialize", initializationRequest(options)),
     );
     peer.notify("initialized");
     return initialization;

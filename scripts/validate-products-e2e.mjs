@@ -11,6 +11,12 @@ import {
 } from "../src/validation/product-drivers.mjs";
 import { runCoordinatorProductScenario } from "../src/validation/coordinator-product-scenario.mjs";
 import {
+  PROACTIVE_A_MARKER,
+  PROACTIVE_B_BOOTSTRAP_MARKER,
+  PROACTIVE_B_MARKER,
+  runProactiveCodexScenario,
+} from "../src/validation/proactive-codex-scenario.mjs";
+import {
   verifyExternalReviewGate,
   verifyIsolatedExecutionState,
 } from "../src/validation/external-review-gate.mjs";
@@ -166,6 +172,34 @@ export async function runFakeAll() {
   }
 }
 
+export async function runFakeProactive() {
+  const startedAt = new Date().toISOString();
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "threadmesh-proactive-e2e-"));
+  const baseEnv = { FAKE_CODEX_STATE_FILE: path.join(directory, "codex-state.json") };
+  try {
+    return {
+      mode: "fake-proactive",
+      startedAt,
+      ...(await runProactiveCodexScenario({
+        command: process.execPath,
+        args: [fixture("fake-codex-app-server.mjs")],
+        cwd: root,
+        env: baseEnv,
+        bootstrapEnv: { ...baseEnv, FAKE_CODEX_EXACT_MARKER: PROACTIVE_B_BOOTSTRAP_MARKER },
+        autonomousEnv: {
+          ...baseEnv,
+          FAKE_CODEX_AUTONOMOUS_TOOL: "1",
+          FAKE_CODEX_AUTONOMOUS_MARKER: PROACTIVE_A_MARKER,
+        },
+        receiverEnv: { ...baseEnv, FAKE_CODEX_EXACT_MARKER: PROACTIVE_B_MARKER },
+      })),
+      finishedAt: new Date().toISOString(),
+    };
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+}
+
 export async function runLive(productId, env = process.env) {
   const startedAt = new Date().toISOString();
   if (env.THREADMESH_LIVE_E2E_ACK !== LIVE_E2E_ACK) {
@@ -216,7 +250,13 @@ export async function runLive(productId, env = process.env) {
       reviewGate,
       authorization,
       repository,
-      ...(await runOne(productId, liveDriver(productId, env))),
+      ...(productId === "codex-proactive"
+        ? await runProactiveCodexScenario({
+            command: env.CODEX_BIN ?? "/opt/homebrew/bin/codex",
+            cwd: root,
+            model: env.CODEX_PROACTIVE_MODEL ?? null,
+          })
+        : await runOne(productId, liveDriver(productId, env))),
       finishedAt: new Date().toISOString(),
     };
   } catch (error) {
@@ -236,13 +276,14 @@ async function main() {
   const [mode, productId] = process.argv.slice(2);
   let result;
   if (mode === "--fake-all" && !productId) result = await runFakeAll();
-  else if (mode === "--isolated-live" && ["codex", "kimi", "gemini"].includes(productId)) {
+  else if (mode === "--fake-proactive" && !productId) result = await runFakeProactive();
+  else if (mode === "--isolated-live" && ["codex", "codex-proactive", "kimi", "gemini"].includes(productId)) {
     result = await runLive(productId);
   } else {
     result = {
       state: "not-run",
       code: "usage",
-      usage: "node scripts/validate-products-e2e.mjs --fake-all | --isolated-live <codex|kimi|gemini>",
+      usage: "node scripts/validate-products-e2e.mjs --fake-all | --fake-proactive | --isolated-live <codex|codex-proactive|kimi|gemini>",
     };
   }
   console.log(JSON.stringify(result, null, 2));

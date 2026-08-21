@@ -8,6 +8,7 @@ import {
   MAINTAINER_EXPERIMENTAL_ACK,
   publicProductErrorCode,
   runFakeAll,
+  runFakeProactive,
   runLive,
 } from "../scripts/validate-products-e2e.mjs";
 import {
@@ -70,6 +71,29 @@ function validCodexChildResult(sha) {
   };
 }
 
+function validProactiveChildResult(sha) {
+  const result = validCodexChildResult(sha);
+  result.productId = "codex-proactive";
+  result.cleanup = {
+    attempted: true,
+    complete: true,
+    threadDeleted: true,
+    aThreadDeleted: true,
+    bThreadDeleted: true,
+  };
+  Object.assign(result, {
+    modelSelectedCommunication: true,
+    scriptedSubmitCount: 0,
+    relatedTaskCalls: 1,
+    sendCalls: 1,
+    nonThreadMeshToolCalls: 0,
+    aMarkerMatched: true,
+    bMarkerMatched: true,
+    aToolCalls: ["threadmesh_related_tasks", "threadmesh_send_suggestion"],
+  });
+  return result;
+}
+
 test("live product validation is refused without the exact review acknowledgement", async () => {
   const absent = await runLive("codex", {});
   assert.equal(absent.mode, "live");
@@ -125,6 +149,17 @@ test("one runner admits and cleans all three fake products", async () => {
     assert.equal(product.cleanup.attempted, true);
     assert.equal(product.cleanup.complete, true);
   }
+});
+
+test("the proactive fake proves model-selected send and two-thread cleanup", async () => {
+  const result = await runFakeProactive();
+  assert.equal(result.state, "passed");
+  assert.equal(result.productId, "codex-proactive");
+  assert.equal(result.modelSelectedCommunication, true);
+  assert.equal(result.scriptedSubmitCount, 0);
+  assert.equal(result.sendCalls, 1);
+  assert.equal(result.cleanup.aThreadDeleted, true);
+  assert.equal(result.cleanup.bThreadDeleted, true);
 });
 
 test("exact marker comparison rejects leading or trailing whitespace", async () => {
@@ -219,6 +254,25 @@ test("live bootstrap accepts only a clean exact-SHA child result with a matching
   assert.equal(validation.result.repository.expectedSha, sha);
   assert.equal(validation.result.cleanup.threadDeleted, true);
   assert.equal(Object.hasOwn(validation.result.reviewGate, "errors"), false);
+});
+
+test("live bootstrap strictly binds autonomous A to B evidence", () => {
+  const sha = "a".repeat(40);
+  const result = validProactiveChildResult(sha);
+  const accepted = validateIsolatedLiveChild({
+    stdout: JSON.stringify(result), status: 0, signal: null, error: undefined,
+  }, { productId: "codex-proactive", executionSha: sha });
+  assert.equal(accepted.accepted, true);
+  assert.deepEqual(accepted.result.proactive.aToolCalls, [
+    "threadmesh_related_tasks",
+    "threadmesh_send_suggestion",
+  ]);
+  assert.equal(accepted.result.cleanup.aThreadDeleted, true);
+  result.scriptedSubmitCount = 1;
+  const rejected = validateIsolatedLiveChild({
+    stdout: JSON.stringify(result), status: 0, signal: null, error: undefined,
+  }, { productId: "codex-proactive", executionSha: sha });
+  assert.equal(rejected.accepted, false);
 });
 
 test("live bootstrap accepts maintainer experiment only when the parent authorizes it", () => {
