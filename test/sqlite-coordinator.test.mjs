@@ -768,6 +768,73 @@ test("enforces task ownership for user-issued grants", () => {
   }
 });
 
+test("approves a proposal and installs its grant in one immediate transaction", () => {
+  const coordinator = new SqliteCoordinator({ clock: () => NOW });
+  const proposal = {
+    specVersion: "0.0-draft",
+    proposalId: "proposal_atomic_grant01",
+    source: { taskId: "task_sender", incarnationId: "inc_sender01" },
+    target: { taskId: "task_receiver", incarnationId: "inc_receiver01" },
+    relationshipType: "peer",
+    requestedIntents: ["suggest"],
+    requestedDeliveryModes: ["checkpoint-offer"],
+    requestedSummaryVisibility: "coordination",
+    reason: "Exercise atomic proposal approval.",
+    proposedBy: {
+      actorType: "agent",
+      task: { taskId: "task_sender", incarnationId: "inc_sender01" },
+    },
+    createdAt: "2026-08-20T08:30:00Z",
+    expiresAt: "2026-08-20T10:00:00Z",
+  };
+  try {
+    coordinator.registerTask(
+      { taskId: "task_sender", incarnationId: "inc_sender01", harness: "a" },
+      owner,
+    );
+    coordinator.registerTask(
+      { taskId: "task_receiver", incarnationId: "inc_receiver01", harness: "b" },
+      owner,
+    );
+    coordinator.proposeRelationship(proposal, senderPrincipal);
+    coordinator.db.exec(`
+      CREATE TRIGGER reject_proposal_approval
+      BEFORE UPDATE OF status ON relationship_proposals
+      WHEN NEW.status = 'approved'
+      BEGIN
+        SELECT RAISE(ABORT, 'injected approval failure');
+      END
+    `);
+    assert.throws(() => coordinator.issueGrant(
+      grant(),
+      { ...grantDecision, proposalId: proposal.proposalId },
+      owner,
+    ));
+    assert.equal(coordinator.db.prepare("SELECT COUNT(*) AS count FROM grants").get().count, 0);
+    assert.equal(
+      coordinator.db
+        .prepare("SELECT status FROM relationship_proposals WHERE proposal_id = ?")
+        .get(proposal.proposalId).status,
+      "pending",
+    );
+    coordinator.db.exec("DROP TRIGGER reject_proposal_approval");
+    coordinator.issueGrant(
+      grant(),
+      { ...grantDecision, proposalId: proposal.proposalId },
+      owner,
+    );
+    assert.equal(coordinator.db.prepare("SELECT COUNT(*) AS count FROM grants").get().count, 1);
+    assert.equal(
+      coordinator.db
+        .prepare("SELECT status FROM relationship_proposals WHERE proposal_id = ?")
+        .get(proposal.proposalId).status,
+      "approved",
+    );
+  } finally {
+    coordinator.close();
+  }
+});
+
 test("JSON provenance keeps adversarial delimiters inside the content field", () => {
   const coordinator = createCoordinator();
   try {
