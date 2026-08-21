@@ -11,10 +11,10 @@ admission claim, adapter boundary, exact evidence confirmation, and audit path.
 Tracked by [issue #44](https://github.com/fyaic/threadmesh/issues/44). This is
 an experimental validation procedure, not an M0 normative requirement.
 
-## Mechanical gates
+## Authorization modes
 
-Real model execution is disabled by default. Before setting the acknowledgement,
-a maintainer must verify all of the following:
+Real model execution is disabled by default. The preferred
+`external-review` mode requires a maintainer to verify all of the following:
 
 1. [M0 issue #7](https://github.com/fyaic/threadmesh/issues/7) contains two
    qualifying independent verdicts, including one reviewer outside the
@@ -58,6 +58,26 @@ With the variable but without valid records, it reports
 `not-run/external_review_records_incomplete`. Both outcomes occur before an
 adapter or model starts.
 
+### Maintainer-authorized experiment
+
+The maintainer may explicitly authorize a bounded, non-normative experiment
+before M0 review closes. This is a fast path for learning from real products;
+it is not an external review, does not satisfy or close issue #7, and cannot be
+reported as normative acceptance evidence. It requires both acknowledgements:
+
+```sh
+export THREADMESH_LIVE_E2E_ACK=issue-7-approved-for-live-product-validation
+export THREADMESH_MAINTAINER_EXPERIMENTAL_ACK=maintainer-approved-for-experimental-live-validation
+```
+
+All other execution controls remain mandatory: clean synchronized `main`, an
+isolated exact-SHA worktree, the shared coordinator path, strict result
+projection, and verified cleanup. Results carry
+`authorization.mode=maintainer-experimental` and
+`authorization.normativeReviewSatisfied=false`; the embedded review gate also
+remains unsatisfied. A missing or misspelled second acknowledgement fails
+closed before a model starts.
+
 ## Deterministic rehearsal
 
 Run all three fake product endpoints through the same runner:
@@ -83,7 +103,7 @@ endpoints. It does not prove useful model behavior.
 
 ## Live commands
 
-After the gate is satisfied, run one product at a time. The legacy
+After either authorization mode is active, run one product at a time. The legacy
 `smoke:*:live` aliases resolve to these same commands; there is no second live
 implementation:
 
@@ -123,6 +143,7 @@ For every live attempt, record:
 - product version, sanitized product metadata, and capability snapshot digest;
 - UTC start and finish time;
 - result state and stable reason code;
+- authorization mode and whether normative review was satisfied;
 - message ID, adapter kind, bounded evidence keys, and disposition;
 - cleanup attempt and exact absence/deletion result; and
 - links to CI and the relevant adapter issue.

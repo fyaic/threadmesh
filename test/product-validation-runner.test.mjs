@@ -3,7 +3,9 @@ import { spawnSync } from "node:child_process";
 import test from "node:test";
 
 import {
+  evaluateLiveAuthorization,
   LIVE_E2E_ACK,
+  MAINTAINER_EXPERIMENTAL_ACK,
   publicProductErrorCode,
   runFakeAll,
   runLive,
@@ -35,6 +37,11 @@ function validCodexChildResult(sha) {
       externalReviewerCount: 1,
       perspectives: ["agent-safety", "distributed-systems"],
       errors: [],
+    },
+    authorization: {
+      mode: "external-review",
+      normativeReviewSatisfied: true,
+      issueUrl: "https://github.com/fyaic/threadmesh/issues/7",
     },
     repository: {
       satisfied: true,
@@ -83,6 +90,27 @@ test("operator acknowledgement cannot bypass incomplete review records", async (
   assert.equal(result.state, "not-run");
   assert.equal(result.code, "external_review_records_incomplete");
   assert.equal(result.reviewGate.reviewCount, 0);
+});
+
+test("maintainer experimental authorization is explicit and does not satisfy M0", () => {
+  const incompleteGate = {
+    satisfied: false,
+    scope: "m0-normative",
+    reviewTarget,
+    reviewCount: 0,
+    externalReviewerCount: 0,
+    perspectives: [],
+    errors: ["required review count not met"],
+  };
+  assert.equal(evaluateLiveAuthorization(incompleteGate, {}), null);
+  const authorization = evaluateLiveAuthorization(incompleteGate, {
+    THREADMESH_MAINTAINER_EXPERIMENTAL_ACK: MAINTAINER_EXPERIMENTAL_ACK,
+  });
+  assert.deepEqual(authorization, {
+    mode: "maintainer-experimental",
+    normativeReviewSatisfied: false,
+    issueUrl: "https://github.com/fyaic/threadmesh/issues/7",
+  });
 });
 
 test("one runner admits and cleans all three fake products", async () => {
@@ -191,6 +219,38 @@ test("live bootstrap accepts only a clean exact-SHA child result with a matching
   assert.equal(validation.result.repository.expectedSha, sha);
   assert.equal(validation.result.cleanup.threadDeleted, true);
   assert.equal(Object.hasOwn(validation.result.reviewGate, "errors"), false);
+});
+
+test("live bootstrap accepts maintainer experiment only when the parent authorizes it", () => {
+  const sha = "a".repeat(40);
+  const result = validCodexChildResult(sha);
+  result.reviewGate = {
+    satisfied: false,
+    scope: "m0-normative",
+    reviewTarget,
+    reviewCount: 0,
+    externalReviewerCount: 0,
+    perspectives: [],
+    errors: ["required review count not met"],
+  };
+  result.authorization = {
+    mode: "maintainer-experimental",
+    normativeReviewSatisfied: false,
+    issueUrl: "https://github.com/fyaic/threadmesh/issues/7",
+  };
+  const child = {
+    stdout: JSON.stringify(result), status: 0, signal: null, error: undefined,
+  };
+  assert.equal(validateIsolatedLiveChild(child, {
+    productId: "codex", executionSha: sha,
+  }).accepted, false);
+  const accepted = validateIsolatedLiveChild(child, {
+    productId: "codex", executionSha: sha, allowMaintainerExperimental: true,
+  });
+  assert.equal(accepted.accepted, true);
+  assert.equal(accepted.result.authorization.mode, "maintainer-experimental");
+  assert.equal(accepted.result.authorization.normativeReviewSatisfied, false);
+  assert.equal(accepted.result.reviewGate.satisfied, false);
 });
 
 test("live bootstrap rejects passed stdout when the child times out", () => {
