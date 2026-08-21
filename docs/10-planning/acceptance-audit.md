@@ -1,8 +1,9 @@
 # Milestone acceptance audit
 
-> Snapshot: 2026-08-20. Candidate implementation commit:
-> `cf67b98bcb786a348a0bcad331fbd0810209f40d`. Public `main` at the time of this
-> audit: `73c7234790bec286e637201fb87442116ea6a33a`.
+> Snapshot: 2026-08-21. Independent review target before remediation:
+> `510df05257ee6c0218b129c3a8a1c8067ed513c1`. The remediation is being prepared
+> in Draft PR #45 and remains candidate evidence until merged and revalidated on
+> current GitHub `main`.
 
 ## Status vocabulary
 
@@ -31,8 +32,11 @@ external-review records.
 | Every finding dispositioned | Cannot begin until reviews arrive | Pending |
 
 `npm run validate:review-gate` truthfully exits 3 while these records are
-missing. The live-product runner also requires a separate exact operator
-acknowledgement; neither mechanism can substitute for the other.
+missing. Qualifying records must resolve to real issue-#7 comments and match the
+GitHub author, association, timestamp, body digest, exact review target, lane,
+verdict, and findings. The live-product runner also requires a separate exact
+operator acknowledgement and clean local `main` equal to GitHub `main`; none of
+these mechanisms can substitute for another.
 
 ## M1 — Local reference coordinator
 
@@ -40,7 +44,7 @@ acknowledgement; neither mechanism can substitute for the other.
 |---|---|---|
 | #9 storage and migration | #28; `sqlite-storage-contract.md`; migration manifest, adoption, upgrade, rollback, drift, WAL, retention tests | Candidate-satisfied |
 | #10 registry, mailbox, audit | #29; atomic submit/audit, replay, expiry, restart, scoped enumeration tests through JSON-RPC | Candidate-satisfied |
-| #11 relationship policy | #30; fail-closed policy module, stable public denial, immediate reauthorization, revocation invalidation tests | Candidate-satisfied |
+| #11 relationship policy | #30 plus #45 remediation; fail-closed policy, stable denial, immediate reauthorization, revocation invalidation, atomic proposal-to-grant test | Candidate-satisfied; atomic fix must be propagated before #30 closure |
 | #12 dispatcher and disposition | #31; shared legal transition table, freshness/expiry CAS, durable idempotency key, outcome-unknown and reconciliation tests | Candidate-satisfied |
 | #13 stream and inspector | #32; restart-safe local cursor, complete provenance projection, authorization-aware redaction, deterministic snapshots | Candidate-satisfied |
 | #14 two harness profiles | #33; pull-mailbox and event-watching profiles, audit per transition, explicit degradation, deterministic database cleanup | Candidate-satisfied |
@@ -99,7 +103,7 @@ to this sequential merged-state proof.
 | Issue | Current evidence | Audit status |
 |---|---|---|
 | #42 generalized admission | #43 validates ACP, Codex, and Gemini adapter refs and strict bounded evidence over one claimed envelope | Candidate-satisfied |
-| #44 unified runner | #45 fake-all passes mailbox claim/acceptance, exact marker, confirmation, audit, and cleanup; live mode has dual review/operator gates | Candidate-satisfied implementation; real execution not-run |
+| #44 unified runner | #45 fake-all passes mailbox claim/acceptance, exact marker, confirmation, audit, and cleanup; every live alias shares GitHub-authenticated review, operator, and clean-main gates | Candidate-satisfied implementation; real execution not-run |
 
 ## Real-product evidence still required
 

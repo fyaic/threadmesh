@@ -58,9 +58,10 @@ The fake headless product covers:
 ## Live-model gate
 
 No Gemini provider credential is authorized for ThreadMesh. The adapter does
-not start login or create an account. `npm run smoke:gemini:live` requires an
-explicit `GEMINI_API_KEY`, uses an isolated home, plan mode, and sandbox request,
-and accepts only the exact untruncated marker with zero tool-use events.
+not start login or create an account. `npm run smoke:gemini:live` delegates to
+the common gated runner, requires an explicit `GEMINI_API_KEY`, uses an isolated
+home, plan mode, and sandbox request, and accepts only one successful terminal
+result with the exact untruncated marker and zero tool-use events.
 
 The real model scenario remains `not-run`, not blocked or passed. After #7 and
 the M1 stack merge, an explicitly authorized key can run the marker and the same

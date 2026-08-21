@@ -139,7 +139,14 @@ async function productCase(kind, directory) {
       admission: prepared.admission,
       sessionId: prepared.adapterRef.sessionId,
     }),
-    projectedKeys: ["exitCode", "kind", "sessionId", "snapshotDigest", "toolUseCount"],
+    projectedKeys: [
+      "exitCode",
+      "kind",
+      "resultStatus",
+      "sessionId",
+      "snapshotDigest",
+      "toolUseCount",
+    ],
   };
 }
 

@@ -31,8 +31,20 @@ const send = (event) => process.stdout.write(`${JSON.stringify(event)}\n`);
 
 send({ type: "init", session_id: sessionId, model: "fake-gemini" });
 if (process.env.FAKE_GEMINI_AUTH === "1") {
-  send({ type: "error", message: "Authentication required: set GEMINI_API_KEY" });
-  send({ type: "result", status: "error" });
+  send({
+    type: "result",
+    status: "error",
+    error: { type: "authentication", message: "Authentication required: set GEMINI_API_KEY" },
+  });
+  process.exit(0);
+}
+if (process.env.FAKE_GEMINI_RESULT_ERROR_WITH_MARKER === "1") {
+  send({ type: "message", role: "assistant", content: process.env.FAKE_GEMINI_EXACT_MARKER });
+  send({
+    type: "result",
+    status: "error",
+    error: { type: "authentication", message: "Authentication required after output" },
+  });
   process.exit(0);
 }
 if (process.env.FAKE_GEMINI_TOOL === "1") {

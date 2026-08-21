@@ -77,7 +77,7 @@ message in-flight for reconciliation; it is not automatically redelivered.
 The fake agent proves protocol and coordinator behavior, not Kimi model
 semantics. Disabling ACP client methods is also not an operating-system sandbox.
 
-The hardened live command is now separate and remains gated:
+The live alias remains gated and delegates to the common runner:
 
 ```sh
 npm test
@@ -85,8 +85,9 @@ npm run smoke:kimi
 npm run smoke:kimi:live
 ```
 
-The second command is the no-model lifecycle preflight. When M0/M1 are merged
-and Kimi quota is available, the third command passes only if the untruncated
+The second command is the no-model lifecycle preflight. When M0/M1 are merged,
+the checked-out repository is clean synchronized `main`, and Kimi quota is
+available, the third command passes only if the untruncated
 response is exactly `KIMI_THREADMESH_LIVE_OK`, the turn ends normally, and no
 permission was requested. It deletes the exact created session in `finally` and
 then verifies absence. Unexpected protocol, marker, or cleanup errors are

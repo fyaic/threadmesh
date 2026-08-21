@@ -155,6 +155,12 @@ from adapter-effect admission claims: the former coordinate receiver workers;
 the latter are the irreversible dispatch boundary described in the delivery
 semantics.
 
+The current trusted-process prototype does not bind the claim to a worker
+instance. Two replicas using the same task credential may receive the same
+token; only one can win acknowledgement CAS. Production worker coordination
+needs a claimant identity, idempotency key, busy result, and expiry-based
+takeover rule.
+
 ## Submission receipts and reconciliation
 
 The receiver prepares a submission, durably begins it, invokes the harness with

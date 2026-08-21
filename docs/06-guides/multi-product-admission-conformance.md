@@ -7,9 +7,10 @@ through three different adapter boundaries:
 |---|---|
 | `acp-session` | exact session, capability snapshot, `end_turn` |
 | `codex-app-server` | exact thread and turn, capability snapshot, completed turn |
-| `gemini-headless` | exact caller-selected session, capability snapshot, exit 0, zero tool use |
+| `gemini-headless` | exact caller-selected session, capability snapshot, one successful result, exit 0, zero tool use |
 
-The common flow is:
+Each adapter revalidates the canonical envelope and matching receiver acceptance
+at its own boundary. The common flow is:
 
 ```text
 registered target adapter
@@ -44,6 +45,8 @@ acknowledgement, exact marker matching, bounded audit projection, and exact
 product-resource cleanup for all three fake endpoints.
 
 The matrix uses fake product endpoints to prove coordinator/adapter semantics.
-It does not prove real model behavior. The mechanically gated live commands use
-the same runner and are documented in the
+It does not prove real model behavior. All live aliases use the same
+non-injectable runner. It also requires authenticated GitHub review-source
+verification plus a clean local `main` that matches GitHub `main`. The commands
+are documented in the
 [real product runbook](../09-reviews/real-product-e2e-runbook.md).

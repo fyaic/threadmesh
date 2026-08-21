@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -10,6 +12,7 @@ import {
   renderGeminiPeerSuggestion,
 } from "../src/adapters/gemini-headless.mjs";
 import { assertProtocolObject } from "../src/protocol-validator.mjs";
+import { geminiProductDriver } from "../src/validation/product-drivers.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const fixture = path.join(root, "test", "fixtures", "fake-gemini-cli.mjs");
@@ -64,6 +67,27 @@ test("probes the pinned Gemini headless surface without a model turn", async () 
   assert.match(result.snapshotDigest, /^sha256:[a-f0-9]{64}$/);
 });
 
+test("Gemini cleanup preserves its caller-owned temporary root", async () => {
+  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "threadmesh-gemini-owner-"));
+  const sentinel = path.join(temporaryRoot, "caller-owned.txt");
+  fs.writeFileSync(sentinel, "preserve me", { mode: 0o600 });
+  try {
+    const setup = geminiProductDriver({
+      command: process.execPath,
+      baseArgs: [fixture],
+      cwd: root,
+      temporaryRoot,
+    });
+    const product = await setup();
+    const cleanup = await product.cleanup();
+    assert.equal(cleanup.complete, true);
+    assert.equal(fs.existsSync(temporaryRoot), true);
+    assert.equal(fs.readFileSync(sentinel, "utf8"), "preserve me");
+  } finally {
+    fs.rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
 test("runs an accepted suggestion through bounded stream-json", async () => {
   const result = await adapter.runAcceptedSuggestion({
     command: process.execPath,
@@ -78,6 +102,7 @@ test("runs an accepted suggestion through bounded stream-json", async () => {
   assert.match(result.text, /"actorType":"agent"/);
   assert.equal(result.evidence.sessionId, sessionId);
   assert.equal(result.evidence.toolUseCount, 0);
+  assert.equal(result.evidence.resultStatus, "success");
   assert.equal(result.evidence.eventCount, 4);
 });
 
@@ -141,6 +166,24 @@ test("classifies explicit authentication failure", async () => {
       baseArgs: [fixture],
       cwd: root,
       env: { FAKE_GEMINI_AUTH: "1" },
+      envelope: envelope(),
+      admission: admission(),
+      sessionId,
+    }),
+    { code: "gemini_auth_error" },
+  );
+});
+
+test("rejects an official error result even when output contains the exact marker", async () => {
+  await assert.rejects(
+    adapter.runAcceptedSuggestion({
+      command: process.execPath,
+      baseArgs: [fixture],
+      cwd: root,
+      env: {
+        FAKE_GEMINI_RESULT_ERROR_WITH_MARKER: "1",
+        FAKE_GEMINI_EXACT_MARKER: "GEMINI_THREADMESH_COORDINATOR_OK",
+      },
       envelope: envelope(),
       admission: admission(),
       sessionId,

@@ -4,7 +4,7 @@
 
 This runbook validates that a real agent product can consume a suggestion only
 after the ThreadMesh receiver has accepted it. It is stricter than the
-product-specific smoke scripts: the runner must traverse the coordinator's
+product-specific no-model smoke scripts: the runner must traverse the coordinator's
 registry, effective grant, mailbox claim, receiver decision, durable context
 admission claim, adapter boundary, exact evidence confirmation, and audit path.
 
@@ -28,8 +28,16 @@ The repository first verifies
 [`m0-review-gate.json`](m0-review-gate.json). It requires two integrity-bound
 public review records, two distinct reviewers, both review perspectives, at
 least one outside reviewer, the exact review-target commit, approving verdicts,
-and terminal public dispositions for every finding. A self-asserted environment
-variable cannot bypass missing or invalid records.
+and terminal public dispositions for every finding. Each record is resolved
+back to its numeric issue-#7 comment through authenticated GitHub API access;
+the verifier checks the real author login and association, exact body digest and
+timestamp, and body bindings for commit, lane, verdict, and findings. A locally
+invented record, nonexistent disposition-evidence URL, or self-asserted
+environment variable cannot satisfy the gate.
+
+The live runner then requires a clean `main` worktree whose `HEAD` exactly
+matches GitHub's current `main`. The repository snapshot is checked immediately
+before the product driver is created and is included in the sanitized result.
 
 After the review-record verifier passes, the exact operator acknowledgement is:
 
@@ -69,7 +77,9 @@ endpoints. It does not prove useful model behavior.
 
 ## Live commands
 
-After the gate is satisfied, run one product at a time:
+After the gate is satisfied, run one product at a time. The legacy
+`smoke:*:live` aliases resolve to these same commands; there is no second live
+implementation:
 
 ```sh
 npm run validate:products:live:codex
@@ -77,7 +87,8 @@ npm run validate:products:live:kimi
 GEMINI_API_KEY=... npm run validate:products:live:gemini
 ```
 
-Codex creates a first bounded turn so the product thread is resumable, then
+Codex creates a local bounded bootstrap turn so the product thread is resumable,
+without representing that bootstrap as peer context, then
 uses that registered receiver for the coordinator-mediated suggestion. Kimi
 creates and later deletes one ACP session and verifies its absence. Gemini uses
 the pinned official CLI package in an isolated home that is recursively removed;
@@ -101,7 +112,7 @@ credential must never be relabelled as a live pass.
 For every live attempt, record:
 
 - exact repository commit and clean/dirty status;
-- product version and sanitized capability snapshot digest;
+- product version, sanitized product metadata, and capability snapshot digest;
 - UTC start and finish time;
 - result state and stable reason code;
 - message ID, adapter kind, bounded evidence keys, and disposition;
@@ -109,4 +120,5 @@ For every live attempt, record:
 - links to CI and the relevant adapter issue.
 
 Do not publish credentials, raw environment variables, provider account data,
-full model transcripts, local home paths, or unbounded adapter evidence.
+full model transcripts, exception text, local home paths, or unbounded adapter
+evidence. Public failures contain stable codes rather than provider text.

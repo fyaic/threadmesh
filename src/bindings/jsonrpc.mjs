@@ -36,9 +36,6 @@ function rpcError(id, error) {
       data: {
         threadmeshCode,
         retryable: RETRYABLE_CODES.has(threadmeshCode),
-        ...(error?.message && error.message !== threadmeshCode
-          ? { detail: error.message.slice(0, 2000) }
-          : {}),
       },
     },
   };

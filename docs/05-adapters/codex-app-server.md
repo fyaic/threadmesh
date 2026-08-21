@@ -14,7 +14,8 @@ Primary reference: [official Codex App Server documentation](https://developers.
 
 - `initialize` followed by `initialized`;
 - `thread/start`, `thread/resume`, and exact-target `thread/delete`;
-- accepted suggestion admission through `turn/start`;
+- a local bootstrap turn for persistence, plus accepted suggestion admission
+  through `turn/start`;
 - bounded `item/agentMessage/delta` aggregation;
 - exact `turn/completed` correlation by thread and turn ID;
 - denial of every server-initiated approval, permission, elicitation, dynamic
@@ -65,9 +66,10 @@ work. The adapter therefore makes two distinct claims:
 - a persisted lifecycle is verified only after the optional live first turn,
   after which the script resumes and deletes that exact thread.
 
-`startThreadWithAcceptedSuggestion` keeps start and the first accepted turn on
-one App Server connection. `runAcceptedSuggestion` is reserved for a receiver
-thread that already has durable product history.
+`startValidationThread` keeps thread creation and a bounded local bootstrap turn
+on one App Server connection. The bootstrap is not labelled as peer context.
+`runAcceptedSuggestion` is reserved for the subsequently registered receiver
+thread and independently revalidates its accepted envelope.
 
 ## Run and evidence
 
@@ -78,13 +80,14 @@ npm run smoke:codex
 
 The second command performs no model turn. It records the CLI version, digest
 of generated protocol schemas, sanitized initialize snapshot, and empty-thread
-start result. The gated live marker is:
+start result. The gated live alias is:
 
 ```sh
 npm run smoke:codex:live
 ```
 
-Do not count the live command as passed unless the exact untruncated marker,
+It invokes the common product runner, not a product-specific live path. Do not
+count it as passed unless the exact untruncated marker,
 terminal turn, persisted resume, and exact-thread cleanup all pass. Current
 evidence and the gate are recorded in the
 [Codex preflight report](../09-reviews/2026-08-20-codex-app-server-preflight.md).

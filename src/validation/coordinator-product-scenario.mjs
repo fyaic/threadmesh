@@ -6,7 +6,14 @@ import { codedError } from "../protocol-validator.mjs";
 const EVIDENCE_KEYS = Object.freeze({
   "acp-session": ["kind", "sessionId", "snapshotDigest", "stopReason"],
   "codex-app-server": ["kind", "snapshotDigest", "threadId", "turnId", "turnStatus"],
-  "gemini-headless": ["exitCode", "kind", "sessionId", "snapshotDigest", "toolUseCount"],
+  "gemini-headless": [
+    "exitCode",
+    "kind",
+    "resultStatus",
+    "sessionId",
+    "snapshotDigest",
+    "toolUseCount",
+  ],
 });
 
 function scenarioIds(productId, runId) {
@@ -23,7 +30,7 @@ function scenarioIds(productId, runId) {
 }
 
 function exactMarker(text, marker, truncated) {
-  if (truncated || text.trim() !== marker) {
+  if (truncated || text !== marker) {
     throw codedError("threadmesh_product_marker_mismatch");
   }
 }
@@ -182,6 +189,7 @@ export async function runCoordinatorProductScenario({
       markerMatched: true,
       evidenceKeys: Object.keys(admittedEvent.detail.adapterEvidence).sort(),
       adapterSnapshotDigest: product.adapterRef.snapshotDigest,
+      productMetadata: product.productMetadata ?? null,
     };
   } catch (error) {
     failure = error;

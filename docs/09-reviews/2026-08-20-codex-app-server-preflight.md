@@ -56,20 +56,20 @@ The fixture proves adapter behavior, not Codex model behavior.
 
 ## Live marker gate
 
-`npm run smoke:codex:live` is implemented but intentionally not run in this
-slice. It will:
+`npm run smoke:codex:live` remains intentionally not run. It now aliases the
+single common live runner, which will:
 
-1. create a fresh persistent thread and submit the first accepted suggestion on
-   the same connection;
+1. create a fresh persistent thread and submit a bounded local bootstrap turn
+   on the same connection, without labelling it as peer context;
 2. require the exact untruncated `CODEX_THREADMESH_LIVE_OK` response, a terminal
    completed turn, and zero server-side approval requests;
 3. resume the persisted thread from a fresh App Server process;
 4. delete the exact created thread and fail if cleanup cannot be proven.
 
-The live marker remains gated by independent M0 review (#7) and merger/retest of
-the M1 coordinator stack. Even a passed marker would prove only the product
-adapter path; the final A-to-B validation must enter through receiver mailbox
-acceptance and durable coordinator evidence.
+The coordinator-mediated peer suggestion follows only after registration and
+receiver acceptance. The live marker remains gated by authenticated independent
+M0 review (#7), a clean local `main` equal to GitHub `main`, and merger/retest of
+the M1 coordinator stack.
 
 ## Re-run
 

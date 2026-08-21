@@ -9,7 +9,8 @@
   "perspective": "distributed-systems",
   "reviewedCommit": "265e461f1b8714c56f7fe817795b81d895f732c6",
   "verdict": "approve-with-resolved-findings",
-  "sourceUrl": "https://github.com/fyaic/threadmesh/issues/7#issuecomment-example",
+  "sourceUrl": "https://github.com/fyaic/threadmesh/issues/7#issuecomment-1234567890",
+  "sourceBodyDigest": "sha256:replace-with-the-canonical-digest-of-the-exact-github-comment-body",
   "reviewedAt": "2026-08-20T12:00:00Z",
   "findings": [
     {

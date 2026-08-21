@@ -219,7 +219,8 @@ export class GeminiHeadlessAdapter {
     });
 
     const init = events.find((event) => event.type === "init");
-    const result = [...events].reverse().find((event) => event.type === "result");
+    const results = events.filter((event) => event.type === "result");
+    const result = results[0];
     const error = events.find((event) => event.type === "error");
     const toolUseCount = events.filter((event) => event.type === "tool_use").length;
     if (!init || typeof (init.session_id ?? init.sessionId) !== "string") {
@@ -231,7 +232,20 @@ export class GeminiHeadlessAdapter {
     if (error) {
       throw classifyFailure(new Error(error.message ?? "Gemini stream error"), canonicalJson(error));
     }
-    if (!result) throw codedError("gemini_stream_result_missing");
+    if (results.length !== 1) {
+      throw codedError(
+        results.length === 0 ? "gemini_stream_result_missing" : "gemini_stream_result_ambiguous",
+      );
+    }
+    if (result.status === "error") {
+      throw classifyFailure(
+        new Error(result.error?.message ?? "Gemini result error"),
+        canonicalJson(result.error ?? result),
+      );
+    }
+    if (result.status !== "success") {
+      throw codedError("gemini_stream_result_invalid", String(result.status));
+    }
     if (toolUseCount > 0) throw codedError("gemini_unexpected_tool_use", String(toolUseCount));
 
     const output = { chunks: [], bytes: 0, truncated: false };
@@ -251,6 +265,7 @@ export class GeminiHeadlessAdapter {
         eventCount: events.length,
         toolUseCount,
         exitCode: run.exitCode,
+        resultStatus: result.status,
         resultDigest: sha256Digest(result),
         snapshotDigest: probe.snapshotDigest,
         version: probe.version,

@@ -10,7 +10,10 @@ import {
   geminiProductDriver,
 } from "../src/validation/product-drivers.mjs";
 import { runCoordinatorProductScenario } from "../src/validation/coordinator-product-scenario.mjs";
-import { verifyExternalReviewGate } from "../src/validation/external-review-gate.mjs";
+import {
+  verifyExternalReviewGate,
+  verifyLiveRepositoryState,
+} from "../src/validation/external-review-gate.mjs";
 
 export const LIVE_E2E_ACK = "issue-7-approved-for-live-product-validation";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -35,7 +38,6 @@ function classify(error, productId) {
     state: blockedCodes.has(code) ? "blocked" : "failed",
     productId,
     code,
-    detail: error?.message ?? String(error),
     ...(error?.cleanup ? { cleanup: error.cleanup } : {}),
   };
 }
@@ -78,7 +80,7 @@ async function fakeDrivers(directory) {
       baseArgs: [fixture("fake-gemini-cli.mjs")],
       cwd: root,
       env: { FAKE_GEMINI_EXACT_MARKER: markers.gemini },
-      homeDirectory: path.join(directory, "gemini-home"),
+      temporaryRoot: directory,
     }),
   };
 }
@@ -118,7 +120,6 @@ export async function runFakeAll() {
   const startedAt = new Date().toISOString();
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "threadmesh-products-e2e-"));
   try {
-    fs.mkdirSync(path.join(directory, "gemini-home"), { mode: 0o700 });
     const drivers = await fakeDrivers(directory);
     const products = [];
     for (const productId of ["codex", "kimi", "gemini"]) {
@@ -137,11 +138,7 @@ export async function runFakeAll() {
   }
 }
 
-export async function runLive(
-  productId,
-  env = process.env,
-  verifyGate = () => verifyExternalReviewGate({ root }),
-) {
+export async function runLive(productId, env = process.env) {
   const startedAt = new Date().toISOString();
   if (env.THREADMESH_LIVE_E2E_ACK !== LIVE_E2E_ACK) {
     return {
@@ -154,7 +151,7 @@ export async function runLive(
       requiredAcknowledgement: LIVE_E2E_ACK,
     };
   }
-  const reviewGate = verifyGate();
+  const reviewGate = verifyExternalReviewGate({ root });
   if (!reviewGate.satisfied) {
     return {
       mode: "live",
@@ -166,10 +163,25 @@ export async function runLive(
       reviewGate,
     };
   }
+  const repository = verifyLiveRepositoryState({ root });
+  if (!repository.satisfied) {
+    return {
+      mode: "live",
+      startedAt,
+      finishedAt: new Date().toISOString(),
+      state: "not-run",
+      productId,
+      code: "live_repository_not_ready",
+      reviewGate,
+      repository,
+    };
+  }
   try {
     return {
       mode: "live",
       startedAt,
+      reviewGate,
+      repository,
       ...(await runOne(productId, liveDriver(productId, env))),
       finishedAt: new Date().toISOString(),
     };

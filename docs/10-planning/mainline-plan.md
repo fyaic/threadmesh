@@ -101,6 +101,11 @@ are still required; no internal agent review is counted toward this gate.
 - include at least one reviewer outside the maintainer organization;
 - disposition every finding publicly.
 
+The operational gate must resolve each numeric issue-#7 comment through GitHub
+and verify the real author, organization association, timestamp, body digest,
+exact target, review lane, verdict, and transcribed findings. Repository-local
+identity fields and digests alone are not reviewer authentication.
+
 M0 closes only after the resulting fixes and evidence are merged.
 
 ### 6. Finish the local reference coordinator
@@ -132,6 +137,11 @@ separates trusted internal causes from one non-disclosing public denial,
 rechecks authority immediately before native submission, and couples grant
 revocation with audited invalidation of queued `steer`/`interrupt` work. Its
 merge is also gated by #7.
+
+The #45 review found that proposal approval and grant installation were not one
+transaction. The remediation uses one immediate transaction and a checked
+pending-to-approved CAS. That commit must be propagated into the #11 slice
+before #30 is considered closure evidence.
 
 The stacked #12 candidate introduces an append-only version-2 migration,
 runtime freshness snapshots under CAS, a transition table shared by conformance
@@ -187,8 +197,9 @@ Draft [#45](https://github.com/fyaic/threadmesh/pull/45), tracked by
 execution surface: fake-all and live modes now traverse the same mailbox claim,
 receiver acceptance, admission token, exact marker, strict evidence, audit, and
 cleanup path. Fake-all passes. Live mode remains mechanically `not-run` unless
-the repository contains two valid integrity-bound external-review records and
-the operator supplies the exact post-review acknowledgement.
+two records resolve to qualifying GitHub review comments, the operator supplies
+the exact post-review acknowledgement, and the checkout is clean `main` whose
+`HEAD` equals GitHub `main`. Every legacy live alias delegates to this one path.
 
 After M0 closes and the M1 stack is merged and revalidated:
 
@@ -205,6 +216,12 @@ After M0 closes and the M1 stack is merged and revalidated:
   against at least two harness families;
 - measure useful coordination and interference cost before enabling proactive
   discovery.
+
+Before production or parallel receiver replicas, add claimant-specific mailbox
+leases with expiry takeover, and a receiver-authenticated inspection and manual
+reconciliation operation for admission claims whose token is lost after a
+crash. Neither blocks the current sequential marker experiment; both block a
+production multi-worker claim.
 
 Use the [real product runbook](../09-reviews/real-product-e2e-runbook.md) for the
 gate, commands, result taxonomy, cleanup requirements, and evidence record.

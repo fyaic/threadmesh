@@ -103,6 +103,26 @@ function proposal() {
   };
 }
 
+test("authenticated RPC errors never echo internal exception text", () => {
+  const binding = new ThreadMeshJsonRpcBinding({
+    coordinator: {
+      getTask() {
+        throw new Error("sqlite: /private/db; provider_secret=TOP-SECRET");
+      },
+    },
+    authenticator: new StaticTokenAuthenticator(credentials),
+  });
+  const response = binding.handle({
+    jsonrpc: "2.0",
+    id: "redaction-1",
+    method: "tasks.get",
+    params: { task: taskA },
+  }, { authorization: "Bearer owner-secret" });
+  assert.equal(response.error.data.threadmeshCode, "threadmesh_internal_error");
+  assert.equal("detail" in response.error.data, false);
+  assert.doesNotMatch(JSON.stringify(response), /TOP-SECRET|private\/db/);
+});
+
 function grantDraft() {
   return {
     specVersion: "0.0-draft",

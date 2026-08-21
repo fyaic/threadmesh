@@ -90,8 +90,11 @@ MailboxClaim
 ```
 
 Operation replay makes database mutations durable across binding restarts.
-Mailbox claims coordinate receiver workers and remain distinct from irreversible
-adapter-effect admission claims.
+Mailbox claims coordinate one receiver task and remain distinct from irreversible
+adapter-effect admission claims. The current record does not bind a worker
+instance: replicas authenticated as the same task may replay the same token,
+while acknowledgement CAS still allows one decision. Exclusive worker leasing
+and safe takeover remain production follow-up work.
 
 ## Coordination envelope
 

@@ -1,6 +1,6 @@
 # Project status
 
-> Snapshot: 2026-08-20, including authenticated operations, crash-safe adapter
+> Snapshot: 2026-08-21, including authenticated operations, crash-safe adapter
 > submission, typed interruption results, signed verification attestations,
 > the stacked local event-stream/inspector candidate, the two-profile M1
 > conformance matrix, the retention-driven purge candidate, three real
@@ -27,7 +27,7 @@ maintainer organization.
 | Area | Current evidence | Status |
 |---|---|---|
 | Research and problem framing | Codex deep dive, community signals, ecosystem comparison, ADRs | Established |
-| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 100 unit/subtests | Executable draft |
+| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 111 unit/subtests | Executable draft |
 | Local binding | Schema-validated JSON-RPC, transport-derived principals, typed errors | Executable local reference |
 | Local persistence | SQLite registry, proposals, grants, summaries, mailbox, claims, receipts, reconciliation, replay, audit, retention tombstones | Experimental |
 | Safety boundary | Authenticated authorship checks, effective-grant decisions, revocation, CAS | Executable local policy |
@@ -39,8 +39,8 @@ maintainer organization.
 | Gemini CLI headless | Official package 0.56.0 integrity, required flags, isolated-home cleanup | Real no-model preflight passed |
 | Gemini live model behavior | Exact marker script requires explicit provider key | Not authorized, not run |
 | Multi-product admission | One mailbox/acceptance/claim/evidence path across ACP, Codex, and Gemini fakes | Stacked deterministic candidate |
-| Product validation runner | One fake/live entry point with review records plus operator acknowledgement, marker, audit, and cleanup checks | Fake-all passed; live gated |
-| External-review gate | Integrity-bound records, distinct reviewers, both perspectives, outside-reviewer and target-ancestry checks | Mechanically awaiting 2 records |
+| Product validation runner | One fake/live entry point with operator acknowledgement, clean synchronized `main`, marker, audit, and cleanup checks | Fake-all passed; live gated |
+| External-review gate | GitHub-authenticated comment author/body/timestamp checks plus record integrity, perspectives, outside reviewer, and target ancestry | Mechanically awaiting 2 records |
 | Independent review | Three internal lanes complete; external reviewer packet and public template published | Awaiting two external verdicts |
 | Production authentication | Local static-token reference; no TLS/OAuth verifier supplied | Host integration required |
 | OS isolation | No child-process sandbox supplied by ThreadMesh | Not implemented |
@@ -119,8 +119,9 @@ GitHub is authoritative for milestone closure.
 - Draft [#45](https://github.com/fyaic/threadmesh/pull/45), tracked by #44, adds
   one mechanically gated runner over the exact mailbox, acceptance, admission,
   evidence, audit, and cleanup path. Its fake-all mode passes all three
-  products; live mode requires both integrity-bound review records and an exact
-  operator acknowledgement, so it remains `not-run` before #7.
+  products; live mode requires GitHub-authenticated review sources, an exact
+  operator acknowledgement, and clean synchronized `main`, so it remains
+  `not-run` before #7 and merge.
 - The Codex candidate implements suggestion-only capability negotiation,
   receiver-acceptance enforcement, exact turn evidence, server-request denial,
   timeout cleanup, generated-schema digesting, and a real no-model product
@@ -136,8 +137,9 @@ GitHub is authoritative for milestone closure.
   assumption. ACP, Codex, and Gemini now consume the same claimed envelope and
   admission projection, then confirm with strict kind-specific evidence.
 - Codex `0.145.0` does not persist an empty thread before its first turn. The
-  live script therefore keeps create plus first accepted turn on one connection,
-  then separately verifies resume and exact-thread deletion.
+  live driver therefore keeps create plus a bounded local bootstrap turn on one
+  connection, without presenting it as peer context, then separately validates
+  the coordinator-accepted suggestion and exact-thread deletion.
 - M2 does not close until real model behavior runs through the merged
   coordinator and at least two materially different harness families pass the
   same scenario.
@@ -197,12 +199,23 @@ can:
 28. run one reusable validation entry point across all three fake products,
     requiring mailbox acknowledgement, exact markers, evidence confirmation,
     bounded audit, and exact product-resource cleanup while refusing live turns
-    without the external-review acknowledgement.
+    without the external-review acknowledgement;
+29. reject self-authored external-review records by resolving the exact issue-#7
+    comment and checking author, association, timestamp, body digest, target,
+    lane, verdict, and findings;
+30. prevent every repository-provided live alias from starting a model unless
+    the unified runner sees a clean `main` equal to GitHub `main`;
+31. atomically approve a relationship proposal and install its single grant,
+    rolling both back if the proposal CAS fails;
+32. reject Gemini terminal error results even when their stream contains the
+    marker, and preserve caller-owned temporary roots during cleanup.
 
 It does not prove autonomous task discovery, useful model behavior, native
 provider-role isolation, exactly-once external effects, production remote
 credential verification, safe interruption, managed backup expiry, or forensic
-erasure.
+erasure. The mailbox lease also remains task-scoped rather than worker-scoped,
+and crash recovery for a lost in-flight admission token still requires manual
+reconciliation.
 
 ## Progress rule
 

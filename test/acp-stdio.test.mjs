@@ -16,6 +16,34 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const fixture = path.join(root, "test", "fixtures", "fake-acp-agent.mjs");
 const adapter = new AcpStdioAdapter();
 
+function envelope() {
+  return {
+    specVersion: "0.0-draft",
+    messageId: "msg_acp_boundary01",
+    messageType: "suggestion",
+    intent: "suggest",
+    claimStatus: "unverified",
+    sender: {
+      taskId: "task_acp_sender",
+      incarnationId: "inc_acp_sender01",
+      actorType: "agent",
+      harness: "test",
+    },
+    target: {
+      taskId: "task_acp_receiver",
+      incarnationId: "inc_acp_receiver01",
+      harness: "acp",
+    },
+    relationshipId: "rel_acp_boundary01",
+    content: "Peer context only.",
+    reason: "Boundary test.",
+    evidenceRefs: [],
+    delivery: { requestedMode: "checkpoint-offer", requiresDisposition: true },
+    createdAt: "2026-08-21T00:00:00Z",
+    expiresAt: "2026-08-21T00:05:00Z",
+  };
+}
+
 test("probes an ACP stdio agent without a model turn", async () => {
   const result = await adapter.probe({
     command: process.execPath,
@@ -38,6 +66,23 @@ test("runs a prompt and aggregates labelled ACP output", async () => {
   assert.equal(result.text, "FAKE_ACP:peer suggestion");
   assert.equal(result.evidence.stopReason, "end_turn");
   assert.equal(result.evidence.permissionDeniedCount, 0);
+});
+
+test("ACP accepted-suggestion boundary rejects missing receiver acceptance", async () => {
+  await assert.rejects(
+    adapter.runAcceptedSuggestion({
+      command: process.execPath,
+      args: [fixture],
+      cwd: root,
+      envelope: envelope(),
+      admission: {
+        decision: "pending",
+        receiverIncarnationId: "inc_acp_receiver01",
+        revision: 0,
+      },
+    }),
+    { code: "acp_receiver_acceptance_required" },
+  );
 });
 
 test("creates, reloads, lists, and deletes the same logical ACP session", async () => {

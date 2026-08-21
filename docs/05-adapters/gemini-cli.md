@@ -62,11 +62,16 @@ npm run smoke:gemini
 ```
 
 The second command performs only a real version/capability preflight. The gated
-live command is:
+live alias is:
 
 ```sh
 GEMINI_API_KEY=... npm run smoke:gemini:live
 ```
+
+It invokes the common product runner. There is no product-specific live bypass.
+The adapter requires exactly one terminal `result` event with
+`status: "success"`; a `result` carrying `status: "error"` fails even if an
+earlier message happens to contain the expected marker.
 
 No API key has been authorized for this project, so the live result remains
 `not-run`. A stacked deterministic test now runs the same coordinator admission

@@ -6,6 +6,7 @@ import {
   runFakeAll,
   runLive,
 } from "../scripts/validate-products-e2e.mjs";
+import { runCoordinatorProductScenario } from "../src/validation/coordinator-product-scenario.mjs";
 
 test("live product validation is refused without the exact review acknowledgement", async () => {
   const absent = await runLive("codex", {});
@@ -18,22 +19,12 @@ test("live product validation is refused without the exact review acknowledgemen
   assert.match(absent.finishedAt, /^2026-|^20/);
   const wrong = await runLive("kimi", { THREADMESH_LIVE_E2E_ACK: "yes" });
   assert.equal(wrong.state, "not-run");
-  const missingGeminiKey = await runLive("gemini", {
-    THREADMESH_LIVE_E2E_ACK: LIVE_E2E_ACK,
-  }, () => ({ satisfied: true }));
-  assert.equal(missingGeminiKey.state, "blocked");
-  assert.equal(missingGeminiKey.code, "gemini_api_key_not_authorized");
 });
 
 test("operator acknowledgement cannot bypass incomplete review records", async () => {
   const result = await runLive("codex", {
     THREADMESH_LIVE_E2E_ACK: LIVE_E2E_ACK,
-  }, () => ({
-    satisfied: false,
-    reviewCount: 0,
-    externalReviewerCount: 0,
-    errors: ["required review count not met"],
-  }));
+  });
   assert.equal(result.state, "not-run");
   assert.equal(result.code, "external_review_records_incomplete");
   assert.equal(result.reviewGate.reviewCount, 0);
@@ -51,4 +42,40 @@ test("one runner admits and cleans all three fake products", async () => {
     assert.equal(product.cleanup.attempted, true);
     assert.equal(product.cleanup.complete, true);
   }
+});
+
+test("exact marker comparison rejects leading or trailing whitespace", async () => {
+  let cleaned = false;
+  await assert.rejects(
+    runCoordinatorProductScenario({
+      productId: "whitespace",
+      marker: "STRICT_OK",
+      runId: "whitespace01",
+      setupProduct: async () => ({
+        harness: "fake-acp",
+        adapterRef: {
+          kind: "acp-session",
+          sessionId: "fake-whitespace-session",
+          snapshotDigest: `sha256:${"a".repeat(64)}`,
+        },
+        async deliver(prepared) {
+          return {
+            text: " STRICT_OK\n",
+            truncated: false,
+            evidence: {
+              sessionId: prepared.adapterRef.sessionId,
+              snapshotDigest: prepared.adapterRef.snapshotDigest,
+              stopReason: "end_turn",
+            },
+          };
+        },
+        async cleanup() {
+          cleaned = true;
+          return { complete: true };
+        },
+      }),
+    }),
+    { code: "threadmesh_product_marker_mismatch" },
+  );
+  assert.equal(cleaned, true);
 });

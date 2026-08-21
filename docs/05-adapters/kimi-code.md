@@ -30,8 +30,8 @@ npm run smoke:kimi
 ```
 
 Set `KIMI_BIN` to override the default local binary path.
-The default smoke performs no model turn. The gated live command is
-`npm run smoke:kimi:live`.
+The default smoke performs no model turn. The gated live alias
+`npm run smoke:kimi:live` invokes the common product runner.
 
 ## Provenance rule
 
@@ -46,12 +46,20 @@ role or higher/lower instruction precedence inside the receiving harness.
 
 Before dispatch, the coordinator atomically creates a durable, single-use
 admission claim bound to the message revision, grant version and registered ACP
-session/capability digest. A second worker cannot claim the same message. The
+session/capability digest. The adapter independently revalidates the canonical
+envelope and matching receiver acceptance before sending its ordinary prompt.
+The
 claim is the revocation linearization boundary: revocation before it blocks the
 dispatch; revocation after it cannot retract an already in-flight prompt. If a
 process crashes after dispatch but before confirmation, the persisted claim
 stays `in-flight` and requires reconciliation rather than automatic redelivery.
 Confirmation accepts only matching ACP session and capability evidence.
+
+Mailbox claims currently identify the receiver task, not a worker instance.
+Receiver replicas sharing the same authenticated task principal can replay the
+same bounded claim token; disposition CAS still permits only one acknowledgement.
+Per-worker claim ownership and takeover are required before a multi-worker
+deployment can claim exclusive work leasing.
 
 This legacy admission claim is distinct from the public native submission
 receipt state machine. It safely prevents automatic duplicate prompt admission,

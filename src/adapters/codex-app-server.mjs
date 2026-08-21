@@ -474,7 +474,53 @@ export class CodexAppServerAdapter {
         throw codedError("codex_app_server_snapshot_mismatch");
       }
       await peer.request("thread/resume", threadResumeParams(adapterRef.threadId, cwd));
-      return this.#runTurn(peer, initialization, adapterRef, envelope, admission, adapterIdempotencyKey);
+      return this.#runTurn(
+        peer,
+        initialization,
+        adapterRef,
+        renderCodexPeerSuggestion(envelope, admission),
+        adapterIdempotencyKey,
+      );
+    });
+  }
+
+  async startValidationThread({
+    command,
+    args = ["app-server", "--listen", "stdio://"],
+    cwd,
+    env = {},
+    marker,
+    adapterIdempotencyKey,
+    model = null,
+    timeoutMs = 120_000,
+  }) {
+    assertInvocation(command, args, cwd, env);
+    if (typeof marker !== "string" || !/^[A-Z0-9_]{1,128}$/.test(marker)) {
+      throw codedError("codex_app_server_validation_marker_invalid");
+    }
+    if (typeof adapterIdempotencyKey !== "string" || adapterIdempotencyKey.length === 0) {
+      throw codedError("codex_app_server_idempotency_key_invalid");
+    }
+    return this.#withServer({ command, args, cwd, env, timeoutMs }, async (peer) => {
+      const initialization = await this.#initialize(peer);
+      const started = await peer.request(
+        "thread/start",
+        threadStartParams(cwd, { ephemeral: false, model }),
+      );
+      const adapterRef = projectThread(started, initialization);
+      try {
+        const result = await this.#runTurn(
+          peer,
+          initialization,
+          adapterRef,
+          `Reply with exactly ${marker}. Do not use tools.`,
+          adapterIdempotencyKey,
+        );
+        return { ...result, adapterRef };
+      } catch (error) {
+        error.adapterRef = adapterRef;
+        throw error;
+      }
     });
   }
 
@@ -507,8 +553,7 @@ export class CodexAppServerAdapter {
           peer,
           initialization,
           adapterRef,
-          envelope,
-          admission,
+          renderCodexPeerSuggestion(envelope, admission),
           adapterIdempotencyKey,
         );
         return { ...result, adapterRef };
@@ -519,7 +564,7 @@ export class CodexAppServerAdapter {
     });
   }
 
-  async #runTurn(peer, initialization, adapterRef, envelope, admission, adapterIdempotencyKey) {
+  async #runTurn(peer, initialization, adapterRef, promptText, adapterIdempotencyKey) {
     const outputsByTurn = new Map();
     let activeTurnId = null;
     const stopListening = peer.onNotification(({ method, params }) => {
@@ -543,7 +588,7 @@ export class CodexAppServerAdapter {
     try {
       const response = await peer.request("turn/start", {
         threadId: adapterRef.threadId,
-        input: [{ type: "text", text: renderCodexPeerSuggestion(envelope, admission) }],
+        input: [{ type: "text", text: promptText }],
         clientUserMessageId: adapterIdempotencyKey,
         approvalPolicy: "never",
       });

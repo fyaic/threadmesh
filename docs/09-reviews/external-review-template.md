@@ -6,7 +6,7 @@
 - Reviewed commit:
 - Review lane: distributed systems / agent safety / both
 - Method and tools:
-- Verdict: approve / request changes / abstain
+- Verdict: approve / approve-with-resolved-findings / request changes / abstain
 
 ## Reproduction
 
@@ -28,6 +28,12 @@ boundary failure, `P1` for an M0 blocker, and `P2` for important follow-up.
 - Recommended resolution:
 
 Write `No findings` when appropriate; do not omit the section.
+
+For a gate-eligible final comment, keep the exact `Reviewed commit`, `Review
+lane`, and `Verdict` labels above. Each transcribed finding location and summary
+must appear verbatim in that comment. A request-changes review may use a later
+final comment after dispositions are public; the record must point to the final
+approving comment rather than rewriting the original verdict.
 
 ## Residual risks and non-blocking notes
 

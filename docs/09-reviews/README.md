@@ -46,3 +46,15 @@ The final approvals apply only to the conservative experimental implementation
 merged in [#20](https://github.com/fyaic/threadmesh/pull/20). The normative
 findings originated in #15–#19. Issues #15–#19 now have normative, executable
 resolutions. Independent review under #7 is the remaining M0 gate.
+
+## 2026-08-21 gated-product review round
+
+Three new independent internal lanes reviewed the exact pre-remediation head of
+Draft PR #45. All requested changes; the candidate remediation closes the live
+gate, proposal transaction, Gemini terminal-state, cleanup-ownership, and exact
+marker findings while recording multi-worker and crash-reconciliation work as
+explicit production follow-up.
+
+- [Gated product validation review and disposition](2026-08-21-gated-product-validation.md)
+
+This round is internal and also does not count toward issue #7.
