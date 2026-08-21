@@ -790,48 +790,59 @@ export class SqliteCoordinator {
   }
 
   issueGrant(draft, decision, principal) {
-    if (decision?.proposalId) {
-      const row = this.db
-        .prepare(
-          `SELECT proposal_json, status FROM relationship_proposals
-           WHERE proposal_id = ?`,
-        )
-        .get(decision.proposalId);
-      if (!row || row.status !== "pending") {
-        throw codedError("threadmesh_relationship_proposal_not_pending");
-      }
-      const proposal = JSON.parse(row.proposal_json);
-      if (Date.parse(proposal.expiresAt) <= this.clock()) {
-        throw codedError("threadmesh_relationship_proposal_expired");
-      }
-      const expected = {
-        relationshipType: proposal.relationshipType,
-        source: proposal.source,
-        target: proposal.target,
-        allowedIntents: proposal.requestedIntents,
-        allowedDeliveryModes: proposal.requestedDeliveryModes,
-        summaryVisibility: proposal.requestedSummaryVisibility,
-      };
-      for (const [key, value] of Object.entries(expected)) {
-        if (canonicalJson(draft[key]) !== canonicalJson(value)) {
-          throw codedError("threadmesh_grant_proposal_mismatch", key);
+    const grant = createEffectiveGrant(draft, decision, principal);
+    this.#assertGrantAuthority(grant, principal);
+    return this.db.transaction(() => {
+      if (decision?.proposalId) {
+        const row = this.db
+          .prepare(
+            `SELECT proposal_json, status FROM relationship_proposals
+             WHERE proposal_id = ?`,
+          )
+          .get(decision.proposalId);
+        if (!row || row.status !== "pending") {
+          throw codedError("threadmesh_relationship_proposal_not_pending");
+        }
+        const proposal = JSON.parse(row.proposal_json);
+        if (Date.parse(proposal.expiresAt) <= this.clock()) {
+          throw codedError("threadmesh_relationship_proposal_expired");
+        }
+        const expected = {
+          relationshipType: proposal.relationshipType,
+          source: proposal.source,
+          target: proposal.target,
+          allowedIntents: proposal.requestedIntents,
+          allowedDeliveryModes: proposal.requestedDeliveryModes,
+          summaryVisibility: proposal.requestedSummaryVisibility,
+        };
+        for (const [key, value] of Object.entries(expected)) {
+          if (canonicalJson(draft[key]) !== canonicalJson(value)) {
+            throw codedError("threadmesh_grant_proposal_mismatch", key);
+          }
         }
       }
-    }
-    const grant = createEffectiveGrant(draft, decision, principal);
-    const installed = this.installGrant(grant, principal);
-    if (decision?.proposalId) {
-      this.db
-        .prepare(
-          `UPDATE relationship_proposals SET status = 'approved'
-           WHERE proposal_id = ? AND status = 'pending'`,
-        )
-        .run(decision.proposalId);
-    }
-    return installed;
+      const installed = this.#installGrant(grant, principal);
+      if (decision?.proposalId) {
+        const approved = this.db
+          .prepare(
+            `UPDATE relationship_proposals SET status = 'approved'
+             WHERE proposal_id = ? AND status = 'pending'`,
+          )
+          .run(decision.proposalId);
+        if (approved.changes !== 1) {
+          throw codedError("threadmesh_relationship_proposal_not_pending");
+        }
+      }
+      return installed;
+    }).immediate();
   }
 
   installGrant(grant, principal) {
+    this.#assertGrantAuthority(grant, principal);
+    return this.db.transaction(() => this.#installGrant(grant, principal)).immediate();
+  }
+
+  #assertGrantAuthority(grant, principal) {
     assertControlPlanePrincipal(principal);
     assertProtocolObject("grant", grant);
     if (
@@ -853,7 +864,9 @@ export class SqliteCoordinator {
     ) {
       throw codedError("threadmesh_grant_authorization_invalid");
     }
+  }
 
+  #installGrant(grant, principal) {
     const existingId = this.db
       .prepare("SELECT grant_json FROM grants WHERE grant_id = ?")
       .get(grant.grantId);
@@ -880,52 +893,49 @@ export class SqliteCoordinator {
       );
     if (existingVersion) throw codedError("threadmesh_revision_conflict");
 
-    const transaction = this.db.transaction(() => {
-      for (const ref of [grant.source, grant.target]) {
-        const task = this.db
-          .prepare(
-            `SELECT t.owner_kind, t.owner_principal_id, m.retired_at
-             FROM tasks t JOIN task_metadata m USING (task_id, incarnation_id)
-             WHERE t.task_id = ? AND t.incarnation_id = ?`,
-          )
-          .get(ref.taskId, ref.incarnationId);
-        if (!task) throw codedError("threadmesh_task_not_registered", ref.taskId);
-        if (task.retired_at) throw codedError("threadmesh_task_retired", ref.taskId);
-        if (
-          principal.kind !== "policy" &&
-          (task.owner_kind !== principal.kind ||
-            task.owner_principal_id !== principal.principalId)
-        ) {
-          throw codedError("threadmesh_grant_scope_not_authorized", ref.taskId);
-        }
-      }
-
-      this.db
+    for (const ref of [grant.source, grant.target]) {
+      const task = this.db
         .prepare(
-          `INSERT INTO grants (
-             grant_id, grant_version, relationship_id,
-             source_task_id, source_incarnation_id,
-             target_task_id, target_incarnation_id,
-             allowed_intents_json, allowed_modes_json,
-             expires_at, revoked_at, grant_json
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          `SELECT t.owner_kind, t.owner_principal_id, m.retired_at
+           FROM tasks t JOIN task_metadata m USING (task_id, incarnation_id)
+           WHERE t.task_id = ? AND t.incarnation_id = ?`,
         )
-        .run(
-          grant.grantId,
-          grant.grantVersion,
-          grant.relationshipId,
-          grant.source.taskId,
-          grant.source.incarnationId,
-          grant.target.taskId,
-          grant.target.incarnationId,
-          JSON.stringify(grant.allowedIntents),
-          JSON.stringify(grant.allowedDeliveryModes),
-          grant.expiresAt ?? null,
-          grant.revokedAt ?? null,
-          JSON.stringify(grant),
-        );
-    });
-    transaction();
+        .get(ref.taskId, ref.incarnationId);
+      if (!task) throw codedError("threadmesh_task_not_registered", ref.taskId);
+      if (task.retired_at) throw codedError("threadmesh_task_retired", ref.taskId);
+      if (
+        principal.kind !== "policy" &&
+        (task.owner_kind !== principal.kind ||
+          task.owner_principal_id !== principal.principalId)
+      ) {
+        throw codedError("threadmesh_grant_scope_not_authorized", ref.taskId);
+      }
+    }
+
+    this.db
+      .prepare(
+        `INSERT INTO grants (
+           grant_id, grant_version, relationship_id,
+           source_task_id, source_incarnation_id,
+           target_task_id, target_incarnation_id,
+           allowed_intents_json, allowed_modes_json,
+           expires_at, revoked_at, grant_json
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        grant.grantId,
+        grant.grantVersion,
+        grant.relationshipId,
+        grant.source.taskId,
+        grant.source.incarnationId,
+        grant.target.taskId,
+        grant.target.incarnationId,
+        JSON.stringify(grant.allowedIntents),
+        JSON.stringify(grant.allowedDeliveryModes),
+        grant.expiresAt ?? null,
+        grant.revokedAt ?? null,
+        JSON.stringify(grant),
+      );
     return grant;
   }
 
