@@ -67,7 +67,7 @@ remain blockers for broader production claims:
 ## Verification snapshot
 
 Before the second reviewer re-entry, the candidate passes 14 schemas, 55 schema cases,
-7 transition cases, and 115 unit/subtests. Fake-all also passes all three
+7 transition cases, and 117 unit/subtests. Fake-all also passes all three
 product fixtures, dependency audit reports zero vulnerabilities, and the
 external gate truthfully exits 3. The
 checked-in M0 manifest remains `awaiting` with zero qualifying external reviews,

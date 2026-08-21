@@ -66,11 +66,60 @@ export function evaluateIsolatedCheckoutBoundary(value, expectedSha) {
   return { ...value, expectedSha, satisfied: errors.length === 0, errors };
 }
 
-function resultExitCode(state) {
+export function resultExitCode(state) {
+  if (state === "passed") return 0;
   if (state === "failed") return 1;
   if (state === "blocked") return 2;
   if (state === "not-run") return 3;
-  return 0;
+  return null;
+}
+
+export function validateIsolatedLiveChild(child, { productId, executionSha }) {
+  let result;
+  try {
+    result = JSON.parse(child.stdout);
+  } catch {
+    return { accepted: false, code: "isolated_live_result_invalid" };
+  }
+  if (!result || typeof result !== "object" || Array.isArray(result)) {
+    return { accepted: false, code: "isolated_live_result_invalid" };
+  }
+  const expectedStatus = resultExitCode(result.state);
+  if (
+    child.error != null ||
+    child.signal !== null ||
+    expectedStatus === null ||
+    child.status !== expectedStatus
+  ) {
+    return { accepted: false, code: "isolated_live_child_exit_mismatch" };
+  }
+  if (
+    result.mode !== "live" ||
+    result.productId !== productId ||
+    typeof result.startedAt !== "string" ||
+    typeof result.finishedAt !== "string" ||
+    result.reviewGate?.satisfied !== true ||
+    result.repository?.satisfied !== true ||
+    result.repository?.head !== executionSha ||
+    result.repository?.expectedSha !== executionSha ||
+    result.repository?.remoteMain !== executionSha ||
+    result.repository?.branch !== "" ||
+    result.repository?.clean !== true
+  ) {
+    return { accepted: false, code: "isolated_live_result_binding_mismatch" };
+  }
+  if (result.state === "passed" && (
+    result.mailbox !== "claimed-and-accepted" ||
+    result.delivery !== "context-admitted" ||
+    result.markerMatched !== true ||
+    result.cleanup?.complete !== true
+  )) {
+    return { accepted: false, code: "isolated_live_result_binding_mismatch" };
+  }
+  if (result.state !== "passed" && typeof result.code !== "string") {
+    return { accepted: false, code: "isolated_live_result_binding_mismatch" };
+  }
+  return { accepted: true, result };
 }
 
 function stableResult(productId, code, startedAt, boundary = null) {
@@ -159,11 +208,9 @@ function main() {
                   maxBuffer: 2 * 1024 * 1024,
                 },
               );
-              try {
-                childResult = JSON.parse(child.stdout);
-              } catch {
-                failureCode = "isolated_live_result_invalid";
-              }
+              const validation = validateIsolatedLiveChild(child, { productId, executionSha });
+              if (validation.accepted) childResult = validation.result;
+              else failureCode = validation.code;
             }
           }
         }
@@ -231,7 +278,7 @@ function main() {
   }
 
   console.log(JSON.stringify(result, null, 2));
-  process.exitCode = resultExitCode(result.state);
+  process.exitCode = resultExitCode(result.state) ?? 1;
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();

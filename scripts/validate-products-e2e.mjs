@@ -192,6 +192,8 @@ export async function runLive(productId, env = process.env) {
     return {
       mode: "live",
       startedAt,
+      reviewGate,
+      repository,
       ...classify(error, productId),
       finishedAt: new Date().toISOString(),
     };

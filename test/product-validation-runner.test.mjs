@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import test from "node:test";
 
 import {
@@ -9,6 +10,7 @@ import {
 import {
   evaluateIsolatedCheckoutBoundary,
   evaluateMainCheckoutBoundary,
+  validateIsolatedLiveChild,
 } from "../scripts/run-live-product-validation.mjs";
 import {
   runCoordinatorProductScenario,
@@ -126,4 +128,76 @@ test("live bootstrap binds main and detached execution to one SHA", () => {
   }, sha);
   assert.equal(changed.satisfied, false);
   assert.equal(changed.errors.length, 2);
+});
+
+test("live bootstrap accepts only a clean exact-SHA child result with a matching exit", () => {
+  const sha = "a".repeat(40);
+  const result = {
+    mode: "live",
+    productId: "codex",
+    state: "passed",
+    startedAt: "2026-08-21T00:00:00.000Z",
+    finishedAt: "2026-08-21T00:00:01.000Z",
+    reviewGate: { satisfied: true },
+    repository: {
+      satisfied: true,
+      head: sha,
+      expectedSha: sha,
+      remoteMain: sha,
+      branch: "",
+      clean: true,
+    },
+    mailbox: "claimed-and-accepted",
+    delivery: "context-admitted",
+    markerMatched: true,
+    cleanup: { complete: true },
+  };
+  const validation = validateIsolatedLiveChild({
+    stdout: JSON.stringify(result),
+    status: 0,
+    signal: null,
+    error: undefined,
+  }, { productId: "codex", executionSha: sha });
+  assert.equal(validation.accepted, true);
+  assert.deepEqual(validation.result, result);
+});
+
+test("live bootstrap rejects passed stdout when the child times out", () => {
+  const sha = "a".repeat(40);
+  const forgedPass = JSON.stringify({
+    mode: "live",
+    productId: "codex",
+    state: "passed",
+    startedAt: "2026-08-21T00:00:00.000Z",
+    finishedAt: "2026-08-21T00:00:01.000Z",
+    reviewGate: { satisfied: true },
+    repository: {
+      satisfied: true,
+      head: sha,
+      expectedSha: sha,
+      remoteMain: sha,
+      branch: "",
+      clean: true,
+    },
+    mailbox: "claimed-and-accepted",
+    delivery: "context-admitted",
+    markerMatched: true,
+    cleanup: { complete: true },
+  });
+  const child = spawnSync(
+    process.execPath,
+    ["-e", "require('node:fs').writeSync(1, process.argv[1]); setInterval(() => {}, 1000)", forgedPass],
+    { encoding: "utf8", timeout: 2_000 },
+  );
+  assert.equal(child.error?.code, "ETIMEDOUT");
+  assert.equal(child.status, null);
+  assert.equal(child.signal, "SIGTERM");
+  const validation = validateIsolatedLiveChild(child, {
+    productId: "codex",
+    executionSha: sha,
+  });
+  assert.deepEqual(validation, {
+    accepted: false,
+    code: "isolated_live_child_exit_mismatch",
+  });
 });
