@@ -114,62 +114,12 @@ M0 closes only after the resulting fixes and evidence are merged.
 Primary issues: [#9](https://github.com/fyaic/threadmesh/issues/9)–
 [#14](https://github.com/fyaic/threadmesh/issues/14).
 
-Recommended implementation order:
-
-1. storage migration, rollback, retention, and deletion contract (#9);
-2. registry, mailbox, audit, expiry, and restart completion (#10);
-3. policy engine and stable denial reasons (#11);
-4. dispatcher, legal state transitions, receipts, and reconciliation (#12);
-5. cursor event stream and provenance inspector (#13);
-6. two deliberately different mock-harness profiles in CI (#14).
-
-The #9 implementation candidate now records an immutable baseline migration,
-rejects newer or checksum-mismatched databases, rolls back failed adoption,
-configures durable WAL concurrency, and documents protocol/table mapping plus
-retention and operational rollback. Its merge remains gated by #7.
-
-The stacked #10 candidate adds a bounded control-plane expiry sweep that writes
-the disposition and audit event atomically, excludes irreversible in-flight
-effects, exposes no global task list, and exercises the behavior through the
-authenticated JSON-RPC surface. Its merge is also gated by #7.
-
-The stacked #11 candidate extracts a deterministic relationship policy engine,
-separates trusted internal causes from one non-disclosing public denial,
-rechecks authority immediately before native submission, and couples grant
-revocation with audited invalidation of queued `steer`/`interrupt` work. Its
-merge is also gated by #7.
-
-The #45 review found that proposal approval and grant installation were not one
-transaction. The remediation now lives in its owning #11 slice at reviewed
-commit `61c15ae`: one immediate transaction covers proposal validation, grant
-installation, and a checked pending-to-approved CAS. The same minimal patch is
-propagated through every descendant branch up to #43 so no stacked PR silently
-reverts the fix; all affected PRs are clean and their CI passes.
-
-The stacked #12 candidate introduces an append-only version-2 migration,
-runtime freshness snapshots under CAS, a transition table shared by conformance
-and runtime, all explicit receiver terminal states, and a durable dispatcher.
-The dispatcher writes `outcome-unknown` before one native call and suppresses
-automatic retry after exceptions or restart. Its merge is also gated by #7.
-
-The stacked #13 candidate adds a `tasks.wait`-compatible local stream with
-strict cursor validation and caller-owned restart checkpoints. Its authorized
-snapshot distinguishes user and peer authorship, renders delivery, decision,
-and outcome separately, and redacts content and evidence after expiry or grant
-revocation. It is not a hosted stream and its merge is also gated by #7.
-
-The stacked #14 candidate turns the two mock harness profiles into an explicit
-behavior matrix and CI conformance kit. It covers related-only summaries,
-side-channel notification, accept/reject/defer, stale and unsupported
-state-changing intents, replay, queued revocation, provenance, audit evidence,
-and deterministic test-database cleanup. Its merge is also gated by #7.
-
-The stacked #34 retention candidate adds an append-only schema-v3 migration and
-a policy-only bounded purge. It tombstones expired messages, audit detail,
-inactive proposals/summaries, and retired adapter references while retaining
-canonical digests and excluding in-flight/unknown external effects. It also
-tests v1/v2 upgrade, restart, replay, idempotent JSON-RPC, and explicit WAL
-truncation. Its merge is gated by #7 and the lower M1 stack.
+Status: complete as an experimental implementation. PR #45 integrated #9–#14
+and #34 into `main`; every issue is closed and the superseded stacked PRs are
+closed. The merged runtime contains versioned migrations, mailbox/audit,
+fail-closed relationship policy, atomic proposal approval, crash-safe dispatch
+and reconciliation, event inspection, two-profile conformance, and bounded
+retention purge. Normative M0 review remains independently open at #7.
 
 PR #45 squash-merged the stack to `main` at
 `e761e98da83426a5ebae3b47a341f606186dfca6` and the merged tree passed install,
@@ -178,24 +128,10 @@ is now the active evidence workstream.
 
 ### 7. Complete real product validation
 
-Status: M2 adapter issues [#36](https://github.com/fyaic/threadmesh/issues/36)–
-[#38](https://github.com/fyaic/threadmesh/issues/38) plus shared-admission
-[#42](https://github.com/fyaic/threadmesh/issues/42) are open. The first Codex
-App Server candidate is implemented as a stack above M1 and its no-model
-preflight passes against CLI `0.145.0` in Draft
-[#39](https://github.com/fyaic/threadmesh/pull/39). The live first turn remains
-gated. The Kimi hardening candidate also passes a real no-model
-create/list/delete/absence lifecycle with exact binary digest; its live marker
-remains quota-blocked and gated in Draft
-[#40](https://github.com/fyaic/threadmesh/pull/40).
-Gemini CLI headless `stream-json` is selected for #38; its pinned package and
-isolated no-model preflight pass, while model execution waits for explicit
-provider credential authorization in Draft
-[#41](https://github.com/fyaic/threadmesh/pull/41).
-A further stacked slice generalizes the coordinator's admission claim and exact
-evidence confirmation across all three adapter kinds; this is deterministic
-preparation in Draft [#43](https://github.com/fyaic/threadmesh/pull/43), not a
-substitute for the post-gate real model run.
+Status: shared admission #42, unified runner #44, and Codex #36 are closed.
+Codex has a real product pass. Kimi #37 remains open because provider quota
+blocked its exact marker; Gemini #38 remains open pending an explicitly supplied
+credential. All adapter code is merged, and superseded PRs #39–#43 are closed.
 
 Merged [#45](https://github.com/fyaic/threadmesh/pull/45), tracked by
 [#44](https://github.com/fyaic/threadmesh/issues/44), adds the final shared
@@ -214,13 +150,10 @@ public projection, and all four result states with product-specific cleanup.
 
 Immediate execution order on merged `main`:
 
-- merge and revalidate the conservative Codex App Server adapter;
-- run its exact live marker, persisted resume, and exact-thread cleanup;
-- run a coordinator-mediated A-to-B accepted-suggestion scenario against an
-  already persisted Codex receiver;
-- harden the generic ACP/subprocess adapter and rerun Kimi when quota permits;
-- merge the selected Gemini CLI non-ACP headless adapter, then run it only with
-  an explicitly authorized provider credential;
+- rerun Kimi when quota permits;
+- run Gemini only with an explicitly authorized provider credential;
+- extend the passed Codex path from a fixed marker into a coordinator-mediated
+  A-to-B dependency suggestion against an already persisted receiver;
 - keep every live product on the common mailbox acceptance, durable admission
   claim, kind-specific evidence, and context-admitted audit path;
 - preserve the strict projected child-result schema, ISO timestamps, and
