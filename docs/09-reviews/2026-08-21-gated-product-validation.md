@@ -86,5 +86,6 @@ the candidate passes 14 schemas, 55 schema cases, 7 transition cases, and 118
 unit/subtests. Fake-all passes all three product fixtures, dependency audit
 reports zero vulnerabilities, and PR #45 conformance and link checks are green.
 The checked-in M0 manifest remains `awaiting` with zero qualifying external
-reviews and the verifier truthfully exits 3, so real model execution remains
-`not-run`.
+reviews and the verifier truthfully exits 3. A later explicit maintainer
+authorization permitted non-normative real-product attempts without changing
+that M0 status; see the live-results record linked from this directory's index.

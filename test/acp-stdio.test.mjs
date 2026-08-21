@@ -195,6 +195,19 @@ test("cancels ACP permission requests and exposes conservative capabilities", as
   assert.equal(result.text, "FAKE_ACP:PERMISSION_CANCELLED:permission check");
 });
 
+test("classifies a quota error carried by the ACP response", async () => {
+  await assert.rejects(
+    adapter.runPrompt({
+      command: process.execPath,
+      args: [fixture],
+      cwd: root,
+      env: { FAKE_ACP_QUOTA: "1" },
+      promptText: "quota classification",
+    }),
+    { code: "acp_agent_quota_error" },
+  );
+});
+
 test("fails closed for relative executable paths", async () => {
   await assert.rejects(
     adapter.probe({ command: "node", args: [fixture], cwd: root }),

@@ -77,6 +77,10 @@ const app = acp
   })
   .onRequest(acp.methods.agent.session.prompt, async ({ params, client }) => {
     if (!sessions.has(params.sessionId)) throw new Error("unknown session");
+    if (process.env.FAKE_ACP_QUOTA === "1") {
+      console.error("billing cycle quota exhausted");
+      throw new Error("billing cycle quota exhausted");
+    }
     if (process.env.FAKE_ACP_HANG === "1") {
       process.on("SIGTERM", () => {});
       await new Promise(() => {});
