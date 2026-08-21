@@ -6,6 +6,8 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 
 const ACK = "issue-7-approved-for-live-product-validation";
+const MAINTAINER_EXPERIMENTAL_ACK =
+  "maintainer-approved-for-experimental-live-validation";
 const REPOSITORY = "fyaic/threadmesh";
 const REVIEW_TARGET = "265e461f1b8714c56f7fe817795b81d895f732c6";
 const PRODUCT_ADAPTERS = Object.freeze({
@@ -147,6 +149,47 @@ function projectReviewGate(gate) {
   };
 }
 
+function projectExperimentalReviewGate(gate) {
+  if (
+    gate?.satisfied !== false || gate.scope !== "m0-normative" ||
+    gate.reviewTarget !== REVIEW_TARGET || !Number.isSafeInteger(gate.reviewCount) ||
+    gate.reviewCount < 0 || !Number.isSafeInteger(gate.externalReviewerCount) ||
+    gate.externalReviewerCount < 0 || gate.externalReviewerCount > gate.reviewCount ||
+    !Array.isArray(gate.perspectives) ||
+    !gate.perspectives.every((value) =>
+      ["agent-safety", "distributed-systems"].includes(value))
+  ) return null;
+  return {
+    satisfied: false,
+    scope: gate.scope,
+    reviewTarget: gate.reviewTarget,
+    reviewCount: gate.reviewCount,
+    externalReviewerCount: gate.externalReviewerCount,
+    perspectives: [...gate.perspectives],
+  };
+}
+
+function projectAuthorization(result, allowMaintainerExperimental) {
+  if (
+    result.authorization?.mode === "external-review" &&
+    result.authorization.normativeReviewSatisfied === true &&
+    result.authorization.issueUrl === "https://github.com/fyaic/threadmesh/issues/7"
+  ) {
+    const reviewGate = projectReviewGate(result.reviewGate);
+    return reviewGate ? { authorization: { ...result.authorization }, reviewGate } : null;
+  }
+  if (
+    allowMaintainerExperimental === true &&
+    result.authorization?.mode === "maintainer-experimental" &&
+    result.authorization.normativeReviewSatisfied === false &&
+    result.authorization.issueUrl === "https://github.com/fyaic/threadmesh/issues/7"
+  ) {
+    const reviewGate = projectExperimentalReviewGate(result.reviewGate);
+    return reviewGate ? { authorization: { ...result.authorization }, reviewGate } : null;
+  }
+  return null;
+}
+
 function projectRepository(repository, executionSha) {
   if (
     repository?.satisfied !== true || repository.head !== executionSha ||
@@ -186,22 +229,26 @@ function projectCleanup(productId, cleanup, { requireComplete }) {
   return projected;
 }
 
-function projectLiveChildResult(result, { productId, executionSha }) {
+function projectLiveChildResult(result, {
+  productId,
+  executionSha,
+  allowMaintainerExperimental = false,
+}) {
   if (
     result.mode !== "live" || result.productId !== productId ||
     !isCanonicalIsoTimestamp(result.startedAt) || !isCanonicalIsoTimestamp(result.finishedAt) ||
     Date.parse(result.finishedAt) < Date.parse(result.startedAt)
   ) return null;
-  const reviewGate = projectReviewGate(result.reviewGate);
+  const authorizationProjection = projectAuthorization(result, allowMaintainerExperimental);
   const repository = projectRepository(result.repository, executionSha);
-  if (!reviewGate || !repository) return null;
+  if (!authorizationProjection || !repository) return null;
   const projected = {
     mode: "live",
     productId,
     state: result.state,
     startedAt: result.startedAt,
     finishedAt: result.finishedAt,
-    reviewGate,
+    ...authorizationProjection,
     repository,
   };
   if (result.state !== "passed") {
@@ -243,7 +290,11 @@ function projectLiveChildResult(result, { productId, executionSha }) {
   };
 }
 
-export function validateIsolatedLiveChild(child, { productId, executionSha }) {
+export function validateIsolatedLiveChild(child, {
+  productId,
+  executionSha,
+  allowMaintainerExperimental = false,
+}) {
   let result;
   try {
     result = JSON.parse(child.stdout);
@@ -262,7 +313,11 @@ export function validateIsolatedLiveChild(child, { productId, executionSha }) {
   ) {
     return { accepted: false, code: "isolated_live_child_exit_mismatch" };
   }
-  const projected = projectLiveChildResult(result, { productId, executionSha });
+  const projected = projectLiveChildResult(result, {
+    productId,
+    executionSha,
+    allowMaintainerExperimental,
+  });
   if (!projected) {
     return { accepted: false, code: "isolated_live_result_binding_mismatch" };
   }
@@ -284,6 +339,8 @@ function stableResult(productId, code, startedAt, boundary = null) {
 function main() {
   const startedAt = new Date().toISOString();
   const productId = process.argv[2];
+  const allowMaintainerExperimental =
+    process.env.THREADMESH_MAINTAINER_EXPERIMENTAL_ACK === MAINTAINER_EXPERIMENTAL_ACK;
   let result;
   if (!["codex", "kimi", "gemini"].includes(productId)) {
     result = stableResult(productId ?? null, "usage", startedAt);
@@ -331,7 +388,7 @@ function main() {
               maxBuffer: 256 * 1024,
             },
           );
-          if (gate.status !== 0) {
+          if (gate.status !== 0 && !allowMaintainerExperimental) {
             failureCode = "external_review_records_incomplete";
             failureState = "not-run";
           } else {
@@ -355,7 +412,11 @@ function main() {
                   maxBuffer: 2 * 1024 * 1024,
                 },
               );
-              const validation = validateIsolatedLiveChild(child, { productId, executionSha });
+              const validation = validateIsolatedLiveChild(child, {
+                productId,
+                executionSha,
+                allowMaintainerExperimental,
+              });
               if (validation.accepted) childResult = validation.result;
               else failureCode = validation.code;
             }

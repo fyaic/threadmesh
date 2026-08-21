@@ -1,11 +1,9 @@
 # Project status
 
-> Snapshot: 2026-08-21, including authenticated operations, crash-safe adapter
-> submission, typed interruption results, signed verification attestations,
-> the stacked local event-stream/inspector candidate, the two-profile M1
-> conformance matrix, the retention-driven purge candidate, three real
-> no-model product preflights, and the gated coordinator-mediated validation
-> runner.
+> Snapshot: 2026-08-21, after PR #45 was squash-merged to `main` at
+> `e761e98da83426a5ebae3b47a341f606186dfca6`. The merged tree includes the
+> local coordinator, two-profile conformance matrix, retention purge, three
+> product adapters, and the gated coordinator-mediated validation runner.
 
 ## Executive summary
 
@@ -15,7 +13,8 @@ machine-readable schemas, deterministic conformance fixtures, an authenticated
 local JSON-RPC binding, an experimental SQLite coordinator, and conservative
 ACP, Codex App Server, and Gemini headless adapters. All three have real
 no-model product evidence and share one deterministic coordinator-mediated
-validation runner. No current real model path counts as passed.
+validation runner. The maintainer has authorized bounded real-product
+experiments; no real model path counts as passed until its result is recorded.
 
 The implementation is not a production coordinator and does not establish
 cross-product interoperability. The normative M0 blockers are resolved; M0
@@ -27,7 +26,7 @@ maintainer organization.
 | Area | Current evidence | Status |
 |---|---|---|
 | Research and problem framing | Codex deep dive, community signals, ecosystem comparison, ADRs | Established |
-| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 118 unit/subtests | Executable draft |
+| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 120 unit/subtests | Executable draft |
 | Local binding | Schema-validated JSON-RPC, transport-derived principals, typed errors | Executable local reference |
 | Local persistence | SQLite registry, proposals, grants, summaries, mailbox, claims, receipts, reconciliation, replay, audit, retention tombstones | Experimental |
 | Safety boundary | Authenticated authorship checks, effective-grant decisions, revocation, CAS | Executable local policy |
@@ -38,8 +37,8 @@ maintainer organization.
 | Codex live model behavior | Exact marker, persisted resume, and cleanup script prepared | Gated, not run |
 | Gemini CLI headless | Official package 0.56.0 integrity, required flags, isolated-home cleanup | Real no-model preflight passed |
 | Gemini live model behavior | Exact marker script requires explicit provider key | Not authorized, not run |
-| Multi-product admission | One mailbox/acceptance/claim/evidence path across ACP, Codex, and Gemini fakes | Stacked deterministic candidate |
-| Product validation runner | Built-in bootstrap, isolated exact-main worktree, start/end SHA checks, bounded child evidence, acknowledgement, marker, audit, and cleanup | Three internal approvals at `cf674bc`; fake-all passed; live gated |
+| Multi-product admission | One mailbox/acceptance/claim/evidence path across ACP, Codex, and Gemini fakes | Merged experimental implementation |
+| Product validation runner | Built-in bootstrap, isolated exact-main worktree, start/end SHA checks, bounded child evidence, acknowledgement, marker, audit, and cleanup | Merged in #45; fake-all passed; maintainer-authorized live experiment next |
 | External-review gate | GitHub-authenticated canonical review/disposition blocks, merged-fix ancestry, reviewer diversity, and target ancestry | Mechanically awaiting 2 records |
 | Independent review | Three internal lanes complete; external reviewer packet and public template published | Awaiting two external verdicts |
 | Production authentication | Local static-token reference; no TLS/OAuth verifier supplied | Host integration required |
@@ -48,9 +47,9 @@ maintainer organization.
 | Interruption result | Per-target model/tool/process schema; no umbrella success | Normative, no live cancellation adapter yet |
 | External verification | Signed attestation schema plus real Ed25519 conformance proof | Normative, conformance trust anchor only |
 | Cross-harness conformance | Pull-mailbox and event-watching mock profiles over JSON-RPC | Local behavior demonstrated |
-| Event stream and inspector | Restart checkpoint, strict local cursor order, provenance, authorization-aware redaction | Stacked M1 candidate |
-| M1 behavior matrix | Two capability-valid mock profiles, related discovery, notify/suggest decisions, stale/unsupported state change, revocation, cleanup | Stacked conformance candidate |
-| Retention purge | Schema v3 tombstones, policy-only bounded operation, unknown-effect exclusion, replay preservation, WAL checkpoint | Stacked M1 candidate |
+| Event stream and inspector | Restart checkpoint, strict local cursor order, provenance, authorization-aware redaction | Merged experimental implementation |
+| M1 behavior matrix | Two capability-valid mock profiles, related discovery, notify/suggest decisions, stale/unsupported state change, revocation, cleanup | Merged conformance implementation |
+| Retention purge | Schema v3 tombstones, policy-only bounded operation, unknown-effect exclusion, replay preservation, WAL checkpoint | Merged experimental implementation |
 
 ## Milestone accounting
 
@@ -69,6 +68,11 @@ GitHub is authoritative for milestone closure.
   outside the maintainer organization.
 
 ### M1 — Local reference coordinator
+
+The implementation stack was squash-merged by PR #45 and revalidated on
+`main`. Issues #9–#14 and #34 were closed by that integration PR. This merge is
+a maintainer-approved experimental implementation decision; it does not turn
+the still-open M0 external-review requirement into a satisfied review.
 
 - 7 issues open: [#9](https://github.com/fyaic/threadmesh/issues/9)–
   [#14](https://github.com/fyaic/threadmesh/issues/14), plus retention follow-up
@@ -104,6 +108,11 @@ GitHub is authoritative for milestone closure.
   M1 acceptance issue.
 
 ### M2 — First real adapters
+
+The adapters and unified runner are merged. The immediate mainline is now real
+product evidence: Codex first, Kimi second, and Gemini only when an explicit
+credential is already available. Maintainer-experimental results are kept
+distinct from normative M0 evidence.
 
 - 5 issues open: Codex App Server [#36](https://github.com/fyaic/threadmesh/issues/36),
   Kimi ACP hardening [#37](https://github.com/fyaic/threadmesh/issues/37), and a

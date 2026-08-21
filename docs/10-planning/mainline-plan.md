@@ -4,9 +4,9 @@
 
 Turn the current trusted-process demonstration into a protocol whose safety and
 failure semantics can be implemented by more than one harness without private
-assumptions. The critical path is M0 stabilization followed by M1 completion;
-live adapter code may be prepared in parallel, but no model result counts toward
-completion before the gate and merged coordinator path are satisfied.
+assumptions. The active critical path is the merged coordinator plus real-agent
+evidence. Normative M0 review remains a parallel governance track;
+maintainer-authorized experiments are explicitly labeled and do not satisfy it.
 
 ## Workstream order
 
@@ -171,8 +171,10 @@ canonical digests and excluding in-flight/unknown external effects. It also
 tests v1/v2 upgrade, restart, replay, idempotent JSON-RPC, and explicit WAL
 truncation. Its merge is gated by #7 and the lower M1 stack.
 
-Once the stack merges and is revalidated on `main`, real agent-product
-validation becomes the next evidence workstream.
+PR #45 squash-merged the stack to `main` at
+`e761e98da83426a5ebae3b47a341f606186dfca6` and the merged tree passed install,
+test, lint, schema, transition, and audit checks. Real agent-product validation
+is now the active evidence workstream.
 
 ### 7. Complete real product validation
 
@@ -195,13 +197,14 @@ evidence confirmation across all three adapter kinds; this is deterministic
 preparation in Draft [#43](https://github.com/fyaic/threadmesh/pull/43), not a
 substitute for the post-gate real model run.
 
-Draft [#45](https://github.com/fyaic/threadmesh/pull/45), tracked by
+Merged [#45](https://github.com/fyaic/threadmesh/pull/45), tracked by
 [#44](https://github.com/fyaic/threadmesh/issues/44), adds the final shared
 execution surface: fake-all and live modes now traverse the same mailbox claim,
 receiver acceptance, admission token, exact marker, strict evidence, audit, and
-cleanup path. Fake-all passes. Live mode remains mechanically `not-run` unless
-two records resolve to qualifying GitHub machine blocks, the operator supplies
-the exact post-review acknowledgement, and a built-in-only bootstrap starts a
+cleanup path. Fake-all passes. The preferred live mode requires two records
+resolving to qualifying GitHub machine blocks. The explicit
+maintainer-experimental mode permits bounded learning runs without claiming M0
+closure. Both require the operator acknowledgement, and a built-in-only bootstrap starts a
 fresh child from a detached worktree at clean verified GitHub `main`. Start and
 end snapshots must remain on the same SHA. Every legacy live alias delegates to
 this one path. Three independent internal lanes approved exact commit `cf674bc`
@@ -209,7 +212,7 @@ for this conservative experimental scope after final regressions bound child
 stdout to error/signal/status, exact product and repository state, bounded
 public projection, and all four result states with product-specific cleanup.
 
-After M0 closes and the M1 stack is merged and revalidated:
+Immediate execution order on merged `main`:
 
 - merge and revalidate the conservative Codex App Server adapter;
 - run its exact live marker, persisted resume, and exact-thread cleanup;

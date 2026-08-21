@@ -1,9 +1,9 @@
 # Milestone acceptance audit
 
-> Snapshot: 2026-08-21. Independent review target before remediation:
-> `510df05257ee6c0218b129c3a8a1c8067ed513c1`. The remediation is being prepared
-> in Draft PR #45 and remains candidate evidence until merged and revalidated on
-> current GitHub `main`.
+> Snapshot: 2026-08-21. PR #45 was squash-merged and revalidated on `main` at
+> `e761e98da83426a5ebae3b47a341f606186dfca6`. The independent M0 review target
+> remains `265e461f1b8714c56f7fe817795b81d895f732c6`; its evidence gate is still
+> unsatisfied.
 
 ## Status vocabulary
 
@@ -17,9 +17,10 @@
 - **not-run** — the required real experiment has intentionally not executed;
 - **satisfied** — merged `main` evidence proves the criterion.
 
-No M1 or M2 issue is `satisfied` yet. M1 is merge-gated by #7. Real M2 model
-turns are additionally execution-gated by the merged coordinator and valid
-external-review records.
+The M1 implementation is merged, but normative M0 acceptance remains open at
+issue #7. Real M2 turns may now run either with valid external-review records or under
+the explicit maintainer-experimental authorization. The latter never satisfies
+M0 and must remain labeled non-normative.
 
 ## M0 gate
 
@@ -39,6 +40,10 @@ bootstrap also requires a separate exact operator acknowledgement and executes
 from a detached worktree at verified GitHub `main`, with start/end checks; none
 of these mechanisms can substitute for another.
 
+The maintainer-experimental override is a separately labeled execution
+authorization, not a substitute for the missing reviews. It preserves an
+unsatisfied review-gate projection in every result.
+
 ## M1 — Local reference coordinator
 
 | Issue | Acceptance evidence in the stacked candidate | Audit status |
@@ -51,19 +56,12 @@ of these mechanisms can substitute for another.
 | #14 two harness profiles | #33; pull-mailbox and event-watching profiles, audit per transition, explicit degradation, deterministic database cleanup | Candidate-satisfied |
 | #34 retention purge | #35; append-only schema v3, bounded policy-only purge, unknown-effect exclusion, replay preservation, redaction, restart/WAL tests | Candidate-satisfied |
 
-### M1 closure procedure
+### M1 integration result
 
-After #7 is accepted:
-
-1. merge #28, then rebase or retarget each direct successor in order through
-   #35;
-2. after every merge, require both repository checks on the new base;
-3. run `npm ci`, `npm test`, and `npm audit --audit-level=high` on final `main`;
-4. map the resulting `main` commit and CI URL back to every issue criterion;
-5. close #9–#14 and #34 only after the issue-specific evidence comment exists.
-
-The stacked green state is strong candidate evidence, but it is not equivalent
-to this sequential merged-state proof.
+PR #45 integrated the full stack into `main`; `npm ci`, `npm test`, and
+`npm audit --audit-level=high` passed on the merged tree. The integration PR
+closed #9–#14 and #34. This proves the merged experimental implementation and
+its deterministic tests, while #7 continues to govern normative M0 acceptance.
 
 ## M2 — Real adapters
 
@@ -103,12 +101,12 @@ to this sequential merged-state proof.
 
 | Issue | Current evidence | Audit status |
 |---|---|---|
-| #42 generalized admission | #43 validates ACP, Codex, and Gemini adapter refs and strict bounded evidence over one claimed envelope | Candidate-satisfied |
-| #44 unified runner | #45 fake-all passes mailbox claim/acceptance, exact marker, confirmation, audit, and cleanup; every live alias uses canonical GitHub review/disposition gates and isolated exact-main bootstrap | Candidate-satisfied implementation; real execution not-run |
+| #42 generalized admission | Merged #45 validates ACP, Codex, and Gemini adapter refs and strict bounded evidence over one claimed envelope | Merged implementation; real evidence pending |
+| #44 unified runner | Merged #45 fake-all passes mailbox claim/acceptance, exact marker, confirmation, audit, and cleanup; every live alias uses the isolated exact-main bootstrap | Merged implementation; maintainer-authorized real execution next |
 
 ## Real-product evidence still required
 
-After the M0 and merged-M1 gates pass, the same runner must produce:
+The merged runner must now produce:
 
 1. Codex: exact bootstrap marker, registered persisted receiver, exact
    coordinator marker, completed turn evidence, resume, and exact thread delete;

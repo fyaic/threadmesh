@@ -16,6 +16,9 @@ import {
 } from "../src/validation/external-review-gate.mjs";
 
 export const LIVE_E2E_ACK = "issue-7-approved-for-live-product-validation";
+export const MAINTAINER_EXPERIMENTAL_ACK =
+  "maintainer-approved-for-experimental-live-validation";
+const M0_ISSUE_URL = "https://github.com/fyaic/threadmesh/issues/7";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const fixture = (name) => path.join(root, "test", "fixtures", name);
 const markers = Object.freeze({
@@ -29,6 +32,24 @@ export function publicProductErrorCode(error) {
   return typeof code === "string" && /^[a-z0-9_]{1,128}$/.test(code)
     ? code
     : "unknown_error";
+}
+
+export function evaluateLiveAuthorization(reviewGate, env = process.env) {
+  if (reviewGate?.satisfied === true) {
+    return {
+      mode: "external-review",
+      normativeReviewSatisfied: true,
+      issueUrl: M0_ISSUE_URL,
+    };
+  }
+  if (env.THREADMESH_MAINTAINER_EXPERIMENTAL_ACK === MAINTAINER_EXPERIMENTAL_ACK) {
+    return {
+      mode: "maintainer-experimental",
+      normativeReviewSatisfied: false,
+      issueUrl: M0_ISSUE_URL,
+    };
+  }
+  return null;
 }
 
 function classify(error, productId) {
@@ -159,7 +180,8 @@ export async function runLive(productId, env = process.env) {
     };
   }
   const reviewGate = verifyExternalReviewGate({ root });
-  if (!reviewGate.satisfied) {
+  const authorization = evaluateLiveAuthorization(reviewGate, env);
+  if (!authorization) {
     return {
       mode: "live",
       startedAt,
@@ -183,6 +205,7 @@ export async function runLive(productId, env = process.env) {
       productId,
       code: "isolated_live_repository_not_ready",
       reviewGate,
+      authorization,
       repository,
     };
   }
@@ -191,6 +214,7 @@ export async function runLive(productId, env = process.env) {
       mode: "live",
       startedAt,
       reviewGate,
+      authorization,
       repository,
       ...(await runOne(productId, liveDriver(productId, env))),
       finishedAt: new Date().toISOString(),
@@ -200,6 +224,7 @@ export async function runLive(productId, env = process.env) {
       mode: "live",
       startedAt,
       reviewGate,
+      authorization,
       repository,
       ...classify(error, productId),
       finishedAt: new Date().toISOString(),
