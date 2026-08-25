@@ -124,3 +124,79 @@ test("irrelevant relationship is inspected without contacting Agent B", async ()
   assert.equal(result.interferenceViolation, false);
   assert.equal(result.cleanup.complete, true);
 });
+
+test("B bootstrap marker failure retains and deletes the exact created thread", async () => {
+  const deleted = [];
+  const adapterRef = {
+    kind: "codex-app-server",
+    threadId: "thread_bootstrap_mismatch",
+    snapshotDigest: `sha256:${"a".repeat(64)}`,
+  };
+  const adapter = {
+    async startValidationThread() {
+      return { text: "WRONG_MARKER", truncated: false, adapterRef };
+    },
+    async deleteThread({ threadId }) {
+      deleted.push(threadId);
+      return { threadId, deleted: true };
+    },
+  };
+
+  await assert.rejects(
+    runProactiveCodexScenario({
+      command: process.execPath,
+      cwd: root,
+      adapter,
+      runId: "bootstrap_cleanup01",
+    }),
+    (error) => {
+      assert.equal(error.code, "threadmesh_proactive_b_bootstrap_mismatch");
+      assert.deepEqual(error.cleanup, {
+        attempted: true,
+        complete: true,
+        aThreadDeleted: false,
+        bThreadDeleted: true,
+        threadDeleted: true,
+      });
+      return true;
+    },
+  );
+  assert.deepEqual(deleted, [adapterRef.threadId]);
+});
+
+test("B bootstrap operation failure deletes the adapter reference carried by the error", async () => {
+  const deleted = [];
+  const adapterRef = {
+    kind: "codex-app-server",
+    threadId: "thread_bootstrap_operation_failure",
+    snapshotDigest: `sha256:${"b".repeat(64)}`,
+  };
+  const adapter = {
+    async startValidationThread() {
+      const error = new Error("codex_app_server_operation_timeout");
+      error.code = "codex_app_server_operation_timeout";
+      error.adapterRef = adapterRef;
+      throw error;
+    },
+    async deleteThread({ threadId }) {
+      deleted.push(threadId);
+      return { threadId, deleted: true };
+    },
+  };
+
+  await assert.rejects(
+    runProactiveCodexScenario({
+      command: process.execPath,
+      cwd: root,
+      adapter,
+      runId: "bootstrap_cleanup02",
+    }),
+    (error) => {
+      assert.equal(error.code, "codex_app_server_operation_timeout");
+      assert.equal(error.cleanup.complete, true);
+      assert.equal(error.cleanup.bThreadDeleted, true);
+      return true;
+    },
+  );
+  assert.deepEqual(deleted, [adapterRef.threadId]);
+});

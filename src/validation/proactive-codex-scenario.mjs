@@ -120,18 +120,24 @@ export async function runProactiveCodexScenario({
     const bBootstrapMarker = condition === "control"
       ? PROACTIVE_B_MISSING_MARKER
       : PROACTIVE_B_BOOTSTRAP_MARKER;
-    const bBootstrap = await adapter.startValidationThread({
-      command,
-      args,
-      cwd,
-      env: bootstrapEnv,
-      marker: bBootstrapMarker,
-      adapterIdempotencyKey: `idem_proactive_b_bootstrap_${runId}`,
-      developerInstructions: PROACTIVE_B_INSTRUCTIONS,
-      model,
-    });
+    let bBootstrap;
+    try {
+      bBootstrap = await adapter.startValidationThread({
+        command,
+        args,
+        cwd,
+        env: bootstrapEnv,
+        marker: bBootstrapMarker,
+        adapterIdempotencyKey: `idem_proactive_b_bootstrap_${runId}`,
+        developerInstructions: PROACTIVE_B_INSTRUCTIONS,
+        model,
+      });
+      bRef = bBootstrap.adapterRef;
+    } catch (error) {
+      bRef = error.adapterRef;
+      throw error;
+    }
     exact(bBootstrap, bBootstrapMarker, "threadmesh_proactive_b_bootstrap_mismatch");
-    bRef = bBootstrap.adapterRef;
 
     try {
       aRef = await adapter.createDynamicToolThread({
@@ -417,7 +423,9 @@ export async function runProactiveCodexScenario({
         cleanup.bThreadDeleted = true;
       } catch {}
     }
-    cleanup.complete = cleanup.aThreadDeleted && cleanup.bThreadDeleted;
+    cleanup.complete =
+      (!aRef?.threadId || cleanup.aThreadDeleted) &&
+      (!bRef?.threadId || cleanup.bThreadDeleted);
     cleanup.threadDeleted = cleanup.complete;
   }
   if (failure) {
