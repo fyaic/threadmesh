@@ -22,6 +22,7 @@ accepted until two qualifying public records exist and pass
 ## Real product evidence
 
 - [Codex scored behavior gate](2026-08-25-codex-behavior-gate.md)
+- [Codex repetitions and default-off decision](2026-08-25-codex-behavior-repetitions.md)
 - [Kimi Code live ThreadMesh pass](2026-08-25-kimi-code-live-pass.md)
 
 ## 2026-08-20 internal review round

@@ -83,6 +83,11 @@ Exit: the same scenario runs across at least two different harness families.
 - [ ] Receiver decision and interference-cost budget.
 - [ ] Evaluation suite for useful versus harmful coordination.
 
+The first three-run repetition matrix keeps proactive coordination default-off:
+control was quiet 3/3, but relevant coordination completed only 1/3 because of
+one operation timeout and one bootstrap marker mismatch. The next M3 slice is a
+shorter reliability benchmark, not more protocol surface.
+
 Exit: proactive coordination improves task outcomes in a benchmark without exceeding the defined interference budget.
 
 ## M4 — Interoperability proposal

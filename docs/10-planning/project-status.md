@@ -25,7 +25,7 @@ maintainer organization.
 | Area | Current evidence | Status |
 |---|---|---|
 | Research and problem framing | Codex deep dive, community signals, ecosystem comparison, ADRs | Established |
-| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 130 unit/subtests | Executable draft |
+| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 132 unit/subtests | Executable draft |
 | Minimal adapter SDK | `@fyaic/threadmesh` `0.1.0-alpha.0`; six bounded methods, 14.5 kB tarball, packed-consumer import | Candidate complete; not published to npm |
 | Local binding | Schema-validated JSON-RPC, transport-derived principals, typed errors | Executable local reference |
 | Local persistence | SQLite registry, proposals, grants, summaries, mailbox, claims, receipts, reconciliation, replay, audit, retention tombstones | Experimental |
@@ -37,6 +37,7 @@ maintainer organization.
 | Codex live model behavior | Exact marker, evidence, audit, persisted resume path, and exact thread cleanup at `0dda5a7` | Real maintainer-experimental pass |
 | Codex proactive A-to-B | A selected related-task discovery and one bounded send; B consumed admitted context; both tasks deleted at `248d650` | Real maintainer-experimental positive-case pass |
 | Codex scored behavior gate | Control score 0; relevant score 1 with one send; irrelevant performed one lookup and no send; all tasks deleted at `0dd2c82` | First real outcome/interference pass |
+| Codex repetition matrix | Control 3/3; relevant 1/3; irrelevant 2/3 with one inconclusive marker failure; exact leaked bootstrap thread manually removed and cleanup regression merged in #64 | Default enablement rejected |
 | Gemini CLI headless | Official package 0.56.0 integrity, required flags, isolated-home cleanup | Real no-model preflight passed |
 | Gemini live model behavior | Exact marker script requires explicit provider key | Not authorized, not run |
 | Multi-product admission | One mailbox/acceptance/claim/evidence path across ACP, Codex, and Gemini fakes | Merged experimental implementation |
@@ -121,12 +122,13 @@ remain distinct from normative M0 evidence.
 
 ### Active product gates
 
-The three product reset gates are complete: first scored Codex behavior,
-minimal zero-dependency adapter SDK, and a real Kimi ACP portability pass. Issue
-Issue #53 remains open for repetitions, stale/duplicate cases, and receiver
-defer/reject before default enablement. Issue #7 remains parallel governance.
-Hostile-worker schema #48, optional Gemini live validation, and further
-production hardening are deferred.
+The three product reset gates are complete: scored Codex behavior, minimal
+zero-dependency adapter SDK, and a real Kimi ACP portability pass. Three Codex
+repetitions subsequently rejected default enablement because the relevant path
+passed only 1/3. Issue #53 remains open for a shorter reliability benchmark
+before stale/duplicate or receiver-decision expansion. Issue #7 remains
+parallel governance. Hostile-worker schema #48, optional Gemini live
+validation, and further production hardening are deferred.
 
 ## What the prototype proves
 

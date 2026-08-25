@@ -27,13 +27,14 @@ The documentation is organized from intent to implementation. New readers should
 21. [Proactive Codex A-to-B validation](06-guides/proactive-codex-validation.md)
 22. [Design reviews](09-reviews/README.md)
 23. [Kimi Code live pass](09-reviews/2026-08-25-kimi-code-live-pass.md)
-24. [Real agent-product validation runbook](09-reviews/real-product-e2e-runbook.md)
-25. [Codex App Server experiment](05-adapters/codex-app-server.md)
-26. [Codex App Server preflight](09-reviews/2026-08-20-codex-app-server-preflight.md)
-27. [Gemini CLI experiment](05-adapters/gemini-cli.md)
-28. [Third-harness selection](09-reviews/2026-08-20-third-harness-selection.md)
-29. [M0 external reviewer packet](09-reviews/m0-external-reviewer-packet.md)
-30. [Mainline plan](10-planning/mainline-plan.md)
+24. [Codex repetition decision](09-reviews/2026-08-25-codex-behavior-repetitions.md)
+25. [Real agent-product validation runbook](09-reviews/real-product-e2e-runbook.md)
+26. [Codex App Server experiment](05-adapters/codex-app-server.md)
+27. [Codex App Server preflight](09-reviews/2026-08-20-codex-app-server-preflight.md)
+28. [Gemini CLI experiment](05-adapters/gemini-cli.md)
+29. [Third-harness selection](09-reviews/2026-08-20-third-harness-selection.md)
+30. [M0 external reviewer packet](09-reviews/m0-external-reviewer-packet.md)
+31. [Mainline plan](10-planning/mainline-plan.md)
 
 ## Directory guide
 
