@@ -188,18 +188,43 @@ The validation ledger must distinguish `passed`, `blocked`, `failed`, and
 `not-run`. A handshake, a fake server, or an unavailable quota is never promoted
 to a live-model pass.
 
-## Next pull-request slices
+## Product mainline reset — 2026-08-25
 
-Keep each change independently reviewable:
+The protocol and reference runtime are sufficient for the next product
+questions. No new protocol, persistence, validation-worker, steer, interrupt,
+or production-isolation work enters the mainline until the following gates pass.
 
-1. `docs: publish the external M0 reviewer packet`
-2. `feat: complete the M1 storage and migration contract`
-3. `feat: complete policy, dispatcher, stream, and inspector slices`
-4. `test: complete the two-profile M1 conformance kit`
-5. `feat: implement retention-driven sensitive-content purge`
-6. `feat: add Codex App Server adapter and no-model product preflight`
-7. `test: add one gated coordinator-mediated product validation runner`
-8. `test: run real product adapters after normative and M1 completion`
+### Gate 1 — Behavioral value and interference
+
+Run three real Codex conditions with the same task objective and scoring rubric:
+
+1. no ThreadMesh contact;
+2. relevant dependency available through ThreadMesh;
+3. irrelevant or stale dependency available through ThreadMesh.
+
+Record outcome score, completion, model turns, elapsed time, sends, receiver
+disposition, unwanted receiver activation, persistent-context residue, and exact
+cleanup. The relevant condition must improve the scored outcome over control;
+the irrelevant/stale condition must not send or disrupt the receiver. This is
+the only active implementation workstream and is tracked by #53.
+
+### Gate 2 — Minimal adapter kit
+
+Only after Gate 1 passes, expose the smallest usable API for task registration,
+relationship discovery, bounded suggestion send, receiver disposition, and
+mailbox polling. Add one integration example that a new harness can complete in
+roughly 30 minutes. Do not expose coordinator internals or require readers to
+understand every protocol schema.
+
+### Gate 3 — One different real harness
+
+Choose exactly one: Kimi when quota is available, otherwise Gemini with an
+explicit credential. Run the same behavioral case and cleanup assertions. Do
+not maintain two competing live-validation branches.
+
+Independent review #7 continues as a parallel governance track. Hostile-worker
+schema #48 is deferred. Production authentication, OS isolation, parallel
+worker leases, hosted streaming, steer, and interrupt remain out of mainline.
 
 ## Mainline guardrails
 

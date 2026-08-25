@@ -35,26 +35,16 @@ and distributed-systems boundaries.
 
 ## M1 — Local reference coordinator
 
-- [ ] Versioned SQLite storage, migration, rollback, retention, and deletion contract.
-- [ ] Complete durable task registry, mailbox, and scoped audit API.
-- [ ] Complete relationship- and intent-based policy engine with stable reasons.
-- [ ] Complete freshness, idempotency, expiry, receipts, and reconciliation.
-- [ ] Local event stream and provenance inspector.
-- [ ] Two-profile mock-harness conformance kit.
-- [ ] Retention-driven sensitive-content purge.
+- [x] Versioned SQLite storage, migration, rollback, retention, and deletion contract.
+- [x] Complete durable task registry, mailbox, and scoped audit API.
+- [x] Complete relationship- and intent-based policy engine with stable reasons.
+- [x] Complete freshness, idempotency, expiry, receipts, and reconciliation.
+- [x] Local event stream and provenance inspector.
+- [x] Two-profile mock-harness conformance kit.
+- [x] Retention-driven sensitive-content purge.
 
-Prototype evidence already exists for task registration, mailbox persistence,
-grant checks, CAS, admission claims, ACP session reload, and provenance. Stacked
-Draft candidates now cover the versioned storage baseline, audited expiry,
-fail-closed policy, runtime freshness, crash-safe native dispatch, and a local
-restart-safe cursor stream with an authorization-aware provenance inspector.
-The final stacked candidate adds the deterministic two-profile behavior matrix
-and explicit unsupported degradation. A retention follow-up adds schema-v3
-tombstones, unknown-effect protection, replay preservation, and explicit WAL
-checkpoint behavior.
-All M1 issues remain open because merge is gated by
-[issue #7](https://github.com/fyaic/threadmesh/issues/7) and the remaining
-acceptance criteria are not yet met.
+M1 is merged and its GitHub milestone is closed. This is experimental reference
+runtime evidence, not a production deployment claim.
 
 Exit: two mock harnesses can discover, notify, suggest, accept, reject, defer,
 and explicitly decline unsupported steer/interrupt behavior with a complete
@@ -63,39 +53,33 @@ typed cancellation contract is implemented.
 
 ## M2 — First real adapters
 
-- [ ] Codex App Server adapter.
-- [ ] Generic subprocess/JSON-RPC adapter.
+- [x] Codex App Server adapter.
+- [x] Generic subprocess/JSON-RPC adapter.
 - [ ] One production-oriented adapter for a non-Codex harness.
-- [ ] Adapter capability negotiation and graceful degradation.
+- [x] Adapter capability negotiation and graceful degradation.
 
 The Kimi ACP candidate now proves a real no-model create/list/delete/absence
 lifecycle with exact binary and capability digests. Its earlier live marker is
 quota-blocked, so this remains experimental evidence rather than M2 completion.
-The Codex App Server candidate now has deterministic tests and a real no-model
-CLI `0.145.0` preflight. Its live first turn, persisted resume, exact cleanup,
-and coordinator-mediated A-to-B scenario remain gated and therefore do not
-complete the Codex checklist item.
+The Codex App Server path has a real receiver pass and a real model-selected
+A-to-B positive case with exact cleanup. It does not yet have the control and
+interference evidence required for M3.
 Gemini CLI headless `stream-json` is selected as the materially different third
 harness. Its pinned official package and no-model capability preflight pass;
 the checklist remains open until an explicitly authorized real model executes
 the shared scenario.
-A stacked conformance slice now removes the coordinator's ACP-only admission
-assumption and executes the same accepted suggestion across ACP, Codex, and
-Gemini fake products with kind-specific evidence. Real products remain required
-for M2 exit.
-A further gated runner rehearses the full mailbox, receiver acceptance,
-admission, exact marker, evidence, audit, and cleanup path across all three fake
-products. It defaults every live product to `not-run` until the external-review
-gate is explicitly acknowledged.
+The same accepted suggestion passes deterministic ACP, Codex, and Gemini fake
+products. A second materially different real harness is still required.
 
 Exit: the same scenario runs across at least two different harness families.
 
 ## M3 — Proactive dependency discovery
 
-- [ ] Explicit dependency graph.
-- [ ] Privacy-preserving task summaries.
-- [ ] Pluggable relevance signals.
-- [ ] Agent decision policy and interruption-cost budget.
+- [x] Explicit dependency graph.
+- [x] Privacy-preserving task summaries.
+- [x] Bounded model-selected relationship lookup and send experiment.
+- [ ] No-contact and irrelevant/stale control conditions.
+- [ ] Receiver decision and interference-cost budget.
 - [ ] Evaluation suite for useful versus harmful coordination.
 
 Exit: proactive coordination improves task outcomes in a benchmark without exceeding the defined interference budget.

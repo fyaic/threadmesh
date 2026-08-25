@@ -115,43 +115,24 @@ test/                Behavioral and conformance tests
 
 ## Current progress
 
-The repository now contains an executable `0.0-draft` specification and
-reviewed experimental paths through SQLite, JSON-RPC, and ACP. Pull request
-[#20](https://github.com/fyaic/threadmesh/pull/20) added durable task and message
-state, owner-scoped grants, idempotency and CAS, single-use admission claims, a
-registered-session ACP adapter, and runtime coherence validation. The current
-binding adds transport-derived principals, effective grant decisions, durable
-operation replay, receiver claims, and two public-path mock harness profiles.
+The repository contains an executable `0.0-draft` specification, an
+experimental SQLite coordinator, authenticated JSON-RPC operations, and ACP,
+Codex App Server, and Gemini headless adapters. M1 is merged and its milestone
+is closed. A real Codex Agent A has selected ThreadMesh relationship discovery
+and sent one bounded suggestion to a persisted Agent B; the coordinator
+admitted it and both exact tasks were deleted.
 
-The implementation is deliberately narrower than the product vision:
+That positive case proves feasibility, not product value or portability. The
+active mainline has only three gates:
 
-- M0 has 10 closed and 1 open issue after typed interruption and signed
-  verification in #16;
-- only the independent external review gate remains open for M0;
-- M1 storage, audited expiry, relationship policy, durable dispatcher,
-  provenance inspector, and two-profile conformance candidates are prepared as
-  stacked changes; a retention-purge follow-up is also implemented as a stacked
-  candidate, but all seven M1 issues remain open behind #7;
-- an M2 Codex App Server candidate now passes deterministic JSONL tests and a
-  real CLI `0.145.0` no-model handshake/thread-start preflight; its exact live
-  marker, persisted resume, cleanup, and coordinator-mediated A-to-B path are
-  implemented or planned but intentionally not counted as run;
-- Gemini CLI `0.56.0` is selected as the materially different non-ACP headless
-  harness; its official pinned package and isolated no-model preflight pass,
-  while model execution awaits an explicitly authorized provider key;
-- a common deterministic matrix now takes the same accepted mailbox suggestion
-  through ACP, Codex, and Gemini admission claims and kind-specific evidence;
-- one mechanically gated runner now rehearses mailbox claim, receiver
-  acceptance, exact marker, evidence, audit, and cleanup across all three fake
-  products; real mode requires integrity-bound review records plus an operator
-  acknowledgement and defaults to `not-run` before #7;
-- Kimi Code ACP initialization and exact create/list/delete/absence lifecycle
-  passed against the real product, while the earlier model-turn marker remains
-  blocked by account quota and is not counted as a pass.
+1. compare no-contact, relevant-dependency, and irrelevant/stale real Codex
+   conditions, measuring outcome quality and receiver interference;
+2. expose a minimal installable adapter API and one short integration example;
+3. pass the same behavior on one materially different real harness.
 
-The mainline is now independent M0 review (#7), sequential merge and `main`
-revalidation of the M1 stack, then real Codex, Kimi, and Gemini product
-validation. See
+Protocol expansion, hostile-worker validation, steer/interrupt, and production
+hardening are deferred until these gates pass. Independent M0 review continues
+in parallel and does not block explicitly labeled maintainer experiments. See
 the [project status](docs/10-planning/project-status.md),
 [mainline plan](docs/10-planning/mainline-plan.md), and
 [milestone acceptance audit](docs/10-planning/acceptance-audit.md),
