@@ -1,7 +1,7 @@
 # Project status
 
-> Snapshot: 2026-08-25, after the real Codex-to-Kimi proactive pass at
-> `e0adb0e8552ddf2c406c01172c97d390c3e05d61`.
+> Snapshot: 2026-08-25, after the real public-SDK Pi-to-Kimi pass at
+> `02d8d24e41d0e7800a3b648c8a41376aba849535`.
 
 ## Executive summary
 
@@ -25,8 +25,8 @@ including one outside the maintainer organization.
 | Area | Current evidence | Status |
 |---|---|---|
 | Research and problem framing | Codex deep dive, community signals, ecosystem comparison, ADRs | Established |
-| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 142 unit/subtests | Executable draft |
-| Minimal adapter SDK | `@fyaic/threadmesh` `0.1.0-alpha.0`; six bounded client methods, per-turn proactive bridge, about 20 kB tarball, packed-consumer execution | M4 implementation candidate; not published to npm |
+| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 143 unit/subtests | Executable draft |
+| Minimal adapter SDK | `@fyaic/threadmesh` `0.1.0-alpha.0`; six bounded client methods, per-turn proactive bridge, about 20 kB tarball, packed-consumer execution | Real Pi clean-consumer pass; not published to npm |
 | Local binding | Schema-validated JSON-RPC, transport-derived principals, typed errors | Executable local reference |
 | Local persistence | SQLite registry, proposals, grants, summaries, mailbox, claims, receipts, reconciliation, replay, audit, retention tombstones | Experimental |
 | Safety boundary | Authenticated authorship checks, effective-grant decisions, revocation, CAS | Executable local policy |
@@ -40,6 +40,7 @@ including one outside the maintainer organization.
 | Codex repetition matrix | Control 3/3; relevant 1/3; irrelevant 2/3 with one inconclusive marker failure; exact leaked bootstrap thread manually removed and cleanup regression merged in #64 | Default enablement rejected |
 | Two-stage Codex behavior flow | Relevant 3/3; fresh control zero tools/sends; fresh irrelevant one read-only lookup and zero sends; all A/B cleanup complete | Bounded M3 case passed; explicit experimental opt-in only |
 | Codex-to-Kimi proactive flow | Codex A selected discovery and one send; persistent Kimi ACP B completed; exact A deletion and B delete/absence passed at `e0adb0e` | First real cross-harness proactive case passed |
+| Pi integration-kit flow | Fresh packed consumer exposed exactly two native tools; real Pi passed relevant/irrelevant/control behavior and supplied one admitted input to Kimi at `02d8d24` | Maintainer integration passed; independent human feedback pending |
 | Gemini CLI headless | Official package 0.56.0 integrity, required flags, isolated-home cleanup | Real no-model preflight passed |
 | Gemini live model behavior | Exact marker script requires explicit provider key | Not authorized, not run |
 | Multi-product admission | One mailbox/acceptance/claim/evidence path across ACP, Codex, and Gemini fakes | Merged experimental implementation |
@@ -230,6 +231,11 @@ can:
     expose only host-configured related tasks as model tools, enforce
     discovery-before-send and per-turn budgets, then complete one bounded
     suggestion without importing coordinator or validation internals.
+39. let real Pi `0.84.2` with `zai/glm-5.3` consume only the public SDK,
+    select discovery and one send for a relevant task, remain silent after an
+    irrelevant lookup and in a no-contact control, then supply one advisory
+    release input to real Kimi Code `0.38.0` with audited admission and complete
+    cleanup.
 
 It does not prove general autonomous discovery across unrelated tasks, outcome
 improvement, acceptable receiver-interference cost, native provider-role
