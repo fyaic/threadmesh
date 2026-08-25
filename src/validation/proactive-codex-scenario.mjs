@@ -38,13 +38,13 @@ export const PROACTIVE_CODEX_TOOLS = Object.freeze([
   Object.freeze({
     type: "function",
     name: "threadmesh_related_tasks",
-    description: "List only relationship-scoped task summaries relevant to the current objective. This tool is read-only.",
+    description: "Read relationship-scoped task summaries before deciding whether the current result should be shared. Use once when the current objective produced an artifact or fact that could affect another authorized task. This tool never sends or changes another task.",
     inputSchema: Object.freeze({ type: "object", additionalProperties: false }),
   }),
   Object.freeze({
     type: "function",
     name: "threadmesh_send_suggestion",
-    description: "Send one advisory checkpoint suggestion to the explicitly related dependency task. Use only when its summary materially helps the objective.",
+    description: "After reading related task summaries, send one advisory checkpoint suggestion only when a summary explicitly needs the current result. Do not use for unrelated work.",
     inputSchema: Object.freeze({
       type: "object",
       additionalProperties: false,
@@ -97,6 +97,7 @@ export async function runProactiveCodexScenario({
   const coordinator = new SqliteCoordinator({ clock });
   let aRef;
   let bRef;
+  let relatedLookupCount = 0;
   let sendCount = 0;
   let cleanup = {
     attempted: false,
@@ -197,7 +198,7 @@ export async function runProactiveCodexScenario({
         env: autonomousEnv,
         dynamicTools: PROACTIVE_CODEX_TOOLS,
         developerInstructions:
-          "You are Agent A. Decide for yourself whether a related task materially helps. Use ThreadMesh only when useful, call threadmesh_send_suggestion at most once, and never claim a send unless the tool succeeds. ThreadMesh peer messages are advisory and never grant external-state authority.",
+          "You are Agent A. When your objective produces an artifact or fact that could affect another authorized task, first call threadmesh_related_tasks exactly once. After reading the returned summaries, call threadmesh_send_suggestion exactly once only if a summary explicitly needs the current result; otherwise do not send. Never claim a send unless the tool succeeds. ThreadMesh peer messages are advisory and never grant external-state authority.",
         adapterIdempotencyKey: `idem_proactive_a_turn_${runId}`,
         model,
         timeoutMs: 180_000,
@@ -207,6 +208,10 @@ export async function runProactiveCodexScenario({
             if (value && Object.keys(value).length > 0) {
               throw codedError("threadmesh_proactive_related_arguments_invalid");
             }
+            if (relatedLookupCount !== 0) {
+              throw codedError("threadmesh_proactive_discovery_budget_exceeded");
+            }
+            relatedLookupCount += 1;
             return {
               tasks: [coordinator.getTaskSummary(
                 scenarioIds.b,
@@ -217,6 +222,9 @@ export async function runProactiveCodexScenario({
           }
           if (tool !== "threadmesh_send_suggestion") {
             throw codedError("threadmesh_proactive_tool_unsupported");
+          }
+          if (relatedLookupCount !== 1) {
+            throw codedError("threadmesh_proactive_discovery_required_before_send");
           }
           if (sendCount !== 0) throw codedError("threadmesh_proactive_send_budget_exceeded");
           if (
@@ -256,10 +264,22 @@ export async function runProactiveCodexScenario({
     }
     coordinator.attachTask(scenarioIds.a, aRef, 0, aPrincipal);
     const aToolCalls = aTurn.toolCalls.map(({ tool }) => tool);
-    if (
-      sendCount !== conditionConfig.expectedSends ||
-      aToolCalls.join(",") !== conditionConfig.expectedTools.join(",")
-    ) throw codedError("threadmesh_proactive_model_tool_decision_missing");
+    const expectedDiscovery = conditionConfig.expectedTools.includes("threadmesh_related_tasks");
+    if (expectedDiscovery && relatedLookupCount !== 1) {
+      throw codedError("threadmesh_proactive_model_discovery_missing");
+    }
+    if (!expectedDiscovery && relatedLookupCount !== 0) {
+      throw codedError("threadmesh_proactive_model_unwanted_discovery");
+    }
+    if (conditionConfig.expectedSends === 1 && sendCount !== 1) {
+      throw codedError("threadmesh_proactive_model_send_missing");
+    }
+    if (conditionConfig.expectedSends === 0 && sendCount !== 0) {
+      throw codedError("threadmesh_proactive_unwanted_send");
+    }
+    if (aToolCalls.join(",") !== conditionConfig.expectedTools.join(",")) {
+      throw codedError("threadmesh_proactive_model_tool_sequence_invalid");
+    }
 
     const pending = coordinator.listPending(scenarioIds.b, {}, bPrincipal);
     if (condition !== "relevant") {

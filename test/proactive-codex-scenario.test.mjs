@@ -14,7 +14,7 @@ import {
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const fixture = path.join(root, "test", "fixtures", "fake-codex-app-server.mjs");
 
-async function runCondition(condition, runId) {
+async function runCondition(condition, runId, autonomousOverrides = {}) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "threadmesh-proactive-"));
   const baseEnv = { FAKE_CODEX_STATE_FILE: path.join(directory, "state.json") };
   try {
@@ -43,7 +43,7 @@ async function runCondition(condition, runId) {
         ...baseEnv,
         FAKE_CODEX_EXACT_MARKER: PROACTIVE_B_MISSING_MARKER,
       },
-      autonomousEnv: conditionEnv,
+      autonomousEnv: { ...conditionEnv, ...autonomousOverrides },
       receiverEnv: {
         ...baseEnv,
         FAKE_CODEX_EXACT_MARKER: PROACTIVE_B_MARKER,
@@ -110,6 +110,23 @@ test("irrelevant relationship is inspected without contacting Agent B", async ()
   assert.equal(result.outcomeScore, null);
   assert.equal(result.interferenceViolation, false);
   assert.equal(result.cleanup.complete, true);
+});
+
+test("relevant condition distinguishes missing discovery from missing send", async () => {
+  await assert.rejects(
+    runCondition("relevant", "missing_discovery01", {
+      FAKE_CODEX_AUTONOMOUS_TOOL: "0",
+    }),
+    (error) => error.code === "threadmesh_proactive_model_discovery_missing" &&
+      error.cleanup.complete === true,
+  );
+  await assert.rejects(
+    runCondition("relevant", "missing_send01", {
+      FAKE_CODEX_AUTONOMOUS_SKIP_SEND: "1",
+    }),
+    (error) => error.code === "threadmesh_proactive_model_send_missing" &&
+      error.cleanup.complete === true,
+  );
 });
 
 test("B bootstrap marker failure retains and deletes the exact created thread", async () => {
