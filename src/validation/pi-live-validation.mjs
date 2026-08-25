@@ -20,6 +20,9 @@ const PI_TOOL_NAMES = Object.freeze([
   "threadmesh_related_tasks",
   "threadmesh_send_suggestion",
 ]);
+const PI_KIMI_CONTENT =
+  `${PROACTIVE_B_CONTENT}. Apply it to the downstream release manifest and reply with exactly ` +
+  `${PROACTIVE_B_MARKER}.`;
 const PI_SYSTEM_PROMPT =
   "You are Agent A in a bounded coordination benchmark. Only use the exposed ThreadMesh tools. " +
   "Call threadmesh_related_tasks at most once. Call threadmesh_send_suggestion at most once and " +
@@ -28,7 +31,7 @@ const PI_SYSTEM_PROMPT =
 const PI_PROMPTS = Object.freeze({
   relevant:
     `You verified upstream artifact checksum ${PROACTIVE_RELEASE_CHECKSUM}. Inspect the authorized ` +
-    `relationship. If its summary is waiting for that checksum, send exactly "${PROACTIVE_B_CONTENT}" ` +
+    `relationship. If its summary is waiting for that checksum, send exactly "${PI_KIMI_CONTENT}" ` +
     "with a short reason. Finish after the tool result.",
   irrelevant:
     `You verified upstream artifact checksum ${PROACTIVE_RELEASE_CHECKSUM}. Inspect the authorized ` +
@@ -290,7 +293,7 @@ async function runLayer3(options, consumer) {
     const page = fixture.coordinator.listPending(fixture.target, {}, fixture.receiverPrincipal);
     if (page.messages.length !== 1) throw codedError("threadmesh_pi_kimi_mailbox_mismatch");
     const message = page.messages[0];
-    if (message.envelope.content !== PROACTIVE_B_CONTENT) {
+    if (message.envelope.content !== PI_KIMI_CONTENT) {
       throw codedError("threadmesh_pi_kimi_content_mismatch");
     }
     const claimed = fixture.coordinator.claimPending(
@@ -314,6 +317,9 @@ async function runLayer3(options, consumer) {
       fixture.receiverPrincipal,
     );
     const delivered = await receiverRuntime.deliver({ prepared });
+    if (delivered.text === PROACTIVE_B_MISSING_MARKER) {
+      throw codedError("threadmesh_pi_kimi_missing_dependency_outcome");
+    }
     if (delivered.truncated || delivered.text !== PROACTIVE_B_MARKER) {
       throw codedError("threadmesh_pi_kimi_marker_mismatch");
     }
