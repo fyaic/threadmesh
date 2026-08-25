@@ -40,6 +40,10 @@ incarnation 轮换和两类 mock harness 都有自动化测试。
   文本 marker。两阶段发现/发送策略随后取得 relevant 3/3；同版本 control 零调用，
   irrelevant 只读发现但零发送。该受限能力可显式 opt-in 实验，但 pre-alpha 阶段仍
   默认关闭。
+- 首个真实跨 harness 主动案例已经通过：Codex CLI `0.145.0` 作为 A，自主执行
+  `发现相关任务 → 发送一次建议`；Kimi Code `0.38.0` 的持久 ACP session 作为 B，
+  接受建议后完成 checksum 依赖。A task 和 B session 均已删除，B 的 absence 也已
+  验证。这是受限实验结果，不是生产级互操作性声明。
 - Gemini CLI `0.56.0` 已被选为第三种非 ACP headless harness；官方固定版本、
   registry integrity、stream-json/plan/sandbox 能力和隔离 home 清理预检通过，
   但尚未获得 provider key 授权，因此模型调用是 `not-run`。
@@ -70,6 +74,15 @@ npm run validate:behavior:fake
 这个命令同时运行三种条件：control 不通信；relevant 由 A 自主选择
 `related tasks → send suggestion`，B 接受后完成；irrelevant 只查看摘要但不发送。
 它验证协议、policy、mailbox、evidence 和 cleanup，不冒充真实模型智能证据。
+
+再运行跨 harness 的最小确定性案例：
+
+```sh
+npm run validate:cross-harness:fake
+```
+
+真实 Codex→Kimi 证据见
+[案例记录](docs/09-reviews/2026-08-25-codex-to-kimi-proactive.md)。
 
 ## 最小 SDK
 

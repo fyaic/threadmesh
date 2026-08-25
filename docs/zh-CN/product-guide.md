@@ -42,9 +42,11 @@ MCP 主要给 Agent 提供工具；workflow engine 调度预先知道的步骤�
   receiver disposition。
 - SQLite coordinator 与 authenticated JSON-RPC reference 已可执行。
 - control / relevant / irrelevant 三条件的确定性端到端演示已通过。
-- Codex 真实运行曾完成主动 A→B 并把结果分数从 0 提升到 1，但重复可靠性不足，
-  所以主动模式默认关闭。
+- Codex 的两阶段主动策略已经通过 relevant 3/3，并在 control 和 irrelevant 中保持
+  零发送；pre-alpha 阶段仍只允许显式 opt-in。
 - Kimi Code 已通过真实 receiver-accepted suggestion 和 session 删除验证。
+- Codex A → Kimi Code B 的真实跨 harness 主动案例已经通过：A 自主发现并发送，
+  B 的持久 ACP session 接受后完成，双方资源均清理且 B absence 已验证。
 - Gemini adapter 与无模型预检已完成，尚未授权真实 provider 调用。
 
 这仍是 pre-alpha 实验，不应直接用于不受信 peer 内容、多租户生产环境或自动修改

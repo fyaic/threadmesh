@@ -81,12 +81,13 @@ merged fix. Neither result satisfies the still-open normative review gate.
   tested Codex CLI compatibility range.
 - Tool-event observation and read-only sandbox configuration are evidence for
   this bounded run, not an operating-system security boundary.
-- A successful Codex result does not establish portability until another
-  materially different harness passes the same behavioral case.
+- A Codex-only result does not establish portability by itself. The later
+  Codex-to-Kimi case supplies one bounded cross-harness example, but not a
+  general interoperability or production claim.
 
-The minimal adapter API and a materially different real receiver harness are
-now complete. Cross-harness proactive behavior and broader stale/duplicate
-interference are separate follow-up work.
+The minimal adapter API, materially different real receiver harness, and first
+Codex-to-Kimi proactive case are now complete. Broader stale/duplicate,
+concurrent-user-input, and multi-worker interference remain follow-up work.
 
 The first scored control/relevant/irrelevant run is recorded in the
 [2026-08-25 behavioral gate](../09-reviews/2026-08-25-codex-behavior-gate.md).

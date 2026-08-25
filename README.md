@@ -58,6 +58,18 @@ npm ci
 npm run validate:behavior:fake
 ```
 
+Then run the smallest cross-harness proof: a fake Codex Agent A autonomously
+selects the ThreadMesh tools and a persistent ACP Agent B consumes the accepted
+suggestion through the same coordinator path.
+
+```sh
+npm run validate:cross-harness:fake
+```
+
+The equivalent real-product case passed on 2026-08-25 with Codex CLI `0.145.0`
+as A and Kimi Code `0.38.0` as B. See the
+[Codex-to-Kimi case study](docs/09-reviews/2026-08-25-codex-to-kimi-proactive.md).
+
 ## Minimal adapter SDK
 
 Install the pre-alpha package directly from GitHub:
@@ -179,10 +191,17 @@ test/                Behavioral and conformance tests
 The repository contains an executable `0.0-draft` specification, an
 experimental SQLite coordinator, authenticated JSON-RPC operations, and ACP,
 Codex App Server, and Gemini headless adapters. The complete suite currently has
-134 unit/subtests plus schema and transition conformance. M1 and M2 are closed.
+135 unit/subtests plus schema and transition conformance. M1 and M2 are closed.
 A real Codex Agent A has selected ThreadMesh relationship discovery and sent one
 bounded suggestion to a persisted Agent B; the coordinator admitted it and both
 exact tasks were deleted.
+
+The same proactive sender has now coordinated across products: Codex A
+discovered the authorized dependency, sent once, and a persistent Kimi Code B
+accepted the suggestion and completed its checksum-dependent task. Both the
+Codex task and Kimi ACP session were deleted, with Kimi session absence
+verified. This is the first real cross-harness proactive case, not a production
+interoperability claim.
 
 The first scored Codex comparison found that relevant coordination changed the
 receiver outcome from missing dependency to completed, while the irrelevant
