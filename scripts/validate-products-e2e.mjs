@@ -11,11 +11,9 @@ import {
 } from "../src/validation/product-drivers.mjs";
 import { runCoordinatorProductScenario } from "../src/validation/coordinator-product-scenario.mjs";
 import {
-  PROACTIVE_A_BOOTSTRAP_MARKER,
   PROACTIVE_A_CONTROL_MARKER,
   PROACTIVE_A_IRRELEVANT_MARKER,
   PROACTIVE_A_MARKER,
-  PROACTIVE_B_BOOTSTRAP_MARKER,
   PROACTIVE_B_MISSING_MARKER,
   PROACTIVE_B_MARKER,
   runProactiveCodexScenario,
@@ -189,8 +187,7 @@ export async function runFakeProactive() {
         args: [fixture("fake-codex-app-server.mjs")],
         cwd: root,
         env: baseEnv,
-        bootstrapEnv: { ...baseEnv, FAKE_CODEX_EXACT_MARKER: PROACTIVE_B_BOOTSTRAP_MARKER },
-        aBootstrapEnv: { ...baseEnv, FAKE_CODEX_EXACT_MARKER: PROACTIVE_A_BOOTSTRAP_MARKER },
+        bootstrapEnv: { ...baseEnv, FAKE_CODEX_EXACT_MARKER: PROACTIVE_B_MISSING_MARKER },
         autonomousEnv: {
           ...baseEnv,
           FAKE_CODEX_AUTONOMOUS_TOOL: "1",
@@ -240,11 +237,8 @@ export async function runFakeBehavior() {
         env: baseEnv,
         bootstrapEnv: {
           ...baseEnv,
-          FAKE_CODEX_EXACT_MARKER: condition === "control"
-            ? PROACTIVE_B_MISSING_MARKER
-            : PROACTIVE_B_BOOTSTRAP_MARKER,
+          FAKE_CODEX_EXACT_MARKER: PROACTIVE_B_MISSING_MARKER,
         },
-        aBootstrapEnv: { ...baseEnv, FAKE_CODEX_EXACT_MARKER: PROACTIVE_A_BOOTSTRAP_MARKER },
         autonomousEnv,
         receiverEnv: { ...baseEnv, FAKE_CODEX_EXACT_MARKER: PROACTIVE_B_MARKER },
       }));
