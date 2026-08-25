@@ -31,7 +31,7 @@ maintainer organization.
 | Local persistence | SQLite registry, proposals, grants, summaries, mailbox, claims, receipts, reconciliation, replay, audit, retention tombstones | Experimental |
 | Safety boundary | Authenticated authorship checks, effective-grant decisions, revocation, CAS | Executable local policy |
 | ACP adapter | ACP v1 initialize, session create/load, prompt aggregation, permission denial, timeout cleanup | Experimental |
-| Kimi Code | CLI 0.36.1 handshake plus exact create/list/delete/absence lifecycle | Real no-model preflight passed |
+| Kimi Code | CLI 0.38.0 handshake plus exact create/list/delete/absence lifecycle | Real no-model preflight passed |
 | Live Kimi model behavior | CLI 0.38.0 accepted one coordinator suggestion, returned the exact marker, and passed deletion plus absence verification at `b248343` | Real maintainer-experimental pass |
 | Codex App Server | CLI 0.145.0, 273 generated-schema files, JSONL handshake, empty read-only thread start | Real no-model preflight passed |
 | Codex live model behavior | Exact marker, evidence, audit, persisted resume path, and exact thread cleanup at `0dda5a7` | Real maintainer-experimental pass |
@@ -40,7 +40,7 @@ maintainer organization.
 | Gemini CLI headless | Official package 0.56.0 integrity, required flags, isolated-home cleanup | Real no-model preflight passed |
 | Gemini live model behavior | Exact marker script requires explicit provider key | Not authorized, not run |
 | Multi-product admission | One mailbox/acceptance/claim/evidence path across ACP, Codex, and Gemini fakes | Merged experimental implementation |
-| Product validation runner | Built-in bootstrap, isolated exact-main worktree, start/end SHA checks, bounded child evidence, acknowledgement, marker, audit, and cleanup | Merged in #45; fake-all and real Codex passed; Kimi quota-blocked |
+| Product validation runner | Built-in bootstrap, isolated exact-main worktree, start/end SHA checks, bounded child evidence, acknowledgement, marker, audit, and cleanup | Fake-all plus real Codex and Kimi passed |
 | External-review gate | GitHub-authenticated canonical review/disposition blocks, merged-fix ancestry, reviewer diversity, and target ancestry | Mechanically awaiting 2 records |
 | Independent review | Three internal lanes complete; external reviewer packet and public template published | Awaiting two external verdicts |
 | Production authentication | Local static-token reference; no TLS/OAuth verifier supplied | Host integration required |
@@ -115,9 +115,9 @@ remain distinct from normative M0 evidence.
   live driver therefore keeps create plus a bounded local bootstrap turn on one
   connection, without presenting it as peer context, then separately validates
   the coordinator-accepted suggestion and exact-thread deletion.
-- M2 does not close until real model behavior runs through the merged
-  coordinator and at least two materially different harness families pass the
-  same scenario.
+- The M2 milestone is closed: real Codex App Server and Kimi ACP behavior ran
+  through the merged coordinator, while Gemini live remains explicitly
+  optional.
 
 ### Active product gates
 

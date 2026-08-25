@@ -101,8 +101,8 @@ its deterministic tests, while #7 continues to govern normative M0 acceptance.
 
 | Issue | Current evidence | Audit status |
 |---|---|---|
-| #42 generalized admission | Merged #45 validates ACP, Codex, and Gemini adapter refs and strict bounded evidence over one claimed envelope | Merged implementation; real evidence pending |
-| #44 unified runner | Merged #45 fake-all passes; real Codex passed from exact `0dda5a7`; Kimi was quota-blocked with complete cleanup | Merged implementation and first real product pass |
+| #42 generalized admission | Merged #45 validates ACP, Codex, and Gemini adapter refs and strict bounded evidence over one claimed envelope | Merged; real Codex and Kimi evidence complete |
+| #44 unified runner | Fake-all passes; real Codex passed at `0dda5a7` and Kimi at `b248343` | Merged with two real product passes |
 
 ### #53 proactive Codex A-to-B case
 
@@ -119,23 +119,21 @@ its deterministic tests, while #7 continues to govern normative M0 acceptance.
 
 | Criterion | Current evidence | Audit status |
 |---|---|---|
-| One public package entry | `@fyaic/threadmesh` exports `src/sdk/index.mjs` only | Candidate-satisfied |
-| Small harness API | Register, publish/discover summary, suggest, poll, and decide | Candidate-satisfied |
-| Bounded behavior | 30-minute maximum TTL, bounded content/reason, no global task enumeration | Candidate-satisfied |
-| End-to-end lifecycle | Async SDK test traverses authenticated JSON-RPC and SQLite through acceptance plus defer/reconsider | Candidate-satisfied |
-| Consumer install | 14.5 kB tarball installs and imports from a fresh temporary npm consumer | Candidate-satisfied |
-| Short integration path | 30-minute guide and one HTTP transport example | Candidate-satisfied |
+| One public package entry | `@fyaic/threadmesh` exports `src/sdk/index.mjs` only | Satisfied on merged main |
+| Small harness API | Register, publish/discover summary, suggest, poll, and decide | Satisfied on merged main |
+| Bounded behavior | 30-minute maximum TTL, bounded content/reason, no global task enumeration | Satisfied on merged main |
+| End-to-end lifecycle | Async SDK test traverses authenticated JSON-RPC and SQLite through acceptance plus defer/reconsider | Satisfied on merged main |
+| Consumer install | 14.5 kB tarball installs and imports from a fresh temporary npm consumer | Satisfied |
+| Short integration path | 30-minute guide and one HTTP transport example | Satisfied on merged main |
 
-The package is intentionally not published to npm as part of the candidate.
-GitHub installation and the packed artifact are sufficient to test a second
-harness without creating a release claim.
+The merged package is intentionally not published to npm yet. GitHub
+installation and the packed artifact were sufficient to test the integration
+surface without creating a release claim.
 
-## Real-product evidence still required
+## Optional real-product follow-up
 
-The merged runner must now produce:
-
-Codex has completed its exact bootstrap marker, persisted receiver, coordinator
-marker, turn evidence, resume, audit, and exact deletion path. Remaining:
+Codex and Kimi completed the two-harness M2 threshold. Any future live attempt
+must still produce:
 
 1. Gemini remains optional: if run, require an explicitly authorized key,
    exact coordinator marker, exit 0, zero tool use, and removal of the exact
