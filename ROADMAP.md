@@ -56,12 +56,11 @@ typed cancellation contract is implemented.
 - [x] Codex App Server adapter.
 - [x] Generic subprocess/JSON-RPC adapter.
 - [x] Minimal installable harness SDK and short integration example.
-- [ ] One production-oriented adapter for a non-Codex harness.
+- [x] One real non-Codex harness pass through the shared coordinator path.
 - [x] Adapter capability negotiation and graceful degradation.
 
-The Kimi ACP candidate now proves a real no-model create/list/delete/absence
-lifecycle with exact binary and capability digests. Its earlier live marker is
-quota-blocked, so this remains experimental evidence rather than M2 completion.
+Kimi Code `0.38.0` now passes a real accepted suggestion through ACP with exact
+binary/capability evidence, context admission, and delete-plus-absence cleanup.
 The Codex App Server path has a real receiver pass, a model-selected A-to-B
 case, and the first scored control/relevant/irrelevant comparison with exact
 cleanup. Repetition and interference-budget evidence remain open.
@@ -69,8 +68,9 @@ Gemini CLI headless `stream-json` is selected as the materially different third
 harness. Its pinned official package and no-model capability preflight pass;
 the checklist remains open until an explicitly authorized real model executes
 the shared scenario.
-The same accepted suggestion passes deterministic ACP, Codex, and Gemini fake
-products. A second materially different real harness is still required.
+The same receiver-accepted suggestion passes real Codex App Server and Kimi ACP
+products, plus deterministic ACP, Codex, and Gemini fakes. Gemini live remains
+optional rather than a competing mainline.
 
 Exit: the same scenario runs across at least two different harness families.
 
