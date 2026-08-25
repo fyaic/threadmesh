@@ -1,9 +1,8 @@
 # Project status
 
-> Snapshot: 2026-08-21, after proactive Codex PRs #54 and #55 were
-> squash-merged to `main` at `248d650ab06e6e34de9cc41ede641c841c1e36a3`.
-> The merged tree includes the local coordinator, three product adapters, the
-> gated runner, and a bounded model-selected A-to-B validation path.
+> Snapshot: 2026-08-25, after the product-mainline reset. The implementation
+> baseline is `9249a861a9c951bab7bbd8f4cecb26ade1201de7`; the next change is
+> limited to behavioral value and interference evidence.
 
 ## Executive summary
 
@@ -26,7 +25,7 @@ maintainer organization.
 | Area | Current evidence | Status |
 |---|---|---|
 | Research and problem framing | Codex deep dive, community signals, ecosystem comparison, ADRs | Established |
-| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 121 unit/subtests | Executable draft |
+| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 125 unit/subtests | Executable draft |
 | Local binding | Schema-validated JSON-RPC, transport-derived principals, typed errors | Executable local reference |
 | Local persistence | SQLite registry, proposals, grants, summaries, mailbox, claims, receipts, reconciliation, replay, audit, retention tombstones | Experimental |
 | Safety boundary | Authenticated authorship checks, effective-grant decisions, revocation, CAS | Executable local policy |
@@ -84,6 +83,7 @@ the still-open M0 external-review requirement into a satisfied review.
   integration history.
 - Hosted event streaming remains unfinished and is not required by an existing
   M1 acceptance issue.
+- The GitHub M1 milestone is closed with all seven issues complete.
 
 ### M2 — First real adapters
 
@@ -117,6 +117,14 @@ distinct from normative M0 evidence.
 - M2 does not close until real model behavior runs through the merged
   coordinator and at least two materially different harness families pass the
   same scenario.
+
+### Active product gates
+
+The primary workstream is reopened issue #53: no-contact, relevant, and
+irrelevant/stale real Codex conditions with outcome and interference metrics.
+After that passes, the project extracts a minimal adapter kit and validates one
+different real harness. Issue #7 remains parallel governance. Hostile-worker
+schema #48 and further production hardening are deferred.
 
 ## What the prototype proves
 
