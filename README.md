@@ -101,12 +101,37 @@ for (const message of page.messages) {
 }
 ```
 
+Add bounded proactive tools to one native model turn without importing the
+coordinator or validation internals:
+
+```js
+import { createProactiveToolBridge } from "@fyaic/threadmesh";
+
+const bridge = createProactiveToolBridge({
+  client: mesh,
+  source: currentTask,
+  relationships: [{ relationshipId, target: relatedTask }],
+});
+
+await harness.runModelTurn({
+  tools: bridge.tools,
+  onToolCall: bridge.handleToolCall,
+});
+```
+
+Create a fresh bridge per model turn. The host—not the model—chooses the bounded
+relationship set. Discovery must complete before suggestion, default budgets
+allow one lookup and one send, and the receiving harness still decides whether
+the mailbox item enters its model context.
+
 The public surface is intentionally small: task registration, relationship-
 scoped summary publication and discovery, bounded suggestion sending, mailbox
-polling, and receiver disposition. The SDK has no runtime package dependencies.
+polling, receiver disposition, and a per-turn proactive tool bridge. The SDK
+has no runtime package dependencies.
 See the
 [30-minute adapter guide](docs/06-guides/implement-an-adapter.md) and
-[complete example](examples/minimal-harness.mjs).
+[complete examples](examples/minimal-harness.mjs) and
+[proactive bridge wiring](examples/proactive-tool-bridge.mjs).
 
 ## Why ThreadMesh
 
@@ -191,7 +216,7 @@ test/                Behavioral and conformance tests
 The repository contains an executable `0.0-draft` specification, an
 experimental SQLite coordinator, authenticated JSON-RPC operations, and ACP,
 Codex App Server, and Gemini headless adapters. The complete suite currently has
-135 unit/subtests plus schema and transition conformance. M1 and M2 are closed.
+142 unit/subtests plus schema and transition conformance. M1 and M2 are closed.
 A real Codex Agent A has selected ThreadMesh relationship discovery and sent one
 bounded suggestion to a persisted Agent B; the coordinator admitted it and both
 exact tasks were deleted.

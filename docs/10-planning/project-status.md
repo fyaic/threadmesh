@@ -25,8 +25,8 @@ including one outside the maintainer organization.
 | Area | Current evidence | Status |
 |---|---|---|
 | Research and problem framing | Codex deep dive, community signals, ecosystem comparison, ADRs | Established |
-| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 135 unit/subtests | Executable draft |
-| Minimal adapter SDK | `@fyaic/threadmesh` `0.1.0-alpha.0`; six bounded methods, 14.5 kB tarball, packed-consumer import | Candidate complete; not published to npm |
+| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 142 unit/subtests | Executable draft |
+| Minimal adapter SDK | `@fyaic/threadmesh` `0.1.0-alpha.0`; six bounded client methods, per-turn proactive bridge, about 20 kB tarball, packed-consumer execution | M4 implementation candidate; not published to npm |
 | Local binding | Schema-validated JSON-RPC, transport-derived principals, typed errors | Executable local reference |
 | Local persistence | SQLite registry, proposals, grants, summaries, mailbox, claims, receipts, reconciliation, replay, audit, retention tombstones | Experimental |
 | Safety boundary | Authenticated authorship checks, effective-grant decisions, revocation, CAS | Executable local policy |
@@ -135,9 +135,11 @@ two-stage discovery/send policy then passed relevant 3/3, with fresh control
 and irrelevant runs preserving zero-send behavior and complete cleanup. The
 bounded #53 acceptance case qualifies for explicit maintainer-experimental
 opt-in use. Cross-harness proactive issue #74 then passed with Codex A and Kimi
-B on the existing coordinator and adapters. The next product work is a minimal
-installable integration path and reproducible operator demo, not additional
-protocol surface. Issue #7 remains parallel governance. Hostile-worker schema
+B on the existing coordinator and adapters. Issue #77 then added the minimal
+installable proactive bridge, per-turn budgets, reproducible harness example,
+and a packed external-consumer test without expanding protocol surface. The
+remaining M4 product task is independent harness-author feedback. Issue #7
+remains parallel governance. Hostile-worker schema
 issue #48, optional Gemini live validation, and further production hardening are
 deferred.
 
@@ -224,6 +226,10 @@ can:
     dependency and send once to a persistent real Kimi Code `0.38.0` ACP Agent
     B, observe the expected downstream outcome, delete A, and delete plus
     absence-verify B.
+38. install the packed zero-runtime-dependency SDK in a fresh consumer project,
+    expose only host-configured related tasks as model tools, enforce
+    discovery-before-send and per-turn budgets, then complete one bounded
+    suggestion without importing coordinator or validation internals.
 
 It does not prove general autonomous discovery across unrelated tasks, outcome
 improvement, acceptable receiver-interference cost, native provider-role

@@ -123,7 +123,7 @@ its deterministic tests, while #7 continues to govern normative M0 acceptance.
 | Small harness API | Register, publish/discover summary, suggest, poll, and decide | Satisfied on merged main |
 | Bounded behavior | 30-minute maximum TTL, bounded content/reason, no global task enumeration | Satisfied on merged main |
 | End-to-end lifecycle | Async SDK test traverses authenticated JSON-RPC and SQLite through acceptance plus defer/reconsider | Satisfied on merged main |
-| Consumer install | 14.5 kB tarball installs and imports from a fresh temporary npm consumer | Satisfied |
+| Consumer install | About 20 kB tarball installs and runs the proactive bridge from a fresh temporary npm consumer | Satisfied |
 | Short integration path | 30-minute guide and one HTTP transport example | Satisfied on merged main |
 
 The merged package is intentionally not published to npm yet. GitHub

@@ -240,9 +240,10 @@ policy are now merged. The final fresh relevant sample passed 3/3; fresh control
 and irrelevant runs did not send. This qualifies the bounded profile for
 explicit experimental opt-in, not repository-wide default enablement. The
 cross-harness Codex-to-Kimi case is now complete using the existing coordinator
-and adapters. The next mainline is packaging the smallest reusable integration
-and operator demo, followed by limited negative-case product checks; it is not
-protocol expansion.
+and adapters. Issue #77 packages the smallest reusable integration and operator
+demo as a zero-runtime-dependency SDK bridge with per-turn budgets and external
+consumer execution. After that implementation lands, the next evidence is one
+independent harness-author integration attempt; it is not protocol expansion.
 
 Independent review #7 continues as a parallel governance track. Hostile-worker
 schema #48 is deferred. Production authentication, OS isolation, parallel

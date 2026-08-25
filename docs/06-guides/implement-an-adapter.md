@@ -1,8 +1,8 @@
 # Implement an adapter
 
-The pre-alpha SDK reduces the first integration to six methods. A harness does
-not need the SQLite coordinator, protocol validator, or adapter implementations
-in its process.
+The pre-alpha SDK reduces the first integration to six client methods plus one
+optional proactive tool bridge. A harness does not need the SQLite coordinator,
+protocol validator, or adapter implementations in its process.
 
 ## 30-minute path
 
@@ -47,6 +47,67 @@ that credential; never put a principal or token inside JSON-RPC params.
 
 Relationship grants are control-plane policy and deliberately are not part of
 the harness SDK. Provision them through an owner/policy administration path.
+
+## Add proactive tools to the sender
+
+`createProactiveToolBridge` turns an explicit host-configured relationship set
+into two canonical tool descriptors and one invocation handler. Create a new
+bridge for each model turn:
+
+```js
+import { createProactiveToolBridge } from "@fyaic/threadmesh";
+
+const bridge = createProactiveToolBridge({
+  client: sender,
+  source: currentTask,
+  relationships: [
+    { relationshipId: releaseDependencyId, target: releaseTask },
+  ],
+});
+
+const result = await harness.runModelTurn({
+  tools: bridge.tools,
+  onToolCall: bridge.handleToolCall,
+  instructions:
+    "Inspect authorized related tasks when the current result may affect one. " +
+    "Send only when a returned summary explicitly needs the result.",
+});
+```
+
+The bridge is deliberately not a scheduler or global discovery service:
+
+- the authenticated host supplies at most 20 exact target incarnations and
+  relationship IDs;
+- the model may select only a target ID present in the generated schema;
+- discovery must succeed before any suggestion;
+- defaults reserve at most one discovery and one send per bridge, including
+  concurrent attempts and failed sends;
+- message TTL and delivery mode come from host configuration, not model input;
+- remote policy remains authoritative and may still reject the suggestion.
+
+Different products expose tools in different wire formats. Map the canonical
+`tools` descriptors to the native format if necessary, but route the native
+name and parsed arguments back to `handleToolCall`. Do not expose the transport
+credential or relationship configuration to the model.
+
+The complete sender-plus-receiver wiring is
+[`examples/proactive-tool-bridge.mjs`](../../examples/proactive-tool-bridge.mjs).
+It runs against an already provisioned ThreadMesh endpoint using these
+additional environment variables:
+
+```text
+THREADMESH_SOURCE_HARNESS
+THREADMESH_TARGET_HARNESS
+THREADMESH_EXAMPLE_CONTENT
+THREADMESH_EXAMPLE_REASON
+```
+
+The example calls the tool handler deterministically so its integration is
+reproducible. In a real harness, the native model loop chooses whether to call
+the same descriptors, as demonstrated by the
+[Codex-to-Kimi case](../09-reviews/2026-08-25-codex-to-kimi-proactive.md).
+
+## Add the receiver checkpoint
 
 At each safe harness checkpoint:
 
