@@ -115,6 +115,21 @@ its deterministic tests, while #7 continues to govern normative M0 acceptance.
 | Scored control/relevant/irrelevant conditions | Control 0; relevant 1; irrelevant lookup with zero send; complete cleanup at `0dd2c82` | First real behavioral gate passed |
 | Repetitions, stale/duplicate, B defer/reject | Not yet run | Open #53 follow-up; blocks default enablement, not minimal adapter extraction |
 
+### Minimal adapter kit
+
+| Criterion | Current evidence | Audit status |
+|---|---|---|
+| One public package entry | `@fyaic/threadmesh` exports `src/sdk/index.mjs` only | Candidate-satisfied |
+| Small harness API | Register, publish/discover summary, suggest, poll, and decide | Candidate-satisfied |
+| Bounded behavior | 30-minute maximum TTL, bounded content/reason, no global task enumeration | Candidate-satisfied |
+| End-to-end lifecycle | Async SDK test traverses authenticated JSON-RPC and SQLite through acceptance plus defer/reconsider | Candidate-satisfied |
+| Consumer install | 14.5 kB tarball installs and imports from a fresh temporary npm consumer | Candidate-satisfied |
+| Short integration path | 30-minute guide and one HTTP transport example | Candidate-satisfied |
+
+The package is intentionally not published to npm as part of the candidate.
+GitHub installation and the packed artifact are sufficient to test a second
+harness without creating a release claim.
+
 ## Real-product evidence still required
 
 The merged runner must now produce:

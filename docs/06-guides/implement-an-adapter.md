@@ -1,7 +1,72 @@
 # Implement an adapter
 
-This guide describes the intended implementation sequence. A concrete but
-experimental ACP implementation now lives in
+The pre-alpha SDK reduces the first integration to six methods. A harness does
+not need the SQLite coordinator, protocol validator, or adapter implementations
+in its process.
+
+## 30-minute path
+
+Install the current GitHub package:
+
+```sh
+npm install github:fyaic/threadmesh
+```
+
+Create a client with a transport that accepts a JSON-RPC request plus a separate
+transport authorization context:
+
+```js
+import { createThreadMeshClient } from "@fyaic/threadmesh";
+
+const mesh = createThreadMeshClient({
+  authorization: `Bearer ${token}`,
+  send: async (request, { authorization }) => {
+    const response = await fetch(threadMeshUrl, {
+      method: "POST",
+      headers: { authorization, "content-type": "application/json" },
+      body: JSON.stringify(request),
+    });
+    return response.json();
+  },
+});
+```
+
+The host, not the model, supplies `token`. The server derives the principal from
+that credential; never put a principal or token inside JSON-RPC params.
+
+### Public methods
+
+| Method | Harness use |
+|---|---|
+| `registerTask(task)` | Register one durable task incarnation using an owner or policy client |
+| `publishSummary(summary)` | Publish the receiver's bounded, relationship-scoped coordination summary |
+| `discoverRelated({ task, relationshipId })` | Read one authorized related-task summary; there is no global task scan |
+| `sendSuggestion(input)` | Send one expiring advisory suggestion; SDK TTL is capped at 30 minutes |
+| `pollMailbox({ receiver, afterCursor })` | Poll pending, unexpired, currently authorized messages at a checkpoint |
+| `decide({ message, decision })` | Durably claim and accept, reject, or defer one mailbox message |
+
+Relationship grants are control-plane policy and deliberately are not part of
+the harness SDK. Provision them through an owner/policy administration path.
+
+At each safe harness checkpoint:
+
+```js
+const page = await mesh.pollMailbox({ receiver: myTask, afterCursor });
+for (const message of page.messages) {
+  const decision = await localReceiverPolicy(message);
+  await mesh.decide({ message, decision });
+}
+afterCursor = page.nextCursor;
+```
+
+Acceptance is consent to consider the content, not permission for external side
+effects. Preserve peer provenance when rendering accepted content and keep it
+separate from user or developer instructions. The full runnable wiring is in
+[`examples/minimal-harness.mjs`](../../examples/minimal-harness.mjs).
+
+## Advanced implementation sequence
+
+A concrete but experimental ACP implementation lives in
 [`src/adapters/acp-stdio.mjs`](../../src/adapters/acp-stdio.mjs); it is evidence,
 not a production compatibility claim.
 

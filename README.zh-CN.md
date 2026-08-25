@@ -12,9 +12,9 @@
 
 ---
 
-> 当前状态：pre-alpha。仓库已包含可执行协议草案、SQLite coordinator
-> 实验原型以及 ACP、Codex App Server adapter 候选，但协议尚未稳定，也没有
-> 可用于生产的 adapter。
+> 当前状态：pre-alpha。仓库已包含最小 transport-agnostic adapter SDK、可执行
+> 协议草案、SQLite coordinator 实验原型，以及 ACP、Codex App Server、Gemini
+> adapter 候选；协议尚未稳定，也没有可用于生产的 adapter。
 
 ## 当前进度
 
@@ -30,8 +30,9 @@ incarnation 轮换和两类 mock harness 都有自动化测试。
 - steer/interrupt 未启用；
 - Kimi ACP 握手以及真实 session 的 create/list/delete/absence 校验已通过；
   早先的真实模型调用仍因账户额度被阻塞，未计为成功。
-- Codex CLI `0.145.0` 的真实 App Server 初始化、协议 schema 摘要和空的
-  read-only thread 启动已通过；真实模型 marker 尚未运行，也未计为成功。
+- Codex CLI `0.145.0` 已完成真实 receiver 与主动 A-to-B 案例。首次 outcome
+  评分中，control 为 0、相关依赖为 1；无关条件只查询关系，没有发送或激活 B。
+  目前每种条件只有一次运行，不能当作统计性产品结论。
 - Gemini CLI `0.56.0` 已被选为第三种非 ACP headless harness；官方固定版本、
   registry integrity、stream-json/plan/sandbox 能力和隔离 home 清理预检通过，
   但尚未获得 provider key 授权，因此模型调用是 `not-run`。
@@ -41,16 +42,29 @@ incarnation 轮换和两类 mock harness 都有自动化测试。
   精确 marker、evidence、audit 与资源清理；真实模式同时要求可校验 review 记录
   和 operator acknowledgement，在 #7 前默认返回 `not-run`。
 
-M1 已形成存储迁移、过期审计、默认拒绝 policy、crash-safe dispatcher，以及
-可重启事件游标、权限化 provenance inspector 和两类 mock harness 行为矩阵的
-堆叠候选实现；schema v3 的 retention purge 也已加入候选，能够在保留 digest
-防重放的同时清除过期内容，并保护未知外部效果。后续主线是等待外部 review，
-合并后在 `main` 重验，再依次执行 Codex、Kimi 和 Gemini 的真实
-agent 产品验证。Codex 的 live 脚本已准备好，但会继续遵守门禁。详见
+M1 已合并并关闭 milestone。当前最小 SDK 候选以
+`@fyaic/threadmesh` `0.1.0-alpha.0` 暴露注册、关系范围摘要、限时 suggestion、
+mailbox polling 与 receiver disposition；完整打包安装和 coordinator lifecycle
+均已在本地通过，但尚未发布 npm release。主线下一步只选择一个不同 harness：
+优先重跑 Kimi，额度仍不可用时才使用明确授权凭证的 Gemini。外部 review #7
+继续作为并行治理，不再阻塞明确标注的 maintainer experiment。详见
 [项目状态](docs/10-planning/project-status.md)和
 [主线计划](docs/10-planning/mainline-plan.md)，真实执行步骤见
 [产品验证手册](docs/09-reviews/real-product-e2e-runbook.md)，逐项完成度见
 [里程碑验收审计](docs/10-planning/acceptance-audit.md)。
+
+## 最小 SDK
+
+```sh
+npm install github:fyaic/threadmesh
+```
+
+```js
+import { createThreadMeshClient } from "@fyaic/threadmesh";
+```
+
+30 分钟接入路径见 [adapter guide](docs/06-guides/implement-an-adapter.md)，完整
+HTTP transport 示例见 [minimal-harness.mjs](examples/minimal-harness.mjs)。
 
 ThreadMesh 关注一种具体能力：Agent A 在执行过程中发现 Agent B 的任务与自己的目标存在依赖，于是主动发起通知、建议、纠偏或停止请求。
 

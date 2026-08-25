@@ -216,7 +216,13 @@ the only active implementation workstream and is tracked by #53.
 
 ### Gate 2 — Minimal adapter kit
 
-Status: active mainline.
+Status: implementation candidate complete. The `@fyaic/threadmesh`
+`0.1.0-alpha.0` package exposes one transport-agnostic entry point for task
+registration, bounded summary publication/discovery, suggestion send, mailbox
+poll, and receiver disposition. The public entry has zero runtime package
+dependencies. Its packed-consumer import and full
+coordinator-mediated lifecycle pass locally; npm publication is not required
+for this gate and has not been performed.
 
 Only after Gate 1 passes, expose the smallest usable API for task registration,
 relationship discovery, bounded suggestion send, receiver disposition, and
@@ -225,6 +231,8 @@ roughly 30 minutes. Do not expose coordinator internals or require readers to
 understand every protocol schema.
 
 ### Gate 3 — One different real harness
+
+Status: next active mainline after the adapter-kit change merges.
 
 Choose exactly one: Kimi when quota is available, otherwise Gemini with an
 explicit credential. Run the same behavioral case and cleanup assertions. Do

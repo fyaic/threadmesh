@@ -1,9 +1,25 @@
 {
-  "name": "threadmesh",
-  "version": "0.0.0",
-  "private": true,
+  "name": "@fyaic/threadmesh",
+  "version": "0.1.0-alpha.0",
   "description": "Protocol schemas and conformance kit for safe cross-task agent coordination",
   "type": "module",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fyaic/threadmesh.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "exports": {
+    ".": "./src/sdk/index.mjs"
+  },
+  "files": [
+    "src/sdk",
+    "examples",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "validate:spec": "node scripts/validate-spec.mjs",
     "lint:docs": "markdownlint-cli2 'README*.md' 'docs/**/*.md' 'spec/**/*.md' '*.md'",
@@ -27,15 +43,13 @@
     "test": "npm run validate:spec && npm run test:unit && npm run lint:docs"
   },
   "devDependencies": {
+    "@agentclientprotocol/sdk": "1.3.0",
     "ajv": "8.20.0",
     "ajv-formats": "3.0.1",
+    "better-sqlite3": "13.0.3",
     "markdownlint-cli2": "0.23.2"
   },
   "engines": {
     "node": ">=22"
-  },
-  "dependencies": {
-    "@agentclientprotocol/sdk": "1.3.0",
-    "better-sqlite3": "13.0.3"
   }
 }
