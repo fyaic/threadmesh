@@ -69,8 +69,8 @@ merged fix. Neither result satisfies the still-open normative review gate.
 
 - B's checkpoint decision is currently deterministic harness policy, not an
   autonomous B-model accept/reject decision.
-- The scenario has one relevant relationship and no irrelevant-task control,
-  interruption, or concurrent-user-input case yet.
+- The scored result is one run per condition, not a false-positive rate; stale,
+  duplicate, interruption, and concurrent-user-input cases remain.
 - App Server dynamic tools are experimental, and this adapter is pinned to the
   tested Codex CLI compatibility range.
 - Tool-event observation and read-only sandbox configuration are evidence for
@@ -78,5 +78,12 @@ merged fix. Neither result satisfies the still-open normative review gate.
 - A successful Codex result does not establish portability until another
   materially different harness passes the same behavioral case.
 
-The next evidence slice adds irrelevant-task and receiver-interference controls,
-then ports the same tool contract to another harness family.
+The next product slice extracts a minimal adapter API, then ports the same tool
+contract to another harness family. Repetitions and stale/duplicate interference
+remain tracked under issue #53.
+
+The first scored control/relevant/irrelevant run is recorded in the
+[2026-08-25 behavioral gate](../09-reviews/2026-08-25-codex-behavior-gate.md).
+It improved the downstream dependency score from 0 to 1 in the relevant case,
+while the irrelevant case performed one read-only lookup and did not send or
+activate the receiver.

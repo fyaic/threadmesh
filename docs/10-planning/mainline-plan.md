@@ -196,6 +196,12 @@ or production-isolation work enters the mainline until the following gates pass.
 
 ### Gate 1 — Behavioral value and interference
 
+Status: first real scored pass completed at `0dd2c82`. Control scored 0;
+relevant coordination scored 1 at an observed cost of about 77 seconds and one
+additional B receive turn; the irrelevant condition did not send or activate B.
+Repetitions and stale/duplicate cases remain issue #53 follow-ups but do not
+block Gate 2.
+
 Run three real Codex conditions with the same task objective and scoring rubric:
 
 1. no ThreadMesh contact;
@@ -209,6 +215,8 @@ the irrelevant/stale condition must not send or disrupt the receiver. This is
 the only active implementation workstream and is tracked by #53.
 
 ### Gate 2 — Minimal adapter kit
+
+Status: active mainline.
 
 Only after Gate 1 passes, expose the smallest usable API for task registration,
 relationship discovery, bounded suggestion send, receiver disposition, and

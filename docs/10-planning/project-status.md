@@ -1,8 +1,8 @@
 # Project status
 
-> Snapshot: 2026-08-25, after the product-mainline reset. The implementation
-> baseline is `9249a861a9c951bab7bbd8f4cecb26ade1201de7`; the next change is
-> limited to behavioral value and interference evidence.
+> Snapshot: 2026-08-25, after the first scored behavioral gate at
+> `0dd2c828889287634dff09eb9fbc41dcdfb69b86`. The active implementation
+> workstream is now the minimal adapter kit.
 
 ## Executive summary
 
@@ -35,6 +35,7 @@ maintainer organization.
 | Codex App Server | CLI 0.145.0, 273 generated-schema files, JSONL handshake, empty read-only thread start | Real no-model preflight passed |
 | Codex live model behavior | Exact marker, evidence, audit, persisted resume path, and exact thread cleanup at `0dda5a7` | Real maintainer-experimental pass |
 | Codex proactive A-to-B | A selected related-task discovery and one bounded send; B consumed admitted context; both tasks deleted at `248d650` | Real maintainer-experimental positive-case pass |
+| Codex scored behavior gate | Control score 0; relevant score 1 with one send; irrelevant performed one lookup and no send; all tasks deleted at `0dd2c82` | First real outcome/interference pass |
 | Gemini CLI headless | Official package 0.56.0 integrity, required flags, isolated-home cleanup | Real no-model preflight passed |
 | Gemini live model behavior | Exact marker script requires explicit provider key | Not authorized, not run |
 | Multi-product admission | One mailbox/acceptance/claim/evidence path across ACP, Codex, and Gemini fakes | Merged experimental implementation |
@@ -120,11 +121,12 @@ distinct from normative M0 evidence.
 
 ### Active product gates
 
-The primary workstream is reopened issue #53: no-contact, relevant, and
-irrelevant/stale real Codex conditions with outcome and interference metrics.
-After that passes, the project extracts a minimal adapter kit and validates one
-different real harness. Issue #7 remains parallel governance. Hostile-worker
-schema #48 and further production hardening are deferred.
+The first no-contact, relevant, and irrelevant scored Codex conditions passed at
+`0dd2c82`. The active mainline is now a minimal adapter kit and one short
+integration example, followed by one different real harness. Issue #53 remains
+open for repetitions, stale/duplicate cases, and receiver defer/reject. Issue #7
+remains parallel governance. Hostile-worker schema #48 and further production
+hardening are deferred.
 
 ## What the prototype proves
 

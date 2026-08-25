@@ -112,7 +112,8 @@ its deterministic tests, while #7 continues to govern normative M0 acceptance.
 | Coordinator and receiver path | One authorized suggestion was claimed, accepted, admitted, audited, and consumed by persisted B | Satisfied for the positive case |
 | Tool and message budget | Exactly one related-task call, one send, and zero observed non-ThreadMesh tool calls | Satisfied for the positive case |
 | Cleanup and repository boundary | A and B deleted; clean main and detached child remained bound to exact `248d650` | Satisfied |
-| Irrelevant-task and interference controls | Not yet run | Open; blocks closing #53 as a behavioral evaluation |
+| Scored control/relevant/irrelevant conditions | Control 0; relevant 1; irrelevant lookup with zero send; complete cleanup at `0dd2c82` | First real behavioral gate passed |
+| Repetitions, stale/duplicate, B defer/reject | Not yet run | Open #53 follow-up; blocks default enablement, not minimal adapter extraction |
 
 ## Real-product evidence still required
 
