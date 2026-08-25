@@ -74,6 +74,55 @@ function exact(value, expected, code) {
   if (value.truncated || value.text !== expected) throw codedError(code);
 }
 
+function codexReceiverRuntime({ adapter, command, args, cwd, bootstrapEnv, receiverEnv }) {
+  return {
+    harness: "codex-app-server",
+    productId: "codex-proactive",
+    adapterKind: "codex-app-server",
+    evidenceKeys: ["kind", "snapshotDigest", "threadId", "turnId", "turnStatus"],
+    startBaseline: ({ marker, instructions, adapterIdempotencyKey, model }) =>
+      adapter.startValidationThread({
+        command,
+        args,
+        cwd,
+        env: bootstrapEnv,
+        marker,
+        adapterIdempotencyKey,
+        developerInstructions: instructions,
+        model,
+        timeoutMs: 180_000,
+      }),
+    deliver: ({ prepared, adapterIdempotencyKey }) => adapter.runAcceptedSuggestion({
+      command,
+      args,
+      cwd,
+      env: receiverEnv,
+      adapterRef: prepared.adapterRef,
+      envelope: prepared.envelope,
+      admission: prepared.admission,
+      adapterIdempotencyKey,
+    }),
+    async cleanup(adapterRef) {
+      const deleted = await adapter.deleteThread({
+        command,
+        args,
+        cwd,
+        env: bootstrapEnv,
+        threadId: adapterRef.threadId,
+      });
+      return {
+        complete: deleted.deleted === true,
+        public: { bThreadDeleted: deleted.deleted === true },
+      };
+    },
+    productMetadata: (adapterRef) => ({
+      userAgent: adapterRef.userAgent,
+      model: adapterRef.model,
+      modelProvider: adapterRef.modelProvider,
+    }),
+  };
+}
+
 export async function runProactiveCodexScenario({
   command,
   args = ["app-server", "--listen", "stdio://"],
@@ -87,6 +136,7 @@ export async function runProactiveCodexScenario({
   clock = Date.now,
   runId = randomUUID().replaceAll("-", ""),
   adapter = new CodexAppServerAdapter(),
+  receiverRuntime = null,
 }) {
   const conditionConfig = CONDITIONS[condition];
   if (!conditionConfig) throw codedError("threadmesh_proactive_condition_invalid");
@@ -95,6 +145,14 @@ export async function runProactiveCodexScenario({
   const aPrincipal = { kind: "task", ...scenarioIds.a };
   const bPrincipal = { kind: "task", ...scenarioIds.b };
   const coordinator = new SqliteCoordinator({ clock });
+  const receiver = receiverRuntime ?? codexReceiverRuntime({
+    adapter,
+    command,
+    args,
+    cwd,
+    bootstrapEnv,
+    receiverEnv,
+  });
   let aRef;
   let bRef;
   let relatedLookupCount = 0;
@@ -107,21 +165,17 @@ export async function runProactiveCodexScenario({
   };
   let result;
   let failure;
+  let receiverCleanupComplete = false;
 
   try {
     const bBootstrapMarker = PROACTIVE_B_MISSING_MARKER;
     let bBootstrap;
     try {
-      bBootstrap = await adapter.startValidationThread({
-        command,
-        args,
-        cwd,
-        env: bootstrapEnv,
+      bBootstrap = await receiver.startBaseline({
         marker: bBootstrapMarker,
         adapterIdempotencyKey: `idem_proactive_b_bootstrap_${runId}`,
-        developerInstructions: PROACTIVE_B_INSTRUCTIONS,
+        instructions: PROACTIVE_B_INSTRUCTIONS,
         model,
-        timeoutMs: 180_000,
       });
       bRef = bBootstrap.adapterRef;
     } catch (error) {
@@ -136,7 +190,7 @@ export async function runProactiveCodexScenario({
     }, owner);
     coordinator.registerTask({
       ...scenarioIds.b,
-      harness: "codex-app-server",
+      harness: receiver.harness,
       adapterRef: bRef,
     }, owner);
 
@@ -244,7 +298,7 @@ export async function runProactiveCodexScenario({
               actorType: "agent",
               harness: "codex-app-server",
             },
-            target: { ...scenarioIds.b, harness: "codex-app-server" },
+            target: { ...scenarioIds.b, harness: receiver.harness },
             relationshipId: scenarioIds.relationshipId,
             content: value.content,
             reason: value.reason,
@@ -344,14 +398,8 @@ export async function runProactiveCodexScenario({
         1,
         bPrincipal,
       );
-      const bTurn = await adapter.runAcceptedSuggestion({
-        command,
-        args,
-        cwd,
-        env: receiverEnv,
-        adapterRef: prepared.adapterRef,
-        envelope: prepared.envelope,
-        admission: prepared.admission,
+      const bTurn = await receiver.deliver({
+        prepared,
         adapterIdempotencyKey: `idem_proactive_b_receive_${runId}`,
       });
       exact(bTurn, PROACTIVE_B_MARKER, "threadmesh_proactive_b_marker_mismatch");
@@ -373,7 +421,7 @@ export async function runProactiveCodexScenario({
 
       result = {
         state: "passed",
-        productId: "codex-proactive",
+        productId: receiver.productId,
         condition,
         modelSelectedCommunication: true,
         scriptedSubmitCount: 0,
@@ -385,15 +433,11 @@ export async function runProactiveCodexScenario({
         delivery: disposition.delivery,
         decision: disposition.decision,
         outcome: disposition.outcome,
-        adapterKind: "codex-app-server",
+        adapterKind: receiver.adapterKind,
         markerMatched: true,
-        evidenceKeys: ["kind", "snapshotDigest", "threadId", "turnId", "turnStatus"],
+        evidenceKeys: receiver.evidenceKeys,
         adapterSnapshotDigest: bRef.snapshotDigest,
-        productMetadata: {
-          userAgent: bRef.userAgent,
-          model: bRef.model,
-          modelProvider: bRef.modelProvider,
-        },
+        productMetadata: receiver.productMetadata(bRef, bTurn),
         aDecisionCompleted: true,
         bMarkerMatched: true,
         bOutcome: "completed-with-dependency",
@@ -402,7 +446,7 @@ export async function runProactiveCodexScenario({
         interferenceViolation: false,
         aToolCalls,
         aThreadId: aRef.threadId,
-        bThreadId: bRef.threadId,
+        bThreadId: bRef.threadId ?? null,
         aSnapshotDigest: aRef.snapshotDigest,
         bSnapshotDigest: bRef.snapshotDigest,
       };
@@ -418,15 +462,16 @@ export async function runProactiveCodexScenario({
         cleanup.aThreadDeleted = true;
       } catch {}
     }
-    if (bRef?.threadId) {
+    if (bRef) {
       try {
-        await adapter.deleteThread({ command, args, cwd, env, threadId: bRef.threadId });
-        cleanup.bThreadDeleted = true;
+        const receiverCleanup = await receiver.cleanup(bRef);
+        Object.assign(cleanup, receiverCleanup.public ?? {});
+        receiverCleanupComplete = receiverCleanup.complete === true;
       } catch {}
     }
     cleanup.complete =
       (!aRef?.threadId || cleanup.aThreadDeleted) &&
-      (!bRef?.threadId || cleanup.bThreadDeleted);
+      (!bRef || receiverCleanupComplete);
     cleanup.threadDeleted = cleanup.complete;
   }
   if (failure) {
