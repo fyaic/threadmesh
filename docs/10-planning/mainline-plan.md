@@ -153,8 +153,9 @@ the scored proactive conditions at `0dd2c82`. Kimi then passed the same shared
 receiver-acceptance path at `b248343`, including exact marker, bounded evidence,
 audit, and delete-plus-absence cleanup. The M2 milestone is closed with five
 issues complete and zero open. Gemini remains optional and unstarted; it is not
-maintained as a competing live branch. The remaining product threshold is
-repeated interference evidence under #53 before default enablement.
+maintained as a competing live branch. The bounded #53 proactive behavior and
+interference threshold subsequently passed under the two-stage policy at
+`a134b39`.
 
 Before production or parallel receiver replicas, add claimant-specific mailbox
 leases with expiry takeover, and a receiver-authenticated inspection and manual
@@ -177,11 +178,10 @@ or production-isolation work enters the mainline until the following gates pass.
 
 ### Gate 1 — Behavioral value and interference
 
-Status: first real scored pass completed at `0dd2c82`. Control scored 0;
-relevant coordination scored 1 at an observed cost of about 77 seconds and one
-additional B receive turn; the irrelevant condition did not send or activate B.
-Repetitions and stale/duplicate cases remain issue #53 follow-ups but do not
-block Gate 2.
+Status: completed. The first scored pass landed at `0dd2c82`; the compressed,
+outcome-based flow later passed relevant 3/3 at `a134b39`. A current control
+used no tool and did not contact B. A current irrelevant run used one read-only
+lookup and did not send or activate B. Every task was deleted.
 
 Run three real Codex conditions with the same task objective and scoring rubric:
 
@@ -192,8 +192,8 @@ Run three real Codex conditions with the same task objective and scoring rubric:
 Record outcome score, completion, model turns, elapsed time, sends, receiver
 disposition, unwanted receiver activation, persistent-context residue, and exact
 cleanup. The relevant condition must improve the scored outcome over control;
-the irrelevant/stale condition must not send or disrupt the receiver. This is
-the only active implementation workstream and is tracked by #53.
+the irrelevant/stale condition must not send or disrupt the receiver. The
+bounded first case was tracked by #53.
 
 ### Gate 2 — Minimal adapter kit
 
@@ -222,22 +222,24 @@ Choose exactly one: Kimi when quota is available, otherwise Gemini with an
 explicit credential. Run the same behavioral case and cleanup assertions. Do
 not maintain two competing live-validation branches.
 
-The three reset gates are now complete. The next product decision is whether to
-repeat and expand the interference experiment under #53 before default
-enablement. No new protocol or second live-harness branch starts automatically.
+The three reset gates and the bounded Codex M3 behavior case are complete. The
+next product case is proactive coordination across two materially different
+harnesses. No new protocol branch starts automatically.
 
 ### Post-gate repetition decision
 
-Status: default enablement rejected. Across three real runs per condition,
+Historical status: default enablement rejected. Across three real runs per condition,
 control stayed quiet 3/3, relevant passed 1/3, and irrelevant passed 2/3 with
 one inconclusive marker failure. The third relevant run exposed a bootstrap
 cleanup reference bug; its exact thread was manually deleted and absence-
 verified, and PR #64 merged the regression fix.
 
-Do not expand stale/duplicate/concurrent-user/B-decision scenarios yet. First
-replace the long marker-heavy flow with a shorter outcome-bearing reliability
-benchmark and set a pass threshold. Protocol, persistence, and additional
-harness work remain out of scope for that benchmark.
+The shorter outcome-bearing benchmark, observed-behavior gate, and two-stage
+policy are now merged. The final fresh relevant sample passed 3/3; fresh control
+and irrelevant runs did not send. This qualifies the bounded profile for
+explicit experimental opt-in, not repository-wide default enablement. The next
+mainline is one cross-harness proactive case, reusing the existing coordinator
+and adapters rather than expanding protocol surface.
 
 Independent review #7 continues as a parallel governance track. Hostile-worker
 schema #48 is deferred. Production authentication, OS isolation, parallel

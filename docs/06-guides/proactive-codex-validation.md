@@ -8,7 +8,8 @@ initiates one advisory message to Agent B. The validation uses the documented
 Codex App Server experimental dynamic-tool flow; the harness does not call the
 coordinator submit operation on A's behalf.
 
-Tracked by [issue #53](https://github.com/fyaic/threadmesh/issues/53). This is
+The first bounded case was tracked by
+[issue #53](https://github.com/fyaic/threadmesh/issues/53). This is
 maintainer-authorized experimental evidence, not normative M0 evidence and not
 a production autonomy claim.
 
@@ -83,9 +84,9 @@ merged fix. Neither result satisfies the still-open normative review gate.
 - A successful Codex result does not establish portability until another
   materially different harness passes the same behavioral case.
 
-The next product slice extracts a minimal adapter API, then ports the same tool
-contract to another harness family. Repetitions and stale/duplicate interference
-remain tracked under issue #53.
+The minimal adapter API and a materially different real receiver harness are
+now complete. Cross-harness proactive behavior and broader stale/duplicate
+interference are separate follow-up work.
 
 The first scored control/relevant/irrelevant run is recorded in the
 [2026-08-25 behavioral gate](../09-reviews/2026-08-25-codex-behavior-gate.md).
@@ -105,3 +106,17 @@ deleted both A and B. This improves signal quality but does not yet meet a 3/3
 reliability threshold, so proactive coordination remains default-off. The
 deterministic three-condition command and field interpretation are documented
 in the [end-to-end demonstration](end-to-end-demo.md).
+
+PR #72 then made the model policy explicitly two-stage without scripting the
+send: when the objective may affect another task, A reads the authorized
+summaries once; it sends only when a returned summary explicitly needs the
+current result. The handler also requires discovery before send and reports
+missing discovery separately from missing send.
+
+Three fresh real relevant runs on `a134b39` all passed in 85, 88, and 132
+seconds. Each selected the exact two-tool sequence, sent once, activated B,
+produced outcome score 1, used no other tool, and deleted A and B. A fresh
+control made zero tool calls and zero sends; a fresh irrelevant run made one
+read-only lookup and zero sends. This satisfies the bounded M3 case threshold.
+The profile is eligible for explicit maintainer-experimental opt-in use, but it
+remains off by default while ThreadMesh is pre-alpha and M0 review remains open.
