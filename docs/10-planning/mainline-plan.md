@@ -128,10 +128,10 @@ is now the active evidence workstream.
 
 ### 7. Complete real product validation
 
-Status: shared admission #42, unified runner #44, and Codex #36 are closed.
-Codex has a real product pass. Kimi #37 remains open because provider quota
-blocked its exact marker; Gemini #38 remains open pending an explicitly supplied
-credential. All adapter code is merged, and superseded PRs #39–#43 are closed.
+Status: shared admission #42, unified runner #44, Codex #36, and Kimi #37 are
+closed with real product passes. Gemini #38 remains optional pending an
+explicitly supplied credential. All adapter code is merged, and superseded PRs
+39–43 are closed.
 
 Merged [#45](https://github.com/fyaic/threadmesh/pull/45), tracked by
 [#44](https://github.com/fyaic/threadmesh/issues/44), adds the final shared
@@ -204,6 +204,13 @@ poll, and receiver disposition. The public entry has zero runtime package
 dependencies. Its packed-consumer import and full
 coordinator-mediated lifecycle pass locally; npm publication is not required
 for this gate and has not been performed.
+
+A maintainer-run clean-consumer validation now also passes with Pi `0.84.2`:
+the real model selected discovery/send only for the relevant case, did not send
+for the irrelevant case, stayed completely quiet for the control, and reached
+a persistent Kimi `0.38.0` receiver through audited context admission. The
+technical integration path is complete; issue #79 remains open only for
+feedback from an independent human harness author.
 
 Only after Gate 1 passes, expose the smallest usable API for task registration,
 relationship discovery, bounded suggestion send, receiver disposition, and

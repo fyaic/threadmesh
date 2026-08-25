@@ -11,6 +11,7 @@ Codex、Kimi Code、Gemini CLI 或自研 Agent session 的开发者，不是共�
 
 **从具体案例开始：** [ThreadMesh 是什么](docs/zh-CN/product-guide.md) ·
 [运行 A→B 演示](docs/06-guides/end-to-end-demo.md) ·
+[查看真实 Pi→Kimi 案例](docs/06-guides/pi-to-kimi-demo.md) ·
 [接入自己的 harness](docs/06-guides/implement-an-adapter.md)
 
 > 当前状态：pre-alpha。仓库已包含最小 transport-agnostic adapter SDK、可执行
@@ -44,6 +45,11 @@ incarnation 轮换和两类 mock harness 都有自动化测试。
   `发现相关任务 → 发送一次建议`；Kimi Code `0.38.0` 的持久 ACP session 作为 B，
   接受建议后完成 checksum 依赖。A task 和 B session 均已删除，B 的 absence 也已
   验证。这是受限实验结果，不是生产级互操作性声明。
+- 第二个真实跨 harness 案例使用全新 Pi extension 消费项目，只导入公开
+  `@fyaic/threadmesh`。Pi `0.84.2` 在 relevant 条件发现并发送一次，在
+  irrelevant 条件只发现不发送，在 control 条件零调用；随后向 Kimi `0.38.0`
+  提供一条 `unverified` 的非权威协调输入，完成接收、context admission、审计和
+  会话/临时目录清理。案例没有把 peer suggestion 冒充为已验证事实。
 - Gemini CLI `0.56.0` 已被选为第三种非 ACP headless harness；官方固定版本、
   registry integrity、stream-json/plan/sandbox 能力和隔离 home 清理预检通过，
   但尚未获得 provider key 授权，因此模型调用是 `not-run`。
@@ -83,6 +89,9 @@ npm run validate:cross-harness:fake
 
 真实 Codex→Kimi 证据见
 [案例记录](docs/09-reviews/2026-08-25-codex-to-kimi-proactive.md)。
+公开 SDK 的真实 Pi→Kimi 三层验证见
+[案例说明](docs/06-guides/pi-to-kimi-demo.md)和
+[完整记录](docs/09-reviews/2026-08-25-pi-integration-kit-validation.md)。
 
 ## 最小 SDK
 

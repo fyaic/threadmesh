@@ -13,6 +13,7 @@ sharing global chat history or silently controlling another session.
 **Start with the concrete story:**
 [what ThreadMesh is](docs/00-overview/product-guide.md) ·
 [run the A-to-B demo](docs/06-guides/end-to-end-demo.md) ·
+[see the real Pi-to-Kimi case](docs/06-guides/pi-to-kimi-demo.md) ·
 [integrate a harness](docs/06-guides/implement-an-adapter.md)
 
 > Status: pre-alpha. The protocol is not stable. A minimal transport-agnostic
@@ -69,6 +70,14 @@ npm run validate:cross-harness:fake
 The equivalent real-product case passed on 2026-08-25 with Codex CLI `0.145.0`
 as A and Kimi Code `0.38.0` as B. See the
 [Codex-to-Kimi case study](docs/09-reviews/2026-08-25-codex-to-kimi-proactive.md).
+
+A second real case installs the packed SDK in a fresh Pi extension consumer.
+Pi `0.84.2` with `zai/glm-5.3` chose exactly `discover → suggest` for a relevant
+dependency, discovered but stayed silent for an irrelevant task, and made no
+ThreadMesh call in the control. It then supplied one advisory release input to
+a persistent Kimi Code `0.38.0` ACP task, which accepted and admitted the
+context before completing. See the
+[Pi-to-Kimi demo](docs/06-guides/pi-to-kimi-demo.md).
 
 ## Minimal adapter SDK
 
@@ -216,7 +225,7 @@ test/                Behavioral and conformance tests
 The repository contains an executable `0.0-draft` specification, an
 experimental SQLite coordinator, authenticated JSON-RPC operations, and ACP,
 Codex App Server, and Gemini headless adapters. The complete suite currently has
-142 unit/subtests plus schema and transition conformance. M1 and M2 are closed.
+143 unit/subtests plus schema and transition conformance. M1 and M2 are closed.
 A real Codex Agent A has selected ThreadMesh relationship discovery and sent one
 bounded suggestion to a persisted Agent B; the coordinator admitted it and both
 exact tasks were deleted.

@@ -26,6 +26,7 @@ accepted until two qualifying public records exist and pass
 - [Codex repetitions and default-off decision](2026-08-25-codex-behavior-repetitions.md)
 - [Kimi Code live ThreadMesh pass](2026-08-25-kimi-code-live-pass.md)
 - [Codex A to Kimi Code B proactive case](2026-08-25-codex-to-kimi-proactive.md)
+- [Public SDK, Pi behavior, and Pi-to-Kimi validation](2026-08-25-pi-integration-kit-validation.md)
 
 ## 2026-08-20 internal review round
 

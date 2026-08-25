@@ -162,6 +162,12 @@ Read the [Codex behavior repetitions](../09-reviews/2026-08-25-codex-behavior-re
 [real-product runbook](../09-reviews/real-product-e2e-runbook.md) for the exact
 claims and limitations.
 
+The public-package portability case uses Pi as a materially different sender
+harness. A fresh consumer imports only `@fyaic/threadmesh`, Pi performs the same
+relevant/irrelevant/control decision matrix, and the relevant path reaches a
+persistent Kimi ACP receiver. Read and reproduce the
+[Pi-to-Kimi demo](pi-to-kimi-demo.md).
+
 ## What to try next
 
 - Replace the fake App Server with an adapter for your harness.

@@ -21,10 +21,10 @@ evidence. New readers do not need to read every numbered directory in order.
 | Goal | Read or run |
 |---|---|
 | Understand the product | [Product guide](00-overview/product-guide.md) → [proactive coordination](01-concepts/proactive-coordination.md) |
-| See it work | [End-to-end demo](06-guides/end-to-end-demo.md) → [Codex-to-Kimi case](09-reviews/2026-08-25-codex-to-kimi-proactive.md) → [Codex validation](06-guides/proactive-codex-validation.md) |
+| See it work | [End-to-end demo](06-guides/end-to-end-demo.md) → [Pi-to-Kimi demo](06-guides/pi-to-kimi-demo.md) → [Codex-to-Kimi case](09-reviews/2026-08-25-codex-to-kimi-proactive.md) |
 | Integrate a harness | [Adapter guide](06-guides/implement-an-adapter.md) → [adapter contract](05-adapters/adapter-contract.md) → [mock conformance](06-guides/mock-harness-conformance.md) |
 | Evaluate safety | [Context sovereignty](01-concepts/context-sovereignty.md) → [permission model](04-safety/permission-model.md) → [threat model](04-safety/threat-model.md) |
-| Inspect real evidence | [Design reviews](09-reviews/README.md) → [Codex-to-Kimi case](09-reviews/2026-08-25-codex-to-kimi-proactive.md) → [Kimi pass](09-reviews/2026-08-25-kimi-code-live-pass.md) → [Codex repetitions](09-reviews/2026-08-25-codex-behavior-repetitions.md) |
+| Inspect real evidence | [Design reviews](09-reviews/README.md) → [Pi integration record](09-reviews/2026-08-25-pi-integration-kit-validation.md) → [Codex-to-Kimi case](09-reviews/2026-08-25-codex-to-kimi-proactive.md) |
 | Contribute to the protocol | [Protocol overview](03-protocol/README.md) → [ADRs](08-decisions/README.md) → [mainline plan](10-planning/mainline-plan.md) |
 
 ## Directory guide
