@@ -226,6 +226,19 @@ The three reset gates are now complete. The next product decision is whether to
 repeat and expand the interference experiment under #53 before default
 enablement. No new protocol or second live-harness branch starts automatically.
 
+### Post-gate repetition decision
+
+Status: default enablement rejected. Across three real runs per condition,
+control stayed quiet 3/3, relevant passed 1/3, and irrelevant passed 2/3 with
+one inconclusive marker failure. The third relevant run exposed a bootstrap
+cleanup reference bug; its exact thread was manually deleted and absence-
+verified, and PR #64 merged the regression fix.
+
+Do not expand stale/duplicate/concurrent-user/B-decision scenarios yet. First
+replace the long marker-heavy flow with a shorter outcome-bearing reliability
+benchmark and set a pass threshold. Protocol, persistence, and additional
+harness work remain out of scope for that benchmark.
+
 Independent review #7 continues as a parallel governance track. Hostile-worker
 schema #48 is deferred. Production authentication, OS isolation, parallel
 worker leases, hosted streaming, steer, and interrupt remain out of mainline.

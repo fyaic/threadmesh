@@ -164,8 +164,10 @@ admitted it and both exact tasks were deleted.
 
 The first scored Codex comparison found that relevant coordination changed the
 receiver outcome from missing dependency to completed, while the irrelevant
-condition did not send or activate the receiver. This is one run per condition,
-not a statistical product claim. The active mainline has only three gates:
+condition did not send or activate the receiver. Two additional repetitions
+kept control quiet 3/3, but relevant completed only 1/3 and irrelevant completed
+2/3. Proactive coordination therefore remains disabled by default. The product
+reset used three gates:
 
 1. compare no-contact, relevant-dependency, and irrelevant/stale real Codex
    conditions, measuring outcome quality and receiver interference — first
@@ -174,6 +176,9 @@ not a statistical product claim. The active mainline has only three gates:
    complete in `@fyaic/threadmesh` `0.1.0-alpha.0`;
 3. pass the receiver-accepted scenario on one materially different real harness
    — Kimi Code `0.38.0` passed with exact cleanup.
+
+All three reset gates are complete. The next M3 work is a shorter reliability
+benchmark, not more protocol or harness surface.
 
 Protocol expansion, hostile-worker validation, steer/interrupt, and production
 hardening are deferred until these gates pass. Independent M0 review continues

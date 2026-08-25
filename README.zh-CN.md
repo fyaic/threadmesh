@@ -32,7 +32,8 @@ incarnation 轮换和两类 mock harness 都有自动化测试。
   admission、精确 marker、session 删除和 absence 验证全部完成。
 - Codex CLI `0.145.0` 已完成真实 receiver 与主动 A-to-B 案例。首次 outcome
   评分中，control 为 0、相关依赖为 1；无关条件只查询关系，没有发送或激活 B。
-  目前每种条件只有一次运行，不能当作统计性产品结论。
+  补充到每种条件三次后，control 3/3 保持静默，但相关依赖仅 1/3 完成、无关
+  条件 2/3 完成，因此主动协调继续默认关闭。
 - Gemini CLI `0.56.0` 已被选为第三种非 ACP headless harness；官方固定版本、
   registry integrity、stream-json/plan/sandbox 能力和隔离 home 清理预检通过，
   但尚未获得 provider key 授权，因此模型调用是 `not-run`。
@@ -42,7 +43,7 @@ incarnation 轮换和两类 mock harness 都有自动化测试。
   精确 marker、evidence、audit 与资源清理；真实模式同时要求可校验 review 记录
   和 operator acknowledgement，在 #7 前默认返回 `not-run`。
 
-M1 已合并并关闭 milestone。当前最小 SDK 候选以
+M1、M2 均已关闭 milestone。当前最小 SDK 以
 `@fyaic/threadmesh` `0.1.0-alpha.0` 暴露注册、关系范围摘要、限时 suggestion、
 mailbox polling 与 receiver disposition；完整打包安装和 coordinator lifecycle
 均已在本地通过，但尚未发布 npm release。Kimi 已成为第二种通过真实
