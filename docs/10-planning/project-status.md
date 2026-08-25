@@ -1,8 +1,8 @@
 # Project status
 
 > Snapshot: 2026-08-25, after the first scored behavioral gate at
-> `0dd2c828889287634dff09eb9fbc41dcdfb69b86` and the locally validated minimal
-> adapter-kit candidate. One materially different real harness is next.
+> `0dd2c828889287634dff09eb9fbc41dcdfb69b86`, the merged minimal adapter kit,
+> and the real Kimi portability pass at `b2483436ee48570a23030f4f81ca1d5114eef576`.
 
 ## Executive summary
 
@@ -32,7 +32,7 @@ maintainer organization.
 | Safety boundary | Authenticated authorship checks, effective-grant decisions, revocation, CAS | Executable local policy |
 | ACP adapter | ACP v1 initialize, session create/load, prompt aggregation, permission denial, timeout cleanup | Experimental |
 | Kimi Code | CLI 0.36.1 handshake plus exact create/list/delete/absence lifecycle | Real no-model preflight passed |
-| Live Kimi model behavior | Rerun classified provider quota and completed deletion plus absence verification | Blocked: `acp_agent_quota_error` |
+| Live Kimi model behavior | CLI 0.38.0 accepted one coordinator suggestion, returned the exact marker, and passed deletion plus absence verification at `b248343` | Real maintainer-experimental pass |
 | Codex App Server | CLI 0.145.0, 273 generated-schema files, JSONL handshake, empty read-only thread start | Real no-model preflight passed |
 | Codex live model behavior | Exact marker, evidence, audit, persisted resume path, and exact thread cleanup at `0dda5a7` | Real maintainer-experimental pass |
 | Codex proactive A-to-B | A selected related-task discovery and one bounded send; B consumed admitted context; both tasks deleted at `248d650` | Real maintainer-experimental positive-case pass |
@@ -89,14 +89,13 @@ the still-open M0 external-review requirement into a satisfied review.
 
 ### M2 — First real adapters
 
-The adapters and unified runner are merged. The immediate mainline is now real
-product evidence: Codex first, Kimi second, and Gemini only when an explicit
-credential is already available. Maintainer-experimental results are kept
-distinct from normative M0 evidence.
+The adapters and unified runner are merged. Real Codex and Kimi products now
+pass the same receiver-accepted suggestion path. Maintainer-experimental results
+remain distinct from normative M0 evidence.
 
-- Codex issue #36 is closed after a real pass at `0dda5a7`; Kimi issue #37
-  remains open and quota-blocked; Gemini issue #38 remains open pending an
-  explicit provider credential. Shared admission #42 and runner #44 are closed.
+- Codex issue #36 passed at `0dda5a7`; Kimi issue #37 passed at `b248343` with
+  CLI `0.38.0`; Gemini #38 is no longer an active competing branch. Shared
+  admission #42 and runner #44 are closed.
 - PR #45 merged the complete adapter/runner stack. Superseded stacked PRs
   #39–#43 are closed.
 - The Codex implementation includes suggestion-only capability negotiation,
@@ -122,14 +121,12 @@ distinct from normative M0 evidence.
 
 ### Active product gates
 
-The first no-contact, relevant, and irrelevant scored Codex conditions passed at
-`0dd2c82`. The minimal adapter-kit candidate now exposes one package entry point
-and a short integration example, with a real in-memory coordinator lifecycle and
-packed-consumer install/import passing locally. After that candidate merges, the
-only active product gate is one different real harness. Issue #53 remains open
-for repetitions, stale/duplicate cases, and receiver defer/reject. Issue #7
-remains parallel governance. Hostile-worker schema #48 and further production
-hardening are deferred.
+The three product reset gates are complete: first scored Codex behavior,
+minimal zero-dependency adapter SDK, and a real Kimi ACP portability pass. Issue
+Issue #53 remains open for repetitions, stale/duplicate cases, and receiver
+defer/reject before default enablement. Issue #7 remains parallel governance.
+Hostile-worker schema #48, optional Gemini live validation, and further
+production hardening are deferred.
 
 ## What the prototype proves
 
@@ -207,6 +204,9 @@ can:
     relationship-scoped discovery, bounded suggestion, mailbox claim/decision,
     deferral/reconsideration, and stable remote error projection through the
     authenticated JSON-RPC binding.
+36. load a real Kimi `0.38.0` ACP session with one coordinator-accepted
+    suggestion, confirm bounded context-admission evidence, and delete plus
+    list-confirm the exact session as absent.
 
 It does not prove general autonomous discovery across unrelated tasks, outcome
 improvement, acceptable receiver-interference cost, native provider-role

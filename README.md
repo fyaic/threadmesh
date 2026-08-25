@@ -171,8 +171,9 @@ not a statistical product claim. The active mainline has only three gates:
    conditions, measuring outcome quality and receiver interference — first
    scored pass complete;
 2. expose a minimal installable adapter API and one short integration example —
-   active;
-3. pass the same behavior on one materially different real harness — next.
+   complete in `@fyaic/threadmesh` `0.1.0-alpha.0`;
+3. pass the receiver-accepted scenario on one materially different real harness
+   — Kimi Code `0.38.0` passed with exact cleanup.
 
 Protocol expansion, hostile-worker validation, steer/interrupt, and production
 hardening are deferred until these gates pass. Independent M0 review continues

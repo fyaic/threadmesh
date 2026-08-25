@@ -232,11 +232,18 @@ understand every protocol schema.
 
 ### Gate 3 — One different real harness
 
-Status: next active mainline after the adapter-kit change merges.
+Status: completed at `b248343`. Kimi Code CLI `0.38.0` consumed the same
+receiver-accepted suggestion through ACP, produced the exact marker, and passed
+session deletion plus absence verification. This is portability evidence, not
+proof that Kimi autonomously selects relationships.
 
 Choose exactly one: Kimi when quota is available, otherwise Gemini with an
 explicit credential. Run the same behavioral case and cleanup assertions. Do
 not maintain two competing live-validation branches.
+
+The three reset gates are now complete. The next product decision is whether to
+repeat and expand the interference experiment under #53 before default
+enablement. No new protocol or second live-harness branch starts automatically.
 
 Independent review #7 continues as a parallel governance track. Hostile-worker
 schema #48 is deferred. Production authentication, OS isolation, parallel

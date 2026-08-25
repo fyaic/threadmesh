@@ -80,12 +80,12 @@ its deterministic tests, while #7 continues to govern normative M0 acceptance.
 
 | Criterion group | Current evidence | Audit status |
 |---|---|---|
-| Exact product/capability probe | Real 0.36.1 binary digest and ACP snapshot recorded | Candidate-satisfied |
+| Exact product/capability probe | Real 0.38.0 binary and ACP snapshot recorded | Satisfied |
 | Session lifecycle and cleanup | Real create/list/delete/absence passes | Candidate-satisfied |
-| Reload without historical output contamination | Deterministic ACP test passes; a real accepted turn is needed for product proof | Partial |
+| Reload without historical output contamination | Real accepted turn loads the created ACP session; deterministic replay-isolation test passes | Satisfied |
 | Permission requests default-cancelled | Real adapter behavior covered by SDK fake agent | Candidate-satisfied |
-| Unique accepted marker | Rerun classified `acp_agent_quota_error`; cleanup and absence verification passed | Blocked, not passed |
-| Reproducible timestamped report | Kimi evidence document and classified smoke output | Candidate-satisfied |
+| Unique accepted marker | Exact real marker passed at `b248343` | Satisfied for maintainer-experimental product evidence |
+| Reproducible timestamped report | 2026-08-25 live evidence records version, digests, UTC times, state, and cleanup | Satisfied |
 
 ### #38 Gemini CLI headless
 
@@ -137,16 +137,15 @@ The merged runner must now produce:
 Codex has completed its exact bootstrap marker, persisted receiver, coordinator
 marker, turn evidence, resume, audit, and exact deletion path. Remaining:
 
-1. Kimi: exact coordinator marker in the created ACP session, no permission
-   grant, delete, and list-confirmed absence;
-2. Gemini: explicitly authorized key, exact coordinator marker, exit 0, zero
-   tool use, and removal of the exact isolated home;
-3. a timestamped sanitized evidence record for every attempt, including
+1. Gemini remains optional: if run, require an explicitly authorized key,
+   exact coordinator marker, exit 0, zero tool use, and removal of the exact
+   isolated home;
+2. a timestamped sanitized evidence record for every attempt, including
    `passed`, `blocked`, `failed`, or `not-run` and the exact repository commit.
 
-At least two materially different harness families must pass before M2 can
-close. Quota, authentication, handshake, no-model, or fake-product results are
-never promoted to a live pass.
+Codex App Server and Kimi ACP now satisfy the two-harness threshold. Quota,
+authentication, handshake, no-model, or fake-product results remain excluded
+from live passes.
 
 ## Post-M2 evaluation gap
 
