@@ -4,14 +4,16 @@
 
 [简体中文](README.zh-CN.md) · [Documentation](docs/README.md) · [Current status](docs/10-planning/project-status.md) · [Protocol draft](spec/README.md) · [Roadmap](ROADMAP.md)
 
-> **External reviewers wanted:** M0 needs independent distributed-systems and
-> agent-safety verdicts, including at least one reviewer outside `fyaic`.
-> The bounded 30–60 minute path, exact commit, commands, and template are in the
-> [reviewer packet](docs/09-reviews/m0-external-reviewer-packet.md). Submit on
-> [issue #7](https://github.com/fyaic/threadmesh/issues/7); every finding receives
-> a public disposition.
+ThreadMesh lets an agent task discover a pre-authorized relationship, offer a
+bounded suggestion to another task, and let the receiving harness decide
+whether that suggestion enters its model context. It is designed for developers
+running multiple Codex, Kimi Code, Gemini CLI, or custom-agent sessions—not for
+sharing global chat history or silently controlling another session.
 
----
+**Start with the concrete story:**
+[what ThreadMesh is](docs/00-overview/product-guide.md) ·
+[run the A-to-B demo](docs/06-guides/end-to-end-demo.md) ·
+[integrate a harness](docs/06-guides/implement-an-adapter.md)
 
 > Status: pre-alpha. The protocol is not stable. A minimal transport-agnostic
 > adapter SDK and experimental SQLite, ACP, Codex App Server, and Gemini
@@ -22,7 +24,7 @@ The executable JSON-RPC reference derives principals from a host authenticator
 outside the request body. Its static-token mechanism is local-only; production
 network credential verification and process isolation are not supplied.
 
-New: [Codex implementation deep dive](docs/07-research/codex-orchestration-deep-dive.md) ·
+More: [Codex implementation deep dive](docs/07-research/codex-orchestration-deep-dive.md) ·
 [community evidence](docs/07-research/community-signals.md) ·
 [ecosystem landscape](docs/07-research/ecosystem-landscape.md) ·
 [design reviews](docs/09-reviews/README.md) ·
@@ -36,6 +38,25 @@ New: [Codex implementation deep dive](docs/07-research/codex-orchestration-deep-
 ThreadMesh explores a specific capability: an agent notices that another running task matters to its goal and proactively coordinates with it. The hard part is not message transport. The hard part is letting agents discover dependencies, communicate intent, and revise plans **without silently taking ownership of another task's context**.
 
 ThreadMesh aims to make that capability portable across Codex, Claude Code, LangGraph, custom loops, and other agent harnesses through a small protocol, explicit capability negotiation, and adapter contracts.
+
+## The motivating example
+
+Agent A finishes an artifact and learns its verified checksum. Agent B owns the
+release manifest and is waiting for that checksum. ThreadMesh lets A see only
+B's relationship-scoped objective hint, decide that the result is useful, and
+send one expiring `suggest` message. B receives it in a mailbox and retains the
+right to accept, reject, or defer it before it becomes model-visible context.
+
+The same behavior test also requires A to stay silent when B is unrelated. The
+product goal is therefore **useful coordination under an explicit interference
+budget**, not maximum message volume.
+
+Run the three-condition demonstration:
+
+```sh
+npm ci
+npm run validate:behavior:fake
+```
 
 ## Minimal adapter SDK
 
@@ -157,10 +178,11 @@ test/                Behavioral and conformance tests
 
 The repository contains an executable `0.0-draft` specification, an
 experimental SQLite coordinator, authenticated JSON-RPC operations, and ACP,
-Codex App Server, and Gemini headless adapters. M1 is merged and its milestone
-is closed. A real Codex Agent A has selected ThreadMesh relationship discovery
-and sent one bounded suggestion to a persisted Agent B; the coordinator
-admitted it and both exact tasks were deleted.
+Codex App Server, and Gemini headless adapters. The complete suite currently has
+133 unit/subtests plus schema and transition conformance. M1 and M2 are closed.
+A real Codex Agent A has selected ThreadMesh relationship discovery and sent one
+bounded suggestion to a persisted Agent B; the coordinator admitted it and both
+exact tasks were deleted.
 
 The first scored Codex comparison found that relevant coordination changed the
 receiver outcome from missing dependency to completed, while the irrelevant
@@ -177,8 +199,11 @@ reset used three gates:
 3. pass the receiver-accepted scenario on one materially different real harness
    — Kimi Code `0.38.0` passed with exact cleanup.
 
-All three reset gates are complete. The next M3 work is a shorter reliability
-benchmark, not more protocol or harness surface.
+All three reset gates are complete. The shorter M3 flow now removes one model
+turn from every condition and preserves exact cleanup. Its latest relevant run
+completed without an operation timeout but failed the strict Agent A result
+marker, so proactive coordination remains default-off. The active bottleneck is
+real-model reliability, not missing protocol surface.
 
 Protocol expansion, hostile-worker validation, steer/interrupt, and production
 hardening are deferred until these gates pass. Independent M0 review continues
@@ -203,6 +228,11 @@ ThreadMesh is not intended to be:
 ## Contributing
 
 The project is early enough that careful criticism is more useful than broad implementation. Start with the [vision](docs/00-overview/vision.md), [scope](docs/00-overview/scope.md), and [threat model](docs/04-safety/threat-model.md), then open a design issue.
+
+M0 also needs independent distributed-systems and agent-safety verdicts,
+including at least one reviewer outside `fyaic`. The bounded path and template
+are in the [reviewer packet](docs/09-reviews/m0-external-reviewer-packet.md),
+with submissions tracked in [issue #7](https://github.com/fyaic/threadmesh/issues/7).
 
 See [CONTRIBUTING.md](CONTRIBUTING.md), [GOVERNANCE.md](GOVERNANCE.md), and [SECURITY.md](SECURITY.md).
 

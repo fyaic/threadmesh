@@ -56,3 +56,37 @@ Issue #53 remains open, but its next work is no longer “add more scenarios.”
 future run should first define a shorter outcome-bearing task and a reliability
 threshold, then demonstrate that threshold before expanding the interference
 matrix.
+
+## Compressed-flow follow-up
+
+PR #66 implemented that shorter task without expanding the protocol. Agent A
+now creates its persistent task and performs the autonomous decision in the
+same turn. Agent B's first turn records the outcome-bearing
+`missing dependency` baseline instead of a readiness-only marker. This reduces
+control and irrelevant from three model turns to two, and relevant from four to
+three.
+
+The first real compressed matrix at `4968d51` produced:
+
+| Condition | Result | Time | Communication and cleanup |
+|---|---|---:|---|
+| Control | Passed | 229 s | 0 tool calls, 0 sends, B inactive, A/B deleted |
+| Relevant | Operation timeout | 239 s | No success recorded; returned references cleaned |
+| Irrelevant | Passed | 238 s | 1 read-only lookup, 0 sends, B inactive, A/B deleted |
+
+An isolated relevant retry also timed out. PR #67 increased the outcome-bearing
+A window and retained its created thread reference when an outer timeout wins.
+A later retry exposed the equivalent B-bootstrap case: App Server had created B
+but its reference had not reached the scenario before timeout. The single
+candidate was identified by exact creation window, repository cwd, and unique
+bootstrap preview; it was deleted by exact ID and verified absent. PR #68 added
+the same outer-timeout reference guarantee for B and a deletion regression.
+
+The next real relevant run on `edcc18f` completed in 156 seconds without an
+operation timeout. It failed the strict Agent A marker check and therefore did
+not count as a proactive success. Both A and B were deleted successfully.
+
+The compressed benchmark improves cost and cleanup determinism, but it has not
+changed the product decision. Real-model useful-path reliability remains the
+active blocker, while control and irrelevant behavior remain quiet. Proactive
+coordination stays default-off.

@@ -1,8 +1,7 @@
 # Project status
 
-> Snapshot: 2026-08-25, after the first scored behavioral gate at
-> `0dd2c828889287634dff09eb9fbc41dcdfb69b86`, the merged minimal adapter kit,
-> and the real Kimi portability pass at `b2483436ee48570a23030f4f81ca1d5114eef576`.
+> Snapshot: 2026-08-25, after the compressed Codex behavior flow and timeout
+> cleanup fixes at `edcc18f5f98cb5d019e3b7ee35d8047b96e95d99`.
 
 ## Executive summary
 
@@ -25,7 +24,7 @@ maintainer organization.
 | Area | Current evidence | Status |
 |---|---|---|
 | Research and problem framing | Codex deep dive, community signals, ecosystem comparison, ADRs | Established |
-| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 132 unit/subtests | Executable draft |
+| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 133 unit/subtests | Executable draft |
 | Minimal adapter SDK | `@fyaic/threadmesh` `0.1.0-alpha.0`; six bounded methods, 14.5 kB tarball, packed-consumer import | Candidate complete; not published to npm |
 | Local binding | Schema-validated JSON-RPC, transport-derived principals, typed errors | Executable local reference |
 | Local persistence | SQLite registry, proposals, grants, summaries, mailbox, claims, receipts, reconciliation, replay, audit, retention tombstones | Experimental |
@@ -38,6 +37,7 @@ maintainer organization.
 | Codex proactive A-to-B | A selected related-task discovery and one bounded send; B consumed admitted context; both tasks deleted at `248d650` | Real maintainer-experimental positive-case pass |
 | Codex scored behavior gate | Control score 0; relevant score 1 with one send; irrelevant performed one lookup and no send; all tasks deleted at `0dd2c82` | First real outcome/interference pass |
 | Codex repetition matrix | Control 3/3; relevant 1/3; irrelevant 2/3 with one inconclusive marker failure; exact leaked bootstrap thread manually removed and cleanup regression merged in #64 | Default enablement rejected |
+| Compressed Codex behavior flow | One fewer model turn per condition; real control and irrelevant passed; latest relevant run avoided timeout and cleaned A/B but failed strict A marker | Reliability still below enablement threshold |
 | Gemini CLI headless | Official package 0.56.0 integrity, required flags, isolated-home cleanup | Real no-model preflight passed |
 | Gemini live model behavior | Exact marker script requires explicit provider key | Not authorized, not run |
 | Multi-product admission | One mailbox/acceptance/claim/evidence path across ACP, Codex, and Gemini fakes | Merged experimental implementation |
@@ -125,8 +125,12 @@ remain distinct from normative M0 evidence.
 The three product reset gates are complete: scored Codex behavior, minimal
 zero-dependency adapter SDK, and a real Kimi ACP portability pass. Three Codex
 repetitions subsequently rejected default enablement because the relevant path
-passed only 1/3. Issue #53 remains open for a shorter reliability benchmark
-before stale/duplicate or receiver-decision expansion. Issue #7 remains
+passed only 1/3. The shorter reliability benchmark is now merged: it combines
+A creation and autonomous decision into one turn and uses B's missing-dependency
+result as the bootstrap baseline. Real control and irrelevant conditions pass;
+the latest relevant run completed without timeout and cleaned both tasks but
+failed its strict A marker. Issue #53 therefore remains focused on real-model
+reliability rather than new protocol or scenario surface. Issue #7 remains
 parallel governance. Hostile-worker schema #48, optional Gemini live
 validation, and further production hardening are deferred.
 

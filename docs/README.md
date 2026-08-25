@@ -1,40 +1,31 @@
 # ThreadMesh documentation
 
-The documentation is organized from intent to implementation. New readers should follow the numbered directories in order.
+The documentation is organized from product intent to implementation and
+evidence. New readers do not need to read every numbered directory in order.
 
 ## Start here
 
-1. [Current project status](10-planning/project-status.md)
-2. [Milestone acceptance audit](10-planning/acceptance-audit.md)
-3. [Vision](00-overview/vision.md)
-4. [Scope](00-overview/scope.md)
-5. [Design principles](00-overview/principles.md)
-6. [Terminology](00-overview/terminology.md)
-7. [Proactive coordination](01-concepts/proactive-coordination.md)
-8. [Context sovereignty](01-concepts/context-sovereignty.md)
-9. [Reference architecture](02-architecture/reference-architecture.md)
-10. [SQLite storage contract](02-architecture/sqlite-storage-contract.md)
-11. [Relationship policy engine](02-architecture/relationship-policy-engine.md)
-12. [Durable dispatcher](02-architecture/durable-dispatcher.md)
-13. [Provenance inspector](02-architecture/provenance-inspector.md)
-14. [Protocol overview](03-protocol/README.md)
-15. [JSON-RPC binding](03-protocol/jsonrpc-binding.md)
-16. [Threat model](04-safety/threat-model.md)
-17. [Adapter contract](05-adapters/adapter-contract.md)
-18. [30-minute adapter guide](06-guides/implement-an-adapter.md)
-19. [Mock harness conformance kit](06-guides/mock-harness-conformance.md)
-20. [Multi-product admission conformance](06-guides/multi-product-admission-conformance.md)
-21. [Proactive Codex A-to-B validation](06-guides/proactive-codex-validation.md)
-22. [Design reviews](09-reviews/README.md)
-23. [Kimi Code live pass](09-reviews/2026-08-25-kimi-code-live-pass.md)
-24. [Codex repetition decision](09-reviews/2026-08-25-codex-behavior-repetitions.md)
-25. [Real agent-product validation runbook](09-reviews/real-product-e2e-runbook.md)
-26. [Codex App Server experiment](05-adapters/codex-app-server.md)
-27. [Codex App Server preflight](09-reviews/2026-08-20-codex-app-server-preflight.md)
-28. [Gemini CLI experiment](05-adapters/gemini-cli.md)
-29. [Third-harness selection](09-reviews/2026-08-20-third-harness-selection.md)
-30. [M0 external reviewer packet](09-reviews/m0-external-reviewer-packet.md)
-31. [Mainline plan](10-planning/mainline-plan.md)
+1. [What ThreadMesh is](00-overview/product-guide.md)
+2. [Run the end-to-end A-to-B demo](06-guides/end-to-end-demo.md)
+3. [Current project status](10-planning/project-status.md)
+4. [Vision](00-overview/vision.md) and [scope](00-overview/scope.md)
+5. [Context sovereignty](01-concepts/context-sovereignty.md)
+6. [Reference architecture](02-architecture/reference-architecture.md)
+7. [Protocol overview](03-protocol/README.md)
+8. [Threat model](04-safety/threat-model.md)
+9. [Adapter contract](05-adapters/adapter-contract.md)
+10. [30-minute adapter guide](06-guides/implement-an-adapter.md)
+
+## Choose a path
+
+| Goal | Read or run |
+|---|---|
+| Understand the product | [Product guide](00-overview/product-guide.md) → [proactive coordination](01-concepts/proactive-coordination.md) |
+| See it work | [End-to-end demo](06-guides/end-to-end-demo.md) → [Codex validation](06-guides/proactive-codex-validation.md) |
+| Integrate a harness | [Adapter guide](06-guides/implement-an-adapter.md) → [adapter contract](05-adapters/adapter-contract.md) → [mock conformance](06-guides/mock-harness-conformance.md) |
+| Evaluate safety | [Context sovereignty](01-concepts/context-sovereignty.md) → [permission model](04-safety/permission-model.md) → [threat model](04-safety/threat-model.md) |
+| Inspect real evidence | [Design reviews](09-reviews/README.md) → [Kimi pass](09-reviews/2026-08-25-kimi-code-live-pass.md) → [Codex repetitions](09-reviews/2026-08-25-codex-behavior-repetitions.md) |
+| Contribute to the protocol | [Protocol overview](03-protocol/README.md) → [ADRs](08-decisions/README.md) → [mainline plan](10-planning/mainline-plan.md) |
 
 ## Directory guide
 

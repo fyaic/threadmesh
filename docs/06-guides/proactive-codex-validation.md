@@ -14,19 +14,23 @@ a production autonomy claim.
 
 ## Proven path
 
-The scenario creates two persisted Codex tasks and one relationship-scoped
-dependency grant:
+The compressed scenario creates two persisted Codex tasks and one
+relationship-scoped dependency grant:
 
-1. B is bootstrapped into a resumable task.
-2. A receives two dynamic ThreadMesh tools: read related summaries and send one
+1. B's first persisted turn records the outcome-bearing
+   `missing dependency` baseline.
+2. A starts as a persistent task and receives its objective plus two dynamic
+   ThreadMesh tools in the same first turn: read related summaries and send one
    suggestion.
-3. A receives a release-decision objective, chooses both tools, and sends the
-   schema-bounded suggestion exactly once.
+3. A chooses both tools and sends the schema-bounded suggestion exactly once.
 4. The coordinator authorizes and queues the envelope. The harness applies a
    deterministic receiver checkpoint acceptance, durable admission claim, and
    acknowledgement.
 5. B consumes the admitted context and returns an exact marker.
 6. The runner verifies admission evidence, audit, and deletion of both tasks.
+
+This removes one non-business bootstrap model turn from every condition.
+Control and irrelevant use two turns; relevant uses a third B receiver turn.
 
 The public result requires `scriptedSubmitCount: 0`, the exact tool order,
 exactly one send, zero observed non-ThreadMesh tool calls, both markers, and
@@ -87,3 +91,10 @@ The first scored control/relevant/irrelevant run is recorded in the
 It improved the downstream dependency score from 0 to 1 in the relevant case,
 while the irrelevant case performed one read-only lookup and did not send or
 activate the receiver.
+
+The compressed flow merged in PR #66. On `edcc18f`, its latest real relevant
+run completed in 156 seconds without an operation timeout and deleted both
+created tasks, but failed the strict Agent A marker check. This is a clean
+negative reliability sample, not a proactive success. The deterministic
+three-condition command and field interpretation are documented in the
+[end-to-end demonstration](end-to-end-demo.md).
