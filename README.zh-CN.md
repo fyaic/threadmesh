@@ -4,13 +4,14 @@
 
 [English](README.md) · [中文文档入口](docs/zh-CN/README.md) · [当前进度](docs/10-planning/project-status.md) · [JSON-RPC binding](docs/03-protocol/jsonrpc-binding.md) · [协议草案](spec/README.md) · [路线图](ROADMAP.md)
 
-> **正在征集独立外部 reviewer：** M0 需要 distributed-systems 与 agent-safety
-> 两类 verdict，其中至少一位 reviewer 来自 `fyaic` 组织之外。30–60 分钟阅读
-> 路径、精确 commit、复现命令和模板都在
-> [reviewer packet](docs/09-reviews/m0-external-reviewer-packet.md)；请提交到
-> [issue #7](https://github.com/fyaic/threadmesh/issues/7)，每项 finding 都会公开处置。
+ThreadMesh 让一个 Agent 任务发现经过授权的任务关系，向另一个任务发送一条受约束
+的建议，并由接收方 harness 决定这条建议是否进入模型上下文。它面向同时运行多个
+Codex、Kimi Code、Gemini CLI 或自研 Agent session 的开发者，不是共享全局聊天
+记录或远程控制其他 session 的工具。
 
----
+**从具体案例开始：** [ThreadMesh 是什么](docs/zh-CN/product-guide.md) ·
+[运行 A→B 演示](docs/06-guides/end-to-end-demo.md) ·
+[接入自己的 harness](docs/06-guides/implement-an-adapter.md)
 
 > 当前状态：pre-alpha。仓库已包含最小 transport-agnostic adapter SDK、可执行
 > 协议草案、SQLite coordinator 实验原型，以及 ACP、Codex App Server、Gemini
@@ -22,7 +23,7 @@
 binding：transport 认证身份、grant 决策、持久幂等、mailbox claim/ack、
 incarnation 轮换和两类 mock harness 都有自动化测试。
 
-当前不能把它称为跨 harness 产品能力：
+当前不能把它称为生产级跨 harness 产品能力，但已经可以运行完整案例：
 
 - M0 的规范阻塞项已经解决，只剩 #7 的两份独立外部 review；
 - 本地静态 token 认证不是生产级网络认证；
@@ -34,6 +35,9 @@ incarnation 轮换和两类 mock harness 都有自动化测试。
   评分中，control 为 0、相关依赖为 1；无关条件只查询关系，没有发送或激活 B。
   补充到每种条件三次后，control 3/3 保持静默，但相关依赖仅 1/3 完成、无关
   条件 2/3 完成，因此主动协调继续默认关闭。
+- 最新压缩流程减少了每个条件的一轮模型调用，并把 B 的 bootstrap 变成“缺少
+  checksum”的业务基线。最新 relevant 运行没有超时，A/B 也都精确删除，但 A
+  没有返回严格成功 marker，因此仍诚实记为失败。
 - Gemini CLI `0.56.0` 已被选为第三种非 ACP headless harness；官方固定版本、
   registry integrity、stream-json/plan/sandbox 能力和隔离 home 清理预检通过，
   但尚未获得 provider key 授权，因此模型调用是 `not-run`。
@@ -53,6 +57,17 @@ Issue #7 继续作为并行治理，不再阻塞明确标注的 maintainer exper
 [主线计划](docs/10-planning/mainline-plan.md)，真实执行步骤见
 [产品验证手册](docs/09-reviews/real-product-e2e-runbook.md)，逐项完成度见
 [里程碑验收审计](docs/10-planning/acceptance-audit.md)。
+
+## 两分钟运行案例
+
+```sh
+npm ci
+npm run validate:behavior:fake
+```
+
+这个命令同时运行三种条件：control 不通信；relevant 由 A 自主选择
+`related tasks → send suggestion`，B 接受后完成；irrelevant 只查看摘要但不发送。
+它验证协议、policy、mailbox、evidence 和 cleanup，不冒充真实模型智能证据。
 
 ## 最小 SDK
 
@@ -100,3 +115,10 @@ ThreadMesh 希望把这项能力抽离成模型和 harness 无关的协议与 ad
 ## License
 
 Apache License 2.0，见 [LICENSE](LICENSE)。
+
+## 外部评审
+
+M0 仍需要 distributed-systems 与 agent-safety 两类独立 verdict，其中至少一位
+reviewer 来自 `fyaic` 之外。阅读路径和模板见
+[reviewer packet](docs/09-reviews/m0-external-reviewer-packet.md)，提交位置为
+[issue #7](https://github.com/fyaic/threadmesh/issues/7)。
