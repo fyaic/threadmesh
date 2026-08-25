@@ -88,7 +88,7 @@ function validProactiveChildResult(sha) {
     relatedTaskCalls: 1,
     sendCalls: 1,
     nonThreadMeshToolCalls: 0,
-    aMarkerMatched: true,
+    aDecisionCompleted: true,
     bMarkerMatched: true,
     aToolCalls: ["threadmesh_related_tasks", "threadmesh_send_suggestion"],
   });
