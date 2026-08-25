@@ -126,6 +126,7 @@ export async function runProactiveCodexScenario({
         adapterIdempotencyKey: `idem_proactive_b_bootstrap_${runId}`,
         developerInstructions: PROACTIVE_B_INSTRUCTIONS,
         model,
+        timeoutMs: 180_000,
       });
       bRef = bBootstrap.adapterRef;
     } catch (error) {

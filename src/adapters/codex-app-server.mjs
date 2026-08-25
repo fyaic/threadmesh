@@ -799,14 +799,16 @@ export class CodexAppServerAdapter {
     if (typeof adapterIdempotencyKey !== "string" || adapterIdempotencyKey.length === 0) {
       throw codedError("codex_app_server_idempotency_key_invalid");
     }
-    return this.#withServer({ command, args, cwd, env, timeoutMs }, async (peer) => {
-      const initialization = await this.#initialize(peer);
-      const started = await peer.request(
-        "thread/start",
-        threadStartParams(cwd, { ephemeral: false, model, developerInstructions }),
-      );
-      const adapterRef = projectThread(started, initialization);
-      try {
+    let createdAdapterRef;
+    try {
+      return await this.#withServer({ command, args, cwd, env, timeoutMs }, async (peer) => {
+        const initialization = await this.#initialize(peer);
+        const started = await peer.request(
+          "thread/start",
+          threadStartParams(cwd, { ephemeral: false, model, developerInstructions }),
+        );
+        const adapterRef = projectThread(started, initialization);
+        createdAdapterRef = adapterRef;
         const result = await this.#runTurn(
           peer,
           initialization,
@@ -815,11 +817,11 @@ export class CodexAppServerAdapter {
           adapterIdempotencyKey,
         );
         return { ...result, adapterRef };
-      } catch (error) {
-        error.adapterRef = adapterRef;
-        throw error;
-      }
-    });
+      });
+    } catch (error) {
+      if (createdAdapterRef) error.adapterRef = createdAdapterRef;
+      throw error;
+    }
   }
 
   async startThreadWithAcceptedSuggestion({
