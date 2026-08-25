@@ -11,6 +11,7 @@ import {
   PROACTIVE_A_IRRELEVANT_MARKER,
   PROACTIVE_A_MARKER,
   PROACTIVE_B_BOOTSTRAP_MARKER,
+  PROACTIVE_B_MISSING_MARKER,
   PROACTIVE_B_MARKER,
   runProactiveCodexScenario,
 } from "../src/validation/proactive-codex-scenario.mjs";
@@ -47,7 +48,9 @@ async function runCondition(condition, runId) {
       env: baseEnv,
       bootstrapEnv: {
         ...baseEnv,
-        FAKE_CODEX_EXACT_MARKER: PROACTIVE_B_BOOTSTRAP_MARKER,
+        FAKE_CODEX_EXACT_MARKER: condition === "control"
+          ? PROACTIVE_B_MISSING_MARKER
+          : PROACTIVE_B_BOOTSTRAP_MARKER,
       },
       aBootstrapEnv: {
         ...baseEnv,
@@ -83,6 +86,8 @@ test("Agent A selects ThreadMesh tools before its suggestion reaches real-shaped
   assert.equal(result.mailbox, "claimed-and-accepted");
   assert.equal(result.delivery, "context-admitted");
   assert.equal(result.receiverActivated, true);
+  assert.equal(result.bOutcome, "completed-with-dependency");
+  assert.equal(result.outcomeScore, 1);
   assert.equal(result.aMarkerMatched, true);
   assert.equal(result.bMarkerMatched, true);
   assert.equal(result.cleanup.complete, true);
@@ -98,6 +103,8 @@ test("control makes no ThreadMesh call and does not activate Agent B", async () 
   assert.deepEqual(result.aToolCalls, []);
   assert.equal(result.mailbox, "empty");
   assert.equal(result.receiverActivated, false);
+  assert.equal(result.bOutcome, "missing-dependency");
+  assert.equal(result.outcomeScore, 0);
   assert.equal(result.interferenceViolation, false);
   assert.equal(result.cleanup.complete, true);
 });
@@ -112,6 +119,8 @@ test("irrelevant relationship is inspected without contacting Agent B", async ()
   assert.deepEqual(result.aToolCalls, ["threadmesh_related_tasks"]);
   assert.equal(result.mailbox, "empty");
   assert.equal(result.receiverActivated, false);
+  assert.equal(result.bOutcome, "not-evaluated");
+  assert.equal(result.outcomeScore, null);
   assert.equal(result.interferenceViolation, false);
   assert.equal(result.cleanup.complete, true);
 });

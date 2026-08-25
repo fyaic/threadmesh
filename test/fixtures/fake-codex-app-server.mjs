@@ -205,7 +205,7 @@ lines.on("line", async (line) => {
         tool: "threadmesh_send_suggestion",
         arguments: {
           targetTaskId: "task_proactive_b",
-          content: "Reply with exactly THREADMESH_PROACTIVE_B_OK and do not use tools.",
+          content: "Verified upstream artifact checksum: sha256:7b6f3d9a0c8e4f12a5d3b1c9e7f6082a4b6d8f0c2e4a6b8d0f1c3e5a7b9d2f4",
           reason: "The release decision depends on B's result.",
         },
       },
