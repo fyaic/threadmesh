@@ -606,74 +606,78 @@ export class CodexAppServerAdapter {
     if (typeof adapterIdempotencyKey !== "string" || adapterIdempotencyKey.length < 1) {
       throw codedError("codex_app_server_idempotency_key_invalid");
     }
-    return this.#withServer({ command, args, cwd, env, timeoutMs }, async (peer) => {
-      const initialization = await this.#initialize(peer, { experimentalApi: true });
-      const response = await peer.request("thread/start", threadStartParams(cwd, {
-        ephemeral: false,
-        model,
-        dynamicTools,
-        developerInstructions,
-      }));
-      const adapterRef = projectThread(response, initialization);
-      const calls = [];
-      const forbiddenToolItems = new Set();
-      const stopInspecting = peer.onNotification(({ method, params }) => {
-        if (
-          (method === "item/started" || method === "item/completed") &&
-          params?.threadId === adapterRef.threadId &&
-          [
-            "commandExecution",
-            "fileChange",
-            "mcpToolCall",
-            "collabToolCall",
-            "webSearch",
-            "imageView",
-          ].includes(params?.item?.type)
-        ) forbiddenToolItems.add(params.item.type);
-      });
-      const stopHandling = peer.onRequest("item/tool/call", async (params) => {
-        if (
-          params?.threadId !== adapterRef.threadId || typeof params.turnId !== "string" ||
-          typeof params.callId !== "string" || !allowedNames.has(params.tool)
-        ) throw codedError("codex_app_server_dynamic_tool_call_invalid");
-        if (calls.length >= 4) throw codedError("codex_app_server_dynamic_tool_budget_exceeded");
-        const value = await onToolCall({ tool: params.tool, arguments: params.arguments });
-        const text = canonicalJson(value);
-        if (Buffer.byteLength(text) > 16 * 1024) {
-          throw codedError("codex_app_server_dynamic_tool_output_too_large");
-        }
-        calls.push({
-          tool: params.tool,
-          argumentsDigest: sha256Digest(params.arguments),
-          outputDigest: sha256Digest(value),
+    let createdAdapterRef;
+    try {
+      return await this.#withServer({ command, args, cwd, env, timeoutMs }, async (peer) => {
+        const initialization = await this.#initialize(peer, { experimentalApi: true });
+        const response = await peer.request("thread/start", threadStartParams(cwd, {
+          ephemeral: false,
+          model,
+          dynamicTools,
+          developerInstructions,
+        }));
+        const adapterRef = projectThread(response, initialization);
+        createdAdapterRef = adapterRef;
+        const calls = [];
+        const forbiddenToolItems = new Set();
+        const stopInspecting = peer.onNotification(({ method, params }) => {
+          if (
+            (method === "item/started" || method === "item/completed") &&
+            params?.threadId === adapterRef.threadId &&
+            [
+              "commandExecution",
+              "fileChange",
+              "mcpToolCall",
+              "collabToolCall",
+              "webSearch",
+              "imageView",
+            ].includes(params?.item?.type)
+          ) forbiddenToolItems.add(params.item.type);
         });
-        return { success: true, contentItems: [{ type: "inputText", text }] };
-      });
-      try {
-        const turn = await this.#runTurn(
-          peer,
-          initialization,
-          adapterRef,
-          prompt,
-          adapterIdempotencyKey,
-        );
-        if (forbiddenToolItems.size > 0) {
-          throw codedError("codex_app_server_unexpected_autonomous_tool");
+        const stopHandling = peer.onRequest("item/tool/call", async (params) => {
+          if (
+            params?.threadId !== adapterRef.threadId || typeof params.turnId !== "string" ||
+            typeof params.callId !== "string" || !allowedNames.has(params.tool)
+          ) throw codedError("codex_app_server_dynamic_tool_call_invalid");
+          if (calls.length >= 4) throw codedError("codex_app_server_dynamic_tool_budget_exceeded");
+          const value = await onToolCall({ tool: params.tool, arguments: params.arguments });
+          const text = canonicalJson(value);
+          if (Buffer.byteLength(text) > 16 * 1024) {
+            throw codedError("codex_app_server_dynamic_tool_output_too_large");
+          }
+          calls.push({
+            tool: params.tool,
+            argumentsDigest: sha256Digest(params.arguments),
+            outputDigest: sha256Digest(value),
+          });
+          return { success: true, contentItems: [{ type: "inputText", text }] };
+        });
+        try {
+          const turn = await this.#runTurn(
+            peer,
+            initialization,
+            adapterRef,
+            prompt,
+            adapterIdempotencyKey,
+          );
+          if (forbiddenToolItems.size > 0) {
+            throw codedError("codex_app_server_unexpected_autonomous_tool");
+          }
+          return {
+            ...turn,
+            adapterRef,
+            toolCalls: calls,
+            nonThreadMeshToolCalls: 0,
+          };
+        } finally {
+          stopInspecting();
+          stopHandling();
         }
-        return {
-          ...turn,
-          adapterRef,
-          toolCalls: calls,
-          nonThreadMeshToolCalls: 0,
-        };
-      } catch (error) {
-        error.adapterRef = adapterRef;
-        throw error;
-      } finally {
-        stopInspecting();
-        stopHandling();
-      }
-    });
+      });
+    } catch (error) {
+      if (createdAdapterRef) error.adapterRef = createdAdapterRef;
+      throw error;
+    }
   }
 
   async validateThreadStart({
