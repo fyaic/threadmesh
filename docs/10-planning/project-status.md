@@ -1,7 +1,7 @@
 # Project status
 
-> Snapshot: 2026-08-25, after the outcome-based Codex Agent A gate at
-> `9a6381aec1742cf2a26b5240c37e01687ff2ec43`.
+> Snapshot: 2026-08-25, after the two-stage proactive Codex reliability pass at
+> `a134b398e9309dfedfb152f3497504db82897851`.
 
 ## Executive summary
 
@@ -24,7 +24,7 @@ maintainer organization.
 | Area | Current evidence | Status |
 |---|---|---|
 | Research and problem framing | Codex deep dive, community signals, ecosystem comparison, ADRs | Established |
-| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 133 unit/subtests | Executable draft |
+| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 134 unit/subtests | Executable draft |
 | Minimal adapter SDK | `@fyaic/threadmesh` `0.1.0-alpha.0`; six bounded methods, 14.5 kB tarball, packed-consumer import | Candidate complete; not published to npm |
 | Local binding | Schema-validated JSON-RPC, transport-derived principals, typed errors | Executable local reference |
 | Local persistence | SQLite registry, proposals, grants, summaries, mailbox, claims, receipts, reconciliation, replay, audit, retention tombstones | Experimental |
@@ -37,7 +37,7 @@ maintainer organization.
 | Codex proactive A-to-B | A selected related-task discovery and one bounded send; B consumed admitted context; both tasks deleted at `248d650` | Real maintainer-experimental positive-case pass |
 | Codex scored behavior gate | Control score 0; relevant score 1 with one send; irrelevant performed one lookup and no send; all tasks deleted at `0dd2c82` | First real outcome/interference pass |
 | Codex repetition matrix | Control 3/3; relevant 1/3; irrelevant 2/3 with one inconclusive marker failure; exact leaked bootstrap thread manually removed and cleanup regression merged in #64 | Default enablement rejected |
-| Compressed Codex behavior flow | One fewer model turn per condition; A scored by exact tool/send effects; fresh relevant sample 2/3; all A/B cleanup complete | Opt-in evidence improved; reliability still below 3/3 threshold |
+| Two-stage Codex behavior flow | Relevant 3/3; fresh control zero tools/sends; fresh irrelevant one read-only lookup and zero sends; all A/B cleanup complete | Bounded M3 case passed; explicit experimental opt-in only |
 | Gemini CLI headless | Official package 0.56.0 integrity, required flags, isolated-home cleanup | Real no-model preflight passed |
 | Gemini live model behavior | Exact marker script requires explicit provider key | Not authorized, not run |
 | Multi-product admission | One mailbox/acceptance/claim/evidence path across ACP, Codex, and Gemini fakes | Merged experimental implementation |
@@ -129,10 +129,11 @@ passed only 1/3. The shorter reliability benchmark is now merged: it combines
 A creation and autonomous decision into one turn and uses B's missing-dependency
 result as the bootstrap baseline. Real control and irrelevant conditions pass;
 the redundant A text marker has been replaced by actual tool/send evidence. A
-fresh relevant sample passed 2/3 with complete cleanup in all three runs; the
-remaining failure was a missing model tool decision. Issue #53 therefore
-remains focused on real-model decision reliability rather than new protocol or
-scenario surface. Issue #7 remains
+two-stage discovery/send policy then passed relevant 3/3, with fresh control
+and irrelevant runs preserving zero-send behavior and complete cleanup. The
+bounded #53 acceptance case is complete and qualifies for explicit
+maintainer-experimental opt-in use; cross-harness proactive behavior is the
+next product case. Issue #7 remains
 parallel governance. Hostile-worker schema #48, optional Gemini live
 validation, and further production hardening are deferred.
 

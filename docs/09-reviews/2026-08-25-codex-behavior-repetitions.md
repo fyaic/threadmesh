@@ -113,3 +113,32 @@ This 2/3 sample separates two failure classes that the earlier marker-heavy
 benchmark mixed together. Text phrasing is no longer a blocker; autonomous
 tool selection still varies. The evidence supports continued opt-in
 experimentation, not default enablement.
+
+## Two-stage policy reliability pass
+
+PR #72 tightened the decision policy without moving the send into harness code:
+
+1. if A's objective produces an artifact or fact that may affect another
+   authorized task, A reads related summaries exactly once;
+2. A sends exactly once only when a returned summary explicitly needs the
+   current result;
+3. the adapter refuses send-before-discovery and distinguishes missing
+   discovery from missing send.
+
+Three fresh real relevant runs on `a134b39` produced:
+
+| Run | Result | Time | Exact result |
+|---|---|---:|---|
+| 1 | Passed | 85 s | lookup, one send, B score 1, A/B deleted |
+| 2 | Passed | 88 s | lookup, one send, B score 1, A/B deleted |
+| 3 | Passed | 132 s | lookup, one send, B score 1, A/B deleted |
+
+A fresh same-policy control passed in 163 seconds with zero tools, zero sends,
+and B inactive. A fresh irrelevant run passed in 170 seconds with one read-only
+lookup, zero sends, and B inactive. Both deleted A and B.
+
+The bounded Codex M3 case therefore meets its 3/3 relevant reliability
+threshold without violating the observed interference controls. This permits
+explicit maintainer-experimental opt-in use. It does not justify a repository-
+wide default-on switch while the protocol is pre-alpha, M0 external review is
+open, and concurrent user-input behavior remains untested.

@@ -37,7 +37,9 @@ incarnation 轮换和两类 mock harness 都有自动化测试。
   条件 2/3 完成，因此主动协调继续默认关闭。
 - 最新压缩流程减少了每个条件的一轮模型调用，并把 B 的 bootstrap 变成“缺少
   checksum”的业务基线。A 现在按实际工具序列和 coordinator send 评分，不再依赖
-  文本 marker。最新 relevant 样本 2/3 通过，三次 A/B 均精确删除，因此仍默认关闭。
+  文本 marker。两阶段发现/发送策略随后取得 relevant 3/3；同版本 control 零调用，
+  irrelevant 只读发现但零发送。该受限能力可显式 opt-in 实验，但 pre-alpha 阶段仍
+  默认关闭。
 - Gemini CLI `0.56.0` 已被选为第三种非 ACP headless harness；官方固定版本、
   registry integrity、stream-json/plan/sandbox 能力和隔离 home 清理预检通过，
   但尚未获得 provider key 授权，因此模型调用是 `not-run`。

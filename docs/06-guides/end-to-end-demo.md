@@ -113,9 +113,10 @@ model evidence:
   changed from 0 to 1.
 - Repetitions were not reliable enough for default enablement. The current
   outcome-based gate scores A by the exact ThreadMesh tool sequence and actual
-  coordinator send rather than its final prose. On `9a6381a`, two of three real
-  relevant runs passed; the remaining run failed the model tool-decision gate.
-  All three runs deleted both tasks.
+  coordinator send rather than its final prose. A two-stage policy on `a134b39`
+  then passed three relevant runs in a row in 85, 88, and 132 seconds. A current
+  control made no tool call, while a current irrelevant run made one read-only
+  lookup and no send. Every run deleted both tasks.
 - Kimi Code `0.38.0` completed a real receiver-accepted suggestion through the
   same coordinator and verified session absence after deletion.
 
