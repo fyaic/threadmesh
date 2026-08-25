@@ -148,32 +148,13 @@ for this conservative experimental scope after final regressions bound child
 stdout to error/signal/status, exact product and repository state, bounded
 public projection, and all four result states with product-specific cleanup.
 
-Immediate execution order on merged `main`:
-
-- rerun Kimi when quota permits;
-- run Gemini only with an explicitly authorized provider credential;
-- extend the passed Codex path from a fixed marker into a coordinator-mediated
-  A-to-B dependency suggestion against an already persisted receiver; the real
-  model-selected positive case passed at `248d650` under issue #53;
-- keep every live product on the common mailbox acceptance, durable admission
-  claim, kind-specific evidence, and context-admitted audit path;
-- preserve the strict projected child-result schema, ISO timestamps, and
-  adapter-kind-specific cleanup/evidence checks when recording public evidence;
-- run the same envelope, acceptance, provenance, restart, and cleanup assertions
-  against at least two harness families;
-- measure useful coordination and interference cost before enabling proactive
-  discovery.
-
-Codex completed the first real maintainer-experimental pass at `0dda5a7`,
-including exact marker, evidence, audit, and cleanup. Kimi is currently
-quota-blocked with cleanup verified; Gemini remains unstarted without an
-explicit credential. The real Codex proactive dependency case passed at
-`248d650`: A selected relationship discovery and one bounded send without a
-scripted submit, B consumed the admitted suggestion, and both tasks were
-deleted. The next behavioral threshold is irrelevant-task and
-receiver-interference controls. The portability threshold remains one
-additional materially different harness pass rather than more runner
-scaffolding.
+Codex completed the first real maintainer-experimental pass at `0dda5a7` and
+the scored proactive conditions at `0dd2c82`. Kimi then passed the same shared
+receiver-acceptance path at `b248343`, including exact marker, bounded evidence,
+audit, and delete-plus-absence cleanup. The M2 milestone is closed with five
+issues complete and zero open. Gemini remains optional and unstarted; it is not
+maintained as a competing live branch. The remaining product threshold is
+repeated interference evidence under #53 before default enablement.
 
 Before production or parallel receiver replicas, add claimant-specific mailbox
 leases with expiry takeover, and a receiver-authenticated inspection and manual
