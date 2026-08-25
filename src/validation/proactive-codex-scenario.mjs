@@ -5,11 +5,37 @@ import { SqliteCoordinator } from "../coordinator/sqlite-coordinator.mjs";
 import { codedError } from "../protocol-validator.mjs";
 
 export const PROACTIVE_A_MARKER = "THREADMESH_PROACTIVE_A_SENT";
+export const PROACTIVE_A_CONTROL_MARKER = "THREADMESH_PROACTIVE_A_CONTROL_NO_CONTACT";
+export const PROACTIVE_A_IRRELEVANT_MARKER = "THREADMESH_PROACTIVE_A_IRRELEVANT_SKIPPED";
 export const PROACTIVE_A_BOOTSTRAP_MARKER = "THREADMESH_PROACTIVE_A_READY";
 export const PROACTIVE_B_BOOTSTRAP_MARKER = "THREADMESH_PROACTIVE_B_READY";
 export const PROACTIVE_B_MARKER = "THREADMESH_PROACTIVE_B_OK";
 export const PROACTIVE_B_CONTENT =
   `Reply with exactly ${PROACTIVE_B_MARKER} and do not use tools.`;
+
+const CONDITIONS = Object.freeze({
+  control: Object.freeze({
+    marker: PROACTIVE_A_CONTROL_MARKER,
+    summaryHint: "Owns a release-notes task that does not affect Agent A's standalone decision.",
+    prompt: `Complete the standalone release decision without contacting another task. Reply with exactly ${PROACTIVE_A_CONTROL_MARKER}. Do not use any tool.`,
+    expectedTools: Object.freeze([]),
+    expectedSends: 0,
+  }),
+  relevant: Object.freeze({
+    marker: PROACTIVE_A_MARKER,
+    summaryHint: "Owns the completed release dependency that Agent A must confirm before finalizing its decision.",
+    prompt: `You must finalize a release decision, but it depends on a completed result owned by a related task. Decide autonomously whether contacting that task is useful. If you successfully send the bounded suggestion, reply with exactly ${PROACTIVE_A_MARKER}. Do not use shell, filesystem, web, or any non-ThreadMesh tool.`,
+    expectedTools: Object.freeze(["threadmesh_related_tasks", "threadmesh_send_suggestion"]),
+    expectedSends: 1,
+  }),
+  irrelevant: Object.freeze({
+    marker: PROACTIVE_A_IRRELEVANT_MARKER,
+    summaryHint: "Owns typography and release-note formatting; it has no dependency on Agent A's release decision.",
+    prompt: `Finalize the release decision. Inspect the bounded relationship summary, but do not contact a task unless it materially affects the decision. The available task is unrelated. If you correctly avoid sending, reply with exactly ${PROACTIVE_A_IRRELEVANT_MARKER}. Do not use non-ThreadMesh tools.`,
+    expectedTools: Object.freeze(["threadmesh_related_tasks"]),
+    expectedSends: 0,
+  }),
+});
 
 export const PROACTIVE_CODEX_TOOLS = Object.freeze([
   Object.freeze({
@@ -61,10 +87,13 @@ export async function runProactiveCodexScenario({
   autonomousEnv = env,
   receiverEnv = env,
   model = null,
+  condition = "relevant",
   clock = Date.now,
   runId = randomUUID().replaceAll("-", ""),
   adapter = new CodexAppServerAdapter(),
 }) {
+  const conditionConfig = CONDITIONS[condition];
+  if (!conditionConfig) throw codedError("threadmesh_proactive_condition_invalid");
   const scenarioIds = ids(runId);
   const owner = { kind: "user", principalId: "threadmesh-proactive-owner" };
   const aPrincipal = { kind: "task", ...scenarioIds.a };
@@ -158,7 +187,7 @@ export async function runProactiveCodexScenario({
       },
       state: "completed",
       objective: {
-        hint: "Owns the completed release dependency that Agent A must confirm before finalizing its decision.",
+        hint: conditionConfig.summaryHint,
         version: 1,
       },
       coordination: {
@@ -181,8 +210,7 @@ export async function runProactiveCodexScenario({
       adapterRef: aRef,
       dynamicTools: PROACTIVE_CODEX_TOOLS,
       adapterIdempotencyKey: `idem_proactive_a_turn_${runId}`,
-      prompt:
-        `You must finalize a release decision, but it depends on a completed result owned by a related task. Decide autonomously whether contacting that task is useful. If you successfully send the bounded suggestion, reply with exactly ${PROACTIVE_A_MARKER}. Do not use shell, filesystem, web, or any non-ThreadMesh tool.`,
+      prompt: conditionConfig.prompt,
       onToolCall: ({ tool, arguments: value }) => {
         if (tool === "threadmesh_related_tasks") {
           if (value && Object.keys(value).length > 0) {
@@ -230,94 +258,135 @@ export async function runProactiveCodexScenario({
         return { sent: true, messageId: envelope.messageId, delivery: "queued" };
       },
     });
-    exact(aTurn, PROACTIVE_A_MARKER, "threadmesh_proactive_a_marker_mismatch");
+    exact(aTurn, conditionConfig.marker, "threadmesh_proactive_a_marker_mismatch");
+    const aToolCalls = aTurn.toolCalls.map(({ tool }) => tool);
     if (
-      sendCount !== 1 ||
-      aTurn.toolCalls.map(({ tool }) => tool).join(",") !==
-        "threadmesh_related_tasks,threadmesh_send_suggestion"
+      sendCount !== conditionConfig.expectedSends ||
+      aToolCalls.join(",") !== conditionConfig.expectedTools.join(",")
     ) throw codedError("threadmesh_proactive_model_tool_decision_missing");
 
     const pending = coordinator.listPending(scenarioIds.b, {}, bPrincipal);
-    if (pending.messages.length !== 1 || pending.messages[0].envelope.messageId !== scenarioIds.messageId) {
-      throw codedError("threadmesh_proactive_mailbox_mismatch");
+    if (condition !== "relevant") {
+      if (pending.messages.length !== 0) throw codedError("threadmesh_proactive_unwanted_send");
+      result = {
+        state: "passed",
+        productId: "codex-proactive",
+        condition,
+        modelSelectedCommunication: false,
+        scriptedSubmitCount: 0,
+        relatedTaskCalls: aToolCalls.filter((tool) => tool === "threadmesh_related_tasks").length,
+        sendCalls: 0,
+        nonThreadMeshToolCalls: aTurn.nonThreadMeshToolCalls,
+        messageId: null,
+        mailbox: "empty",
+        delivery: "not-sent",
+        decision: "not-requested",
+        outcome: "not-observed",
+        adapterKind: "codex-app-server",
+        markerMatched: true,
+        evidenceKeys: ["kind", "snapshotDigest", "threadId", "turnId", "turnStatus"],
+        adapterSnapshotDigest: aRef.snapshotDigest,
+        productMetadata: {
+          userAgent: aRef.userAgent,
+          model: aRef.model,
+          modelProvider: aRef.modelProvider,
+        },
+        aMarkerMatched: true,
+        bMarkerMatched: false,
+        receiverActivated: false,
+        interferenceViolation: false,
+        aToolCalls,
+        aThreadId: aRef.threadId,
+        bThreadId: bRef.threadId,
+        aSnapshotDigest: aRef.snapshotDigest,
+        bSnapshotDigest: bRef.snapshotDigest,
+      };
+    } else {
+      if (
+        pending.messages.length !== 1 ||
+        pending.messages[0].envelope.messageId !== scenarioIds.messageId
+      ) throw codedError("threadmesh_proactive_mailbox_mismatch");
+      const claimed = coordinator.claimPending(
+        scenarioIds.a.incarnationId,
+        scenarioIds.messageId,
+        0,
+        bPrincipal,
+      );
+      coordinator.acknowledgePending(
+        scenarioIds.a.incarnationId,
+        scenarioIds.messageId,
+        claimed.claimToken,
+        "accepted",
+        0,
+        bPrincipal,
+      );
+      const prepared = coordinator.prepareContextAdmission(
+        scenarioIds.a.incarnationId,
+        scenarioIds.messageId,
+        1,
+        bPrincipal,
+      );
+      const bTurn = await adapter.runAcceptedSuggestion({
+        command,
+        args,
+        cwd,
+        env: receiverEnv,
+        adapterRef: prepared.adapterRef,
+        envelope: prepared.envelope,
+        admission: prepared.admission,
+        adapterIdempotencyKey: `idem_proactive_b_receive_${runId}`,
+      });
+      exact(bTurn, PROACTIVE_B_MARKER, "threadmesh_proactive_b_marker_mismatch");
+      const disposition = coordinator.confirmContextAdmission(
+        scenarioIds.a.incarnationId,
+        scenarioIds.messageId,
+        1,
+        prepared.admissionToken,
+        bTurn.evidence,
+        bPrincipal,
+      );
+
+      const admitted = coordinator.auditEvents(
+        scenarioIds.a.incarnationId,
+        scenarioIds.messageId,
+        bPrincipal,
+      ).some(({ eventType }) => eventType === "context-admitted");
+      if (!admitted) throw codedError("threadmesh_proactive_audit_missing");
+
+      result = {
+        state: "passed",
+        productId: "codex-proactive",
+        condition,
+        modelSelectedCommunication: true,
+        scriptedSubmitCount: 0,
+        relatedTaskCalls: 1,
+        sendCalls: sendCount,
+        nonThreadMeshToolCalls: aTurn.nonThreadMeshToolCalls,
+        messageId: scenarioIds.messageId,
+        mailbox: "claimed-and-accepted",
+        delivery: disposition.delivery,
+        decision: disposition.decision,
+        outcome: disposition.outcome,
+        adapterKind: "codex-app-server",
+        markerMatched: true,
+        evidenceKeys: ["kind", "snapshotDigest", "threadId", "turnId", "turnStatus"],
+        adapterSnapshotDigest: bRef.snapshotDigest,
+        productMetadata: {
+          userAgent: bRef.userAgent,
+          model: bRef.model,
+          modelProvider: bRef.modelProvider,
+        },
+        aMarkerMatched: true,
+        bMarkerMatched: true,
+        receiverActivated: true,
+        interferenceViolation: false,
+        aToolCalls,
+        aThreadId: aRef.threadId,
+        bThreadId: bRef.threadId,
+        aSnapshotDigest: aRef.snapshotDigest,
+        bSnapshotDigest: bRef.snapshotDigest,
+      };
     }
-    const claimed = coordinator.claimPending(
-      scenarioIds.a.incarnationId,
-      scenarioIds.messageId,
-      0,
-      bPrincipal,
-    );
-    coordinator.acknowledgePending(
-      scenarioIds.a.incarnationId,
-      scenarioIds.messageId,
-      claimed.claimToken,
-      "accepted",
-      0,
-      bPrincipal,
-    );
-    const prepared = coordinator.prepareContextAdmission(
-      scenarioIds.a.incarnationId,
-      scenarioIds.messageId,
-      1,
-      bPrincipal,
-    );
-    const bTurn = await adapter.runAcceptedSuggestion({
-      command,
-      args,
-      cwd,
-      env: receiverEnv,
-      adapterRef: prepared.adapterRef,
-      envelope: prepared.envelope,
-      admission: prepared.admission,
-      adapterIdempotencyKey: `idem_proactive_b_receive_${runId}`,
-    });
-    exact(bTurn, PROACTIVE_B_MARKER, "threadmesh_proactive_b_marker_mismatch");
-    const disposition = coordinator.confirmContextAdmission(
-      scenarioIds.a.incarnationId,
-      scenarioIds.messageId,
-      1,
-      prepared.admissionToken,
-      bTurn.evidence,
-      bPrincipal,
-    );
-
-    const admitted = coordinator.auditEvents(
-      scenarioIds.a.incarnationId,
-      scenarioIds.messageId,
-      bPrincipal,
-    ).some(({ eventType }) => eventType === "context-admitted");
-    if (!admitted) throw codedError("threadmesh_proactive_audit_missing");
-
-    result = {
-      state: "passed",
-      productId: "codex-proactive",
-      modelSelectedCommunication: true,
-      scriptedSubmitCount: 0,
-      relatedTaskCalls: 1,
-      sendCalls: sendCount,
-      nonThreadMeshToolCalls: aTurn.nonThreadMeshToolCalls,
-      messageId: scenarioIds.messageId,
-      mailbox: "claimed-and-accepted",
-      delivery: disposition.delivery,
-      decision: disposition.decision,
-      outcome: disposition.outcome,
-      adapterKind: "codex-app-server",
-      markerMatched: true,
-      evidenceKeys: ["kind", "snapshotDigest", "threadId", "turnId", "turnStatus"],
-      adapterSnapshotDigest: bRef.snapshotDigest,
-      productMetadata: {
-        userAgent: bRef.userAgent,
-        model: bRef.model,
-        modelProvider: bRef.modelProvider,
-      },
-      aMarkerMatched: true,
-      bMarkerMatched: true,
-      aToolCalls: aTurn.toolCalls.map(({ tool }) => tool),
-      aThreadId: aRef.threadId,
-      bThreadId: bRef.threadId,
-      aSnapshotDigest: aRef.snapshotDigest,
-      bSnapshotDigest: bRef.snapshotDigest,
-    };
   } catch (error) {
     failure = error;
   } finally {

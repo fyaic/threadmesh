@@ -188,6 +188,12 @@ lines.on("line", async (line) => {
     pendingTurn?.dynamicPhase === "related" &&
     message.id === `fake-dynamic-related-${pendingTurn.turnId}`
   ) {
+    if (process.env.FAKE_CODEX_AUTONOMOUS_SKIP_SEND === "1") {
+      pendingTurn.autonomousCompleted = true;
+      completeTurn(pendingTurn);
+      pendingTurn = null;
+      return;
+    }
     pendingTurn.dynamicPhase = "send";
     send({
       id: `fake-dynamic-send-${pendingTurn.turnId}`,

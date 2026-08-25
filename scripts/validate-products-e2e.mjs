@@ -12,6 +12,8 @@ import {
 import { runCoordinatorProductScenario } from "../src/validation/coordinator-product-scenario.mjs";
 import {
   PROACTIVE_A_BOOTSTRAP_MARKER,
+  PROACTIVE_A_CONTROL_MARKER,
+  PROACTIVE_A_IRRELEVANT_MARKER,
   PROACTIVE_A_MARKER,
   PROACTIVE_B_BOOTSTRAP_MARKER,
   PROACTIVE_B_MARKER,
@@ -202,6 +204,58 @@ export async function runFakeProactive() {
   }
 }
 
+export async function runFakeBehavior() {
+  const startedAt = new Date().toISOString();
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "threadmesh-behavior-e2e-"));
+  try {
+    const conditions = [];
+    for (const condition of ["control", "relevant", "irrelevant"]) {
+      const baseEnv = {
+        FAKE_CODEX_STATE_FILE: path.join(directory, `${condition}-codex-state.json`),
+      };
+      const autonomousEnv = {
+        control: {
+          ...baseEnv,
+          FAKE_CODEX_EXACT_MARKER: PROACTIVE_A_CONTROL_MARKER,
+        },
+        relevant: {
+          ...baseEnv,
+          FAKE_CODEX_AUTONOMOUS_TOOL: "1",
+          FAKE_CODEX_AUTONOMOUS_MARKER: PROACTIVE_A_MARKER,
+        },
+        irrelevant: {
+          ...baseEnv,
+          FAKE_CODEX_AUTONOMOUS_TOOL: "1",
+          FAKE_CODEX_AUTONOMOUS_SKIP_SEND: "1",
+          FAKE_CODEX_AUTONOMOUS_MARKER: PROACTIVE_A_IRRELEVANT_MARKER,
+        },
+      }[condition];
+      conditions.push(await runProactiveCodexScenario({
+        command: process.execPath,
+        args: [fixture("fake-codex-app-server.mjs")],
+        cwd: root,
+        condition,
+        runId: `behavior_${condition}`,
+        env: baseEnv,
+        bootstrapEnv: { ...baseEnv, FAKE_CODEX_EXACT_MARKER: PROACTIVE_B_BOOTSTRAP_MARKER },
+        aBootstrapEnv: { ...baseEnv, FAKE_CODEX_EXACT_MARKER: PROACTIVE_A_BOOTSTRAP_MARKER },
+        autonomousEnv,
+        receiverEnv: { ...baseEnv, FAKE_CODEX_EXACT_MARKER: PROACTIVE_B_MARKER },
+      }));
+    }
+    return {
+      mode: "fake-behavior",
+      startedAt,
+      finishedAt: new Date().toISOString(),
+      state: conditions.every(({ state }) => state === "passed") ? "passed" : "failed",
+      conditions,
+      cleanup: { temporaryRootRemoved: true },
+    };
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+}
+
 export async function runLive(productId, env = process.env) {
   const startedAt = new Date().toISOString();
   if (env.THREADMESH_LIVE_E2E_ACK !== LIVE_E2E_ACK) {
@@ -279,13 +333,14 @@ async function main() {
   let result;
   if (mode === "--fake-all" && !productId) result = await runFakeAll();
   else if (mode === "--fake-proactive" && !productId) result = await runFakeProactive();
+  else if (mode === "--fake-behavior" && !productId) result = await runFakeBehavior();
   else if (mode === "--isolated-live" && ["codex", "codex-proactive", "kimi", "gemini"].includes(productId)) {
     result = await runLive(productId);
   } else {
     result = {
       state: "not-run",
       code: "usage",
-      usage: "node scripts/validate-products-e2e.mjs --fake-all | --fake-proactive | --isolated-live <codex|codex-proactive|kimi|gemini>",
+      usage: "node scripts/validate-products-e2e.mjs --fake-all | --fake-proactive | --fake-behavior | --isolated-live <codex|codex-proactive|kimi|gemini>",
     };
   }
   console.log(JSON.stringify(result, null, 2));

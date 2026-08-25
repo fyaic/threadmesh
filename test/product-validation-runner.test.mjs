@@ -7,6 +7,7 @@ import {
   LIVE_E2E_ACK,
   MAINTAINER_EXPERIMENTAL_ACK,
   publicProductErrorCode,
+  runFakeBehavior,
   runFakeAll,
   runFakeProactive,
   runLive,
@@ -160,6 +161,20 @@ test("the proactive fake proves model-selected send and two-thread cleanup", asy
   assert.equal(result.sendCalls, 1);
   assert.equal(result.cleanup.aThreadDeleted, true);
   assert.equal(result.cleanup.bThreadDeleted, true);
+});
+
+test("the behavior fake separates control, relevant, and irrelevant communication", async () => {
+  const result = await runFakeBehavior();
+  assert.equal(result.state, "passed");
+  assert.deepEqual(result.conditions.map(({ condition, sendCalls, receiverActivated }) => ({
+    condition,
+    sendCalls,
+    receiverActivated,
+  })), [
+    { condition: "control", sendCalls: 0, receiverActivated: false },
+    { condition: "relevant", sendCalls: 1, receiverActivated: true },
+    { condition: "irrelevant", sendCalls: 0, receiverActivated: false },
+  ]);
 });
 
 test("exact marker comparison rejects leading or trailing whitespace", async () => {

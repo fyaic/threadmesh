@@ -7,6 +7,8 @@ import { fileURLToPath } from "node:url";
 
 import {
   PROACTIVE_A_BOOTSTRAP_MARKER,
+  PROACTIVE_A_CONTROL_MARKER,
+  PROACTIVE_A_IRRELEVANT_MARKER,
   PROACTIVE_A_MARKER,
   PROACTIVE_B_BOOTSTRAP_MARKER,
   PROACTIVE_B_MARKER,
@@ -16,14 +18,32 @@ import {
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const fixture = path.join(root, "test", "fixtures", "fake-codex-app-server.mjs");
 
-test("Agent A selects ThreadMesh tools before its suggestion reaches real-shaped Agent B", async () => {
+async function runCondition(condition, runId) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "threadmesh-proactive-"));
   const baseEnv = { FAKE_CODEX_STATE_FILE: path.join(directory, "state.json") };
   try {
-    const result = await runProactiveCodexScenario({
+    const conditionEnv = {
+      control: {
+        ...baseEnv,
+        FAKE_CODEX_EXACT_MARKER: PROACTIVE_A_CONTROL_MARKER,
+      },
+      relevant: {
+        ...baseEnv,
+        FAKE_CODEX_AUTONOMOUS_TOOL: "1",
+        FAKE_CODEX_AUTONOMOUS_MARKER: PROACTIVE_A_MARKER,
+      },
+      irrelevant: {
+        ...baseEnv,
+        FAKE_CODEX_AUTONOMOUS_TOOL: "1",
+        FAKE_CODEX_AUTONOMOUS_SKIP_SEND: "1",
+        FAKE_CODEX_AUTONOMOUS_MARKER: PROACTIVE_A_IRRELEVANT_MARKER,
+      },
+    }[condition];
+    return await runProactiveCodexScenario({
       command: process.execPath,
       args: [fixture],
       cwd: root,
+      condition,
       env: baseEnv,
       bootstrapEnv: {
         ...baseEnv,
@@ -33,42 +53,65 @@ test("Agent A selects ThreadMesh tools before its suggestion reaches real-shaped
         ...baseEnv,
         FAKE_CODEX_EXACT_MARKER: PROACTIVE_A_BOOTSTRAP_MARKER,
       },
-      autonomousEnv: {
-        ...baseEnv,
-        FAKE_CODEX_AUTONOMOUS_TOOL: "1",
-        FAKE_CODEX_AUTONOMOUS_MARKER: PROACTIVE_A_MARKER,
-      },
+      autonomousEnv: conditionEnv,
       receiverEnv: {
         ...baseEnv,
         FAKE_CODEX_EXACT_MARKER: PROACTIVE_B_MARKER,
       },
       clock: () => Date.parse("2026-08-21T10:30:00Z"),
-      runId: "deterministic01",
-    });
-
-    assert.equal(result.state, "passed");
-    assert.equal(result.productId, "codex-proactive");
-    assert.equal(result.modelSelectedCommunication, true);
-    assert.equal(result.scriptedSubmitCount, 0);
-    assert.equal(result.relatedTaskCalls, 1);
-    assert.equal(result.sendCalls, 1);
-    assert.equal(result.nonThreadMeshToolCalls, 0);
-    assert.deepEqual(result.aToolCalls, [
-      "threadmesh_related_tasks",
-      "threadmesh_send_suggestion",
-    ]);
-    assert.equal(result.mailbox, "claimed-and-accepted");
-    assert.equal(result.delivery, "context-admitted");
-    assert.equal(result.aMarkerMatched, true);
-    assert.equal(result.bMarkerMatched, true);
-    assert.deepEqual(result.cleanup, {
-      attempted: true,
-      complete: true,
-      aThreadDeleted: true,
-      bThreadDeleted: true,
-      threadDeleted: true,
+      runId,
     });
   } finally {
     fs.rmSync(directory, { recursive: true, force: true });
   }
+}
+
+test("Agent A selects ThreadMesh tools before its suggestion reaches real-shaped Agent B", async () => {
+  const result = await runCondition("relevant", "deterministic01");
+
+  assert.equal(result.state, "passed");
+  assert.equal(result.condition, "relevant");
+  assert.equal(result.modelSelectedCommunication, true);
+  assert.equal(result.scriptedSubmitCount, 0);
+  assert.equal(result.relatedTaskCalls, 1);
+  assert.equal(result.sendCalls, 1);
+  assert.equal(result.nonThreadMeshToolCalls, 0);
+  assert.deepEqual(result.aToolCalls, [
+    "threadmesh_related_tasks",
+    "threadmesh_send_suggestion",
+  ]);
+  assert.equal(result.mailbox, "claimed-and-accepted");
+  assert.equal(result.delivery, "context-admitted");
+  assert.equal(result.receiverActivated, true);
+  assert.equal(result.aMarkerMatched, true);
+  assert.equal(result.bMarkerMatched, true);
+  assert.equal(result.cleanup.complete, true);
+});
+
+test("control makes no ThreadMesh call and does not activate Agent B", async () => {
+  const result = await runCondition("control", "deterministic02");
+
+  assert.equal(result.condition, "control");
+  assert.equal(result.modelSelectedCommunication, false);
+  assert.equal(result.relatedTaskCalls, 0);
+  assert.equal(result.sendCalls, 0);
+  assert.deepEqual(result.aToolCalls, []);
+  assert.equal(result.mailbox, "empty");
+  assert.equal(result.receiverActivated, false);
+  assert.equal(result.interferenceViolation, false);
+  assert.equal(result.cleanup.complete, true);
+});
+
+test("irrelevant relationship is inspected without contacting Agent B", async () => {
+  const result = await runCondition("irrelevant", "deterministic03");
+
+  assert.equal(result.condition, "irrelevant");
+  assert.equal(result.modelSelectedCommunication, false);
+  assert.equal(result.relatedTaskCalls, 1);
+  assert.equal(result.sendCalls, 0);
+  assert.deepEqual(result.aToolCalls, ["threadmesh_related_tasks"]);
+  assert.equal(result.mailbox, "empty");
+  assert.equal(result.receiverActivated, false);
+  assert.equal(result.interferenceViolation, false);
+  assert.equal(result.cleanup.complete, true);
 });

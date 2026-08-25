@@ -15,6 +15,7 @@
     "smoke:kimi": "node scripts/smoke-kimi.mjs",
     "smoke:kimi:live": "npm run validate:products:live:kimi",
     "validate:products:fake": "node scripts/validate-products-e2e.mjs --fake-all",
+    "validate:behavior:fake": "node scripts/validate-products-e2e.mjs --fake-behavior",
     "validate:proactive:fake": "node scripts/validate-products-e2e.mjs --fake-proactive",
     "validate:proactive:live:codex": "node scripts/run-live-product-validation.mjs codex-proactive",
     "validate:products:live:codex": "node scripts/run-live-product-validation.mjs codex",
