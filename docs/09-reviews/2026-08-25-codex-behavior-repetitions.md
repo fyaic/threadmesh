@@ -90,3 +90,26 @@ The compressed benchmark improves cost and cleanup determinism, but it has not
 changed the product decision. Real-model useful-path reliability remains the
 active blocker, while control and irrelevant behavior remain quiet. Proactive
 coordination stays default-off.
+
+## Outcome-based Agent A gate
+
+The `edcc18f` result showed that Agent A's exact final text was redundant: the
+adapter already records whether the turn completed, which ThreadMesh tools the
+model selected, whether the coordinator accepted a real send, and whether any
+non-ThreadMesh tool appeared. PR #70 therefore removed the A text-marker gate
+without weakening the B outcome, mailbox, admission, audit, or cleanup gates.
+
+The deterministic fixture deliberately returns ordinary non-marker prose and
+still passes only when the expected tool effects occur. Three fresh real
+relevant runs on `9a6381a` produced:
+
+| Run | Result | Time | Exact result |
+|---|---|---:|---|
+| 1 | Passed | 181 s | related-task lookup, one send, B score 1, A/B deleted |
+| 2 | Failed | 142 s | model tool decision missing, no success recorded, A/B deleted |
+| 3 | Passed | 268 s | related-task lookup, one send, B score 1, A/B deleted |
+
+This 2/3 sample separates two failure classes that the earlier marker-heavy
+benchmark mixed together. Text phrasing is no longer a blocker; autonomous
+tool selection still varies. The evidence supports continued opt-in
+experimentation, not default enablement.

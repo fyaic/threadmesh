@@ -32,10 +32,11 @@ relationship-scoped dependency grant:
 This removes one non-business bootstrap model turn from every condition.
 Control and irrelevant use two turns; relevant uses a third B receiver turn.
 
-The public result requires `scriptedSubmitCount: 0`, the exact tool order,
-exactly one send, zero observed non-ThreadMesh tool calls, both markers, and
-complete two-task cleanup. Dynamic tool arguments and outputs are represented
-only by bounded digests outside the adapter process.
+The public result requires `scriptedSubmitCount: 0`, a completed A decision
+turn, the exact tool order, exactly one real coordinator send, zero observed
+non-ThreadMesh tool calls, B's outcome marker, and complete two-task cleanup.
+Agent A's final prose is not a success criterion. Dynamic tool arguments and
+outputs are represented only by bounded digests outside the adapter process.
 
 ## Commands
 
@@ -92,9 +93,15 @@ It improved the downstream dependency score from 0 to 1 in the relevant case,
 while the irrelevant case performed one read-only lookup and did not send or
 activate the receiver.
 
-The compressed flow merged in PR #66. On `edcc18f`, its latest real relevant
-run completed in 156 seconds without an operation timeout and deleted both
-created tasks, but failed the strict Agent A marker check. This is a clean
-negative reliability sample, not a proactive success. The deterministic
-three-condition command and field interpretation are documented in the
-[end-to-end demonstration](end-to-end-demo.md).
+The compressed flow merged in PR #66. PR #70 then replaced the redundant Agent
+A text-marker check with observed behavior: completed decision turn, exact
+`related tasks → send suggestion` sequence, one coordinator send, and no other
+tools. B's business-outcome marker remains mandatory.
+
+Three fresh real relevant runs on `9a6381a` produced two complete successes and
+one `threadmesh_proactive_model_tool_decision_missing` failure. The successful
+runs took 181 and 268 seconds; the failed run took 142 seconds. All three runs
+deleted both A and B. This improves signal quality but does not yet meet a 3/3
+reliability threshold, so proactive coordination remains default-off. The
+deterministic three-condition command and field interpretation are documented
+in the [end-to-end demonstration](end-to-end-demo.md).

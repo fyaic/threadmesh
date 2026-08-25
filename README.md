@@ -200,10 +200,11 @@ reset used three gates:
    — Kimi Code `0.38.0` passed with exact cleanup.
 
 All three reset gates are complete. The shorter M3 flow now removes one model
-turn from every condition and preserves exact cleanup. Its latest relevant run
-completed without an operation timeout but failed the strict Agent A result
-marker, so proactive coordination remains default-off. The active bottleneck is
-real-model reliability, not missing protocol surface.
+turn from every condition and preserves exact cleanup. Agent A is scored by its
+actual tool sequence and coordinator send, not by repeating a text marker. A
+fresh real relevant sample passed 2/3 with complete cleanup in every run, so
+proactive coordination remains default-off. The active bottleneck is real-model
+decision reliability, not missing protocol surface.
 
 Protocol expansion, hostile-worker validation, steer/interrupt, and production
 hardening are deferred until these gates pass. Independent M0 review continues
