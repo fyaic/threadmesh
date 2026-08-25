@@ -79,8 +79,9 @@ The repository is pre-alpha but executable:
 | Portable harness API | Zero-runtime-dependency `@fyaic/threadmesh` SDK with register, discover, suggest, poll, and decide operations |
 | Reference control plane | Authenticated JSON-RPC binding and SQLite coordinator with grants, mailbox, claims, receipts, replay defense, and audit |
 | Deterministic demo | Control, relevant, and irrelevant A-to-B conditions run through the complete coordinator path |
-| Codex App Server | Real proactive A-to-B success has been observed; repetition reliability remains insufficient, so proactive mode is default-off |
+| Codex App Server | The bounded two-stage proactive policy passed relevant 3/3 plus quiet control and irrelevant checks; it remains explicit opt-in |
 | Kimi Code ACP | A real accepted suggestion completed through the shared coordinator path with session cleanup verified |
+| Cross-harness proactive case | Real Codex A discovered and sent once; persistent Kimi Code B accepted and completed, with both resources cleaned |
 | Gemini CLI | Adapter and no-model preflight exist; live provider execution has not been authorized |
 
 This proves an integration shape and a bounded experimental capability. It does

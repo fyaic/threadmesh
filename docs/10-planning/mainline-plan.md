@@ -222,9 +222,10 @@ Choose exactly one: Kimi when quota is available, otherwise Gemini with an
 explicit credential. Run the same behavioral case and cleanup assertions. Do
 not maintain two competing live-validation branches.
 
-The three reset gates and the bounded Codex M3 behavior case are complete. The
-next product case is proactive coordination across two materially different
-harnesses. No new protocol branch starts automatically.
+The three reset gates, bounded Codex M3 behavior case, and first cross-harness
+proactive case are complete. On `e0adb0e`, real Codex A selected discovery plus
+one bounded send and persistent Kimi ACP B consumed it successfully; both sides
+passed exact cleanup. No new protocol branch starts automatically.
 
 ### Post-gate repetition decision
 
@@ -237,9 +238,11 @@ verified, and PR #64 merged the regression fix.
 The shorter outcome-bearing benchmark, observed-behavior gate, and two-stage
 policy are now merged. The final fresh relevant sample passed 3/3; fresh control
 and irrelevant runs did not send. This qualifies the bounded profile for
-explicit experimental opt-in, not repository-wide default enablement. The next
-mainline is one cross-harness proactive case, reusing the existing coordinator
-and adapters rather than expanding protocol surface.
+explicit experimental opt-in, not repository-wide default enablement. The
+cross-harness Codex-to-Kimi case is now complete using the existing coordinator
+and adapters. The next mainline is packaging the smallest reusable integration
+and operator demo, followed by limited negative-case product checks; it is not
+protocol expansion.
 
 Independent review #7 continues as a parallel governance track. Hostile-worker
 schema #48 is deferred. Production authentication, OS isolation, parallel

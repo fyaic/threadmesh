@@ -1,7 +1,7 @@
 # Project status
 
-> Snapshot: 2026-08-25, after the two-stage proactive Codex reliability pass at
-> `a134b398e9309dfedfb152f3497504db82897851`.
+> Snapshot: 2026-08-25, after the real Codex-to-Kimi proactive pass at
+> `e0adb0e8552ddf2c406c01172c97d390c3e05d61`.
 
 ## Executive summary
 
@@ -14,17 +14,18 @@ no-model product evidence and share one deterministic coordinator-mediated
 validation runner. The maintainer has authorized bounded real-product
 experiments; no real model path counts as passed until its result is recorded.
 
-The implementation is not a production coordinator and does not establish
-cross-product interoperability. The normative M0 blockers are resolved; M0
-remains open only for two independent reviews, including one outside the
-maintainer organization.
+The implementation is not a production coordinator. One real Codex-to-Kimi
+case now establishes a bounded cross-product integration path, but not general
+interoperability, hostile-peer safety, or production reliability. The normative
+M0 blockers are resolved; M0 remains open only for two independent reviews,
+including one outside the maintainer organization.
 
 ## Evidence ledger
 
 | Area | Current evidence | Status |
 |---|---|---|
 | Research and problem framing | Codex deep dive, community signals, ecosystem comparison, ADRs | Established |
-| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 134 unit/subtests | Executable draft |
+| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 135 unit/subtests | Executable draft |
 | Minimal adapter SDK | `@fyaic/threadmesh` `0.1.0-alpha.0`; six bounded methods, 14.5 kB tarball, packed-consumer import | Candidate complete; not published to npm |
 | Local binding | Schema-validated JSON-RPC, transport-derived principals, typed errors | Executable local reference |
 | Local persistence | SQLite registry, proposals, grants, summaries, mailbox, claims, receipts, reconciliation, replay, audit, retention tombstones | Experimental |
@@ -38,6 +39,7 @@ maintainer organization.
 | Codex scored behavior gate | Control score 0; relevant score 1 with one send; irrelevant performed one lookup and no send; all tasks deleted at `0dd2c82` | First real outcome/interference pass |
 | Codex repetition matrix | Control 3/3; relevant 1/3; irrelevant 2/3 with one inconclusive marker failure; exact leaked bootstrap thread manually removed and cleanup regression merged in #64 | Default enablement rejected |
 | Two-stage Codex behavior flow | Relevant 3/3; fresh control zero tools/sends; fresh irrelevant one read-only lookup and zero sends; all A/B cleanup complete | Bounded M3 case passed; explicit experimental opt-in only |
+| Codex-to-Kimi proactive flow | Codex A selected discovery and one send; persistent Kimi ACP B completed; exact A deletion and B delete/absence passed at `e0adb0e` | First real cross-harness proactive case passed |
 | Gemini CLI headless | Official package 0.56.0 integrity, required flags, isolated-home cleanup | Real no-model preflight passed |
 | Gemini live model behavior | Exact marker script requires explicit provider key | Not authorized, not run |
 | Multi-product admission | One mailbox/acceptance/claim/evidence path across ACP, Codex, and Gemini fakes | Merged experimental implementation |
@@ -131,11 +133,13 @@ result as the bootstrap baseline. Real control and irrelevant conditions pass;
 the redundant A text marker has been replaced by actual tool/send evidence. A
 two-stage discovery/send policy then passed relevant 3/3, with fresh control
 and irrelevant runs preserving zero-send behavior and complete cleanup. The
-bounded #53 acceptance case is complete and qualifies for explicit
-maintainer-experimental opt-in use; cross-harness proactive behavior is the
-next product case. Issue #7 remains
-parallel governance. Hostile-worker schema #48, optional Gemini live
-validation, and further production hardening are deferred.
+bounded #53 acceptance case qualifies for explicit maintainer-experimental
+opt-in use. Cross-harness proactive issue #74 then passed with Codex A and Kimi
+B on the existing coordinator and adapters. The next product work is a minimal
+installable integration path and reproducible operator demo, not additional
+protocol surface. Issue #7 remains parallel governance. Hostile-worker schema
+issue #48, optional Gemini live validation, and further production hardening are
+deferred.
 
 ## What the prototype proves
 
@@ -216,6 +220,10 @@ can:
 36. load a real Kimi `0.38.0` ACP session with one coordinator-accepted
     suggestion, confirm bounded context-admission evidence, and delete plus
     list-confirm the exact session as absent.
+37. let real Codex CLI `0.145.0` Agent A autonomously discover one authorized
+    dependency and send once to a persistent real Kimi Code `0.38.0` ACP Agent
+    B, observe the expected downstream outcome, delete A, and delete plus
+    absence-verify B.
 
 It does not prove general autonomous discovery across unrelated tasks, outcome
 improvement, acceptable receiver-interference cost, native provider-role

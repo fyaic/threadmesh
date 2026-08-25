@@ -29,12 +29,15 @@ ThreadMesh 并不赋予 agent 任意修改其他 session 的权力。它提供�
 
 ## 当前进度
 
-- 133 项 unit/subtest、14 个 schema 和状态转换测试通过。
+- 135 项 unit/subtest、14 个 schema 和状态转换测试通过。
 - control / relevant / irrelevant 的确定性 A→B 演示通过完整 coordinator 路径。
 - Codex 真实主动 A→B 曾把接收方结果从缺少依赖提升到完成，但重复可靠性不足，
   因此 proactive 默认关闭。
 - Kimi Code `0.38.0` 已完成真实 receiver-accepted suggestion，并验证 session
   删除后不存在。
+- Codex CLI `0.145.0` → Kimi Code `0.38.0` 的真实主动跨 harness 案例已通过；
+  Codex 自主发现并发送一次，Kimi 接受后完成，双方资源完整清理。
 - Gemini CLI adapter 与无模型预检通过；真实 provider 调用未授权。
-- M1、M2 milestone 已关闭；当前主线是 M3 真实模型可靠性，不再扩张协议表面。
+- M1、M2 milestone 已关闭；M3 的受限 Codex 可靠性和首个跨 harness 案例已完成，
+  下一主线是把案例固化为最小可安装集成路径，而不是扩张协议表面。
 - M0 的规范修复已完成，仍等待两份独立外部 review。

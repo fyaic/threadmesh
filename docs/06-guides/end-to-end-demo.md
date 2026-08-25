@@ -45,6 +45,36 @@ The deterministic run uses a fake Codex App Server process. It proves adapter,
 policy, mailbox, evidence, and cleanup behavior. It does not count as evidence
 that a real model made an intelligent decision.
 
+## Cross-harness demonstration
+
+The next command keeps Agent A on the Codex App Server contract but moves Agent
+B to a persistent ACP session. It is deterministic and does not call a model:
+
+```sh
+npm run validate:cross-harness:fake
+```
+
+The test proves this exact sequence:
+
+```text
+Codex Agent A               ThreadMesh                  ACP Agent B
+      │                         │                            │
+      │ related-task lookup     │                            │
+      ├────────────────────────>│                            │
+      │ bounded objective hint  │                            │
+      │<────────────────────────┤                            │
+      │ one suggestion          │                            │
+      ├────────────────────────>│ mailbox → accept → admit   │
+      │                         ├───────────────────────────>│
+      │                         │       outcome evidence     │
+      │                         │<───────────────────────────┤
+      │ exact task deletion     │   session delete + absence│
+```
+
+This is the portable seam: A's initiative is expressed through bounded tools;
+ThreadMesh owns relationship policy and the mailbox; B's harness owns context
+admission and lifecycle cleanup.
+
 ## What happens internally
 
 ```text
@@ -119,9 +149,14 @@ model evidence:
   lookup and no send. Every run deleted both tasks.
 - Kimi Code `0.38.0` completed a real receiver-accepted suggestion through the
   same coordinator and verified session absence after deletion.
+- On `e0adb0e`, Codex CLI `0.145.0` and `gpt-5.6-sol` acted as A while Kimi Code
+  `0.38.0` acted as persistent B. In 118 seconds A selected exactly
+  `related tasks → send suggestion`, Kimi consumed the admitted checksum and
+  returned the expected outcome, and both resources passed exact cleanup.
 
 Read the [Codex behavior repetitions](../09-reviews/2026-08-25-codex-behavior-repetitions.md),
-[Kimi live pass](../09-reviews/2026-08-25-kimi-code-live-pass.md), and
+[Kimi live pass](../09-reviews/2026-08-25-kimi-code-live-pass.md),
+[Codex-to-Kimi case study](../09-reviews/2026-08-25-codex-to-kimi-proactive.md), and
 [real-product runbook](../09-reviews/real-product-e2e-runbook.md) for the exact
 claims and limitations.
 
