@@ -13,9 +13,10 @@
 
 ---
 
-> Status: pre-alpha. The protocol is not stable; an experimental SQLite
-> coordinator plus ACP and Codex App Server adapter candidates exist for
-> conformance work, but no production adapter has been released.
+> Status: pre-alpha. The protocol is not stable. A minimal transport-agnostic
+> adapter SDK and experimental SQLite, ACP, Codex App Server, and Gemini
+> implementations exist for integration work; no production adapter has been
+> released.
 
 The executable JSON-RPC reference derives principals from a host authenticator
 outside the request body. Its static-token mechanism is local-only; production
@@ -35,6 +36,44 @@ New: [Codex implementation deep dive](docs/07-research/codex-orchestration-deep-
 ThreadMesh explores a specific capability: an agent notices that another running task matters to its goal and proactively coordinates with it. The hard part is not message transport. The hard part is letting agents discover dependencies, communicate intent, and revise plans **without silently taking ownership of another task's context**.
 
 ThreadMesh aims to make that capability portable across Codex, Claude Code, LangGraph, custom loops, and other agent harnesses through a small protocol, explicit capability negotiation, and adapter contracts.
+
+## Minimal adapter SDK
+
+Install the pre-alpha package directly from GitHub:
+
+```sh
+npm install github:fyaic/threadmesh
+```
+
+Then connect the SDK to any authenticated JSON-RPC transport:
+
+```js
+import { createThreadMeshClient } from "@fyaic/threadmesh";
+
+const mesh = createThreadMeshClient({
+  authorization: `Bearer ${process.env.THREADMESH_TOKEN}`,
+  send: async (request, { authorization }) => {
+    const response = await fetch(process.env.THREADMESH_URL, {
+      method: "POST",
+      headers: { authorization, "content-type": "application/json" },
+      body: JSON.stringify(request),
+    });
+    return response.json();
+  },
+});
+
+const page = await mesh.pollMailbox({ receiver: myTask });
+for (const message of page.messages) {
+  await mesh.decide({ message, decision: "accepted" });
+}
+```
+
+The public surface is intentionally small: task registration, relationship-
+scoped summary publication and discovery, bounded suggestion sending, mailbox
+polling, and receiver disposition. The SDK has no runtime package dependencies.
+See the
+[30-minute adapter guide](docs/06-guides/implement-an-adapter.md) and
+[complete example](examples/minimal-harness.mjs).
 
 ## Why ThreadMesh
 
@@ -102,6 +141,7 @@ docs/
 spec/
   schema/            Machine-readable draft schemas
 src/
+  sdk/               Minimal public harness integration API
   adapters/          Experimental harness adapters
   bindings/          Executable authenticated operation bindings
   client/            Reference clients and mock harness profiles
@@ -122,13 +162,17 @@ is closed. A real Codex Agent A has selected ThreadMesh relationship discovery
 and sent one bounded suggestion to a persisted Agent B; the coordinator
 admitted it and both exact tasks were deleted.
 
-That positive case proves feasibility, not product value or portability. The
-active mainline has only three gates:
+The first scored Codex comparison found that relevant coordination changed the
+receiver outcome from missing dependency to completed, while the irrelevant
+condition did not send or activate the receiver. This is one run per condition,
+not a statistical product claim. The active mainline has only three gates:
 
 1. compare no-contact, relevant-dependency, and irrelevant/stale real Codex
-   conditions, measuring outcome quality and receiver interference;
-2. expose a minimal installable adapter API and one short integration example;
-3. pass the same behavior on one materially different real harness.
+   conditions, measuring outcome quality and receiver interference — first
+   scored pass complete;
+2. expose a minimal installable adapter API and one short integration example —
+   active;
+3. pass the same behavior on one materially different real harness — next.
 
 Protocol expansion, hostile-worker validation, steer/interrupt, and production
 hardening are deferred until these gates pass. Independent M0 review continues

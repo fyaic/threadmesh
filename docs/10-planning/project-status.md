@@ -1,8 +1,8 @@
 # Project status
 
 > Snapshot: 2026-08-25, after the first scored behavioral gate at
-> `0dd2c828889287634dff09eb9fbc41dcdfb69b86`. The active implementation
-> workstream is now the minimal adapter kit.
+> `0dd2c828889287634dff09eb9fbc41dcdfb69b86` and the locally validated minimal
+> adapter-kit candidate. One materially different real harness is next.
 
 ## Executive summary
 
@@ -25,7 +25,8 @@ maintainer organization.
 | Area | Current evidence | Status |
 |---|---|---|
 | Research and problem framing | Codex deep dive, community signals, ecosystem comparison, ADRs | Established |
-| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 125 unit/subtests | Executable draft |
+| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 130 unit/subtests | Executable draft |
+| Minimal adapter SDK | `@fyaic/threadmesh` `0.1.0-alpha.0`; six bounded methods, 14.5 kB tarball, packed-consumer import | Candidate complete; not published to npm |
 | Local binding | Schema-validated JSON-RPC, transport-derived principals, typed errors | Executable local reference |
 | Local persistence | SQLite registry, proposals, grants, summaries, mailbox, claims, receipts, reconciliation, replay, audit, retention tombstones | Experimental |
 | Safety boundary | Authenticated authorship checks, effective-grant decisions, revocation, CAS | Executable local policy |
@@ -122,9 +123,11 @@ distinct from normative M0 evidence.
 ### Active product gates
 
 The first no-contact, relevant, and irrelevant scored Codex conditions passed at
-`0dd2c82`. The active mainline is now a minimal adapter kit and one short
-integration example, followed by one different real harness. Issue #53 remains
-open for repetitions, stale/duplicate cases, and receiver defer/reject. Issue #7
+`0dd2c82`. The minimal adapter-kit candidate now exposes one package entry point
+and a short integration example, with a real in-memory coordinator lifecycle and
+packed-consumer install/import passing locally. After that candidate merges, the
+only active product gate is one different real harness. Issue #53 remains open
+for repetitions, stale/duplicate cases, and receiver defer/reject. Issue #7
 remains parallel governance. Hostile-worker schema #48 and further production
 hardening are deferred.
 
@@ -200,6 +203,10 @@ can:
 34. let a real persisted Codex Agent A select relationship discovery and one
     bounded suggestion without harness-scripted submit, admit it to a real
     persisted Agent B, and delete both exact tasks.
+35. install the minimal SDK from its packed tarball and run registration,
+    relationship-scoped discovery, bounded suggestion, mailbox claim/decision,
+    deferral/reconsideration, and stable remote error projection through the
+    authenticated JSON-RPC binding.
 
 It does not prove general autonomous discovery across unrelated tasks, outcome
 improvement, acceptable receiver-interference cost, native provider-role
