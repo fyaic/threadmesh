@@ -304,7 +304,7 @@ function projectProactiveResult(result) {
     result.modelSelectedCommunication !== true || result.scriptedSubmitCount !== 0 ||
     result.relatedTaskCalls !== 1 || result.sendCalls !== 1 ||
     result.nonThreadMeshToolCalls !== 0 ||
-    result.aMarkerMatched !== true || result.bMarkerMatched !== true ||
+    result.aDecisionCompleted !== true || result.bMarkerMatched !== true ||
     JSON.stringify(result.aToolCalls) !== JSON.stringify([
       "threadmesh_related_tasks",
       "threadmesh_send_suggestion",
@@ -316,7 +316,7 @@ function projectProactiveResult(result) {
     relatedTaskCalls: 1,
     sendCalls: 1,
     nonThreadMeshToolCalls: 0,
-    aMarkerMatched: true,
+    aDecisionCompleted: true,
     bMarkerMatched: true,
     aToolCalls: [...result.aToolCalls],
   };

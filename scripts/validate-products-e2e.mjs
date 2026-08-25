@@ -11,9 +11,6 @@ import {
 } from "../src/validation/product-drivers.mjs";
 import { runCoordinatorProductScenario } from "../src/validation/coordinator-product-scenario.mjs";
 import {
-  PROACTIVE_A_CONTROL_MARKER,
-  PROACTIVE_A_IRRELEVANT_MARKER,
-  PROACTIVE_A_MARKER,
   PROACTIVE_B_MISSING_MARKER,
   PROACTIVE_B_MARKER,
   runProactiveCodexScenario,
@@ -191,7 +188,7 @@ export async function runFakeProactive() {
         autonomousEnv: {
           ...baseEnv,
           FAKE_CODEX_AUTONOMOUS_TOOL: "1",
-          FAKE_CODEX_AUTONOMOUS_MARKER: PROACTIVE_A_MARKER,
+          FAKE_CODEX_AUTONOMOUS_MARKER: "Agent A sent the useful dependency.",
         },
         receiverEnv: { ...baseEnv, FAKE_CODEX_EXACT_MARKER: PROACTIVE_B_MARKER },
       })),
@@ -214,18 +211,16 @@ export async function runFakeBehavior() {
       const autonomousEnv = {
         control: {
           ...baseEnv,
-          FAKE_CODEX_EXACT_MARKER: PROACTIVE_A_CONTROL_MARKER,
         },
         relevant: {
           ...baseEnv,
           FAKE_CODEX_AUTONOMOUS_TOOL: "1",
-          FAKE_CODEX_AUTONOMOUS_MARKER: PROACTIVE_A_MARKER,
+          FAKE_CODEX_AUTONOMOUS_MARKER: "Agent A sent the useful dependency.",
         },
         irrelevant: {
           ...baseEnv,
           FAKE_CODEX_AUTONOMOUS_TOOL: "1",
           FAKE_CODEX_AUTONOMOUS_SKIP_SEND: "1",
-          FAKE_CODEX_AUTONOMOUS_MARKER: PROACTIVE_A_IRRELEVANT_MARKER,
         },
       }[condition];
       conditions.push(await runProactiveCodexScenario({

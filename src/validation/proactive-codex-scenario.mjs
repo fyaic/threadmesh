@@ -4,9 +4,6 @@ import { CodexAppServerAdapter } from "../adapters/codex-app-server.mjs";
 import { SqliteCoordinator } from "../coordinator/sqlite-coordinator.mjs";
 import { codedError } from "../protocol-validator.mjs";
 
-export const PROACTIVE_A_MARKER = "THREADMESH_PROACTIVE_A_SENT";
-export const PROACTIVE_A_CONTROL_MARKER = "THREADMESH_PROACTIVE_A_CONTROL_NO_CONTACT";
-export const PROACTIVE_A_IRRELEVANT_MARKER = "THREADMESH_PROACTIVE_A_IRRELEVANT_SKIPPED";
 export const PROACTIVE_B_MARKER = "THREADMESH_PROACTIVE_B_OK";
 export const PROACTIVE_B_MISSING_MARKER = "THREADMESH_PROACTIVE_B_MISSING_CHECKSUM";
 export const PROACTIVE_RELEASE_CHECKSUM =
@@ -18,23 +15,20 @@ const PROACTIVE_B_INSTRUCTIONS =
 
 const CONDITIONS = Object.freeze({
   control: Object.freeze({
-    marker: PROACTIVE_A_CONTROL_MARKER,
     summaryHint: "Owns a downstream release manifest, but this control exposes no cross-task contact.",
-    prompt: `Complete the standalone release decision without contacting another task. Reply with exactly ${PROACTIVE_A_CONTROL_MARKER}. Do not use any tool.`,
+    prompt: "Complete the standalone release decision without contacting another task. Do not use any tool.",
     expectedTools: Object.freeze([]),
     expectedSends: 0,
   }),
   relevant: Object.freeze({
-    marker: PROACTIVE_A_MARKER,
     summaryHint: "Owns the downstream release manifest and is waiting for the verified upstream artifact checksum.",
-    prompt: `You completed the upstream artifact and verified checksum ${PROACTIVE_RELEASE_CHECKSUM}. Use the bounded relationship summary to decide whether another task needs this result. If you successfully send the useful result, reply with exactly ${PROACTIVE_A_MARKER}. Do not use shell, filesystem, web, or any non-ThreadMesh tool.`,
+    prompt: `You completed the upstream artifact and verified checksum ${PROACTIVE_RELEASE_CHECKSUM}. Use the bounded relationship summary to decide whether another task needs this result. Do not use shell, filesystem, web, or any non-ThreadMesh tool.`,
     expectedTools: Object.freeze(["threadmesh_related_tasks", "threadmesh_send_suggestion"]),
     expectedSends: 1,
   }),
   irrelevant: Object.freeze({
-    marker: PROACTIVE_A_IRRELEVANT_MARKER,
     summaryHint: "Owns typography and release-note formatting for a different announcement; no artifact inputs are requested.",
-    prompt: `You completed the upstream artifact and verified checksum ${PROACTIVE_RELEASE_CHECKSUM}. Inspect the bounded relationship summary and share the checksum only if that task needs an artifact input. If you correctly avoid an unnecessary send, reply with exactly ${PROACTIVE_A_IRRELEVANT_MARKER}. Do not use non-ThreadMesh tools.`,
+    prompt: `You completed the upstream artifact and verified checksum ${PROACTIVE_RELEASE_CHECKSUM}. Inspect the bounded relationship summary and share the checksum only if that task needs an artifact input. Do not use non-ThreadMesh tools.`,
     expectedTools: Object.freeze(["threadmesh_related_tasks"]),
     expectedSends: 0,
   }),
@@ -261,7 +255,6 @@ export async function runProactiveCodexScenario({
       throw error;
     }
     coordinator.attachTask(scenarioIds.a, aRef, 0, aPrincipal);
-    exact(aTurn, conditionConfig.marker, "threadmesh_proactive_a_marker_mismatch");
     const aToolCalls = aTurn.toolCalls.map(({ tool }) => tool);
     if (
       sendCount !== conditionConfig.expectedSends ||
@@ -286,7 +279,7 @@ export async function runProactiveCodexScenario({
         decision: "not-requested",
         outcome: "not-observed",
         adapterKind: "codex-app-server",
-        markerMatched: true,
+        markerMatched: null,
         evidenceKeys: ["kind", "snapshotDigest", "threadId", "turnId", "turnStatus"],
         adapterSnapshotDigest: aRef.snapshotDigest,
         productMetadata: {
@@ -294,7 +287,7 @@ export async function runProactiveCodexScenario({
           model: aRef.model,
           modelProvider: aRef.modelProvider,
         },
-        aMarkerMatched: true,
+        aDecisionCompleted: true,
         bMarkerMatched: false,
         bOutcome: condition === "control" ? "missing-dependency" : "not-evaluated",
         outcomeScore: condition === "control" ? 0 : null,
@@ -381,7 +374,7 @@ export async function runProactiveCodexScenario({
           model: bRef.model,
           modelProvider: bRef.modelProvider,
         },
-        aMarkerMatched: true,
+        aDecisionCompleted: true,
         bMarkerMatched: true,
         bOutcome: "completed-with-dependency",
         outcomeScore: 1,

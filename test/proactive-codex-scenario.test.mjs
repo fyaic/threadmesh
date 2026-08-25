@@ -6,9 +6,6 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 import {
-  PROACTIVE_A_CONTROL_MARKER,
-  PROACTIVE_A_IRRELEVANT_MARKER,
-  PROACTIVE_A_MARKER,
   PROACTIVE_B_MISSING_MARKER,
   PROACTIVE_B_MARKER,
   runProactiveCodexScenario,
@@ -24,18 +21,16 @@ async function runCondition(condition, runId) {
     const conditionEnv = {
       control: {
         ...baseEnv,
-        FAKE_CODEX_EXACT_MARKER: PROACTIVE_A_CONTROL_MARKER,
       },
       relevant: {
         ...baseEnv,
         FAKE_CODEX_AUTONOMOUS_TOOL: "1",
-        FAKE_CODEX_AUTONOMOUS_MARKER: PROACTIVE_A_MARKER,
+        FAKE_CODEX_AUTONOMOUS_MARKER: "Agent A sent the useful dependency.",
       },
       irrelevant: {
         ...baseEnv,
         FAKE_CODEX_AUTONOMOUS_TOOL: "1",
         FAKE_CODEX_AUTONOMOUS_SKIP_SEND: "1",
-        FAKE_CODEX_AUTONOMOUS_MARKER: PROACTIVE_A_IRRELEVANT_MARKER,
       },
     }[condition];
     return await runProactiveCodexScenario({
@@ -80,7 +75,7 @@ test("Agent A selects ThreadMesh tools before its suggestion reaches real-shaped
   assert.equal(result.receiverActivated, true);
   assert.equal(result.bOutcome, "completed-with-dependency");
   assert.equal(result.outcomeScore, 1);
-  assert.equal(result.aMarkerMatched, true);
+  assert.equal(result.aDecisionCompleted, true);
   assert.equal(result.bMarkerMatched, true);
   assert.equal(result.cleanup.complete, true);
 });
