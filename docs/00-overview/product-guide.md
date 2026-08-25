@@ -76,7 +76,7 @@ The repository is pre-alpha but executable:
 
 | Capability | Current evidence |
 |---|---|
-| Portable harness API | Zero-runtime-dependency `@fyaic/threadmesh` SDK with register, discover, suggest, poll, and decide operations |
+| Portable harness API | Zero-runtime-dependency `@fyaic/threadmesh` SDK with register, discover, suggest, poll, decide, and a per-turn proactive tool bridge |
 | Reference control plane | Authenticated JSON-RPC binding and SQLite coordinator with grants, mailbox, claims, receipts, replay defense, and audit |
 | Deterministic demo | Control, relevant, and irrelevant A-to-B conditions run through the complete coordinator path |
 | Codex App Server | The bounded two-stage proactive policy passed relevant 3/3 plus quiet control and irrelevant checks; it remains explicit opt-in |

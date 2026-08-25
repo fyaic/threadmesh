@@ -29,7 +29,7 @@ ThreadMesh 并不赋予 agent 任意修改其他 session 的权力。它提供�
 
 ## 当前进度
 
-- 135 项 unit/subtest、14 个 schema 和状态转换测试通过。
+- 142 项 unit/subtest、14 个 schema 和状态转换测试通过。
 - control / relevant / irrelevant 的确定性 A→B 演示通过完整 coordinator 路径。
 - Codex 真实主动 A→B 曾把接收方结果从缺少依赖提升到完成，但重复可靠性不足，
   因此 proactive 默认关闭。

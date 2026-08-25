@@ -38,8 +38,8 @@ MCP 主要给 Agent 提供工具；workflow engine 调度预先知道的步骤�
 
 ## 当前能做什么
 
-- 最小 SDK 已提供 task 注册、关系摘要发现、suggestion 发送、mailbox polling 和
-  receiver disposition。
+- 最小 SDK 已提供 task 注册、关系摘要发现、suggestion 发送、mailbox polling、
+  receiver disposition，以及每模型 turn 独立的 proactive tool bridge。
 - SQLite coordinator 与 authenticated JSON-RPC reference 已可执行。
 - control / relevant / irrelevant 三条件的确定性端到端演示已通过。
 - Codex 的两阶段主动策略已经通过 relevant 3/3，并在 control 和 irrelevant 中保持

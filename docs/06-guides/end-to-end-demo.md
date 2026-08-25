@@ -130,8 +130,10 @@ for (const message of page.messages) {
 ```
 
 See [`examples/minimal-harness.mjs`](../../examples/minimal-harness.mjs) for the
-complete transport example and [implement an adapter](implement-an-adapter.md)
-for the integration contract.
+complete transport example,
+[`examples/proactive-tool-bridge.mjs`](../../examples/proactive-tool-bridge.mjs)
+for native tool wiring, and [implement an adapter](implement-an-adapter.md) for
+the integration contract.
 
 ## Real-product evidence
 

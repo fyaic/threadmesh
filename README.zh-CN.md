@@ -91,11 +91,19 @@ npm install github:fyaic/threadmesh
 ```
 
 ```js
-import { createThreadMeshClient } from "@fyaic/threadmesh";
+import {
+  createProactiveToolBridge,
+  createThreadMeshClient,
+} from "@fyaic/threadmesh";
 ```
 
+基础 client 提供注册、发现、发送和 mailbox 决策；`createProactiveToolBridge`
+把宿主明确配置的关系转换成单个模型 turn 可用的两个受限工具。默认每 turn 只允许
+一次发现和一次发送，并且仍由接收方 harness 决定是否把消息放进模型上下文。
+
 30 分钟接入路径见 [adapter guide](docs/06-guides/implement-an-adapter.md)，完整
-HTTP transport 示例见 [minimal-harness.mjs](examples/minimal-harness.mjs)。
+HTTP transport 示例见 [minimal-harness.mjs](examples/minimal-harness.mjs)，主动工具
+接线见 [proactive-tool-bridge.mjs](examples/proactive-tool-bridge.mjs)。
 
 ThreadMesh 关注一种具体能力：Agent A 在执行过程中发现 Agent B 的任务与自己的目标存在依赖，于是主动发起通知、建议、纠偏或停止请求。
 

@@ -7,7 +7,9 @@ import {
 } from "../src/bindings/jsonrpc.mjs";
 import { SqliteCoordinator } from "../src/coordinator/sqlite-coordinator.mjs";
 import {
+  createProactiveToolBridge,
   createThreadMeshClient,
+  THREADMESH_PROACTIVE_TOOL_NAMES,
   ThreadMeshClientError,
 } from "../src/sdk/index.mjs";
 
@@ -216,6 +218,77 @@ test("minimal SDK fails closed on invalid bounds and preserves stable remote cod
         return true;
       },
     );
+  } finally {
+    api.coordinator.close();
+  }
+});
+
+test("proactive bridge and receiver SDK complete the authenticated mailbox path", async () => {
+  const api = createFixture();
+  try {
+    await api.owner.registerTask({ ...SOURCE, state: "running" });
+    await api.owner.registerTask({ ...TARGET, state: "waiting" });
+    installRelationship(api.binding);
+    await api.target.publishSummary({
+      specVersion: "0.0-draft",
+      summaryId: "sum_sdk_bridge01",
+      summaryVersion: 1,
+      task: TARGET,
+      projection: {
+        relationshipId: RELATIONSHIP_ID,
+        grantId: "grant_sdk_dependency01",
+        grantVersion: 1,
+        summaryVisibility: "coordination",
+      },
+      state: "waiting",
+      blockerHint: "Waiting for the verified upstream artifact checksum.",
+      coordination: {
+        intents: ["suggest"],
+        deliveryModes: ["checkpoint-offer"],
+      },
+      sensitivity: "relationship-scoped",
+      audience: {
+        visibility: "relationship-scoped",
+        relationshipIds: [RELATIONSHIP_ID],
+      },
+      updatedAt: "2026-08-25T03:00:00Z",
+    });
+
+    const bridge = createProactiveToolBridge({
+      client: api.source,
+      source: SOURCE,
+      relationships: [{ relationshipId: RELATIONSHIP_ID, target: TARGET }],
+      createMessageId: () => "msg_sdk_bridge_dependency01",
+    });
+    const discovered = await bridge.handleToolCall({
+      tool: THREADMESH_PROACTIVE_TOOL_NAMES.discover,
+      arguments: {},
+    });
+    assert.equal(discovered.tasks[0].summaryId, "sum_sdk_bridge01");
+    const sent = await bridge.handleToolCall({
+      tool: THREADMESH_PROACTIVE_TOOL_NAMES.suggest,
+      arguments: {
+        targetTaskId: TARGET.taskId,
+        content: "The verified upstream checksum is sha256:bridge123.",
+        reason: "The receiver declared this artifact as a dependency.",
+      },
+    });
+    assert.equal(sent.sent, true);
+
+    const page = await api.target.pollMailbox({ receiver: TARGET });
+    assert.equal(page.messages.length, 1);
+    assert.equal(page.messages[0].envelope.messageId, "msg_sdk_bridge_dependency01");
+    const decided = await api.target.decide({
+      message: page.messages[0],
+      decision: "accepted",
+    });
+    assert.equal(decided.disposition.decision, "accepted");
+    assert.deepEqual(bridge.usage(), {
+      discoveryCalls: 1,
+      sendCalls: 1,
+      discoveryCompleted: true,
+      sentTaskIds: [TARGET.taskId],
+    });
   } finally {
     api.coordinator.close();
   }

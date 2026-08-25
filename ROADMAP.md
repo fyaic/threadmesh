@@ -80,22 +80,36 @@ Exit: the same scenario runs across at least two different harness families.
 - [x] Privacy-preserving task summaries.
 - [x] Bounded model-selected relationship lookup and send experiment.
 - [x] First no-contact and irrelevant control conditions.
-- [ ] Receiver decision and interference-cost budget.
-- [ ] Evaluation suite for useful versus harmful coordination.
+- [x] Receiver decision and interference-cost budget.
+- [x] Evaluation suite for useful versus harmful coordination.
 
-The first three-run repetition matrix keeps proactive coordination default-off:
-control was quiet 3/3, but relevant coordination completed only 1/3 because of
-one operation timeout and one bootstrap marker mismatch. The next M3 slice is a
-shorter reliability benchmark, not more protocol surface.
+The initial repetition matrix rejected default enablement. The shorter
+outcome-bearing benchmark and two-stage policy subsequently passed relevant
+3/3, while fresh control used no tool and fresh irrelevant performed one
+read-only lookup without sending or activating B. A real Codex-to-Kimi case
+then passed with exact cleanup. The bounded profile is therefore eligible for
+explicit experimental opt-in, while repository-wide default enablement remains
+off during pre-alpha.
 
 Exit: proactive coordination improves task outcomes in a benchmark without exceeding the defined interference budget.
 
-## M4 — Interoperability proposal
+## M4 — Reusable harness integration kit
+
+- [x] Export a transport-agnostic proactive tool bridge from the package.
+- [x] Bound relationship discovery and suggestion budgets per model turn.
+- [x] Publish a runnable sender-plus-receiver harness example.
+- [x] Verify the packed package from an external consumer project.
+- [ ] Collect the first independent harness-integration feedback.
+
+Exit: a harness can add bounded proactive discovery and suggestion without
+importing coordinator, adapter, or validation internals.
+
+## M5 — Interoperability proposal
 
 - [ ] Map ThreadMesh envelopes to relevant A2A concepts.
-- [ ] Define MCP exposure for local harness tools.
+- [ ] Define optional MCP exposure for local harness tools.
 - [ ] Publish version negotiation and extension rules.
-- [ ] Collect adapter implementation feedback.
+- [ ] Collect adapter implementation feedback across multiple harness families.
 
 Exit: the protocol is ready for a versioned `0.1` release candidate.
 
