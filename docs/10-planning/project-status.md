@@ -1,7 +1,7 @@
 # Project status
 
-> Snapshot: 2026-08-25, after the compressed Codex behavior flow and timeout
-> cleanup fixes at `edcc18f5f98cb5d019e3b7ee35d8047b96e95d99`.
+> Snapshot: 2026-08-25, after the outcome-based Codex Agent A gate at
+> `9a6381aec1742cf2a26b5240c37e01687ff2ec43`.
 
 ## Executive summary
 
@@ -37,7 +37,7 @@ maintainer organization.
 | Codex proactive A-to-B | A selected related-task discovery and one bounded send; B consumed admitted context; both tasks deleted at `248d650` | Real maintainer-experimental positive-case pass |
 | Codex scored behavior gate | Control score 0; relevant score 1 with one send; irrelevant performed one lookup and no send; all tasks deleted at `0dd2c82` | First real outcome/interference pass |
 | Codex repetition matrix | Control 3/3; relevant 1/3; irrelevant 2/3 with one inconclusive marker failure; exact leaked bootstrap thread manually removed and cleanup regression merged in #64 | Default enablement rejected |
-| Compressed Codex behavior flow | One fewer model turn per condition; real control and irrelevant passed; latest relevant run avoided timeout and cleaned A/B but failed strict A marker | Reliability still below enablement threshold |
+| Compressed Codex behavior flow | One fewer model turn per condition; A scored by exact tool/send effects; fresh relevant sample 2/3; all A/B cleanup complete | Opt-in evidence improved; reliability still below 3/3 threshold |
 | Gemini CLI headless | Official package 0.56.0 integrity, required flags, isolated-home cleanup | Real no-model preflight passed |
 | Gemini live model behavior | Exact marker script requires explicit provider key | Not authorized, not run |
 | Multi-product admission | One mailbox/acceptance/claim/evidence path across ACP, Codex, and Gemini fakes | Merged experimental implementation |
@@ -128,9 +128,11 @@ repetitions subsequently rejected default enablement because the relevant path
 passed only 1/3. The shorter reliability benchmark is now merged: it combines
 A creation and autonomous decision into one turn and uses B's missing-dependency
 result as the bootstrap baseline. Real control and irrelevant conditions pass;
-the latest relevant run completed without timeout and cleaned both tasks but
-failed its strict A marker. Issue #53 therefore remains focused on real-model
-reliability rather than new protocol or scenario surface. Issue #7 remains
+the redundant A text marker has been replaced by actual tool/send evidence. A
+fresh relevant sample passed 2/3 with complete cleanup in all three runs; the
+remaining failure was a missing model tool decision. Issue #53 therefore
+remains focused on real-model decision reliability rather than new protocol or
+scenario surface. Issue #7 remains
 parallel governance. Hostile-worker schema #48, optional Gemini live
 validation, and further production hardening are deferred.
 

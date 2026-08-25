@@ -111,9 +111,11 @@ model evidence:
 - Codex App Server has produced a successful relevant A-to-B run in which A
   selected both ThreadMesh tools, B accepted the context, and the outcome score
   changed from 0 to 1.
-- Repetitions were not reliable enough for default enablement. On the latest
-  compressed flow at `edcc18f`, the relevant run completed without timeout and
-  deleted both tasks, but failed the strict A marker check.
+- Repetitions were not reliable enough for default enablement. The current
+  outcome-based gate scores A by the exact ThreadMesh tool sequence and actual
+  coordinator send rather than its final prose. On `9a6381a`, two of three real
+  relevant runs passed; the remaining run failed the model tool-decision gate.
+  All three runs deleted both tasks.
 - Kimi Code `0.38.0` completed a real receiver-accepted suggestion through the
   same coordinator and verified session absence after deletion.
 
