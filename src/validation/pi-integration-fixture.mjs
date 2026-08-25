@@ -16,6 +16,7 @@ const SUMMARY_HINTS = Object.freeze({
   relevant: "Waiting for the verified upstream artifact checksum.",
   irrelevant: "Owns release-note typography; no artifact input is requested.",
   control: "Standalone task; cross-task input is not requested.",
+  "cross-harness": "Waiting for the upstream release input needed to finish the manifest.",
 });
 
 function token() {
@@ -173,7 +174,7 @@ export async function createPiIntegrationFixture({
     await owner.registerTask({ ...source, state: "running" });
     await owner.registerTask({
       ...target,
-      state: condition === "relevant" ? "waiting" : "running",
+      state: ["relevant", "cross-harness"].includes(condition) ? "waiting" : "running",
       ...(targetAdapterRef ? { adapterRef: targetAdapterRef } : {}),
     });
     const grantResponse = binding.handle({
@@ -212,7 +213,7 @@ export async function createPiIntegrationFixture({
         grantVersion: 1,
         summaryVisibility: "coordination",
       },
-      state: condition === "relevant" ? "waiting" : "running",
+      state: ["relevant", "cross-harness"].includes(condition) ? "waiting" : "running",
       blockerHint: SUMMARY_HINTS[condition],
       coordination: {
         intents: ["suggest"],
