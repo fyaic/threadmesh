@@ -687,6 +687,7 @@ export class CodexAppServerAdapter {
     env = {},
     marker,
     adapterIdempotencyKey,
+    developerInstructions = null,
     model = null,
     timeoutMs = 120_000,
   }) {
@@ -701,7 +702,7 @@ export class CodexAppServerAdapter {
       const initialization = await this.#initialize(peer);
       const started = await peer.request(
         "thread/start",
-        threadStartParams(cwd, { ephemeral: false, model }),
+        threadStartParams(cwd, { ephemeral: false, model, developerInstructions }),
       );
       const adapterRef = projectThread(started, initialization);
       try {

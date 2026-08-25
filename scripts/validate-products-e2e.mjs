@@ -16,6 +16,7 @@ import {
   PROACTIVE_A_IRRELEVANT_MARKER,
   PROACTIVE_A_MARKER,
   PROACTIVE_B_BOOTSTRAP_MARKER,
+  PROACTIVE_B_MISSING_MARKER,
   PROACTIVE_B_MARKER,
   runProactiveCodexScenario,
 } from "../src/validation/proactive-codex-scenario.mjs";
@@ -237,7 +238,12 @@ export async function runFakeBehavior() {
         condition,
         runId: `behavior_${condition}`,
         env: baseEnv,
-        bootstrapEnv: { ...baseEnv, FAKE_CODEX_EXACT_MARKER: PROACTIVE_B_BOOTSTRAP_MARKER },
+        bootstrapEnv: {
+          ...baseEnv,
+          FAKE_CODEX_EXACT_MARKER: condition === "control"
+            ? PROACTIVE_B_MISSING_MARKER
+            : PROACTIVE_B_BOOTSTRAP_MARKER,
+        },
         aBootstrapEnv: { ...baseEnv, FAKE_CODEX_EXACT_MARKER: PROACTIVE_A_BOOTSTRAP_MARKER },
         autonomousEnv,
         receiverEnv: { ...baseEnv, FAKE_CODEX_EXACT_MARKER: PROACTIVE_B_MARKER },

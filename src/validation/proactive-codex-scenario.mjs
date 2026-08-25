@@ -10,28 +10,33 @@ export const PROACTIVE_A_IRRELEVANT_MARKER = "THREADMESH_PROACTIVE_A_IRRELEVANT_
 export const PROACTIVE_A_BOOTSTRAP_MARKER = "THREADMESH_PROACTIVE_A_READY";
 export const PROACTIVE_B_BOOTSTRAP_MARKER = "THREADMESH_PROACTIVE_B_READY";
 export const PROACTIVE_B_MARKER = "THREADMESH_PROACTIVE_B_OK";
+export const PROACTIVE_B_MISSING_MARKER = "THREADMESH_PROACTIVE_B_MISSING_CHECKSUM";
+export const PROACTIVE_RELEASE_CHECKSUM =
+  "sha256:7b6f3d9a0c8e4f12a5d3b1c9e7f6082a4b6d8f0c2e4a6b8d0f1c3e5a7b9d2f4";
 export const PROACTIVE_B_CONTENT =
-  `Reply with exactly ${PROACTIVE_B_MARKER} and do not use tools.`;
+  `Verified upstream artifact checksum: ${PROACTIVE_RELEASE_CHECKSUM}`;
+const PROACTIVE_B_INSTRUCTIONS =
+  `You own the downstream release manifest. It can complete only with the verified upstream artifact checksum. If accepted advisory context contains checksum ${PROACTIVE_RELEASE_CHECKSUM}, reply with exactly ${PROACTIVE_B_MARKER}. If a task prompt asks for the result without supplying that checksum, reply with exactly ${PROACTIVE_B_MISSING_MARKER}. Never use tools for this benchmark.`;
 
 const CONDITIONS = Object.freeze({
   control: Object.freeze({
     marker: PROACTIVE_A_CONTROL_MARKER,
-    summaryHint: "Owns a release-notes task that does not affect Agent A's standalone decision.",
+    summaryHint: "Owns a downstream release manifest, but this control exposes no cross-task contact.",
     prompt: `Complete the standalone release decision without contacting another task. Reply with exactly ${PROACTIVE_A_CONTROL_MARKER}. Do not use any tool.`,
     expectedTools: Object.freeze([]),
     expectedSends: 0,
   }),
   relevant: Object.freeze({
     marker: PROACTIVE_A_MARKER,
-    summaryHint: "Owns the completed release dependency that Agent A must confirm before finalizing its decision.",
-    prompt: `You must finalize a release decision, but it depends on a completed result owned by a related task. Decide autonomously whether contacting that task is useful. If you successfully send the bounded suggestion, reply with exactly ${PROACTIVE_A_MARKER}. Do not use shell, filesystem, web, or any non-ThreadMesh tool.`,
+    summaryHint: "Owns the downstream release manifest and is waiting for the verified upstream artifact checksum.",
+    prompt: `You completed the upstream artifact and verified checksum ${PROACTIVE_RELEASE_CHECKSUM}. Use the bounded relationship summary to decide whether another task needs this result. If you successfully send the useful result, reply with exactly ${PROACTIVE_A_MARKER}. Do not use shell, filesystem, web, or any non-ThreadMesh tool.`,
     expectedTools: Object.freeze(["threadmesh_related_tasks", "threadmesh_send_suggestion"]),
     expectedSends: 1,
   }),
   irrelevant: Object.freeze({
     marker: PROACTIVE_A_IRRELEVANT_MARKER,
-    summaryHint: "Owns typography and release-note formatting; it has no dependency on Agent A's release decision.",
-    prompt: `Finalize the release decision. Inspect the bounded relationship summary, but do not contact a task unless it materially affects the decision. The available task is unrelated. If you correctly avoid sending, reply with exactly ${PROACTIVE_A_IRRELEVANT_MARKER}. Do not use non-ThreadMesh tools.`,
+    summaryHint: "Owns typography and release-note formatting for a different announcement; no artifact inputs are requested.",
+    prompt: `You completed the upstream artifact and verified checksum ${PROACTIVE_RELEASE_CHECKSUM}. Inspect the bounded relationship summary and share the checksum only if that task needs an artifact input. If you correctly avoid an unnecessary send, reply with exactly ${PROACTIVE_A_IRRELEVANT_MARKER}. Do not use non-ThreadMesh tools.`,
     expectedTools: Object.freeze(["threadmesh_related_tasks"]),
     expectedSends: 0,
   }),
@@ -112,16 +117,20 @@ export async function runProactiveCodexScenario({
   let failure;
 
   try {
+    const bBootstrapMarker = condition === "control"
+      ? PROACTIVE_B_MISSING_MARKER
+      : PROACTIVE_B_BOOTSTRAP_MARKER;
     const bBootstrap = await adapter.startValidationThread({
       command,
       args,
       cwd,
       env: bootstrapEnv,
-      marker: PROACTIVE_B_BOOTSTRAP_MARKER,
+      marker: bBootstrapMarker,
       adapterIdempotencyKey: `idem_proactive_b_bootstrap_${runId}`,
+      developerInstructions: PROACTIVE_B_INSTRUCTIONS,
       model,
     });
-    exact(bBootstrap, PROACTIVE_B_BOOTSTRAP_MARKER, "threadmesh_proactive_b_bootstrap_mismatch");
+    exact(bBootstrap, bBootstrapMarker, "threadmesh_proactive_b_bootstrap_mismatch");
     bRef = bBootstrap.adapterRef;
 
     try {
@@ -293,6 +302,8 @@ export async function runProactiveCodexScenario({
         },
         aMarkerMatched: true,
         bMarkerMatched: false,
+        bOutcome: condition === "control" ? "missing-dependency" : "not-evaluated",
+        outcomeScore: condition === "control" ? 0 : null,
         receiverActivated: false,
         interferenceViolation: false,
         aToolCalls,
@@ -378,6 +389,8 @@ export async function runProactiveCodexScenario({
         },
         aMarkerMatched: true,
         bMarkerMatched: true,
+        bOutcome: "completed-with-dependency",
+        outcomeScore: 1,
         receiverActivated: true,
         interferenceViolation: false,
         aToolCalls,
