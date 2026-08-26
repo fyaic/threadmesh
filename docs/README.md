@@ -6,14 +6,14 @@ evidence. New readers do not need to read every numbered directory in order.
 ## Start here
 
 1. [What ThreadMesh is](00-overview/product-guide.md)
-2. [Run the end-to-end A-to-B demo](06-guides/end-to-end-demo.md)
-3. [Current project status](10-planning/project-status.md)
-4. [Vision](00-overview/vision.md) and [scope](00-overview/scope.md)
-5. [Context sovereignty](01-concepts/context-sovereignty.md)
-6. [Reference architecture](02-architecture/reference-architecture.md)
-7. [Protocol overview](03-protocol/README.md)
-8. [Threat model](04-safety/threat-model.md)
-9. [Adapter contract](05-adapters/adapter-contract.md)
+2. [See the real proactive-agent cases](06-guides/real-world-cases.md)
+3. [Run the end-to-end A-to-B demo](06-guides/end-to-end-demo.md)
+4. [Check harness support](00-overview/harness-support.md)
+5. [Current project status](10-planning/project-status.md)
+6. [Context sovereignty](01-concepts/context-sovereignty.md)
+7. [Reference architecture](02-architecture/reference-architecture.md)
+8. [Protocol overview](03-protocol/README.md)
+9. [Threat model](04-safety/threat-model.md)
 10. [30-minute adapter guide](06-guides/implement-an-adapter.md)
 
 ## Choose a path
@@ -21,8 +21,9 @@ evidence. New readers do not need to read every numbered directory in order.
 | Goal | Read or run |
 |---|---|
 | Understand the product | [Product guide](00-overview/product-guide.md) → [proactive coordination](01-concepts/proactive-coordination.md) |
-| See it work | [End-to-end demo](06-guides/end-to-end-demo.md) → [Pi-to-Kimi demo](06-guides/pi-to-kimi-demo.md) → [Codex-to-Kimi case](09-reviews/2026-08-25-codex-to-kimi-proactive.md) |
-| Integrate a harness | [Adapter guide](06-guides/implement-an-adapter.md) → [adapter contract](05-adapters/adapter-contract.md) → [mock conformance](06-guides/mock-harness-conformance.md) |
+| See the intelligence effect | [Real case portfolio](06-guides/real-world-cases.md) → [Pi-to-Kimi demo](06-guides/pi-to-kimi-demo.md) |
+| Run it locally | [End-to-end demo](06-guides/end-to-end-demo.md) → [cross-harness conformance](06-guides/multi-product-admission-conformance.md) |
+| Integrate a harness | [Harness matrix](00-overview/harness-support.md) → [adapter guide](06-guides/implement-an-adapter.md) → [adapter contract](05-adapters/adapter-contract.md) |
 | Evaluate safety | [Context sovereignty](01-concepts/context-sovereignty.md) → [permission model](04-safety/permission-model.md) → [threat model](04-safety/threat-model.md) |
 | Inspect real evidence | [Design reviews](09-reviews/README.md) → [Pi integration record](09-reviews/2026-08-25-pi-integration-kit-validation.md) → [Codex-to-Kimi case](09-reviews/2026-08-25-codex-to-kimi-proactive.md) |
 | Contribute to the protocol | [Protocol overview](03-protocol/README.md) → [ADRs](08-decisions/README.md) → [mainline plan](10-planning/mainline-plan.md) |
@@ -45,6 +46,20 @@ evidence. New readers do not need to read every numbered directory in order.
 | `zh-CN` | Chinese orientation documents | No; English is canonical |
 
 Machine-readable schemas live under [`spec/schema`](../spec/schema).
+
+## Evidence versus aspiration
+
+The repository uses four evidence labels consistently:
+
+- **real model pass**: a pinned agent product completed the bounded scenario;
+- **deterministic conformance**: the same contract passed with scripted fakes;
+- **no-model preflight**: a real binary and protocol surface were probed without
+  starting a model turn;
+- **adapter target**: a plausible future integration with no compatibility
+  claim yet.
+
+See the [harness support matrix](00-overview/harness-support.md) before treating
+any product name as a tested integration.
 
 ## Research dossiers
 

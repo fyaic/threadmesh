@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="420" viewBox="0 0 1200 420" role="img" aria-labelledby="title desc">
+  <title id="title">ThreadMesh — selective initiative between agent sessions</title>
+  <desc id="desc">Agent A discovers an authorized dependency, ThreadMesh applies policy and consent, and Agent B receives a bounded suggestion.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1220"/>
+      <stop offset="0.55" stop-color="#111c32"/>
+      <stop offset="1" stop-color="#17223b"/>
+    </linearGradient>
+    <linearGradient id="line" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#69d2ff"/>
+      <stop offset="0.5" stop-color="#a78bfa"/>
+      <stop offset="1" stop-color="#ff8a65"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="1200" height="420" rx="28" fill="url(#bg)"/>
+  <path d="M0 330 C190 270 265 410 465 335 S790 265 1200 340" fill="none" stroke="#273655" stroke-width="2" opacity="0.65"/>
+  <path d="M0 365 C215 300 355 430 570 350 S920 300 1200 375" fill="none" stroke="#202d48" stroke-width="2"/>
+
+  <g transform="translate(70 60)">
+    <text x="0" y="52" fill="#f8fafc" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="58" font-weight="750" letter-spacing="-1.5">ThreadMesh</text>
+    <text x="2" y="91" fill="#aebbd1" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="21">Selective initiative between agent sessions.</text>
+    <text x="2" y="123" fill="#7f90aa" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="17">Discover a dependency · suggest once · preserve receiver control</text>
+  </g>
+
+  <g transform="translate(80 240)">
+    <rect width="218" height="108" rx="18" fill="#101b2f" stroke="#3a86a7" stroke-width="1.5"/>
+    <circle cx="38" cy="38" r="13" fill="#69d2ff" filter="url(#glow)"/>
+    <text x="65" y="44" fill="#eff8ff" font-family="ui-sans-serif, system-ui, sans-serif" font-size="20" font-weight="650">Agent A</text>
+    <text x="24" y="78" fill="#8fa5bf" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15">notices a dependency</text>
+  </g>
+
+  <g transform="translate(491 240)">
+    <rect width="218" height="108" rx="18" fill="#151a32" stroke="#7568b5" stroke-width="1.5"/>
+    <path d="M32 27 l12 7 v14 l-12 7 -12-7 v-14 z" fill="none" stroke="#a78bfa" stroke-width="3" filter="url(#glow)"/>
+    <text x="65" y="44" fill="#f5f3ff" font-family="ui-sans-serif, system-ui, sans-serif" font-size="20" font-weight="650">ThreadMesh</text>
+    <text x="24" y="78" fill="#a49bbc" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15">policy · mailbox · audit</text>
+  </g>
+
+  <g transform="translate(902 240)">
+    <rect width="218" height="108" rx="18" fill="#21192a" stroke="#a85f51" stroke-width="1.5"/>
+    <circle cx="38" cy="38" r="13" fill="#ff8a65" filter="url(#glow)"/>
+    <text x="65" y="44" fill="#fff5f2" font-family="ui-sans-serif, system-ui, sans-serif" font-size="20" font-weight="650">Agent B</text>
+    <text x="24" y="78" fill="#c1a39c" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15">accepts, defers, or rejects</text>
+  </g>
+
+  <g fill="none" stroke="url(#line)" stroke-width="3" stroke-linecap="round">
+    <path d="M310 294 H465"/>
+    <path d="M721 294 H876"/>
+  </g>
+  <g fill="#d7e5f3">
+    <path d="M465 294 l-12-7 v14 z"/>
+    <path d="M876 294 l-12-7 v14 z"/>
+  </g>
+  <text x="338" y="280" fill="#8fb5ca" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" letter-spacing="0.5">DISCOVER + SUGGEST</text>
+  <text x="758" y="280" fill="#b49dac" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" letter-spacing="0.5">CONSENT BOUNDARY</text>
+</svg>

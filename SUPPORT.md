@@ -2,7 +2,8 @@
 
 ThreadMesh is an early design project, not a supported production service.
 
-- Use GitHub Discussions for design questions once enabled.
+- Use [GitHub Discussions](https://github.com/fyaic/threadmesh/discussions) for
+  design questions, integration help, and early adapter exploration.
 - Use issues for reproducible documentation defects, protocol ambiguities, and feature proposals.
 - Use private vulnerability reporting for security-sensitive findings.
 

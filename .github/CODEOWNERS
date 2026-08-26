@@ -1,0 +1,8 @@
+# Default ownership. Product-specific adapters should gain named maintainers
+# before they are described as production-supported.
+* @veil-chow-fyaic
+
+/spec/ @veil-chow-fyaic
+/docs/03-protocol/ @veil-chow-fyaic
+/docs/04-safety/ @veil-chow-fyaic
+/src/adapters/ @veil-chow-fyaic
