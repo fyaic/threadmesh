@@ -6,6 +6,12 @@ All notable changes will be documented here. The project follows Keep a Changelo
 
 ### Added
 
+- Public harness integration kit with a per-turn proactive tool bridge, packed
+  consumer validation, and a complete sender/receiver example.
+- Real Pi-to-Kimi and Codex-to-Kimi proactive coordination cases with bounded
+  relevant, irrelevant, and control evidence.
+- Public harness support matrix, real-agent case portfolio, and bilingual
+  product-oriented repository landing pages.
 - Initial project vision and documentation architecture.
 - Draft coordination intent model.
 - Draft message envelope and capability schemas.
@@ -30,6 +36,8 @@ All notable changes will be documented here. The project follows Keep a Changelo
 
 ### Changed
 
+- Documentation navigation now separates real model passes, deterministic
+  conformance, no-model preflight, and unvalidated adapter targets.
 - Project status advanced from documentation-only research to a reviewed
   pre-alpha experimental runtime; production and interoperability claims remain
   explicitly out of scope.

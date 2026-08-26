@@ -8,14 +8,15 @@ ThreadMesh 是一个面向多种 agent harness 的安全主动协调层。它让
 ## 推荐阅读
 
 1. [ThreadMesh 是什么](product-guide.md)
-2. [端到端 A→B 案例](../06-guides/end-to-end-demo.md)
-3. [真实 Pi→Kimi 案例](../06-guides/pi-to-kimi-demo.md)
-4. [愿景](vision.md)
-5. [安全模型](safety-model.md)
-6. [Codex 主动跨任务协调调研摘要](research-summary.md)
-7. [当前项目状态](../10-planning/project-status.md)
-8. [英文文档总览](../README.md)
-9. [英文协议草案](../03-protocol/README.md)
+2. [真实 Agent 主动协调案例总览](../06-guides/real-world-cases.md)
+3. [端到端 A→B 案例](../06-guides/end-to-end-demo.md)
+4. [Harness 支持与证据矩阵](../00-overview/harness-support.md)
+5. [真实 Pi→Kimi 案例](../06-guides/pi-to-kimi-demo.md)
+6. [愿景](vision.md)
+7. [安全模型](safety-model.md)
+8. [Codex 主动跨任务协调调研摘要](research-summary.md)
+9. [当前项目状态](../10-planning/project-status.md)
+10. [英文文档总览](../README.md)
 
 ## 一句话理解
 
@@ -27,6 +28,21 @@ ThreadMesh 并不赋予 agent 任意修改其他 session 的权力。它提供�
 ```
 
 项目首先关注单一用户或团队内部、多种本地 harness 之间的协作。跨用户、开放网络发现和 agent 市场不在初始范围内。
+
+## 真正想实现的“智能”
+
+ThreadMesh 并不把“跨 session 发一条消息”本身称为智能。目标是让 Agent A 在
+关系与预算边界内完成判断：
+
+```text
+相关依赖    → 主动发现 → 发送一次 → B 自己决定是否接收
+无关任务    → 只读发现 → 保持安静 → 不激活 B
+没有需求    → 零调用                 → 零干扰
+```
+
+Pi→Kimi 与 Codex→Kimi 的真实案例已经观察到 relevant 条件下的模型主动工具
+选择；Pi 评估还验证了 irrelevant 和 control 的安静行为。完整证据见
+[真实案例总览](../06-guides/real-world-cases.md)。
 
 ## 当前进度
 
@@ -45,3 +61,11 @@ ThreadMesh 并不赋予 agent 任意修改其他 session 的权力。它提供�
 - M1、M2 milestone 已关闭；最小可安装集成路径和真实 Pi→Kimi 技术验证已完成。
   下一步是独立 harness 作者反馈，而不是扩张协议表面。
 - M0 的规范修复已完成，仍等待两份独立外部 review。
+
+## 接入自己的 harness
+
+如果 harness 能注册 native tools，最短路径是把公开 SDK 的
+`createProactiveToolBridge` 生成的两个工具交给模型；如果 harness 只暴露持久
+session 或 subprocess，则在 checkpoint 侧实现 receiver adapter。先看
+[兼容矩阵](../00-overview/harness-support.md)，再按
+[30 分钟 adapter 指南](../06-guides/implement-an-adapter.md)接入。

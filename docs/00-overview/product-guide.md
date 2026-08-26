@@ -82,6 +82,7 @@ The repository is pre-alpha but executable:
 | Codex App Server | The bounded two-stage proactive policy passed relevant 3/3 plus quiet control and irrelevant checks; it remains explicit opt-in |
 | Kimi Code ACP | A real accepted suggestion completed through the shared coordinator path with session cleanup verified |
 | Cross-harness proactive case | Real Codex A discovered and sent once; persistent Kimi Code B accepted and completed, with both resources cleaned |
+| Public integration-kit case | Real Pi A imported only the packed SDK, selected relevant contact, stayed quiet for irrelevant/control, and reached real Kimi B |
 | Gemini CLI | Adapter and no-model preflight exist; live provider execution has not been authorized |
 
 This proves an integration shape and a bounded experimental capability. It does
@@ -91,7 +92,9 @@ safe handling of arbitrary untrusted peer prompts.
 ## Fastest way to understand the project
 
 1. Run the [end-to-end demonstration](../06-guides/end-to-end-demo.md).
-2. Read [context sovereignty](../01-concepts/context-sovereignty.md).
-3. Follow the [30-minute adapter guide](../06-guides/implement-an-adapter.md).
-4. Check [current project status](../10-planning/project-status.md) before using
+2. Read the [real agent case portfolio](../06-guides/real-world-cases.md).
+3. Check the [harness support matrix](harness-support.md).
+4. Read [context sovereignty](../01-concepts/context-sovereignty.md).
+5. Follow the [30-minute adapter guide](../06-guides/implement-an-adapter.md).
+6. Check [current project status](../10-planning/project-status.md) before using
    experimental adapters.

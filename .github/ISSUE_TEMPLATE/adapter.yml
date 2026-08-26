@@ -1,0 +1,53 @@
+name: Harness adapter request
+description: Propose or report evidence for a new agent harness integration.
+title: "[Adapter]: "
+labels: [adapter, proposal, triage]
+body:
+  - type: input
+    id: harness
+    attributes:
+      label: Harness and version
+      placeholder: Product name, public version, and protocol/API surface
+    validations:
+      required: true
+  - type: dropdown
+    id: integration
+    attributes:
+      label: Proposed integration depth
+      options:
+        - Native task/session API
+        - Native model tools
+        - ACP session adapter
+        - Subprocess adapter
+        - Cooperative agent loop
+        - MCP tool adapter
+    validations:
+      required: true
+  - type: textarea
+    id: lifecycle
+    attributes:
+      label: Task lifecycle and receiver checkpoint
+      description: How will the adapter bind a task incarnation, receive a mailbox item, and decide admission?
+    validations:
+      required: true
+  - type: textarea
+    id: capabilities
+    attributes:
+      label: Capabilities and known gaps
+      description: List intended ThreadMesh intents, evidence surfaces, cancellation limits, and cleanup behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: validation
+    attributes:
+      label: Validation plan or evidence
+      description: Include relevant, irrelevant, control, stale, duplicate, timeout, and cleanup cases where applicable.
+  - type: checkboxes
+    id: boundaries
+    attributes:
+      label: Claim boundary
+      options:
+        - label: I will distinguish real model evidence, deterministic conformance, and no-model preflight.
+          required: true
+        - label: I removed credentials, transcripts, task/session identifiers, and local paths.
+          required: true

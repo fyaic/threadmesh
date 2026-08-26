@@ -21,6 +21,7 @@ accepted until two qualifying public records exist and pass
 
 ## Real product evidence
 
+- [Reader-oriented real agent case portfolio](../06-guides/real-world-cases.md)
 - [End-to-end A-to-B demonstration](../06-guides/end-to-end-demo.md)
 - [Codex scored behavior gate](2026-08-25-codex-behavior-gate.md)
 - [Codex repetitions and default-off decision](2026-08-25-codex-behavior-repetitions.md)

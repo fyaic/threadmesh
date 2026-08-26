@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
+  - name: Design and integration discussion
+    url: https://github.com/fyaic/threadmesh/discussions
+    about: Ask questions or explore a harness integration before opening a proposal.
   - name: Security vulnerability
     url: https://github.com/fyaic/threadmesh/security/advisories/new
     about: Report security-sensitive findings privately.
