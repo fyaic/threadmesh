@@ -6,8 +6,10 @@ where the repository is now and what work should happen next.
 
 - [Project status](project-status.md) — evidence-backed snapshot of shipped,
   experimental, blocked, and unstarted work.
-- [Mainline plan](mainline-plan.md) — three product gates: behavioral value,
-  minimal adapter usability, and one different real harness.
+- [Product mainline](product-mainline-2026-08-28.md) — current product thesis,
+  community evidence, Now/Next/Later priorities, metrics, and stop conditions.
+- [Mainline plan](mainline-plan.md) — completed protocol/runtime workstreams and
+  the transition from technical gates to the active product mainline.
 - [Milestone acceptance audit](acceptance-audit.md) — criterion-by-criterion
   evidence and the remaining merge, real-product, and evaluation gaps.
 

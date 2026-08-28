@@ -9,12 +9,13 @@ evidence. New readers do not need to read every numbered directory in order.
 2. [See the real proactive-agent cases](06-guides/real-world-cases.md)
 3. [Run the end-to-end A-to-B demo](06-guides/end-to-end-demo.md)
 4. [Check harness support](00-overview/harness-support.md)
-5. [Current project status](10-planning/project-status.md)
-6. [Context sovereignty](01-concepts/context-sovereignty.md)
-7. [Reference architecture](02-architecture/reference-architecture.md)
-8. [Protocol overview](03-protocol/README.md)
-9. [Threat model](04-safety/threat-model.md)
-10. [30-minute adapter guide](06-guides/implement-an-adapter.md)
+5. [Read the active product mainline](10-planning/product-mainline-2026-08-28.md)
+6. [Current project status](10-planning/project-status.md)
+7. [Context sovereignty](01-concepts/context-sovereignty.md)
+8. [Reference architecture](02-architecture/reference-architecture.md)
+9. [Protocol overview](03-protocol/README.md)
+10. [Threat model](04-safety/threat-model.md)
+11. [30-minute adapter guide](06-guides/implement-an-adapter.md)
 
 ## Choose a path
 
@@ -26,6 +27,7 @@ evidence. New readers do not need to read every numbered directory in order.
 | Integrate a harness | [Harness matrix](00-overview/harness-support.md) → [adapter guide](06-guides/implement-an-adapter.md) → [adapter contract](05-adapters/adapter-contract.md) |
 | Evaluate safety | [Context sovereignty](01-concepts/context-sovereignty.md) → [permission model](04-safety/permission-model.md) → [threat model](04-safety/threat-model.md) |
 | Inspect real evidence | [Design reviews](09-reviews/README.md) → [Pi integration record](09-reviews/2026-08-25-pi-integration-kit-validation.md) → [Codex-to-Kimi case](09-reviews/2026-08-25-codex-to-kimi-proactive.md) |
+| Follow product direction | [Product mainline](10-planning/product-mainline-2026-08-28.md) → [roadmap](../ROADMAP.md) → [project status](10-planning/project-status.md) |
 | Contribute to the protocol | [Protocol overview](03-protocol/README.md) → [ADRs](08-decisions/README.md) → [mainline plan](10-planning/mainline-plan.md) |
 
 ## Directory guide

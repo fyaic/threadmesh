@@ -3,8 +3,13 @@
 ThreadMesh uses milestone exit criteria rather than date promises. Priorities
 may change as the safety and adapter contracts become clearer. See the
 [current status](docs/10-planning/project-status.md) and
-[mainline plan](docs/10-planning/mainline-plan.md) for the evidence-backed
-snapshot and ordered workstreams.
+[product mainline](docs/10-planning/product-mainline-2026-08-28.md) for the
+evidence-backed snapshot, current product decision, and ordered workstreams.
+
+The roadmap now optimizes for one outcome: **parallel agent sessions hand off
+completion, blockers, review findings, and dependency-ready state without the
+user acting as their message bus**. ThreadMesh is the attention and admission
+policy layer; A2A, Cotal, ACP, or harness-native APIs may supply transport.
 
 ## M0 — Foundation and protocol draft
 
@@ -104,14 +109,49 @@ Exit: proactive coordination improves task outcomes in a benchmark without excee
 Exit: a harness can add bounded proactive discovery and suggestion without
 importing coordinator, adapter, or validation internals.
 
-## M5 — Interoperability proposal
+## M5 — Attention and handoff router MVP
 
-- [ ] Map ThreadMesh envelopes to relevant A2A concepts.
-- [ ] Define optional MCP exposure for local harness tools.
-- [ ] Publish version negotiation and extension rules.
-- [ ] Collect adapter implementation feedback across multiple harness families.
+- [ ] Ship a one-command local demo with generated identities, grants, example
+  sessions, and an inspector.
+- [ ] Make `completed`, `blocked`, `needs-input`, `review-failed`,
+  `artifact-ready`, and `dependency-satisfied` the primary product events.
+- [ ] Route accepted and sufficiently verified events to eligible dependent
+  sessions without treating receipt as verification or authority.
+- [ ] Demonstrate a real Codex-first implementation/review/fix loop with zero
+  manual relay and zero polling turns.
+- [ ] Repeat the loop across Codex and one ACP-compatible harness.
+- [ ] Publish a reproducible evidence record and a 60–90 second visual demo.
 
-Exit: the protocol is ready for a versioned `0.1` release candidate.
+Exit: a new operator can run and understand the closed loop in under 15
+minutes; the bounded scenario has zero manual relay, irrelevant wakes, and
+incorrect dependency unlocks.
+
+## M6 — Independent adoption and ecosystem bridges
+
+- [ ] Collect three independent setup attempts and one completed real workflow.
+- [ ] Close [#79](https://github.com/fyaic/threadmesh/issues/79) with independent
+  harness-author feedback.
+- [ ] Make ACP the preferred multi-harness gateway.
+- [ ] Map ThreadMesh lifecycle, evidence, and admission semantics to A2A without
+  duplicating A2A transport.
+- [ ] Prototype a Cotal transport bridge only after the local loop passes.
+- [ ] Receive one external connector contribution or equivalent clean-room
+  integration.
+
+Exit: an operator outside the maintainer organization completes a useful loop
+without maintainer intervention, and the integration contract is ready for a
+versioned `0.1` release candidate.
+
+## M7 — Evidence-driven production hardening
+
+- [ ] Prioritize claimant leases, crash recovery, authentication, isolation,
+  and remote transport from observed operator failures.
+- [ ] Define service-level expectations only after a real persistent deployment.
+- [ ] Add wake, steer, or interruption capabilities only for a validated
+  workflow that cannot use checkpoint admission.
+
+Exit: production claims are backed by real deployment evidence rather than
+prototype inference.
 
 ## Explicitly deferred
 
@@ -119,3 +159,6 @@ Exit: the protocol is ready for a versioned `0.1` release candidate.
 - Payments, markets, or autonomous contracting.
 - Cross-user coordination without an identity and consent design.
 - A hosted multi-tenant control plane.
+- A general-purpose orchestrator, DAG engine, or agent-team framework.
+- New protocol intentions that are not required by the M5 closed loop.
+- Gemini live validation as a competing product mainline.

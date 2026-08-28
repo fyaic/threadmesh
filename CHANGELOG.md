@@ -36,6 +36,10 @@ All notable changes will be documented here. The project follows Keep a Changelo
 
 ### Changed
 
+- Product mainline now positions ThreadMesh as an attention and handoff router,
+  prioritizing lifecycle events, dependency-aware routing, one-command
+  onboarding, observable closed-loop evidence, and independent adoption over
+  further protocol expansion.
 - Documentation navigation now separates real model passes, deterministic
   conformance, no-model preflight, and unvalidated adapter targets.
 - Project status advanced from documentation-only research to a reviewed
