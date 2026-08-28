@@ -112,15 +112,21 @@ importing coordinator, adapter, or validation internals.
 ## M5 — Attention and handoff router MVP
 
 - [ ] Ship a one-command local demo with generated identities, grants, example
-  sessions, and an inspector.
+  sessions, and an inspector
+  ([#89](https://github.com/fyaic/threadmesh/issues/89)).
 - [ ] Make `completed`, `blocked`, `needs-input`, `review-failed`,
-  `artifact-ready`, and `dependency-satisfied` the primary product events.
+  `artifact-ready`, and `dependency-satisfied` the primary product events
+  ([#90](https://github.com/fyaic/threadmesh/issues/90)).
 - [ ] Route accepted and sufficiently verified events to eligible dependent
-  sessions without treating receipt as verification or authority.
+  sessions without treating receipt as verification or authority
+  ([#90](https://github.com/fyaic/threadmesh/issues/90)).
 - [ ] Demonstrate a real Codex-first implementation/review/fix loop with zero
-  manual relay and zero polling turns.
-- [ ] Repeat the loop across Codex and one ACP-compatible harness.
-- [ ] Publish a reproducible evidence record and a 60–90 second visual demo.
+  manual relay and zero polling turns
+  ([#91](https://github.com/fyaic/threadmesh/issues/91)).
+- [ ] Repeat the loop across Codex and one ACP-compatible harness
+  ([#93](https://github.com/fyaic/threadmesh/issues/93)).
+- [ ] Publish an inspector, reproducible evidence record, and 60–90 second
+  visual demo ([#92](https://github.com/fyaic/threadmesh/issues/92)).
 
 Exit: a new operator can run and understand the closed loop in under 15
 minutes; the bounded scenario has zero manual relay, irrelevant wakes, and

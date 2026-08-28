@@ -155,6 +155,22 @@ remains parallel governance. Hostile-worker schema
 issue #48, optional Gemini live validation, and further production hardening are
 deferred.
 
+### M5 — Attention and handoff router MVP
+
+The active product milestone is open with five outcome-oriented issues:
+
+- one-command demo [#89](https://github.com/fyaic/threadmesh/issues/89);
+- lifecycle events and dependency routing
+  [#90](https://github.com/fyaic/threadmesh/issues/90);
+- real Codex closed loop [#91](https://github.com/fyaic/threadmesh/issues/91);
+- minimal inspector and visual evidence
+  [#92](https://github.com/fyaic/threadmesh/issues/92);
+- cross-harness repetition [#93](https://github.com/fyaic/threadmesh/issues/93).
+
+M5 is intentionally smaller than a general orchestration milestone. Its exit
+criterion is measurable removal of manual relay and polling while preserving
+receiver control, not broader protocol coverage.
+
 ## What the prototype proves
 
 The current tests support the narrower claim that a local authenticated binding
