@@ -2,13 +2,38 @@
 
 ## Goal
 
-Turn the current trusted-process demonstration into a protocol whose safety and
-failure semantics can be implemented by more than one harness without private
-assumptions. The active critical path is the merged coordinator plus real-agent
-evidence. Normative M0 review remains a parallel governance track;
-maintainer-authorized experiments are explicitly labeled and do not satisfy it.
+Prove that a user can run several durable agent sessions without acting as
+their clipboard, status poller, or handoff scheduler.
 
-## Workstream order
+The protocol, coordinator, real Codex/Kimi path, proactive behavior gate, and
+minimal SDK are now evidence foundations rather than the product destination.
+The active critical path is the
+[attention and handoff router plan](product-mainline-2026-08-28.md): one-command
+onboarding, typed lifecycle events, dependency-aware routing, a visible
+inspector, and an independently repeated implementation/review/fix loop.
+
+Normative M0 review remains a parallel governance track. Maintainer-authorized
+experiments are explicitly labeled and do not satisfy it.
+
+## Active sequence — 2026-08-28
+
+1. Define the flagship closed-loop demo using existing primitives and the six
+   product events: `completed`, `blocked`, `needs-input`, `review-failed`,
+   `artifact-ready`, and `dependency-satisfied`.
+2. Ship a one-command local demo with generated identities/grants and no manual
+   task-ID or token setup.
+3. Add dependency-aware routing that requires receiver admission and verified
+   state before unlocking downstream work.
+4. Show the loop and every routing decision in a minimal inspector.
+5. Validate once Codex-first, once across Codex and an ACP harness, and then
+   with three independent operators.
+
+Success is measured by zero manual relay, zero polling loops, zero irrelevant
+wakes, correct verification/authority handling, and time to first value under
+15 minutes. New protocol intentions, general orchestration, production hosting,
+and further internal review loops are off the critical path.
+
+## Completed foundation workstreams
 
 ### 1. Make the schema vocabulary coherent
 

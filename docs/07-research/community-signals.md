@@ -1,8 +1,55 @@
 # Community signals around cross-task agent coordination
 
-> Research snapshot: 2026-08-20. GitHub issues are community reports unless an
+> Research snapshot: 2026-08-28. GitHub issues are community reports unless an
 > OpenAI contributor explicitly confirms product status. They are evidence of
 > demand and failure modes, not a stable API contract.
+
+## 2026-08-28 observation update
+
+The strongest new conclusion is that transport is becoming less distinctive
+while attention routing remains painful. Codex now has public cross-thread
+primitives, Cotal is building an extensive pub/sub and wake layer, A2A has a
+large interoperability ecosystem, and ACP can reach many harnesses. Yet public
+issues still describe users copying handoffs, polling status, losing pending
+messages, struggling with transient identities, and waking the wrong runtime
+state.
+
+This changes the product question from:
+
+> Can one agent send a safe message to another session?
+
+to:
+
+> Can completion, blockers, review findings, and verified dependency state move
+> the right work forward without human relay or unwanted receiver activation?
+
+### Observed pain clusters
+
+| Cluster | Evidence | Confidence | ThreadMesh response |
+|---|---|---|---|
+| User as clipboard and coordinator | Codex [#22768](https://github.com/openai/codex/issues/22768), [#21027](https://github.com/openai/codex/issues/21027), [#36472](https://github.com/openai/codex/issues/36472) | High: repeated independent reports and detailed workflows | Optimize end-to-end handoff loops and count removed relay actions. |
+| Typed handoff and dependency state | Codex [#36843](https://github.com/openai/codex/issues/36843), [#40416](https://github.com/openai/codex/issues/40416), [#40037](https://github.com/openai/codex/issues/40037) | Medium-high: detailed proposals, not yet broad usage data | Productize lifecycle events, evidence, verification, and dependency unlocks. |
+| Polling cost and wake races | Codex [#37299](https://github.com/openai/codex/issues/37299), [#38609](https://github.com/openai/codex/issues/38609); Cotal [#804](https://github.com/Cotal-AI/Cotal/issues/804) | High for failure severity; frequency unknown | Durable mailbox as truth, lossy wake as hint, no model-driven polling loop. |
+| Stable logical identity across harnesses | MCP Agent Mail [#263](https://github.com/Dicklesworthstone/mcp_agent_mail/issues/263), [#118](https://github.com/Dicklesworthstone/mcp_agent_mail/issues/118), [#158](https://github.com/Dicklesworthstone/mcp_agent_mail/issues/158) | Medium: multiple operational reports in one project | Address workstreams/tasks independently from transient runtime sessions. |
+| Honest delivery and recovery state | MCP Agent Mail [#153](https://github.com/Dicklesworthstone/mcp_agent_mail/issues/153); Cotal [#442](https://github.com/Cotal-AI/Cotal/issues/442), [#444](https://github.com/Cotal-AI/Cotal/issues/444) | High for correctness; frequency unknown | Expose queued/admitted/delivered/acknowledged/blocked separately and make recovery actionable. |
+| Least authority for cross-session tools | Codex [#33885](https://github.com/openai/codex/issues/33885), [#38687](https://github.com/openai/codex/issues/38687) | High: concrete opposite failure modes | Separate permission to communicate, wake, steer, create, and authorize work. |
+
+### Community and adoption reality
+
+At this snapshot, ThreadMesh has no external stars, forks, watchers, issue
+comments, or independent review records. Its two open issues are the external
+M0 review gate [#7](https://github.com/fyaic/threadmesh/issues/7) and independent
+harness-author feedback [#79](https://github.com/fyaic/threadmesh/issues/79).
+Repository clone traffic is not treated as adoption because CI, dependency
+bots, and maintainer validation can dominate it.
+
+This is neither product rejection nor validation: the repository was created
+only eight days earlier, but there is currently no evidence that an external
+operator has reached value. The next research method must therefore be a short
+observed setup task, not another internal design review.
+
+The resulting product and roadmap decision is recorded in the
+[attention and handoff router mainline](../10-planning/product-mainline-2026-08-28.md).
 
 ## The discussion exists and closely matches ThreadMesh
 

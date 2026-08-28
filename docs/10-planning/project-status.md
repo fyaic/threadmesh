@@ -1,7 +1,8 @@
 # Project status
 
-> Snapshot: 2026-08-25, after the real public-SDK Pi-to-Kimi pass at
-> `02d8d24e41d0e7800a3b648c8a41376aba849535`.
+> Snapshot: 2026-08-28. Technical evidence is current through the public-SDK
+> Pi-to-Kimi pass; product direction reflects the subsequent community and
+> competitive review.
 
 ## Executive summary
 
@@ -20,11 +21,21 @@ interoperability, hostile-peer safety, or production reliability. The normative
 M0 blockers are resolved; M0 remains open only for two independent reviews,
 including one outside the maintainer organization.
 
+The current product gap is sharper than the technical gap. ThreadMesh has no
+independent adopter, and its one-message demonstration does not yet remove a
+meaningful workflow burden. The active mainline is therefore an
+[attention and handoff router](product-mainline-2026-08-28.md): a one-command,
+observable implementation/review/fix loop that eliminates manual relay and
+polling while preserving receiver control. Protocol expansion and general
+orchestration are paused until this outcome is demonstrated.
+
 ## Evidence ledger
 
 | Area | Current evidence | Status |
 |---|---|---|
 | Research and problem framing | Codex deep dive, community signals, ecosystem comparison, ADRs | Established |
+| Community adoption | No external stars, forks, watchers, issue comments, or independent setup result as of 2026-08-28 | Unvalidated |
+| Active product outcome | One-command lifecycle-event and dependency-handoff loop with an inspector | Planned; not implemented |
 | Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 143 unit/subtests | Executable draft |
 | Minimal adapter SDK | `@fyaic/threadmesh` `0.1.0-alpha.0`; six bounded client methods, per-turn proactive bridge, about 20 kB tarball, packed-consumer execution | Real Pi clean-consumer pass; not published to npm |
 | Local binding | Schema-validated JSON-RPC, transport-derived principals, typed errors | Executable local reference |
