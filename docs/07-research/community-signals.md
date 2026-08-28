@@ -37,11 +37,14 @@ to:
 ### Community and adoption reality
 
 At this snapshot, ThreadMesh has no external stars, forks, watchers, issue
-comments, or independent review records. Its two open issues are the external
-M0 review gate [#7](https://github.com/fyaic/threadmesh/issues/7) and independent
+comments, or independent review records. Before this roadmap update, its two
+open issues were the external M0 review gate
+[#7](https://github.com/fyaic/threadmesh/issues/7) and independent
 harness-author feedback [#79](https://github.com/fyaic/threadmesh/issues/79).
-Repository clone traffic is not treated as adoption because CI, dependency
-bots, and maintainer validation can dominate it.
+The new M5 issues [#89](https://github.com/fyaic/threadmesh/issues/89)–
+[#93](https://github.com/fyaic/threadmesh/issues/93) are maintainer planning,
+not community adoption. Repository clone traffic is not treated as adoption
+because CI, dependency bots, and maintainer validation can dominate it.
 
 This is neither product rejection nor validation: the repository was created
 only eight days earlier, but there is currently no evidence that an external

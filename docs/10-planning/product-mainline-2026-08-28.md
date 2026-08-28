@@ -133,19 +133,25 @@ under 15 minutes.
 
 1. Ship `npx threadmesh demo` or an equivalent one-command entry point that
    creates identities and grants, runs the flagship loop, and opens an
-   inspector without manual token or task-ID setup.
+   inspector without manual token or task-ID setup
+   ([#89](https://github.com/fyaic/threadmesh/issues/89)).
 2. Promote six lifecycle events as the primary product vocabulary:
    `completed`, `blocked`, `needs-input`, `review-failed`, `artifact-ready`,
    and `dependency-satisfied`. Reuse existing envelope and disposition
-   primitives before adding protocol surface.
+   primitives before adding protocol surface
+   ([#90](https://github.com/fyaic/threadmesh/issues/90)).
 3. Add a small dependency router that converts accepted, sufficiently verified
    events into eligible next-session attention. It must never convert receipt
-   alone into a dependency unlock.
+   alone into a dependency unlock
+   ([#90](https://github.com/fyaic/threadmesh/issues/90)).
 4. Run the first real Codex-first implementation/review/fix loop, then repeat
-   it across Codex and one ACP harness using the existing adapters.
+   it across Codex and one ACP harness using the existing adapters
+   ([#91](https://github.com/fyaic/threadmesh/issues/91),
+   [#93](https://github.com/fyaic/threadmesh/issues/93)).
 5. Add a minimal inspector view for session status, dependency edges, recent
    events, routing reason, receiver disposition, and verification state.
-6. Record a 60–90 second README demo and a reproducible evidence document.
+6. Record a 60–90 second README demo and a reproducible evidence document
+   ([#92](https://github.com/fyaic/threadmesh/issues/92)).
 
 ### Next — prove independent adoption and ecosystem fit
 
