@@ -53,46 +53,34 @@ test("dry-run proves the A-R-same-A-V runner contract without claiming product e
     });
     assert.equal(result.state, "passed");
     assert.equal(result.liveProductEvidence, false);
-    assert.equal(result.claim, "runner-contract-only-not-product-evidence");
     assert.deepEqual(result.fixtureAssertions, {
       scriptedToolPlan: true,
       scriptedHandoff: true,
-      reviewerPlanIncludedFindingTool: true,
-      receiver: "same-a-session",
       humanRelayActions: 0,
       orchestratorPromptSubmissionsAfterReview: 1,
+      integratedSqliteCoordinator: true,
     });
-    assert.equal(result.chain.directDescendant, true);
-    assert.equal(result.chain.fixtureVerificationPassed, true);
-    assert.equal(result.chain.verificationMode, "deterministic-direct-check");
+    assert.equal(result.coordinator.sameImplementerThread, true);
+    assert.equal(result.coordinator.dependencyLockedBefore, true);
+    assert.equal(result.coordinator.dependencySatisfiedAfter, true);
+    assert.equal(result.coordinator.irrelevantAuthorizedTaskTurnCount, 0);
+    assert.equal(result.chain.trustedComplete, true);
+    assert.equal(result.chain.verificationMode, "deterministic-in-process-fixture-signing");
     assert.equal(result.chain.signedIndependentAttestation, false);
-    assert.equal(result.chain.dependencyUnlocked, false);
+    assert.equal(result.chain.dependencyUnlocked, true);
     assert.equal(result.cleanup.complete, true);
-    assert.deepEqual(runtime.turns.map(({ role, phase }) => `${role}:${phase}`), [
-      "a:implementation", "r:review", "a:fix", "v:verification",
-    ]);
-    assert.equal(runtime.turns[0].ref, runtime.turns[2].ref);
-    assert.notEqual(runtime.turns[0].ref, runtime.turns[1].ref);
-    assert.notEqual(runtime.turns[2].ref, runtime.turns[3].ref);
+    const aTurns = runtime.turns.filter(({ role }) => role === "a");
+    assert.ok(aTurns.length >= 4);
+    assert.ok(aTurns.every(({ ref }) => ref.threadId === aTurns[0].ref.threadId));
+    assert.equal(runtime.turns.some(({ role }) => role === "irrelevant"), false);
     assert.equal(result.liveClosureGates.satisfied, false);
     assert.ok(result.liveClosureGates.pending.length >= 5);
-    assert.deepEqual(result.liveClosureGates.restartCheckpoints, {
-      eventCreated: false,
-      nativeStarted: false,
-      receiptRecorded: false,
-      finalVerification: false,
-      satisfaction: false,
-    });
     const records = fs.readFileSync(path.join(artifacts, "private-trace.jsonl"), "utf8")
       .trim().split("\n").map(JSON.parse);
     assert.equal(verifyLiveAgentEvidence(records).valid, true);
-    const dispatch = records.find((record) => record.type === "fixture.handoff.simulated");
-    const reviewTurn = records.find((record) =>
-      record.type === "turn.completed" && record.detail.phase === "review");
-    assert.ok(dispatch.sequence > reviewTurn.sequence);
-    assert.equal(dispatch.detail.triggerSource, "scripted-fixture-plan");
-    assert.equal(dispatch.detail.humanRelayActions, 0);
-    assert.equal(dispatch.detail.orchestratorPromptSubmissionsAfterReview, 1);
+    assert.equal(records.some((record) => record.type === "coordinator.attention.next-only-claimed"), true);
+    assert.equal(records.some((record) => record.type === "coordinator.context.exact-task-admitted"), true);
+    assert.equal(records.some((record) => record.type === "coordinator.attention.cursor-committed"), true);
     assert.equal(records.some((record) => record.type === "attention.dispatched"), false);
     assert.equal(fs.existsSync(path.join(artifacts, "cleanup-manifest.json")), true);
     assert.deepEqual(fs.readdirSync(temporaryParent), []);

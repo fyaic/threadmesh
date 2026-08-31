@@ -160,15 +160,29 @@ SQLite v7 now supplies the authority-bearing seam:
   disposition/effect binding. Exact replay is idempotent; alteration fails
   closed, including after restart.
 
-This closes the deterministic authority seam, not M5.2. The next mainline work
-is the real persistent Codex A implementation, R review, same-A fix, and V
-verification run, followed by restart, negative variants, and cleanup evidence.
+The deterministic happy path is now integrated end-to-end: pre-created A/R/V,
+dependent, and irrelevant tasks traverse grants, durable lifecycle events,
+next-only cursor claims, receiver-owned decision tools, exact-reference context
+admission, completed-turn binding, evidence promotion, v7 finalization, and
+cursor commits. The same A adapter reference is used for implementation and
+fix; the dependent is waiting before finalization and satisfied afterward; the
+authorized irrelevant control records zero turns and a zero cursor. A generic
+unbound lifecycle-submit bypass is also covered. The plan remains explicitly
+scripted and cannot be reported as product initiative.
+
+This closes the deterministic integrated happy path, not M5.2. Restart closure
+has two hard gaps: there is no adapter query/reconcile surface after native
+start but before operation binding, and a restarted runner cannot reconstruct
+the signed final verifier response from the digest stored in SQLite. The next
+mainline slice is therefore adapter reconciliation plus a private durable
+verifier-result journal, followed by the restart fault matrix. Only then should
+the real persistent Codex A implementation, R review, same-A fix, and V
+verification run be enabled. Kimi remains a capability-only compatibility
+preflight until it exposes bounded dynamic-tool and receipt evidence.
 
 The [persistent-agent scenario runner](../06-guides/m5-2-live-agent-scenario.md)
-provides a one-command deterministic rehearsal, hash-linked private trace,
-bounded public projection, cleanup manifest, and real Codex/Kimi capability
-preflights. Product modes remain fail-closed `blocked`: the scripted fixture is
-not live evidence, and real turns stay disabled until the event, next-only
-cursor claim, receiver decision, admission receipt, exact-task resume,
-promotion, cursor commit, and restart gates are all machine-verified against
-the v7 finalization path.
+provides a one-command deterministic integrated rehearsal, hash-linked private
+trace, bounded public projection, cleanup manifest, retained SQLite evidence,
+and real Codex/Kimi capability preflights. Product modes remain fail-closed
+`blocked`: the scripted fixture is not live evidence, and real turns stay
+disabled until the two recovery gaps and restart gates are closed.
