@@ -477,7 +477,7 @@ export async function runLiveAgentScenario({
   validatedBaseSha,
   artifactsDirectory,
   temporaryParent = os.tmpdir(),
-  command = product === "kimi" ? "/Users/veil/.kimi-code/bin/kimi" : "/opt/homebrew/bin/codex",
+  command = null,
   commandArgs,
   env = {},
   model = null,
@@ -491,6 +491,9 @@ export async function runLiveAgentScenario({
   }
   if (mode === "live" && ack !== LIVE_AGENT_SCENARIO_ACK) {
     throw scenarioError("threadmesh_live_scenario_ack_required");
+  }
+  if (mode === "live" && !path.isAbsolute(command ?? "")) {
+    throw scenarioError("threadmesh_live_scenario_command_invalid");
   }
   if (mode === "dry-run" && product !== "fixture") {
     throw scenarioError("threadmesh_live_scenario_dry_run_product_invalid");
@@ -671,19 +674,6 @@ export async function runLiveAgentScenario({
       });
     }
 
-    const turnsBeforeIrrelevantControl = activeRuntime.turns?.length ?? 0;
-    recorder.append("control.irrelevant-authorized", {
-      scope: "deterministic-fixture-routing-control",
-      relationshipAuthorized: true,
-      receiverRelevant: false,
-      wakeCount: 0,
-      receiverTurnCount: 0,
-      productEvidence: false,
-    });
-    if ((activeRuntime.turns?.length ?? 0) !== turnsBeforeIrrelevantControl) {
-      throw scenarioError("threadmesh_live_scenario_irrelevant_control_woke_receiver");
-    }
-
     const runPhase = async ({ role, phase, cwd, expectedTools }) => {
       state.activeRole = role;
       state.activePhase = phase;
@@ -748,13 +738,14 @@ export async function runLiveAgentScenario({
       findingDigest: sha256Digest(state.finding),
       findingBoundToCompletedTurn: true,
     });
-    recorder.append("attention.dispatched", {
+    recorder.append("fixture.handoff.simulated", {
       from: "r",
       to: "a",
-      triggerSource: "model-selected-tool",
+      triggerSource: "scripted-fixture-plan",
       targetAdapterRef: publicRef(refs.get("a")),
-      manualRelayActions: 0,
-      userPromptAddedAfterReview: false,
+      humanRelayActions: 0,
+      orchestratorPromptSubmissionsAfterReview: 1,
+      productEvidence: false,
     });
 
     const originalAIdentifier = refs.get("a").threadId ?? refs.get("a").sessionId;
@@ -843,22 +834,22 @@ export async function runLiveAgentScenario({
     product,
     evidenceClass,
     liveProductEvidence: mode === "live" && stateValue === "passed",
-    claim: mode === "live"
-      ? "real-product-model-selected-cross-session-loop"
-      : "runner-contract-only-not-product-evidence",
-    proactiveSignal: {
-      reviewerSelectedFindingTool: state.finding !== null,
+    claim: "runner-contract-only-not-product-evidence",
+    fixtureAssertions: {
+      scriptedToolPlan: true,
+      scriptedHandoff: true,
+      reviewerPlanIncludedFindingTool: state.finding !== null,
       receiver: "same-a-session",
-      manualRelayActions: 0,
-      userPromptAddedAfterReview: false,
-      irrelevantAuthorizedWakeCount: 0,
-      irrelevantAuthorizedTurnCount: 0,
+      humanRelayActions: 0,
+      orchestratorPromptSubmissionsAfterReview: 1,
     },
     chain: {
       implementationSha: state.implementation?.subjectSha ?? null,
       fixSha: state.fix?.subjectSha ?? null,
       directDescendant: state.fix?.parentSha === state.implementation?.subjectSha,
-      independentlyVerified: state.verifier !== null && !failure,
+      fixtureVerificationPassed: state.verifier !== null && !failure,
+      verificationMode: "deterministic-direct-check",
+      signedIndependentAttestation: false,
       dependencyUnlocked: false,
     },
     cleanup,

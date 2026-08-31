@@ -22,8 +22,9 @@ path machine-verify this sequence:
    dependency satisfaction.
 
 Required restart checkpoints are event-created, native-started,
-receipt-recorded, final-verification, and satisfaction. An authorized but
-irrelevant task must receive zero wake and zero model turn.
+receipt-recorded, final-verification, and satisfaction. The future live gate
+also requires an authorized-but-irrelevant zero-wake/zero-turn control; the
+fixture does not simulate or claim that routing behavior.
 
 ## One-command deterministic rehearsal
 
@@ -42,12 +43,16 @@ directory:
   references. It is local audit material and must not be published verbatim.
 - `result.json`: bounded public projection. Its claim is always
   `runner-contract-only-not-product-evidence` and
-  `liveProductEvidence=false`.
+  `liveProductEvidence=false`. It labels the tool plan and handoff as scripted,
+  reports one orchestrator prompt submission after review, and labels the
+  verification mode `deterministic-direct-check`.
 - `cleanup-manifest.json`: per-role deletion and exact fixture-absence checks.
 
 A fixture `passed` result proves runner ordering, bounded Git behavior, trace
-integrity, the same-A identity assertion, the irrelevant zero-wake control,
-and cleanup. It does not prove model initiative or a product integration.
+integrity, the same-A identity assertion, deterministic direct verification,
+and cleanup. The tools and handoffs are scripted, and the orchestrator submits
+one prompt after review. It does not prove model initiative, a signed
+independent attestation, or a product integration.
 
 ## Real product preflight
 
@@ -87,7 +92,8 @@ agent returned the expected tool plan.
 - Prompts, prose, fixture plans, and record counts are not authorization to
   unlock a dependency.
 - A live result must remain blocked if any restart checkpoint, receipt,
-  identity binding, cleanup absence check, or irrelevant control is missing.
+  identity binding, cleanup absence check, or real irrelevant control is
+  missing.
 
 ## Cleanup and risk
 

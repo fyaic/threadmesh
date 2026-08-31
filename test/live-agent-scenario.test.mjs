@@ -54,16 +54,18 @@ test("dry-run proves the A-R-same-A-V runner contract without claiming product e
     assert.equal(result.state, "passed");
     assert.equal(result.liveProductEvidence, false);
     assert.equal(result.claim, "runner-contract-only-not-product-evidence");
-    assert.deepEqual(result.proactiveSignal, {
-      reviewerSelectedFindingTool: true,
+    assert.deepEqual(result.fixtureAssertions, {
+      scriptedToolPlan: true,
+      scriptedHandoff: true,
+      reviewerPlanIncludedFindingTool: true,
       receiver: "same-a-session",
-      manualRelayActions: 0,
-      userPromptAddedAfterReview: false,
-      irrelevantAuthorizedWakeCount: 0,
-      irrelevantAuthorizedTurnCount: 0,
+      humanRelayActions: 0,
+      orchestratorPromptSubmissionsAfterReview: 1,
     });
     assert.equal(result.chain.directDescendant, true);
-    assert.equal(result.chain.independentlyVerified, true);
+    assert.equal(result.chain.fixtureVerificationPassed, true);
+    assert.equal(result.chain.verificationMode, "deterministic-direct-check");
+    assert.equal(result.chain.signedIndependentAttestation, false);
     assert.equal(result.chain.dependencyUnlocked, false);
     assert.equal(result.cleanup.complete, true);
     assert.deepEqual(runtime.turns.map(({ role, phase }) => `${role}:${phase}`), [
@@ -84,17 +86,14 @@ test("dry-run proves the A-R-same-A-V runner contract without claiming product e
     const records = fs.readFileSync(path.join(artifacts, "private-trace.jsonl"), "utf8")
       .trim().split("\n").map(JSON.parse);
     assert.equal(verifyLiveAgentEvidence(records).valid, true);
-    const dispatch = records.find((record) => record.type === "attention.dispatched");
+    const dispatch = records.find((record) => record.type === "fixture.handoff.simulated");
     const reviewTurn = records.find((record) =>
       record.type === "turn.completed" && record.detail.phase === "review");
     assert.ok(dispatch.sequence > reviewTurn.sequence);
-    assert.equal(dispatch.detail.triggerSource, "model-selected-tool");
-    assert.equal(dispatch.detail.manualRelayActions, 0);
-    const irrelevant = records.find((record) => record.type === "control.irrelevant-authorized");
-    assert.deepEqual(
-      [irrelevant.detail.wakeCount, irrelevant.detail.receiverTurnCount],
-      [0, 0],
-    );
+    assert.equal(dispatch.detail.triggerSource, "scripted-fixture-plan");
+    assert.equal(dispatch.detail.humanRelayActions, 0);
+    assert.equal(dispatch.detail.orchestratorPromptSubmissionsAfterReview, 1);
+    assert.equal(records.some((record) => record.type === "attention.dispatched"), false);
     assert.equal(fs.existsSync(path.join(artifacts, "cleanup-manifest.json")), true);
     assert.deepEqual(fs.readdirSync(temporaryParent), []);
   } finally {
@@ -128,6 +127,7 @@ test("Codex live is capability-preflight only until durable attention and truste
       validatedBaseSha: source.sha,
       artifactsDirectory: artifacts,
       runtime,
+      command: "/fake/codex",
       ack: "maintainer-approved-threadmesh-live-agent-scenario",
       scenarioId: "m52-live-gated",
     });

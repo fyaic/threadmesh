@@ -1,4 +1,6 @@
 import { execFileSync } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
@@ -31,22 +33,49 @@ function git(args) {
   }).trim();
 }
 
+function executable(explicit, environmentKey, binaryName) {
+  const requested = explicit ?? process.env[environmentKey] ?? null;
+  if (requested) {
+    const resolved = path.resolve(requested);
+    fs.accessSync(resolved, fs.constants.X_OK);
+    return resolved;
+  }
+  for (const directory of (process.env.PATH ?? "").split(path.delimiter)) {
+    if (!directory) continue;
+    const candidate = path.join(directory, binaryName);
+    try {
+      fs.accessSync(candidate, fs.constants.X_OK);
+      return path.resolve(candidate);
+    } catch {
+      // Continue PATH discovery without a user-specific fallback.
+    }
+  }
+  throw Object.assign(new Error(`${binaryName}_not_found`), {
+    code: `threadmesh_${binaryName}_command_not_found`,
+  });
+}
+
 try {
   const options = parse(process.argv.slice(2));
   const mode = options.mode ?? "dry-run";
   const product = options.product ?? (mode === "live" ? "codex" : "fixture");
-  const artifactsDirectory = path.resolve(options["artifacts-dir"] ??
-    path.join(process.env.TMPDIR ?? "/tmp", `threadmesh-m5-2-${mode}-${product}-${Date.now()}`));
+  const artifactsDirectory = options["artifacts-dir"]
+    ? path.resolve(options["artifacts-dir"])
+    : fs.mkdtempSync(path.join(os.tmpdir(), `threadmesh-m5-2-${mode}-${product}-`));
   const result = await runLiveAgentScenario({
     mode,
     product,
     sourceRoot: root,
     validatedBaseSha: options.sha ?? git(["rev-parse", "HEAD"]),
     artifactsDirectory,
-    temporaryParent: path.resolve(options["temporary-parent"] ?? process.env.TMPDIR ?? "/tmp"),
-    command: path.resolve(options.command ?? (product === "kimi"
-      ? process.env.KIMI_BIN ?? "/Users/veil/.kimi-code/bin/kimi"
-      : process.env.CODEX_BIN ?? "/opt/homebrew/bin/codex")),
+    temporaryParent: path.resolve(options["temporary-parent"] ?? os.tmpdir()),
+    command: mode === "live"
+      ? executable(
+        options.command,
+        product === "kimi" ? "KIMI_BIN" : "CODEX_BIN",
+        product === "kimi" ? "kimi" : "codex",
+      )
+      : null,
     model: options.model ?? null,
     ack: options.ack ?? process.env.THREADMESH_LIVE_AGENT_SCENARIO_ACK ?? null,
     scenarioId: options["scenario-id"] ?? `m52-${Date.now()}`,
