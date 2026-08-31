@@ -42,6 +42,16 @@ function assertTools(dynamicTools) {
   return new Map(dynamicTools.map((tool) => [tool.name, tool]));
 }
 
+function assertRegisteredTools(thread, dynamicTools) {
+  const registered = new Map(thread.registeredTools.map((tool) => [tool.name, tool]));
+  for (const tool of dynamicTools) {
+    const original = registered.get(tool.name);
+    if (!original || canonicalJson(original) !== canonicalJson(tool)) {
+      fail("threadmesh_deterministic_adapter_registered_tool_mismatch", tool.name);
+    }
+  }
+}
+
 function assertNoPlanSurface(options) {
   for (const forbidden of [
     "plan",
@@ -191,8 +201,9 @@ export class DeterministicNoPlanCodexAdapter {
       prompt: options.prompt,
       dynamicTools: options.dynamicTools,
     });
+    assertRegisteredTools(thread, options.dynamicTools);
     const decision = normalizeDecision(
-      await this.decideTurn(canonicalInput),
+      await Reflect.apply(this.decideTurn, undefined, [canonicalInput]),
       allowedTools,
     );
     const turnId = `turn-${thread.ref.threadId}-${String(thread.turns.length + 1).padStart(4, "0")}`;

@@ -48,6 +48,7 @@ test("Codex live runtime uses one persistent no-plan ref for relevant/control/ir
   const policyInputs = [];
   const adapter = new DeterministicNoPlanCodexAdapter({
     decideTurn(canonicalInput) {
+      assert.equal(this, undefined);
       assert.equal(arguments.length, 1);
       assert.equal(typeof canonicalInput, "string");
       const input = JSON.parse(canonicalInput);
@@ -150,4 +151,42 @@ test("Codex live runtime uses one persistent no-plan ref for relevant/control/ir
   assert.equal((await adapter.confirmThreadAbsent({
     command: "/fake/codex", args: [], cwd: directory, env: {}, threadId: ref.threadId,
   })).absent, true);
+});
+
+test("no-plan adapter rejects unregistered tools and registered definition drift", async (t) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "threadmesh-no-plan-tools-"));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const adapter = new DeterministicNoPlanCodexAdapter();
+  const ref = await adapter.createDynamicToolThread({
+    command: "/fake/codex",
+    args: [],
+    cwd: directory,
+    env: {},
+    dynamicTools: [TOOLS[0]],
+    developerInstructions: "Use only registered tools.",
+    bootstrapMarker: "THREADMESH_READY",
+    adapterIdempotencyKey: "idem_registered_tools",
+  });
+  const base = {
+    command: "/fake/codex",
+    args: [],
+    cwd: directory,
+    env: {},
+    adapterRef: ref,
+    prompt: "Current prompt.",
+    adapterIdempotencyKey: "idem_registered_tools_turn",
+    onToolCall: async () => ({ recorded: true }),
+  };
+  await assert.rejects(
+    () => adapter.runAutonomousToolTurn({ ...base, dynamicTools: [TOOLS[1]] }),
+    { code: "threadmesh_deterministic_adapter_registered_tool_mismatch" },
+  );
+  await assert.rejects(
+    () => adapter.runAutonomousToolTurn({
+      ...base,
+      dynamicTools: [{ ...TOOLS[0], description: "Drifted definition." }],
+    }),
+    { code: "threadmesh_deterministic_adapter_registered_tool_mismatch" },
+  );
+  assert.equal(adapter.threads.get(ref.threadId).turns.length, 0);
 });
