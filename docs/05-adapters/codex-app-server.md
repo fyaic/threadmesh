@@ -109,6 +109,27 @@ evidence and the gate are recorded in the
 
 ## Remaining boundaries
 
+M5.2 autonomous turns may use an exact phase-specific callback allowlist.
+Codex `0.145.0` registers the bounded union at `thread/start`; each resumed
+phase handles only its exact subset and rejects a wrong-phase callback. The
+model-visible union and four-tool registration budget remain live-gate
+constraints. The runner first persists a private digest-bound baseline and
+cleanup journal, then forwards durable start/bind callbacks. Unknown outcomes are
+observation-only: only exact interrupted/failed correlation is terminal, while
+completed or uncorrelated observations remain blocked and are not retried.
+
+This recovery seam currently covers autonomous bounded-tool turns only.
+Receiver context admission is deliberately rejected by the live runtime until
+the same before-start journal and reconciliation contract is implemented for
+`runAcceptedSuggestion`. The deterministic post-start failure injection is not
+evidence of a real App Server process kill, and neither seam closes M5.2
+product validation by itself.
+
+The live runtime checks absence first so cleanup is replay-safe. An existing
+thread is deleted and checked again; only an explicit `absent: true` result is
+complete. The returned projection contains a thread-id digest, never the raw
+thread ID.
+
 - Admission arguments are trusted-process evidence until wired to the merged
   coordinator claim/receipt state machine. The stacked multi-product candidate
   supplies that wiring, and the gated validation runner exercises it
