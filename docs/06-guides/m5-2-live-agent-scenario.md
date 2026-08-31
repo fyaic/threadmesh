@@ -6,9 +6,11 @@ scenario. It does not yet provide M5.2 pass evidence.
 
 ## Current gate
 
-The deterministic fixture now runs the happy path through a real isolated
-SQLite v7 coordinator. Real Codex and Kimi modes perform an
-auth-preserving, no-model capability probe and then fail closed as `blocked`.
+The deterministic fixture runs the happy path through a real isolated SQLite
+v7 coordinator. Live Codex now performs an auth-preserving capability probe
+and then delegates to the real-product gate. The probe is evidence that the
+transport is reachable, never evidence that the scenario passed. Kimi remains
+a no-model capability preflight and fails closed as `blocked`.
 The fixture machine-verifies this sequence:
 
 1. a lifecycle event is durably created;
@@ -97,7 +99,7 @@ after review. The in-process test signer is trusted only inside this fixture and
 independent product verification, process-crash recovery, or a live
 integration.
 
-## Real product preflight
+## Real product gate
 
 Live commands require an explicit acknowledgement before even a no-model
 probe:
@@ -108,21 +110,43 @@ npm run validate:m5-2:live:codex
 npm run validate:m5-2:live:kimi
 ```
 
-As of 2026-08-31, both commands are expected to exit `2` with `state=blocked`:
+The acknowledgement is checked before a probe, module load, thread creation,
+or model turn. The Codex gate implementation is loaded lazily only on the live
+Codex route; injected gates exist for tests and cannot affect the deterministic
+or Kimi routes.
 
-- Codex CLI `0.145.0`: app-server initialization, persistent thread creation,
-  resume, and dynamic tool callbacks are available. The missing boundary is
-  ThreadMesh's event/cursor/admission/finalization glue. The runner starts no
-  model turn and creates no thread while this gate is closed.
+As of 2026-09-01, both commands are expected to exit `2` with `state=blocked`:
+
+- Codex CLI `0.145.0`: the product canary precreates A, R, V, dependent, and
+  irrelevant threads and runs four runner-submitted A→R→same-A→V phase prompts.
+  The model must select the bounded tools, the Git chain must be exact, the
+  original A thread and worktree must be reused, dependent and irrelevant
+  controls must run zero post-bootstrap turns, and all five threads plus the
+  fixture must be removed. A completed run is still
+  `evidenceClass=real-codex-product-canary`, `state=blocked`, and
+  `liveProductEvidence=false`: `phasePromptsSubmittedByRunner=4` and
+  `lifecycleHandoffsByThreadMesh=false` make clear that it does not yet show
+  lifecycle-driven cross-task initiative.
 - Kimi Code `0.39.1`: ACP initialization and persistent session
   create/list/load/delete are available. The current ACP integration does not
   expose bounded dynamic tool callbacks, a pre-effect model-selection receipt,
   or a queryable prompt-submission receipt. The runner creates no session and
   cannot claim an A→R→A→V pass.
 
-`blocked` is an intentional safety result, not a fixture failure. Do not change
-the projection to `passed` merely because a CLI is installed or a deterministic
-agent returned the expected tool plan.
+The canary reports all six missing closure gates: coordinator attention
+routing, receiver-owned decisions, context-admission receipts, durable recovery
+checkpoints, independent verifier attestation, and dependency finalization.
+Its exact public schema has no attestation, admission, or process-kill fields
+that the canary did not prove. A failed model/tool/Git/cleanup attempt is
+`failed`, not `blocked`, and still writes bounded result and cleanup artifacts.
+
+`blocked` is an intentional safety result, not a fixture failure. Only the
+separate `real-codex-integrated-gate` schema can ever produce
+`liveProductEvidence=true`, and only when every correlated initiative,
+identity, recovery, independent verification, negative-control, and cleanup
+invariant is present. Unknown fields, raw thread/turn identifiers, paths,
+idempotency keys, prompts, or unsafe scenario identifiers are rejected rather
+than copied into public output.
 
 ## Scenario and evidence rules
 

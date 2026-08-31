@@ -40,11 +40,170 @@ function sourceRepository() {
   return { root, sha: git(root, "rev-parse", "HEAD") };
 }
 
+function passedLiveCoreResult(scenarioId = "m52-live-gated") {
+  const identity = (character) => `sha256:${character.repeat(64)}`;
+  return {
+    schemaVersion: 1,
+    scenarioId,
+    state: "passed",
+    product: "codex",
+    evidenceClass: "real-codex-integrated-gate",
+    liveProductEvidence: true,
+    claim: "real-codex-a-r-same-a-v-integrated-gate",
+    counts: {
+      rolesCreated: 5,
+      modelTurnsStarted: 12,
+      modelTurnsCompleted: 12,
+      toolEffectsCommitted: 8,
+      receiverDecisionTurnsCompleted: 4,
+      contextAdmissionReceipts: 4,
+    },
+    chain: {
+      implementationSha: "a".repeat(40),
+      fixSha: "b".repeat(40),
+      directDescendant: true,
+      verified: true,
+      dependencyUnlocked: true,
+      verificationMode: "independent-service-signed",
+      attestationDigest: identity("c"),
+    },
+    initiative: {
+      reviewTriggeredByLifecycle: true,
+      fixTriggeredByAdmittedContext: true,
+      verificationTriggeredByLifecycle: true,
+      sameAResumed: true,
+      humanRelayActions: 0,
+      orchestratorPromptSubmissionsAfterReview: 0,
+      pollingWakeups: 0,
+      scriptedPromptSubmissions: 0,
+    },
+    identityDigests: {
+      implementerThreadDigest: identity("d"),
+      resumedImplementerThreadDigest: identity("d"),
+      reviewerThreadDigest: identity("e"),
+      verifierThreadDigest: identity("f"),
+      dependentThreadDigest: identity("1"),
+      irrelevantThreadDigest: identity("2"),
+    },
+    recovery: {
+      status: "complete",
+      restartCheckpointsPassed: 5,
+      replayChecksPassed: 5,
+      outcomeUnknownReconciliations: 1,
+      processKillCanaryDigest: identity("3"),
+    },
+    controls: {
+      dependencyLockedBefore: true,
+      dependencySatisfiedAfter: true,
+      irrelevantAuthorized: true,
+      irrelevantSkipped: true,
+      irrelevantModelTurns: 0,
+      receiverOwnedDecisions: true,
+      exactAdmissionReceiptsBound: true,
+    },
+    cleanup: {
+      attempted: true,
+      complete: true,
+      threadsCreated: 5,
+      threadsDeleted: 5,
+      absenceChecksPassed: 5,
+      temporaryResourcesRemoved: true,
+      unexpectedArtifacts: 0,
+      verifierServiceExited: true,
+      verifierKeyMaterialRemoved: true,
+      gitResourcesRemoved: true,
+      sqliteSidecarsAbsent: true,
+      journalsRetired: true,
+      temporaryFilesAbsent: true,
+    },
+  };
+}
+
+function blockedCanaryCoreResult(scenarioId = "m52-live-canary") {
+  const identity = (character) => `sha256:${character.repeat(64)}`;
+  return {
+    schemaVersion: 1,
+    scenarioId,
+    state: "blocked",
+    code: "threadmesh_m52_live_codex_integrated_gate_incomplete",
+    product: "codex",
+    evidenceClass: "real-codex-product-canary",
+    liveProductEvidence: false,
+    claim: "real_product_model_tool_canary",
+    counts: {
+      rolesPrecreated: 5,
+      postBootstrapTurns: 4,
+      modelSelectedToolCalls: 8,
+      commits: 2,
+      verifierRequests: 1,
+    },
+    chain: {
+      validatedBaseSha: "a".repeat(40),
+      fixtureSeedSha: "b".repeat(40),
+      implementationSha: "c".repeat(40),
+      fixSha: "d".repeat(40),
+      directDescendant: true,
+      verified: true,
+      unlocked: false,
+    },
+    initiative: {
+      aPublishedArtifact: true,
+      rReportedFinding: true,
+      sameAFixed: true,
+      vRequestedVerification: true,
+      humanRelayActions: 0,
+      phasePromptsSubmittedByRunner: 4,
+      lifecycleHandoffsByThreadMesh: false,
+    },
+    identityDigests: {
+      implementerThread: identity("1"),
+      resumedImplementerThread: identity("1"),
+      reviewerThread: identity("2"),
+      verifierThread: identity("3"),
+      dependentThread: identity("4"),
+      irrelevantThread: identity("5"),
+    },
+    recovery: {
+      businessTurnJournalsRetired: 0,
+      admissionJournalsRetired: 0,
+      reconciledWithoutResend: false,
+      duplicateNativeTurnsPrevented: false,
+    },
+    controls: {
+      sameARef: true,
+      sameAWorktree: true,
+      dependentUnlocked: false,
+      dependentPostBootstrapTurns: 0,
+      irrelevantPostBootstrapTurns: 0,
+      allRolesDeleted: true,
+      fixtureRemoved: true,
+      cleanupComplete: true,
+    },
+    cleanup: {
+      attempted: true,
+      complete: true,
+      threadsCreated: 5,
+      threadsDeleted: 5,
+      absenceChecksPassed: 5,
+      fixtureRemoved: true,
+    },
+    missingGates: [
+      "coordinator-attention-routing",
+      "receiver-owned-decisions",
+      "context-admission-receipts",
+      "durable-recovery-checkpoints",
+      "independent-verifier-attestation",
+      "dependency-finalization",
+    ],
+  };
+}
+
 test("dry-run proves the A-R-same-A-V runner contract without claiming product evidence", async () => {
   const source = sourceRepository();
   const artifacts = fs.mkdtempSync(path.join(os.tmpdir(), "threadmesh-live-scenario-artifacts-"));
   const temporaryParent = fs.mkdtempSync(path.join(os.tmpdir(), "threadmesh-live-scenario-fixture-"));
   const runtime = new DeterministicLiveAgentRuntime();
+  let liveGates = 0;
   try {
     const result = await runLiveAgentScenario({
       mode: "dry-run",
@@ -55,6 +214,7 @@ test("dry-run proves the A-R-same-A-V runner contract without claiming product e
       temporaryParent,
       runtime,
       scenarioId: "m52-dry-contract",
+      liveCodexGate: async () => { liveGates += 1; },
     });
     assert.equal(result.state, "passed");
     assert.equal(result.liveProductEvidence, false);
@@ -74,6 +234,7 @@ test("dry-run proves the A-R-same-A-V runner contract without claiming product e
     assert.equal(result.chain.signedIndependentAttestation, false);
     assert.equal(result.chain.dependencyUnlocked, true);
     assert.equal(result.cleanup.complete, true);
+    assert.equal(liveGates, 0);
     const aTurns = runtime.turns.filter(({ role }) => role === "a");
     assert.ok(aTurns.length >= 4);
     assert.ok(aTurns.every(({ ref }) => ref.threadId === aTurns[0].ref.threadId));
@@ -127,10 +288,11 @@ test("dry-run proves the A-R-same-A-V runner contract without claiming product e
   }
 });
 
-test("Codex live is capability-preflight only until durable attention and trusted finalize gates close", async () => {
+test("Codex live routes an acknowledged run through the integrated gate after a non-success probe", async () => {
   const source = sourceRepository();
   const artifacts = fs.mkdtempSync(path.join(os.tmpdir(), "threadmesh-live-scenario-codex-gate-"));
   let probes = 0;
+  let gates = 0;
   const runtime = {
     async probe() {
       probes += 1;
@@ -140,7 +302,7 @@ test("Codex live is capability-preflight only until durable attention and truste
       };
     },
     async createRole() {
-      throw new Error("must not create a role while live gate is closed");
+      throw new Error("the injected gate owns product execution");
     },
   };
   try {
@@ -154,16 +316,195 @@ test("Codex live is capability-preflight only until durable attention and truste
       command: "/fake/codex",
       ack: "maintainer-approved-threadmesh-live-agent-scenario",
       scenarioId: "m52-live-gated",
+      liveCodexGate: async (options) => {
+        gates += 1;
+        assert.equal(options.runtime, runtime);
+        assert.equal(options.sourceRoot, source.root);
+        assert.equal(options.validatedBaseSha, source.sha);
+        assert.equal(options.artifactsDirectory, artifacts);
+        assert.equal(options.scenarioId, "m52-live-gated");
+        options.record("live-gate.completed", {
+          resultDigest: `sha256:${"d".repeat(64)}`,
+        });
+        return passedLiveCoreResult();
+      },
     });
-    assert.equal(result.state, "blocked");
-    assert.equal(result.code, "threadmesh_codex_live_attention_glue_not_closed");
-    assert.equal(result.liveProductEvidence, false);
-    assert.equal(result.cleanup.threadsCreated, 0);
+    assert.equal(result.state, "passed");
+    assert.equal(result.evidenceClass, "real-codex-integrated-gate");
+    assert.equal(result.liveProductEvidence, true);
+    assert.equal(result.cleanup.complete, true);
+    assert.equal(result.initiative.sameAResumed, true);
+    assert.match(result.chain.attestationDigest, /^sha256:[a-f0-9]{64}$/u);
     assert.equal(probes, 1);
+    assert.equal(gates, 1);
     assert.equal(fs.existsSync(path.join(artifacts, "result.json")), true);
+    const records = fs.readFileSync(path.join(artifacts, "private-trace.jsonl"), "utf8")
+      .trim().split("\n").map(JSON.parse);
+    const probeIndex = records.findIndex(({ type }) => type === "harness.capability-probe");
+    const gateIndex = records.findIndex(({ type }) => type === "live-gate.completed");
+    assert.ok(probeIndex >= 0 && gateIndex > probeIndex);
+    assert.equal(records[0].type, "scenario.started");
+    assert.equal(records[0].detail.dependencyUnlockInScope, true);
+    assert.equal(records[probeIndex].detail.provesIntegratedGate, false);
   } finally {
     fs.rmSync(source.root, { recursive: true, force: true });
     fs.rmSync(artifacts, { recursive: true, force: true });
+  }
+});
+
+test("Codex live requires the exact ACK before probing or resolving the gate", async () => {
+  const source = sourceRepository();
+  const artifacts = fs.mkdtempSync(path.join(os.tmpdir(), "threadmesh-live-scenario-ack-"));
+  let touched = 0;
+  try {
+    await assert.rejects(
+      runLiveAgentScenario({
+        mode: "live", product: "codex", sourceRoot: source.root,
+        validatedBaseSha: source.sha, artifactsDirectory: artifacts,
+        command: "/fake/codex", ack: "wrong", scenarioId: "m52-ack-rejected",
+        runtime: { async probe() { touched += 1; } },
+        liveCodexGate: async () => { touched += 1; },
+      }),
+      { code: "threadmesh_live_scenario_ack_required" },
+    );
+    assert.equal(touched, 0);
+    assert.deepEqual(fs.readdirSync(artifacts), []);
+  } finally {
+    fs.rmSync(source.root, { recursive: true, force: true });
+    fs.rmSync(artifacts, { recursive: true, force: true });
+  }
+});
+
+test("completed real Codex canary remains blocked and names every missing closure gate", async () => {
+  const source = sourceRepository();
+  const artifacts = fs.mkdtempSync(path.join(os.tmpdir(), "threadmesh-live-scenario-canary-"));
+  try {
+    const result = await runLiveAgentScenario({
+      mode: "live", product: "codex", sourceRoot: source.root,
+      validatedBaseSha: source.sha, artifactsDirectory: artifacts,
+      command: "/fake/codex", ack: "maintainer-approved-threadmesh-live-agent-scenario",
+      scenarioId: "m52-live-canary",
+      runtime: { async probe() { return { userAgent: "codex-test", snapshotDigest: `sha256:${"a".repeat(64)}` }; } },
+      liveCodexGate: async () => blockedCanaryCoreResult(),
+    });
+    assert.equal(result.state, "blocked");
+    assert.equal(result.evidenceClass, "real-codex-product-canary");
+    assert.equal(result.liveProductEvidence, false);
+    assert.equal(result.initiative.phasePromptsSubmittedByRunner, 4);
+    assert.equal(result.initiative.lifecycleHandoffsByThreadMesh, false);
+    assert.equal(result.missingGates.length, 6);
+    assert.equal(JSON.parse(fs.readFileSync(path.join(artifacts, "result.json"))).state, "blocked");
+  } finally {
+    fs.rmSync(source.root, { recursive: true, force: true });
+    fs.rmSync(artifacts, { recursive: true, force: true });
+  }
+});
+
+test("Codex canary cannot self-assert pass and failed attempts remain failed with artifacts", async () => {
+  const source = sourceRepository();
+  const invalidArtifacts = fs.mkdtempSync(path.join(os.tmpdir(), "threadmesh-live-canary-invalid-"));
+  const identityArtifacts = fs.mkdtempSync(path.join(os.tmpdir(), "threadmesh-live-canary-identity-"));
+  const failedArtifacts = fs.mkdtempSync(path.join(os.tmpdir(), "threadmesh-live-canary-failed-"));
+  const options = {
+    mode: "live", product: "codex", sourceRoot: source.root,
+    validatedBaseSha: source.sha, command: "/fake/codex",
+    ack: "maintainer-approved-threadmesh-live-agent-scenario",
+    runtime: { async probe() { return { userAgent: "codex-test", snapshotDigest: `sha256:${"a".repeat(64)}` }; } },
+  };
+  try {
+    await assert.rejects(
+      runLiveAgentScenario({
+        ...options, artifactsDirectory: invalidArtifacts, scenarioId: "m52-canary-self-pass",
+        liveCodexGate: async () => ({
+          ...blockedCanaryCoreResult("m52-canary-self-pass"),
+          state: "passed", liveProductEvidence: true,
+        }),
+      }),
+      { code: "threadmesh_live_codex_gate_result_invalid" },
+    );
+    const missingIdentity = blockedCanaryCoreResult("m52-canary-missing-identity");
+    missingIdentity.identityDigests.reviewerThread = null;
+    missingIdentity.chain.fixSha = null;
+    await assert.rejects(
+      runLiveAgentScenario({
+        ...options, artifactsDirectory: identityArtifacts,
+        scenarioId: "m52-canary-missing-identity",
+        liveCodexGate: async () => missingIdentity,
+      }),
+      { code: "threadmesh_live_codex_gate_result_invalid" },
+    );
+    const failed = blockedCanaryCoreResult("m52-canary-failed");
+    failed.state = "failed";
+    failed.code = "threadmesh_live_canary_model_failed";
+    failed.counts.postBootstrapTurns = 1;
+    failed.chain.implementationSha = null;
+    failed.chain.fixSha = null;
+    failed.identityDigests.reviewerThread = null;
+    failed.identityDigests.verifierThread = null;
+    failed.identityDigests.dependentThread = null;
+    failed.identityDigests.irrelevantThread = null;
+    failed.cleanup.complete = false;
+    failed.cleanup.threadsDeleted = 4;
+    failed.cleanup.absenceChecksPassed = 4;
+    failed.controls.allRolesDeleted = false;
+    failed.controls.cleanupComplete = false;
+    const result = await runLiveAgentScenario({
+      ...options, artifactsDirectory: failedArtifacts, scenarioId: "m52-canary-failed",
+      liveCodexGate: async () => failed,
+    });
+    assert.equal(result.state, "failed");
+    assert.equal(result.liveProductEvidence, false);
+    assert.equal(fs.existsSync(path.join(failedArtifacts, "result.json")), true);
+    assert.equal(fs.existsSync(path.join(failedArtifacts, "cleanup-manifest.json")), true);
+  } finally {
+    fs.rmSync(source.root, { recursive: true, force: true });
+    fs.rmSync(invalidArtifacts, { recursive: true, force: true });
+    fs.rmSync(identityArtifacts, { recursive: true, force: true });
+    fs.rmSync(failedArtifacts, { recursive: true, force: true });
+  }
+});
+
+test("Codex live public projection rejects unknown and raw-bearing fields", async () => {
+  const source = sourceRepository();
+  const cases = [
+    ["unknown-uuid", (result) => { result.metadata = "a6c46695-e8da-4d98-90c6-a76d5490b0aa"; }],
+    ["raw-thread", (result) => { result.detail = "thread-secret-value"; }],
+    ["nested", (result) => { result.counts.prompt = "/private/raw prompt"; }],
+    ["path", (result) => { result.cleanup.path = "/private/raw"; }],
+  ];
+  try {
+    for (const [name, mutate] of cases) {
+      const artifacts = fs.mkdtempSync(path.join(os.tmpdir(), `threadmesh-live-leak-${name}-`));
+      const scenarioId = `m52-leak-${name}`;
+      const core = passedLiveCoreResult(scenarioId);
+      mutate(core);
+      await assert.rejects(
+        runLiveAgentScenario({
+          mode: "live", product: "codex", sourceRoot: source.root,
+          validatedBaseSha: source.sha, artifactsDirectory: artifacts,
+          command: "/fake/codex", ack: "maintainer-approved-threadmesh-live-agent-scenario",
+          scenarioId,
+          runtime: { async probe() { return { userAgent: "codex-test", snapshotDigest: `sha256:${"a".repeat(64)}` }; } },
+          liveCodexGate: async () => core,
+        }),
+        { code: "threadmesh_live_codex_gate_result_invalid" },
+        name,
+      );
+      assert.equal(fs.existsSync(path.join(artifacts, "result.json")), false);
+      fs.rmSync(artifacts, { recursive: true, force: true });
+    }
+    await assert.rejects(
+      runLiveAgentScenario({
+        mode: "live", product: "codex", sourceRoot: source.root,
+        validatedBaseSha: source.sha,
+        artifactsDirectory: fs.mkdtempSync(path.join(os.tmpdir(), "threadmesh-live-id-")),
+        command: "/fake/codex", ack: "maintainer-approved-threadmesh-live-agent-scenario",
+        scenarioId: "/private/raw prompt and key",
+      }),
+      { code: "threadmesh_live_scenario_id_invalid" },
+    );
+  } finally {
+    fs.rmSync(source.root, { recursive: true, force: true });
   }
 });
 
