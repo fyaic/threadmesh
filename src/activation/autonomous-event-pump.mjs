@@ -168,14 +168,23 @@ export class AutonomousEventPump {
     }
   }
 
-  verifySelectionChain() {
-    if (this.selectionRecords.length === 0) return this.selectionHeadDigest === null;
-    const dispatchIds = new Set();
-    for (const record of this.selectionRecords) {
-      if (!record?.dispatchId || dispatchIds.has(record.dispatchId)) return false;
-      dispatchIds.add(record.dispatchId);
+  #durabilityProjection() {
+    let recordCount = 0;
+    for (const registration of PUMP_REGISTRY.get(this).entries) {
+      const verified = this.coordinator.verifyEventPumpDispatchRecords(
+        taskRef(registration.receiver), registration.principal,
+      );
+      if (verified.valid !== true || verified.scope !== "durable-per-dispatch") {
+        throw coded("threadmesh_event_pump_durable_verification_failed");
+      }
+      recordCount += verified.recordCount;
     }
-    return sha256Digest(this.selectionRecords.at(-1)) === this.selectionHeadDigest;
+    return Object.freeze({
+      durablePerDispatchRecordsValid: true,
+      durablePerDispatchRecordCount: recordCount,
+      selectionChainValid: null,
+      selectionChainScope: "global-chain-not-implemented",
+    });
   }
 
   #nextCandidate() {
@@ -406,8 +415,7 @@ export class AutonomousEventPump {
           state: "idle", processed, dispatches, skips,
           selectionRecordCount: this.selectionRecords.length,
           selectionHeadDigest: this.selectionHeadDigest,
-          selectionChainValid: this.verifySelectionChain(),
-          selectionChainScope: "in-process-self-checked",
+          ...this.#durabilityProjection(),
         });
       }
       if (["blocked-completed-bound", "blocked-durable-lease"].includes(result.state)) {
@@ -421,8 +429,7 @@ export class AutonomousEventPump {
           skips: this.selectionRecords.length - dispatches,
           selectionRecordCount: this.selectionRecords.length,
           selectionHeadDigest: this.selectionHeadDigest,
-          selectionChainValid: this.verifySelectionChain(),
-          selectionChainScope: "in-process-self-checked",
+          ...this.#durabilityProjection(),
         });
       }
       processed += 1;
@@ -446,8 +453,7 @@ export class AutonomousEventPump {
         }),
         selectionRecordCount: this.selectionRecords.length,
         selectionHeadDigest: this.selectionHeadDigest,
-        selectionChainValid: this.verifySelectionChain(),
-        selectionChainScope: "in-process-self-checked",
+        ...this.#durabilityProjection(),
       });
     }
     if (remaining) throw coded("threadmesh_event_pump_limit_reached");
@@ -459,8 +465,7 @@ export class AutonomousEventPump {
       skips: this.selectionRecords.length - dispatches,
       selectionRecordCount: this.selectionRecords.length,
       selectionHeadDigest: this.selectionHeadDigest,
-      selectionChainValid: this.verifySelectionChain(),
-      selectionChainScope: "in-process-self-checked",
+      ...this.#durabilityProjection(),
     });
   }
 }

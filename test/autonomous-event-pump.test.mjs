@@ -29,6 +29,9 @@ test("pump freezes startup registrations and one lifecycle start drains to idle"
       return { cursor: { committedCursor: 0, revision: 0 }, activeClaim: null };
     },
     readAttentionEvents() { return { events: [] }; },
+    verifyEventPumpDispatchRecords() {
+      return { valid: true, scope: "durable-per-dispatch", recordCount: 0 };
+    },
   };
   const mutableRegistration = registration();
   const pump = createAutonomousEventPump({
@@ -53,8 +56,9 @@ test("pump freezes startup registrations and one lifecycle start drains to idle"
   assert.equal(pump.registrations[0].routes[0].handlerId, "handler.pump.business.v1");
   assert.equal(result.state, "idle");
   assert.equal(result.processed, 0);
-  assert.equal(result.selectionChainValid, true);
-  assert.equal(result.selectionChainScope, "in-process-self-checked");
+  assert.equal(result.durablePerDispatchRecordsValid, true);
+  assert.equal(result.selectionChainValid, null);
+  assert.equal(result.selectionChainScope, "global-chain-not-implemented");
   const alternateRegistration = registration();
   alternateRegistration.routes[0].handlerId = "handler.pump.business.v2";
   const alternate = createAutonomousEventPump({
@@ -96,6 +100,9 @@ test("settled completed-bound head blocks without looking ahead or starting anot
       return { events: [head, later] };
     },
     getEventPumpDispatch() { return null; },
+    verifyEventPumpDispatchRecords() {
+      return { valid: true, scope: "durable-per-dispatch", recordCount: 0 };
+    },
     listPending() { pendingReads += 1; throw new Error("must not read later pending work"); },
   };
   const pump = createAutonomousEventPump({

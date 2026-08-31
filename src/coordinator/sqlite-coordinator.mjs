@@ -753,7 +753,7 @@ const SQLITE_SCHEMA_V9_CONSTRAINTS = Object.freeze({
         "receiver_incarnation_id|TEXT|1||0", "event_cursor|INTEGER|1||0",
         "event_id|TEXT|1||0", "event_digest|TEXT|1||0",
         "registry_digest|TEXT|1||0", "handler_id|TEXT|1||0",
-        "route_digest|TEXT|1||0",
+        "route_digest|TEXT|1||0", "dispatch_intent_digest|TEXT|1||0",
         "state|TEXT|1||0", "owner_id|TEXT|1||0", "lease_epoch|INTEGER|1||0",
         "lease_expires_at|TEXT|1||0", "turn_execution_id|TEXT|0||0",
         "selection_record_json|TEXT|0||0", "selection_digest|TEXT|0||0",
@@ -771,6 +771,7 @@ const SQLITE_SCHEMA_V9_CONSTRAINTS = Object.freeze({
     event_pump_checkpoints: Object.freeze({
       columns: Object.freeze([
         "dispatch_id|TEXT|1||1", "sequence|INTEGER|1||2", "state|TEXT|1||0",
+        "dispatch_intent_digest|TEXT|1||0",
         "owner_id|TEXT|1||0", "lease_epoch|INTEGER|1||0",
         "lease_expires_at|TEXT|1||0", "turn_execution_id|TEXT|0||0",
         "selection_digest|TEXT|0||0", "previous_checkpoint_digest|TEXT|0||0",
@@ -783,7 +784,15 @@ const SQLITE_SCHEMA_V9_CONSTRAINTS = Object.freeze({
       ]),
     }),
   }),
-  indexes: SQLITE_SCHEMA_V8_CONSTRAINTS.indexes,
+  indexes: Object.freeze({
+    ...SQLITE_SCHEMA_V8_CONSTRAINTS.indexes,
+    event_pump_dispatches_state_lease: Object.freeze({
+      table: "event_pump_dispatches",
+      unique: 0,
+      partial: 0,
+      columns: Object.freeze(["state", "lease_expires_at"]),
+    }),
+  }),
 });
 export const SQLITE_SCHEMA_MANIFEST = Object.freeze({
   ...SQLITE_SCHEMA_V8_MANIFEST,
@@ -792,16 +801,22 @@ export const SQLITE_SCHEMA_MANIFEST = Object.freeze({
     event_pump_dispatches: Object.freeze([
       "dispatch_id", "receiver_task_id", "receiver_incarnation_id",
       "event_cursor", "event_id", "event_digest", "registry_digest",
-      "handler_id", "route_digest", "state", "owner_id", "lease_epoch", "lease_expires_at",
+      "handler_id", "route_digest", "dispatch_intent_digest", "state",
+      "owner_id", "lease_epoch", "lease_expires_at",
       "turn_execution_id", "selection_record_json", "selection_digest",
       "revision", "created_at", "updated_at",
     ]),
     event_pump_checkpoints: Object.freeze([
-      "dispatch_id", "sequence", "state", "owner_id", "lease_epoch",
+      "dispatch_id", "sequence", "state", "dispatch_intent_digest",
+      "owner_id", "lease_epoch",
       "lease_expires_at", "turn_execution_id", "selection_digest",
       "previous_checkpoint_digest", "checkpoint_digest", "recorded_at",
     ]),
   }),
+  indexes: Object.freeze([
+    ...SQLITE_SCHEMA_V8_MANIFEST.indexes,
+    "event_pump_dispatches_state_lease",
+  ]),
   constraints: SQLITE_SCHEMA_V9_CONSTRAINTS,
 });
 export const SQLITE_SCHEMA_MIGRATIONS = Object.freeze([
@@ -1915,6 +1930,7 @@ export class SqliteCoordinator {
         registry_digest TEXT NOT NULL,
         handler_id TEXT NOT NULL,
         route_digest TEXT NOT NULL,
+        dispatch_intent_digest TEXT NOT NULL,
         state TEXT NOT NULL,
         owner_id TEXT NOT NULL,
         lease_epoch INTEGER NOT NULL,
@@ -1937,6 +1953,7 @@ export class SqliteCoordinator {
         dispatch_id TEXT NOT NULL,
         sequence INTEGER NOT NULL,
         state TEXT NOT NULL,
+        dispatch_intent_digest TEXT NOT NULL,
         owner_id TEXT NOT NULL,
         lease_epoch INTEGER NOT NULL,
         lease_expires_at TEXT NOT NULL,
@@ -1952,6 +1969,9 @@ export class SqliteCoordinator {
         FOREIGN KEY (turn_execution_id)
           REFERENCES turn_execution_intents (execution_id)
       );
+
+      CREATE INDEX IF NOT EXISTS event_pump_dispatches_state_lease
+        ON event_pump_dispatches (state, lease_expires_at);
     `);
   }
 
@@ -6798,6 +6818,10 @@ export class SqliteCoordinator {
       const dispatchId = `pump_${sha256Digest({
         receiver, eventCursor, eventId,
       }).slice("sha256:".length)}`;
+      const dispatchIntentDigest = sha256Digest({
+        receiver, cursor: eventCursor, event: eventId, eventDigest, registryDigest,
+        handlerId, routeDigest,
+      });
       const existing = this.db.prepare(
         `SELECT * FROM event_pump_dispatches
          WHERE dispatch_id = ? OR
@@ -6811,7 +6835,8 @@ export class SqliteCoordinator {
           existing.dispatch_id !== dispatchId || existing.event_id !== eventId ||
           existing.event_digest !== eventDigest ||
           existing.registry_digest !== registryDigest ||
-          existing.handler_id !== handlerId || existing.route_digest !== routeDigest
+          existing.handler_id !== handlerId || existing.route_digest !== routeDigest ||
+          existing.dispatch_intent_digest !== dispatchIntentDigest
         ) throw codedError("threadmesh_event_pump_dispatch_conflict");
         if (existing.state !== "selected") {
           return {
@@ -6851,15 +6876,16 @@ export class SqliteCoordinator {
         `INSERT INTO event_pump_dispatches (
            dispatch_id, receiver_task_id, receiver_incarnation_id,
            event_cursor, event_id, event_digest, registry_digest, handler_id,
-           route_digest, state, owner_id, lease_epoch, lease_expires_at,
+           route_digest, dispatch_intent_digest, state,
+           owner_id, lease_epoch, lease_expires_at,
            turn_execution_id, selection_record_json, selection_digest,
            revision, created_at, updated_at
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'selected', ?, 1, ?,
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'selected', ?, 1, ?,
                    NULL, NULL, NULL, 0, ?, ?)`,
       ).run(
         dispatchId, receiver.taskId, receiver.incarnationId,
         eventCursor, eventId, eventDigest, registryDigest, handlerId,
-        routeDigest, ownerId, leaseExpiresAt, at, at,
+        routeDigest, dispatchIntentDigest, ownerId, leaseExpiresAt, at, at,
       );
       const row = this.#eventPumpDispatchRow(dispatchId);
       this.#appendEventPumpCheckpoint(row, "selected");
@@ -6940,6 +6966,7 @@ export class SqliteCoordinator {
         registryDigest: current.registry_digest,
         handlerId: current.handler_id,
         routeDigest: current.route_digest,
+        dispatchIntentDigest: current.dispatch_intent_digest,
         kind: outcome === "completed-bound"
           ? "coordinator-activation" : "durable-route-skip",
         outcome,
@@ -6976,6 +7003,20 @@ export class SqliteCoordinator {
          AND event_cursor = ? AND event_id = ?`,
     ).get(receiver.taskId, receiver.incarnationId, eventCursor, eventId);
     return row ? this.#projectEventPumpDispatch(row) : null;
+  }
+
+  verifyEventPumpDispatchRecords(receiver, principal) {
+    assertTaskPrincipal(principal, receiver?.taskId, receiver?.incarnationId);
+    this.#validatePersistedEventPumpState();
+    const recordCount = this.db.prepare(
+      `SELECT COUNT(*) FROM event_pump_dispatches
+       WHERE receiver_task_id = ? AND receiver_incarnation_id = ?`,
+    ).pluck().get(receiver.taskId, receiver.incarnationId);
+    return Object.freeze({
+      valid: true,
+      scope: "durable-per-dispatch",
+      recordCount,
+    });
   }
 
   #currentDependencyEdgeRow(dependencyId, required = true) {
@@ -7480,6 +7521,7 @@ export class SqliteCoordinator {
       registryDigest: row.registry_digest,
       handlerId: row.handler_id,
       routeDigest: row.route_digest,
+      dispatchIntentDigest: row.dispatch_intent_digest,
       state: row.state,
       ownerId: row.owner_id,
       leaseEpoch: row.lease_epoch,
@@ -7502,6 +7544,7 @@ export class SqliteCoordinator {
       dispatchId: row.dispatch_id,
       sequence: (previous?.sequence ?? 0) + 1,
       state: checkpointState,
+      dispatchIntentDigest: row.dispatch_intent_digest,
       ownerId: row.owner_id,
       leaseEpoch: row.lease_epoch,
       leaseExpiresAt: row.lease_expires_at,
@@ -7513,12 +7556,13 @@ export class SqliteCoordinator {
     const checkpointDigest = sha256Digest(body);
     this.db.prepare(
       `INSERT INTO event_pump_checkpoints (
-         dispatch_id, sequence, state, owner_id, lease_epoch,
+         dispatch_id, sequence, state, dispatch_intent_digest, owner_id, lease_epoch,
          lease_expires_at, turn_execution_id, selection_digest,
          previous_checkpoint_digest, checkpoint_digest, recorded_at
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
-      body.dispatchId, body.sequence, body.state, body.ownerId, body.leaseEpoch,
+      body.dispatchId, body.sequence, body.state, body.dispatchIntentDigest,
+      body.ownerId, body.leaseEpoch,
       body.leaseExpiresAt, body.turnExecutionId, body.selectionDigest,
       body.previousCheckpointDigest, checkpointDigest, body.recordedAt,
     );
@@ -7544,9 +7588,22 @@ export class SqliteCoordinator {
         !/^sha256:[a-f0-9]{64}$/u.test(row.event_digest) ||
         !/^sha256:[a-f0-9]{64}$/u.test(row.registry_digest) ||
         !/^sha256:[a-f0-9]{64}$/u.test(row.route_digest) ||
+        !/^sha256:[a-f0-9]{64}$/u.test(row.dispatch_intent_digest) ||
         !Number.isInteger(row.lease_epoch) || row.lease_epoch < 1 ||
         !Number.isInteger(Date.parse(row.lease_expires_at))
       ) throw codedError("threadmesh_event_pump_storage_tampered");
+      const expectedIntentDigest = sha256Digest({
+        receiver,
+        cursor: row.event_cursor,
+        event: row.event_id,
+        eventDigest: row.event_digest,
+        registryDigest: row.registry_digest,
+        handlerId: row.handler_id,
+        routeDigest: row.route_digest,
+      });
+      if (row.dispatch_intent_digest !== expectedIntentDigest) {
+        throw codedError("threadmesh_event_pump_storage_tampered");
+      }
       this.#projectEventPumpDispatch(row);
       if (row.state === "selected") {
         if (row.selection_record_json !== null || row.selection_digest !== null ||
@@ -7564,6 +7621,7 @@ export class SqliteCoordinator {
           registryDigest: row.registry_digest,
           handlerId: row.handler_id,
           routeDigest: row.route_digest,
+          dispatchIntentDigest: row.dispatch_intent_digest,
           kind: row.state === "completed-bound"
             ? "coordinator-activation" : "durable-route-skip",
           outcome: row.state,
@@ -7589,6 +7647,7 @@ export class SqliteCoordinator {
           dispatchId: checkpoint.dispatch_id,
           sequence: checkpoint.sequence,
           state: checkpoint.state,
+          dispatchIntentDigest: checkpoint.dispatch_intent_digest,
           ownerId: checkpoint.owner_id,
           leaseEpoch: checkpoint.lease_epoch,
           leaseExpiresAt: checkpoint.lease_expires_at,
@@ -7599,6 +7658,7 @@ export class SqliteCoordinator {
         };
         if (
           checkpoint.sequence !== index + 1 ||
+          checkpoint.dispatch_intent_digest !== row.dispatch_intent_digest ||
           checkpoint.previous_checkpoint_digest !== previousDigest ||
           sha256Digest(body) !== checkpoint.checkpoint_digest
         ) throw codedError("threadmesh_event_pump_storage_tampered");

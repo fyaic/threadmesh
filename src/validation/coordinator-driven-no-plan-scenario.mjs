@@ -1180,7 +1180,9 @@ export async function runCoordinatorDrivenNoPlanScenario({
       eventPumpSelectionHeadDigest: pumpResult.selectionHeadDigest,
       eventPumpSelectionChainValid: pumpResult.selectionChainValid,
       eventPumpSelectionChainScope: pumpResult.selectionChainScope,
-      eventPumpSelectionDurable: false,
+      eventPumpSelectionDurable: true,
+      durablePerDispatchRecordsValid: pumpResult.durablePerDispatchRecordsValid,
+      durablePerDispatchRecordCount: pumpResult.durablePerDispatchRecordCount,
       eventPumpTerminalState: pumpResult.state,
       eventPumpAwaitingPromotion: pumpResult.awaitingPromotion === true,
       autonomousEventPump: true,
@@ -1192,8 +1194,8 @@ export async function runCoordinatorDrivenNoPlanScenario({
       pendingRoles: [],
       pendingReason: "Durable pump restart and cross-process lease remain outside this fixture.",
       pendingGates: [
-        "durable-pump-restart-checkpoint",
         "cross-process-concurrent-pump-lease",
+        "post-turn-pre-settle-exactly-once",
       ],
       routeHandlerConfigs: ROUTE_HANDLER_CONFIGS,
       executedHandlerIds: selectionBindings
