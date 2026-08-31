@@ -51,6 +51,7 @@ test("one pump lifecycle autonomously dispatches A to R to same-A", async (t) =>
   assert.equal(result.runtime.planSurfaceUsed, false);
   assert.equal(result.cleanup.complete, true);
   assert.equal(result.cleanup.remainingJournalCount, 0);
+  assert.equal(result.cleanup.runRootRemoved, true);
   assert.ok(result.cleanup.roles.every(({ deleted, absenceVerified }) =>
     deleted && absenceVerified));
 });
@@ -80,14 +81,37 @@ test("cleanup preserves caller-owned journal-like files and reports them", async
   const unrelatedDecision = path.join(
     artifactsDirectory, "unrelated.json.decision-action",
   );
+  const callerDatabase = path.join(artifactsDirectory, "coordinator-driven.sqlite");
+  const legacyJournalDirectory = path.join(
+    artifactsDirectory, ".threadmesh-coordinator-driven-journals",
+  );
+  const legacyJson = path.join(legacyJournalDirectory, "legacy.json");
+  const legacyDecision = path.join(
+    legacyJournalDirectory, "legacy.json.decision-action",
+  );
+  fs.mkdirSync(legacyJournalDirectory, { mode: 0o700 });
   fs.writeFileSync(unrelatedJson, "caller-owned-json", { mode: 0o600 });
   fs.writeFileSync(unrelatedDecision, "caller-owned-decision", { mode: 0o600 });
+  fs.writeFileSync(callerDatabase, "caller-owned-database", { mode: 0o600 });
+  fs.writeFileSync(legacyJson, "caller-owned-legacy-json", { mode: 0o600 });
+  fs.writeFileSync(legacyDecision, "caller-owned-legacy-decision", { mode: 0o600 });
 
   const result = await runCoordinatorDrivenNoPlanScenario({ artifactsDirectory });
 
   assert.equal(result.cleanup.complete, false);
-  assert.equal(result.cleanup.unknownJournalCount, 2);
+  assert.equal(result.cleanup.unknownJournalCount, 4);
   assert.equal(result.cleanup.remainingJournalCount, 0);
+  assert.equal(result.cleanup.runRootRemoved, true);
   assert.equal(fs.readFileSync(unrelatedJson, "utf8"), "caller-owned-json");
   assert.equal(fs.readFileSync(unrelatedDecision, "utf8"), "caller-owned-decision");
+  assert.equal(fs.readFileSync(callerDatabase, "utf8"), "caller-owned-database");
+  assert.equal(fs.readFileSync(legacyJson, "utf8"), "caller-owned-legacy-json");
+  assert.equal(
+    fs.readFileSync(legacyDecision, "utf8"), "caller-owned-legacy-decision",
+  );
+  assert.deepEqual(
+    fs.readdirSync(artifactsDirectory)
+      .filter((name) => name.startsWith(".threadmesh-coordinator-driven-run-")),
+    [],
+  );
 });

@@ -221,12 +221,16 @@ export async function runCoordinatorDrivenNoPlanScenario({
     throw new Error("threadmesh_coordinator_driven_artifacts_invalid");
   }
   fs.mkdirSync(artifactsDirectory, { recursive: true });
+  const scenarioRunRoot = fs.mkdtempSync(path.join(
+    artifactsDirectory, ".threadmesh-coordinator-driven-run-",
+  ));
+  fs.chmodSync(scenarioRunRoot, 0o700);
   const journalDirectory = path.join(
-    artifactsDirectory, ".threadmesh-coordinator-driven-journals",
+    scenarioRunRoot, "journals",
   );
   fs.mkdirSync(journalDirectory, { recursive: false, mode: 0o700 });
   const ownedJournalPaths = new Set();
-  const databasePath = path.join(artifactsDirectory, "coordinator-driven.sqlite");
+  const databasePath = path.join(scenarioRunRoot, "coordinator-driven.sqlite");
   const coordinator = new SqliteCoordinator({ filename: databasePath, clock: () => NOW });
   const actors = {
     a: { taskId: "task_no_plan_a", incarnationId: "inc_no_plan_a_0001" },
@@ -615,8 +619,12 @@ export async function runCoordinatorDrivenNoPlanScenario({
     }
   }
   const remainingOwnedJournals = [...ownedJournalPaths].filter(fs.existsSync);
+  const legacyJournalDirectory = path.join(
+    artifactsDirectory, ".threadmesh-coordinator-driven-journals",
+  );
   const allJournalLikePaths = [
     ...journalLikePaths(artifactsDirectory),
+    ...journalLikePaths(legacyJournalDirectory),
     ...journalLikePaths(journalDirectory),
   ];
   const unknownJournalPaths = allJournalLikePaths.filter(
@@ -634,12 +642,24 @@ export async function runCoordinatorDrivenNoPlanScenario({
       });
     }
   }
+  let runRootRemoved = false;
+  if (fs.existsSync(scenarioRunRoot) && fs.readdirSync(scenarioRunRoot).length === 0) {
+    try {
+      fs.rmdirSync(scenarioRunRoot);
+      runRootRemoved = true;
+    } catch (error) {
+      journalRemovalFailures.push({
+        pathDigest: sha256Digest(scenarioRunRoot),
+        errorCode: error?.code ?? "unknown_run_root_removal_error",
+      });
+    }
+  }
   const cleanup = {
     complete: cleanupRoles.length === Object.keys(refs).length &&
       cleanupRoles.every(({ deleted, absenceVerified }) => deleted && absenceVerified) &&
       remainingOwnedJournals.length === 0 && unknownJournalPaths.length === 0 &&
       journalRemovalFailures.length === 0 && databaseRemovalFailures.length === 0 &&
-      journalDirectoryRemoved && !fs.existsSync(databasePath),
+      journalDirectoryRemoved && runRootRemoved && !fs.existsSync(databasePath),
     roles: cleanupRoles,
     ownedJournalRemovedCount,
     remainingJournalCount: remainingOwnedJournals.length,
@@ -648,6 +668,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
     journalRemovalFailures,
     databaseRemovalFailures,
     journalDirectoryRemoved,
+    runRootRemoved,
     coordinatorRemoved: !fs.existsSync(databasePath),
   };
   if (failure) {
