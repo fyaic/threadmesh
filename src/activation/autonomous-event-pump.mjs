@@ -148,12 +148,21 @@ export class AutonomousEventPump {
       routes: entry.routes.map(({ data }) => data),
     })));
     registry.digest = sha256Digest(registry.projection);
+    const pumpIdentityDigest = sha256Digest({
+      version: 1,
+      scenarioId: this.scenarioId,
+      chainId: this.chainId,
+      registryDigest: registry.digest,
+    });
     Object.defineProperties(this, {
       registrations: {
         value: registry.projection, enumerable: true, writable: false, configurable: false,
       },
       registryDigest: {
         value: registry.digest, enumerable: true, writable: false, configurable: false,
+      },
+      pumpIdentityDigest: {
+        value: pumpIdentityDigest, enumerable: true, writable: false, configurable: false,
       },
     });
     Object.freeze(entries);
@@ -162,8 +171,15 @@ export class AutonomousEventPump {
 
   #assertRegistry() {
     const registry = PUMP_REGISTRY.get(this);
+    const expectedPumpIdentityDigest = sha256Digest({
+      version: 1,
+      scenarioId: this.scenarioId,
+      chainId: this.chainId,
+      registryDigest: registry.digest,
+    });
     if (sha256Digest(registry.projection) !== registry.digest ||
-        this.registrations !== registry.projection || this.registryDigest !== registry.digest) {
+        this.registrations !== registry.projection || this.registryDigest !== registry.digest ||
+        this.pumpIdentityDigest !== expectedPumpIdentityDigest) {
       throw coded("threadmesh_event_pump_registry_tampered");
     }
   }
@@ -203,7 +219,11 @@ export class AutonomousEventPump {
       if (event) {
         const durableDispatch = this.coordinator.getEventPumpDispatch(
           taskRef(registration.receiver),
-          { eventCursor: event.cursor, eventId: event.eventId },
+          {
+            eventCursor: event.cursor,
+            eventId: event.eventId,
+            pumpIdentityDigest: this.pumpIdentityDigest,
+          },
           registration.principal,
         );
         const target = { registration, cursorState, event, durableDispatch };
@@ -293,6 +313,9 @@ export class AutonomousEventPump {
           eventId: observed.eventId,
           eventDigest: authority.event.eventDigest,
           registryDigest: this.registryDigest,
+          scenarioId: this.scenarioId,
+          chainId: this.chainId,
+          pumpIdentityDigest: this.pumpIdentityDigest,
           handlerId: routeData.handlerId,
           routeDigest,
           ownerId: this.ownerId,
@@ -315,6 +338,7 @@ export class AutonomousEventPump {
           {
             ownerId: this.ownerId,
             leaseEpoch: claimed.dispatch.leaseEpoch,
+            pumpIdentityDigest: this.pumpIdentityDigest,
             outcome: "skipped",
           },
           registration.principal,
@@ -375,6 +399,7 @@ export class AutonomousEventPump {
         {
           ownerId: this.ownerId,
           leaseEpoch: claimed.dispatch.leaseEpoch,
+          pumpIdentityDigest: this.pumpIdentityDigest,
           outcome: "completed-bound",
           turnExecutionId: activation.businessExecutionId ?? activation.decisionExecutionId,
         },

@@ -417,19 +417,57 @@ test("durable pre-dispatch selection restarts at the exact head and takes over a
       receiver, { afterCursor: 0, limit: 1 }, receiverPrincipal,
     ).events[0];
     const selected = coordinator.getEventPumpDispatch(
-      receiver, { eventCursor: event.cursor, eventId: event.eventId }, receiverPrincipal,
+      receiver, {
+        eventCursor: event.cursor,
+        eventId: event.eventId,
+        pumpIdentityDigest: first.pumpIdentityDigest,
+      }, receiverPrincipal,
     );
     assert.equal(selected.state, "selected");
     assert.equal(selected.ownerId, "pump-owner-first");
+    assert.throws(() => coordinator.settleEventPumpDispatch(
+      selected.dispatchId,
+      {
+        ownerId: selected.ownerId,
+        leaseEpoch: selected.leaseEpoch,
+        pumpIdentityDigest: `sha256:${"8".repeat(64)}`,
+        outcome: "skipped",
+      },
+      receiverPrincipal,
+    ), { code: "threadmesh_event_pump_identity_conflict" });
     assert.equal(coordinator.getAttentionCursor(receiver, receiverPrincipal).cursor.committedCursor, 0);
 
     const contender = open(temporary.filename, clock);
     try {
+      const changedScenarioId = "scenario_durable_pump_changed";
+      assert.throws(() => contender.claimEventPumpDispatch(receiver, {
+        eventCursor: event.cursor,
+        eventId: event.eventId,
+        eventDigest: selected.eventDigest,
+        registryDigest: selected.registryDigest,
+        scenarioId: changedScenarioId,
+        chainId: selected.chainId,
+        pumpIdentityDigest: sha256Digest({
+          version: 1,
+          scenarioId: changedScenarioId,
+          chainId: selected.chainId,
+          registryDigest: selected.registryDigest,
+        }),
+        handlerId: selected.handlerId,
+        routeDigest: selected.routeDigest,
+        ownerId: "pump-owner-wrong-identity",
+        leaseMs: 100,
+      }, receiverPrincipal), {
+        code: "threadmesh_event_pump_identity_conflict",
+      });
       const busy = contender.claimEventPumpDispatch(receiver, {
         eventCursor: event.cursor,
         eventId: event.eventId,
         eventDigest: selected.eventDigest,
         registryDigest: selected.registryDigest,
+        scenarioId: selected.scenarioId,
+        chainId: selected.chainId,
+        pumpIdentityDigest: selected.pumpIdentityDigest,
         handlerId: selected.handlerId,
         routeDigest: selected.routeDigest,
         ownerId: "pump-owner-contender",
@@ -466,7 +504,11 @@ test("durable pre-dispatch selection restarts at the exact head and takes over a
     assert.equal(result.selectionChainScope, "global-chain-not-implemented");
 
     const settled = coordinator.getEventPumpDispatch(
-      receiver, { eventCursor: event.cursor, eventId: event.eventId }, receiverPrincipal,
+      receiver, {
+        eventCursor: event.cursor,
+        eventId: event.eventId,
+        pumpIdentityDigest: second.pumpIdentityDigest,
+      }, receiverPrincipal,
     );
     assert.equal(settled.state, "skipped");
     assert.equal(settled.ownerId, "pump-owner-second");
@@ -568,12 +610,14 @@ test("offered dispatch restarts once and completed-bound head never looks ahead"
     const firstDispatch = coordinator.getEventPumpDispatch(receiver, {
       eventCursor: events[0].cursor,
       eventId: events[0].eventId,
+      pumpIdentityDigest: second.pumpIdentityDigest,
     }, receiverPrincipal);
     assert.equal(firstDispatch.state, "completed-bound");
     assert.equal(firstDispatch.leaseEpoch, 2);
     assert.equal(coordinator.getEventPumpDispatch(receiver, {
       eventCursor: events[1].cursor,
       eventId: events[1].eventId,
+      pumpIdentityDigest: second.pumpIdentityDigest,
     }, receiverPrincipal), null);
 
     coordinator.close();
@@ -600,7 +644,115 @@ test("offered dispatch restarts once and completed-bound head never looks ahead"
     assert.equal(coordinator.getEventPumpDispatch(receiver, {
       eventCursor: events[1].cursor,
       eventId: events[1].eventId,
+      pumpIdentityDigest: third.pumpIdentityDigest,
     }, receiverPrincipal), null);
+  } finally {
+    coordinator?.close();
+    temporary.cleanup();
+  }
+});
+
+test("scenario and chain identity drift cannot adopt a durable selected dispatch", async () => {
+  const temporary = fixture();
+  const clock = { value: START };
+  const originalScenarioId = "scenario_durable_identity_original";
+  const originalChainId = "chain_durable_identity_original";
+  const role = "reviewer";
+  const businessPhase = "offered-review";
+  const businessTool = Object.freeze({
+    type: "function",
+    name: "threadmesh_durable_identity_review",
+    description: "Record one identity-bound review.",
+    inputSchema: Object.freeze({ type: "object", additionalProperties: false }),
+  });
+  const businessOutput = Object.freeze({ findingDigest: `sha256:${"f".repeat(64)}` });
+  let coordinator = open(temporary.filename, clock);
+  try {
+    setup(coordinator);
+    const firstRuntime = offeredRuntime({
+      scenarioId: originalScenarioId,
+      role,
+      businessPhase,
+      businessTool,
+      businessOutput,
+    });
+    const first = registerOffered(createAutonomousEventPump({
+      coordinator,
+      runtime: firstRuntime,
+      scenarioId: originalScenarioId,
+      chainId: originalChainId,
+      recoveryDirectory: temporary.recoveryDirectory,
+      ownerId: "pump-owner-identity-first",
+      leaseMs: 100,
+      faultInjector: async (stage) => {
+        if (stage === "post-record-pre-turn") {
+          throw Object.assign(new Error("identity crash"), { code: "identity_crash" });
+        }
+      },
+    }), businessTool, businessOutput).start();
+    await assert.rejects(() => first.drainOnce(), { code: "identity_crash" });
+    assert.deepEqual(firstRuntime.state, {
+      decisionTurns: 0, businessTurns: 0, rawTurns: 0,
+    });
+    coordinator.close();
+    coordinator = null;
+    clock.value += 101;
+
+    for (const identity of [
+      {
+        scenarioId: "scenario_durable_identity_changed",
+        chainId: originalChainId,
+      },
+      {
+        scenarioId: originalScenarioId,
+        chainId: "chain_durable_identity_changed",
+      },
+    ]) {
+      coordinator = open(temporary.filename, clock);
+      const rejectedRuntime = offeredRuntime({
+        ...identity, role, businessPhase, businessTool, businessOutput,
+      });
+      const rejected = registerOffered(createAutonomousEventPump({
+        coordinator,
+        runtime: rejectedRuntime,
+        ...identity,
+        recoveryDirectory: temporary.recoveryDirectory,
+        ownerId: `pump-owner-rejected-${identity.scenarioId}-${identity.chainId}`,
+        leaseMs: 100,
+      }), businessTool, businessOutput).start();
+      await assert.rejects(() => rejected.drainOnce(), {
+        code: "threadmesh_event_pump_identity_conflict",
+      });
+      assert.deepEqual(rejectedRuntime.state, {
+        decisionTurns: 0, businessTurns: 0, rawTurns: 0,
+      });
+      coordinator.close();
+      coordinator = null;
+    }
+
+    coordinator = open(temporary.filename, clock);
+    const recoveryRuntime = offeredRuntime({
+      scenarioId: originalScenarioId,
+      role,
+      businessPhase,
+      businessTool,
+      businessOutput,
+    });
+    const recovery = registerOffered(createAutonomousEventPump({
+      coordinator,
+      runtime: recoveryRuntime,
+      scenarioId: originalScenarioId,
+      chainId: originalChainId,
+      recoveryDirectory: temporary.recoveryDirectory,
+      ownerId: "pump-owner-identity-recovery",
+      leaseMs: 100,
+    }), businessTool, businessOutput).start();
+    const completed = await recovery.runUntilIdle();
+    assert.equal(completed.state, "blocked-completed-bound");
+    assert.equal(completed.processed, 1);
+    assert.deepEqual(recoveryRuntime.state, {
+      decisionTurns: 1, businessTurns: 1, rawTurns: 0,
+    });
   } finally {
     coordinator?.close();
     temporary.cleanup();
@@ -638,9 +790,12 @@ test("restart verifies the append-only dispatch checkpoint digest chain", async 
   }
 });
 
-test("restart rejects registry, route, or handler mutation outside the intent digest", async () => {
+test("restart rejects pump identity, registry, route, or handler mutation", async () => {
   for (const [column, value] of [
     ["registry_digest", `sha256:${"c".repeat(64)}`],
+    ["scenario_id", "scenario_tampered"],
+    ["chain_id", "chain_tampered"],
+    ["pump_identity_digest", `sha256:${"9".repeat(64)}`],
     ["route_digest", `sha256:${"d".repeat(64)}`],
     ["handler_id", "handler_tampered"],
   ]) {
@@ -693,6 +848,7 @@ test("v9 rejects event-pump DDL, index, and foreign-key drift", () => {
         dispatch_id TEXT NOT NULL,
         sequence INTEGER NOT NULL,
         state TEXT NOT NULL,
+        pump_identity_digest TEXT NOT NULL,
         dispatch_intent_digest TEXT NOT NULL,
         owner_id TEXT NOT NULL,
         lease_epoch INTEGER NOT NULL,
