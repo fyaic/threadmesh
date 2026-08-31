@@ -364,6 +364,7 @@ export async function runCoordinatorActivation({
   const businessExecutionId = digestId("intent_activation_business", {
     scenarioId, chainId, claimEpoch, messageId, admissionToken: prepared.admissionToken,
   });
+  const businessTaskRevision = coordinator.getTask(receiver, principal).revision;
   let businessExecution = getExecution(coordinator, businessExecutionId, principal);
   let businessTurn = null;
   if (recoveredAdmission.state !== "completed") {
@@ -386,7 +387,7 @@ export async function runCoordinatorActivation({
         adapterIdempotencyKey,
         promptDigest: sha256Digest(prepared.rendering),
         allowedTools: allowedToolNames,
-      }, 0, principal);
+      }, businessTaskRevision, principal);
     }
     businessTurn = await runtime.runAdmittedToolTurn({
       role,

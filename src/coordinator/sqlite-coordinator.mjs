@@ -5401,17 +5401,21 @@ export class SqliteCoordinator {
     try { adapterRef = assertContextAdapterRef(JSON.parse(claim.adapter_ref_json)); } catch {
       throw codedError("threadmesh_context_admission_ref_invalid");
     }
+    const preverified = row.revision === claim.expected_revision + 2 &&
+      row.decision_state === "accepted" &&
+      row.delivery_state === "adapter-submitted" &&
+      row.outcome_state === "externally-verified";
     if (
       sha256Digest(adapterRef) !== claim.adapter_ref_digest ||
       this.#admissionToken(
         row, claim.expected_revision, claim.nonce, claim.adapter_ref_digest,
       ) !== claim.admission_token ||
-      (claim.state === "in-flight" && (
+      (claim.state === "in-flight" && !preverified && (
         row.revision !== claim.expected_revision ||
         row.decision_state !== "accepted" ||
         !["durably-received", "checkpoint-offered"].includes(row.delivery_state)
       )) ||
-      (claim.state === "completed" && (
+      (claim.state === "completed" && !preverified && (
         row.revision !== claim.expected_revision + 1 ||
         row.delivery_state !== "context-admitted"
       ))
@@ -5460,11 +5464,14 @@ export class SqliteCoordinator {
       ) {
         throw codedError("threadmesh_context_admission_token_invalid");
       }
-      if (
-        row.revision !== expectedRevision ||
-        row.decision_state !== "accepted" ||
-        !["durably-received", "checkpoint-offered"].includes(row.delivery_state)
-      ) {
+      const preverified = row.revision === expectedRevision + 2 &&
+        row.decision_state === "accepted" &&
+        row.delivery_state === "adapter-submitted" &&
+        row.outcome_state === "externally-verified";
+      const ordinary = row.revision === expectedRevision &&
+        row.decision_state === "accepted" &&
+        ["durably-received", "checkpoint-offered"].includes(row.delivery_state);
+      if (!ordinary && !preverified) {
         throw codedError("threadmesh_revision_or_state_conflict");
       }
       const adapterRef = assertContextAdapterRef(JSON.parse(claim.adapter_ref_json));
@@ -5472,16 +5479,18 @@ export class SqliteCoordinator {
         adapterRef,
         adapterEvidence,
       );
-      const result = this.db
-        .prepare(
-          `UPDATE dispositions SET revision = revision + 1,
-             delivery_state = 'context-admitted', updated_at = ?
-           WHERE sender_incarnation_id = ? AND message_id = ? AND revision = ?
-             AND decision_state = 'accepted'
-             AND delivery_state IN ('durably-received', 'checkpoint-offered')`,
-        )
-        .run(nowIso(this.clock), senderIncarnationId, messageId, expectedRevision);
-      if (result.changes !== 1) throw codedError("threadmesh_revision_or_state_conflict");
+      if (!preverified) {
+        const result = this.db
+          .prepare(
+            `UPDATE dispositions SET revision = revision + 1,
+               delivery_state = 'context-admitted', updated_at = ?
+             WHERE sender_incarnation_id = ? AND message_id = ? AND revision = ?
+               AND decision_state = 'accepted'
+               AND delivery_state IN ('durably-received', 'checkpoint-offered')`,
+          )
+          .run(nowIso(this.clock), senderIncarnationId, messageId, expectedRevision);
+        if (result.changes !== 1) throw codedError("threadmesh_revision_or_state_conflict");
+      }
       const claimResult = this.db
         .prepare(
           `UPDATE admission_claims SET state = 'completed', completed_at = ?
@@ -5575,9 +5584,15 @@ export class SqliteCoordinator {
          WHERE (sender_incarnation_id = ? AND message_id = ?) OR execution_id = ?`,
       ).get(senderIncarnationId, messageId, executionId);
       if (existing) {
+        const replayPreverified = row.revision === expectedRevision + 2 &&
+          row.decision_state === "accepted" &&
+          row.delivery_state === "adapter-submitted" &&
+          row.outcome_state === "externally-verified";
+        const replayOrdinary = row.revision === expectedRevision + 1 &&
+          row.delivery_state === "context-admitted";
         if (
-          existing.binding_digest !== bindingDigest ||
-          claim.state !== "completed" || row.delivery_state !== "context-admitted"
+          existing.binding_digest !== bindingDigest || claim.state !== "completed" ||
+          (!replayOrdinary && !replayPreverified)
         ) throw codedError("threadmesh_context_admission_turn_binding_conflict");
         return {
           replay: true,
@@ -7524,8 +7539,13 @@ export class SqliteCoordinator {
         turnReceiptDigest: row.turn_receipt_digest,
         adapterEvidenceDigest: row.adapter_evidence_digest,
       };
+      const preverified = message.delivery_state === "adapter-submitted" &&
+        message.decision_state === "accepted" &&
+        message.outcome_state === "externally-verified" &&
+        message.revision === row.expected_revision + 2;
       if (
-        claim?.state !== "completed" || message.delivery_state !== "context-admitted" ||
+        claim?.state !== "completed" ||
+        (message.delivery_state !== "context-admitted" && !preverified) ||
         claim.expected_revision !== row.expected_revision ||
         sha256Digest(claim.admission_token) !== row.admission_token_digest ||
         claim.adapter_ref_digest !== row.adapter_ref_digest ||
@@ -7549,7 +7569,7 @@ export class SqliteCoordinator {
         row.turn_receipt_digest !== sha256Digest(completedBinding.receipt) ||
         row.adapter_evidence_digest !== sha256Digest(completedBinding.evidence) ||
         admissionAudits.length !== 1 ||
-        admissionAudits[0].revision !== row.expected_revision + 1 ||
+        admissionAudits[0].revision !== row.expected_revision + (preverified ? 2 : 1) ||
         canonicalJson(admissionAuditDetail) !== canonicalJson({
           admissionToken: claim.admission_token,
           adapterEvidence: projectedEvidence,

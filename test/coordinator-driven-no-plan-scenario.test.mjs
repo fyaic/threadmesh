@@ -46,6 +46,22 @@ test("one pump autonomously closes A to R to same-A to V to dependent", async (t
     JSON.parse(JSON.stringify(result.routeHandlerConfigs)),
     result.routeHandlerConfigs,
   );
+  assert.deepEqual(result.executedHandlerIds, [
+    "handler.no-plan.review.v1",
+    "handler.no-plan.same-a-fix.v1",
+    "handler.no-plan.verify.v1",
+    "handler.no-plan.dependent.v1",
+  ]);
+  assert.equal(result.selectionBindings.length, 5);
+  assert.ok(result.selectionBindings.every((binding) =>
+    /^handler\.no-plan\./u.test(binding.handlerId) &&
+    /^sha256:[a-f0-9]{64}$/u.test(binding.handlerConfigDigest) &&
+    /^sha256:[a-f0-9]{64}$/u.test(binding.recordDigest)));
+  assert.deepEqual(
+    result.selectionBindings.filter(({ kind }) => kind === "durable-route-skip")
+      .map(({ handlerId }) => handlerId),
+    ["handler.no-plan.irrelevant.v1"],
+  );
   assert.equal(result.attention.allOfferedCursorsCommitted, true);
   assert.equal(result.attention.activeClaimCount, 0);
   assert.ok(Object.values(result.attention.cursors)
@@ -57,8 +73,11 @@ test("one pump autonomously closes A to R to same-A to V to dependent", async (t
   assert.equal(result.bindings.lifecycleActionPublications, 4);
   assert.equal(result.bindings.receiverDecisions, 4);
   assert.equal(result.bindings.contextAdmissions, 4);
-  assert.equal(result.verification.nativeVerifierRefIndependent, true);
-  assert.match(result.verification.nativeVerifierTurnId, /^turn-/u);
+  assert.equal(result.verification.externalIndependentVerifier, false);
+  assert.equal(result.verification.signer, "fixture-owned-ephemeral-key");
+  assert.equal(result.verification.nativeVerifierSessionIndependent, true);
+  assert.match(result.verification.nativeVerifierTurnIdDigest, /^sha256:[a-f0-9]{64}$/u);
+  assert.equal(result.verification.allLifecycleNativeTurnIdsDistinct, true);
   assert.equal(result.verification.signatureVerified, true);
   assert.equal(result.verification.resultDigestBound, true);
   assert.match(result.verification.trustAnchorDigest, /^sha256:[a-f0-9]{64}$/u);
@@ -72,6 +91,18 @@ test("one pump autonomously closes A to R to same-A to V to dependent", async (t
     taskState: "ready",
     effectCommittedAfterFinalization: true,
   });
+  assert.deepEqual(result.ordering.sequence, [
+    "v-verification-tool-selected",
+    "verified-event-durable",
+    "dependent-admission-prepared",
+    "trusted-finalization-completed",
+    "dependent-business-tool-selected",
+    "dependent-cursor-finalized",
+  ]);
+  assert.equal(result.ordering.finalizationBeforeDependentBusiness, true);
+  assert.equal(result.ordering.timestampStrictlyEarlier, true);
+  assert.ok(Date.parse(result.ordering.finalizationAt) <
+    Date.parse(result.ordering.dependentBusinessStartedAt));
   assert.equal(result.runtime.planSurfaceUsed, false);
   assert.equal(result.runtime.modelSelectedToolCalls, 9);
   assert.equal(result.cleanup.complete, true);
@@ -79,6 +110,38 @@ test("one pump autonomously closes A to R to same-A to V to dependent", async (t
   assert.equal(result.cleanup.runRootRemoved, true);
   assert.ok(result.cleanup.roles.every(({ deleted, absenceVerified }) =>
     deleted && absenceVerified));
+});
+
+test("failed trusted finalization starts no dependent business turn", async (t) => {
+  const artifactsDirectory = fs.mkdtempSync(
+    path.join(os.tmpdir(), "threadmesh-coordinator-finalization-failure-"),
+  );
+  t.after(() => fs.rmSync(artifactsDirectory, { recursive: true, force: true }));
+
+  await assert.rejects(
+    () => runCoordinatorDrivenNoPlanScenario({
+      artifactsDirectory,
+      injectFinalizationFailure: true,
+    }),
+    (error) => {
+      assert.equal(error?.code, "threadmesh_git_evidence_finalization_tool_mismatch");
+      assert.deepEqual(error.failureEvidence, {
+        dependentBusinessTurnCount: 0,
+        dependentBusinessToolActionCount: 0,
+        committedEffectCount: 0,
+        edgeStatus: "waiting",
+        taskState: "waiting",
+        sequence: [
+          "v-verification-tool-selected",
+          "verified-event-durable",
+          "dependent-admission-prepared",
+        ],
+        cleanupComplete: true,
+      });
+      assert.equal(error.cleanup?.complete, true);
+      return true;
+    },
+  );
 });
 
 test("pump never looks ahead past a prior relevant event", async (t) => {

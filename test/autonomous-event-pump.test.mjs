@@ -12,6 +12,7 @@ function registration() {
     cwd: "/tmp",
     ref: { kind: "codex-app-server", threadId: "thread-pump", snapshotDigest: `sha256:${"a".repeat(64)}` },
     routes: [{
+      handlerId: "handler.pump.business.v1",
       eventType: "artifact-ready",
       subscribedEventTypes: ["artifact-ready"],
       grant: { relationshipId: "rel-pump" },
@@ -42,16 +43,25 @@ test("pump freezes startup registrations and one lifecycle start drains to idle"
   mutableRegistration.routes[0].grant.relationshipId = "rel-mutated";
   mutableRegistration.routes[0].subscribedEventTypes.push("review-failed");
   mutableRegistration.routes[0].businessTool.name = "threadmesh_mutated";
+  mutableRegistration.routes[0].handlerId = "handler.mutated";
 
   assert.equal(Object.isFrozen(pump.registrations), true);
   assert.equal(Object.isFrozen(pump.registrations[0].routes[0].businessTool), true);
   assert.equal(pump.registryDigest, registryDigest);
   assert.equal(pump.registrations[0].receiver.taskId, "task-pump");
   assert.equal(pump.registrations[0].routes[0].relationshipId, "rel-pump");
+  assert.equal(pump.registrations[0].routes[0].handlerId, "handler.pump.business.v1");
   assert.equal(result.state, "idle");
   assert.equal(result.processed, 0);
   assert.equal(result.selectionChainValid, true);
   assert.equal(result.selectionChainScope, "in-process-self-checked");
+  const alternateRegistration = registration();
+  alternateRegistration.routes[0].handlerId = "handler.pump.business.v2";
+  const alternate = createAutonomousEventPump({
+    coordinator, runtime: {}, scenarioId: "scenario-pump", chainId: "chain-pump",
+    recoveryDirectory: "/tmp", maxEvents: 2,
+  }).registerReceiver(alternateRegistration).start();
+  assert.notEqual(alternate.registryDigest, registryDigest);
   assert.throws(() => pump.registerReceiver(registration()), {
     code: "threadmesh_event_pump_registration_closed",
   });
@@ -215,6 +225,11 @@ test("pump rejects unbounded and duplicate startup registration", () => {
     code: "threadmesh_event_pump_input_invalid",
   });
   const pump = createAutonomousEventPump({ ...base, maxEvents: 1 });
+  const missingHandler = registration();
+  delete missingHandler.routes[0].handlerId;
+  assert.throws(() => pump.registerReceiver(missingHandler), {
+    code: "threadmesh_event_pump_registration_invalid",
+  });
   pump.registerReceiver(registration());
   assert.throws(() => pump.registerReceiver(registration()), {
     code: "threadmesh_event_pump_registration_conflict",

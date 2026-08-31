@@ -316,17 +316,19 @@ function externallyVerifiedDisposition(coordinator, verifier, dependent, event, 
   };
 }
 
-function recordDependentAdapterReceipt(coordinator, verifier, dependent, event) {
+function recordDependentAdapterReceipt(
+  coordinator, verifier, dependent, event, expectedRevision,
+) {
   const dependentPrincipal = principal(dependent);
   const prepared = coordinator.prepareAdapterSubmission(
-    verifier.incarnationId, event.messageId, 2, dependentPrincipal,
+    verifier.incarnationId, event.messageId, expectedRevision, dependentPrincipal,
   );
   coordinator.beginAdapterSubmission(
-    prepared.submission.submissionId, 2, dependentPrincipal,
+    prepared.submission.submissionId, expectedRevision, dependentPrincipal,
   );
   return coordinator.recordAdapterReceipt(
     prepared.submission.submissionId,
-    2,
+    expectedRevision,
     DEPENDENT_ADAPTER_RECEIPT,
     dependentPrincipal,
   );
@@ -436,9 +438,11 @@ function journalLikePaths(directory) {
 export async function runCoordinatorDrivenNoPlanScenario({
   artifactsDirectory,
   injectPriorRelevant = false,
+  injectFinalizationFailure = false,
 }) {
   if (!path.isAbsolute(artifactsDirectory ?? "") ||
-      typeof injectPriorRelevant !== "boolean") {
+      typeof injectPriorRelevant !== "boolean" ||
+      typeof injectFinalizationFailure !== "boolean") {
     throw new Error("threadmesh_coordinator_driven_artifacts_invalid");
   }
   fs.mkdirSync(artifactsDirectory, { recursive: true });
@@ -461,9 +465,10 @@ export async function runCoordinatorDrivenNoPlanScenario({
     policyId: "threadmesh://independent-git-verifier/policy/1",
     publicKeyPem: publicKey.export({ type: "spki", format: "pem" }),
   };
+  let coordinatorClockSequence = 0;
   const coordinator = new SqliteCoordinator({
     filename: databasePath,
-    clock: () => NOW,
+    clock: () => NOW + coordinatorClockSequence++,
     verificationTrustAnchors: [trustAnchor],
   });
   const actors = {
@@ -548,14 +553,16 @@ export async function runCoordinatorDrivenNoPlanScenario({
 
   let refs = {};
   let runtime;
+  let adapter;
   let result;
   let failure;
   let evidenceRevision = 0;
   let evidenceHead = null;
   let verification = null;
+  const verifiedActivationOrder = [];
   const cleanupRoles = [];
   try {
-    const adapter = new DeterministicNoPlanCodexAdapter({
+    adapter = new DeterministicNoPlanCodexAdapter({
       decideTurn(canonicalInput) {
         const input = JSON.parse(canonicalInput);
         const selectedTool = input.dynamicTools[0]?.name;
@@ -869,6 +876,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
         businessPhase: "v-verify",
         businessTool: TOOLS.verify,
         async onBusinessToolCall() {
+          verifiedActivationOrder.push("v-verification-tool-selected");
           verification = createVerification({
             requirement, payloads, verifier: actors.v, dependent: actors.dependent,
             trustAnchor, privateKey,
@@ -886,6 +894,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
               expectedEvidenceChainHead: evidenceHead,
             },
           }, principal(actors.v));
+          verifiedActivationOrder.push("verified-event-durable");
         },
       }],
     });
@@ -910,20 +919,10 @@ export async function runCoordinatorDrivenNoPlanScenario({
         now: NOW,
         businessPhase: "dependent-gated-activation",
         businessTool: TOOLS.dependent,
-        async onBusinessToolCall() {
-          const edge = coordinator.getDependencyEdge(
-            "dependency_no_plan_verified", principal(actors.dependent),
-          );
-          const task = coordinator.getTask(taskRef(actors.dependent), owner);
-          if (edge.version !== 1 || edge.status !== "waiting" || task.state !== "waiting") {
-            throw new Error("threadmesh_dependent_pre_finalize_gate_drift");
-          }
-          return { activationRequested: true, effectCommitted: false };
-        },
-        async onLifecyclePublication({ activation }) {
-          dependentActivation = activation;
+        async afterAdmissionPrepared() {
+          verifiedActivationOrder.push("dependent-admission-prepared");
           recordDependentAdapterReceipt(
-            coordinator, actors.v, actors.dependent, verifiedEvent,
+            coordinator, actors.v, actors.dependent, verifiedEvent, 1,
           );
           const disposition = externallyVerifiedDisposition(
             coordinator, actors.v, actors.dependent, verifiedEvent,
@@ -947,13 +946,38 @@ export async function runCoordinatorDrivenNoPlanScenario({
               event: verifiedEvent,
               disposition,
               expectedEvidenceChainRevision: evidenceRevision,
-              expectedEvidenceChainHead: evidenceHead,
+              expectedEvidenceChainHead: injectFinalizationFailure
+                ? digest("injected-finalization-binding-failure")
+                : evidenceHead,
               expectedRevision: verifierExecution.revision,
             },
             principal(actors.v),
           );
           evidenceRevision = finalized.evidenceState.recordCount;
           evidenceHead = finalized.evidenceState.headDigest;
+          promoteAttention(coordinator, verifierActivation, finalized, actors.v);
+          const edge = coordinator.getDependencyEdge(
+            "dependency_no_plan_verified", principal(actors.dependent),
+          );
+          const task = coordinator.getTask(taskRef(actors.dependent), owner);
+          if (edge.status !== "satisfied" || task.state !== "ready") {
+            throw new Error("threadmesh_dependent_pre_business_gate_unsatisfied");
+          }
+          verifiedActivationOrder.push("trusted-finalization-completed");
+        },
+        async onBusinessToolCall() {
+          const edge = coordinator.getDependencyEdge(
+            "dependency_no_plan_verified", principal(actors.dependent),
+          );
+          const task = coordinator.getTask(taskRef(actors.dependent), owner);
+          if (edge.version !== 1 || edge.status !== "satisfied" || task.state !== "ready") {
+            throw new Error("threadmesh_dependent_pre_business_gate_unsatisfied");
+          }
+          verifiedActivationOrder.push("dependent-business-tool-selected");
+          return { activationRequested: true, effectCommitted: true };
+        },
+        async onLifecyclePublication({ activation }) {
+          dependentActivation = activation;
           const dependentCursor = coordinator.getAttentionCursor(
             taskRef(actors.dependent), principal(actors.dependent),
           ).cursor;
@@ -966,7 +990,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
             },
             principal(actors.dependent),
           );
-          promoteAttention(coordinator, verifierActivation, finalized, actors.v);
+          verifiedActivationOrder.push("dependent-cursor-finalized");
           const edgeAfter = coordinator.getDependencyEdge(
             "dependency_no_plan_verified", principal(actors.dependent),
           );
@@ -1051,6 +1075,29 @@ export async function runCoordinatorDrivenNoPlanScenario({
     const activeAttentionClaimCount = coordinator.db.prepare(
       "SELECT COUNT(*) AS count FROM attention_handler_claims WHERE state = 'active'",
     ).get().count;
+    const finalizationRow = coordinator.db.prepare(
+      `SELECT finalized_at AS finalizedAt
+       FROM git_evidence_dependency_finalizations WHERE dependency_id = ?`,
+    ).get("dependency_no_plan_verified");
+    const dependentBusinessRow = coordinator.db.prepare(
+      `SELECT started_at AS startedAt FROM turn_execution_intents
+       WHERE execution_id = ?`,
+    ).get(dependentActivation.businessExecutionId);
+    const nativeTurnIds = [
+      kickoff.turn.evidence.turnId,
+      rActivation.decisionTurnEvidence?.turnId,
+      rActivation.businessTurnEvidence?.turnId,
+      sameAActivation.decisionTurnEvidence?.turnId,
+      sameAActivation.businessTurnEvidence?.turnId,
+      verifierActivation.decisionTurnEvidence?.turnId,
+      verifierActivation.businessTurnEvidence?.turnId,
+    ];
+    const selectionBindings = pump.selectionRecords.map((record) => ({
+      kind: record.kind,
+      handlerId: record.handlerId,
+      handlerConfigDigest: record.handlerConfigDigest,
+      recordDigest: record.recordDigest,
+    }));
     result = {
       state: "passed-full-functional-in-process-fixture",
       liveProductEvidence: false,
@@ -1079,6 +1126,10 @@ export async function runCoordinatorDrivenNoPlanScenario({
         "cross-process-concurrent-pump-lease",
       ],
       routeHandlerConfigs: ROUTE_HANDLER_CONFIGS,
+      executedHandlerIds: selectionBindings
+        .filter(({ kind }) => kind === "coordinator-activation")
+        .map(({ handlerId }) => handlerId),
+      selectionBindings,
       attention: {
         cursors: attentionCursors,
         activeClaimCount: activeAttentionClaimCount,
@@ -1098,9 +1149,15 @@ export async function runCoordinatorDrivenNoPlanScenario({
       bindings: counts,
       verification: {
         mode: "deterministic-in-process-trusted-signing",
-        nativeVerifierRefIndependent:
+        externalIndependentVerifier: false,
+        signer: "fixture-owned-ephemeral-key",
+        nativeVerifierSessionIndependent:
           refs.v.threadId !== refs.a.threadId && refs.v.threadId !== refs.r.threadId,
-        nativeVerifierTurnId: verifierActivation.businessTurnEvidence?.turnId,
+        nativeVerifierTurnIdDigest: sha256Digest(
+          verifierActivation.businessTurnEvidence?.turnId,
+        ),
+        allLifecycleNativeTurnIdsDistinct:
+          nativeTurnIds.every(Boolean) && new Set(nativeTurnIds).size === nativeTurnIds.length,
         signatureVerified: true,
         trustAnchorDigest: sha256Digest(trustAnchor),
         resultDigestBound: coordinator.getTurnExecution(
@@ -1118,6 +1175,17 @@ export async function runCoordinatorDrivenNoPlanScenario({
         edgeStatus: dependency.status,
         taskState: dependentTask.state,
         effectCommittedAfterFinalization: dependentActivationCommitted,
+      },
+      ordering: {
+        sequence: [...verifiedActivationOrder],
+        finalizationBeforeDependentBusiness:
+          verifiedActivationOrder.indexOf("trusted-finalization-completed") <
+            verifiedActivationOrder.indexOf("dependent-business-tool-selected"),
+        finalizationAt: finalizationRow.finalizedAt,
+        dependentBusinessStartedAt: dependentBusinessRow.startedAt,
+        timestampStrictlyEarlier:
+          Date.parse(finalizationRow.finalizedAt) <
+            Date.parse(dependentBusinessRow.startedAt),
       },
       irrelevant: {
         claimCount: coordinator.db.prepare(
@@ -1138,6 +1206,33 @@ export async function runCoordinatorDrivenNoPlanScenario({
       },
     };
   } catch (error) {
+    if (injectFinalizationFailure) {
+      let edgeStatus = "unavailable";
+      let taskState = "unavailable";
+      try {
+        edgeStatus = coordinator.getDependencyEdge(
+          "dependency_no_plan_verified", principal(actors.dependent),
+        ).status;
+        taskState = coordinator.getTask(taskRef(actors.dependent), owner).state;
+      } catch {}
+      error.failureEvidence = {
+        dependentBusinessTurnCount: coordinator.db.prepare(
+          `SELECT COUNT(*) AS count FROM turn_execution_intents
+           WHERE task_id = ? AND tool_allowlist_json = ?`,
+        ).get(
+          actors.dependent.taskId, JSON.stringify([TOOLS.dependent.name]),
+        ).count,
+        dependentBusinessToolActionCount: coordinator.db.prepare(
+          "SELECT COUNT(*) AS count FROM turn_tool_actions WHERE tool_name = ?",
+        ).get(TOOLS.dependent.name).count,
+        committedEffectCount: coordinator.db.prepare(
+          "SELECT COUNT(*) AS count FROM dependency_satisfactions WHERE dependency_id = ?",
+        ).get("dependency_no_plan_verified").count,
+        edgeStatus,
+        taskState,
+        sequence: [...verifiedActivationOrder],
+      };
+    }
     failure = error;
   } finally {
     if (runtime) {
@@ -1247,6 +1342,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
   };
   if (failure) {
     failure.cleanup = cleanup;
+    if (failure.failureEvidence) failure.failureEvidence.cleanupComplete = cleanup.complete;
     throw failure;
   }
   return Object.freeze({ ...result, cleanup });
