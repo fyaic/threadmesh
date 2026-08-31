@@ -1,14 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { runCoordinatorActivation } from
-  "../activation/coordinator-activation-driver.mjs";
+import { createAutonomousEventPump } from
+  "../activation/autonomous-event-pump.mjs";
 import { sha256Digest } from "../canonical-json.mjs";
 import { SqliteCoordinator } from "../coordinator/sqlite-coordinator.mjs";
-import {
-  evaluateAttentionRoute,
-  projectLifecycleEventToEnvelope,
-} from "../routing/lifecycle-events.mjs";
+import { projectLifecycleEventToEnvelope } from "../routing/lifecycle-events.mjs";
 import { retireM52LiveTurnJournal } from "./m5-2-live-turn-journal.mjs";
 import {
   CodexLiveAgentRuntime,
@@ -114,20 +111,6 @@ function completionBinding(turn, execution) {
     })),
     nonThreadMeshToolCalls: 0,
   };
-}
-
-function route(coordinator, event, receiver, source, currentGrant, subscribedEventTypes) {
-  return evaluateAttentionRoute({
-    event,
-    receiverTask: taskRef(receiver),
-    subscribedEventTypes,
-    seenMessageIds: [],
-    grant: currentGrant,
-    currentGrant,
-    sourceTask: source,
-    targetTask: { ...receiver, objectiveVersion: 1 },
-    now: NOW,
-  });
 }
 
 async function runKickoff({ coordinator, runtime, actor, ref, event, args, cwd, recoveryDirectory }) {
@@ -300,6 +283,11 @@ export async function runCoordinatorDrivenNoPlanScenario({
         const knownMessage = [artifactEvent, reviewEvent]
           .find(({ messageId }) => input.prompt.includes(messageId));
         if (selectedTool === REGISTERED_PEER_DECISION_TOOL.name) {
+          if (!knownMessage) {
+            throw Object.assign(new Error("threadmesh_policy_oracle_event_unregistered"), {
+              code: "threadmesh_policy_oracle_event_unregistered",
+            });
+          }
           return {
             text: "Accepted from coordinator-owned offer metadata.",
             toolCalls: [{
@@ -388,6 +376,88 @@ export async function runCoordinatorDrivenNoPlanScenario({
       );
     }
 
+    let sameAActivation = null;
+    let rActivation = null;
+    const pump = createAutonomousEventPump({
+      coordinator,
+      runtime,
+      scenarioId: "coordinator_driven_no_plan",
+      chainId: "chain_coordinator_driven_no_plan",
+      recoveryDirectory: artifactsDirectory,
+      maxEvents: 8,
+    });
+    pump.registerReceiver({
+      receiver: actors.r,
+      principal: principal(actors.r),
+      role: "r",
+      cwd: artifactsDirectory,
+      ref: refs.r,
+      routes: [{
+        eventType: "artifact-ready",
+        subscribedEventTypes: ["artifact-ready"],
+        grant: grants.ar,
+        sourceTask: actors.a,
+        targetTask: { ...actors.r, objectiveVersion: 1 },
+        now: NOW,
+        businessPhase: "r-review",
+        businessTool: TOOLS.review,
+        async onBusinessToolCall() {
+          return { findingDigest, blocking: true, implementationSha };
+        },
+        async onLifecyclePublication({ activation }) {
+          rActivation = activation;
+          coordinator.publishLifecycleFromCompletedAction(activation.businessExecutionId, {
+            expectedTool: TOOLS.review.name,
+            event: reviewEvent,
+            expectedMaterial: { findingDigest },
+          }, principal(actors.r));
+        },
+      }],
+    });
+    pump.registerReceiver({
+      receiver: actors.a,
+      principal: principal(actors.a),
+      role: "a",
+      cwd: artifactsDirectory,
+      ref: refs.a,
+      routes: [{
+        eventType: "review-failed",
+        subscribedEventTypes: ["review-failed"],
+        grant: grants.ra,
+        sourceTask: actors.r,
+        targetTask: { ...actors.a, objectiveVersion: 1 },
+        now: NOW,
+        businessPhase: "same-a-fix",
+        businessTool: TOOLS.fix,
+        async onBusinessToolCall() {
+          return { commitSha: fixSha, parentSha: implementationSha };
+        },
+        async onLifecyclePublication({ activation }) {
+          sameAActivation = activation;
+          return { state: "pending-unregistered-verifier", event: pendingFixEvent };
+        },
+      }],
+    });
+    pump.registerReceiver({
+      receiver: actors.irrelevant,
+      principal: principal(actors.irrelevant),
+      role: "irrelevant",
+      cwd: artifactsDirectory,
+      ref: refs.irrelevant,
+      routes: [{
+        eventType: "artifact-ready",
+        subscribedEventTypes: ["review-failed"],
+        grant: grants.ai,
+        sourceTask: actors.a,
+        targetTask: { ...actors.irrelevant, objectiveVersion: 1 },
+        now: NOW,
+        businessPhase: "irrelevant-never-runs",
+        businessTool: TOOLS.review,
+        async onBusinessToolCall() { throw new Error("irrelevant business turn ran"); },
+        async onLifecyclePublication() { throw new Error("irrelevant publication ran"); },
+      }],
+    });
+
     const kickoffArgs = {
       sourceEventId: artifactEvent.messageId,
       event: actionEventBody(artifactEvent),
@@ -398,62 +468,11 @@ export async function runCoordinatorDrivenNoPlanScenario({
       event: artifactEvent, args: kickoffArgs,
       cwd: artifactsDirectory, recoveryDirectory: artifactsDirectory,
     });
-
-    const rRoute = route(
-      coordinator, artifactEvent, actors.r, actors.a, grants.ar, ["artifact-ready"],
-    );
-    let activationDispatchesByFixtureRunner = 0;
-    activationDispatchesByFixtureRunner += 1;
-    const rActivation = await runCoordinatorActivation({
-      coordinator, runtime, receiver: actors.r, principal: principal(actors.r),
-      role: "r", cwd: artifactsDirectory, ref: refs.r, routeProjection: rRoute,
-      scenarioId: "coordinator_driven_no_plan", chainId: "chain_coordinator_driven_no_plan",
-      recoveryDirectory: artifactsDirectory, businessPhase: "r-review",
-      businessTool: TOOLS.review,
-      async onBusinessToolCall() {
-        return { findingDigest, blocking: true, implementationSha };
-      },
-    });
-    coordinator.publishLifecycleFromCompletedAction(rActivation.businessExecutionId, {
-      expectedTool: TOOLS.review.name,
-      event: reviewEvent,
-      expectedMaterial: { findingDigest },
-    }, principal(actors.r));
-
-    const sameARoute = route(
-      coordinator, reviewEvent, actors.a, actors.r, grants.ra, ["review-failed"],
-    );
-    activationDispatchesByFixtureRunner += 1;
-    const sameAActivation = await runCoordinatorActivation({
-      coordinator, runtime, receiver: actors.a, principal: principal(actors.a),
-      role: "a", cwd: artifactsDirectory, ref: refs.a, routeProjection: sameARoute,
-      scenarioId: "coordinator_driven_no_plan", chainId: "chain_coordinator_driven_no_plan",
-      recoveryDirectory: artifactsDirectory, businessPhase: "same-a-fix",
-      businessTool: TOOLS.fix,
-      async onBusinessToolCall() { return { commitSha: fixSha, parentSha: implementationSha }; },
-    });
-
     coordinator.submit(projectLifecycleEventToEnvelope(irrelevantEvent), principal(actors.a));
-    const irrelevantRoute = route(
-      coordinator, irrelevantEvent, actors.irrelevant, actors.a, grants.ai, ["review-failed"],
-    );
-    const irrelevantObserved = coordinator.readAttentionEvents(
-      taskRef(actors.irrelevant), { afterCursor: 0, limit: 1 }, principal(actors.irrelevant),
-    ).events[0];
-    const irrelevantCursor = coordinator.getAttentionCursor(
-      taskRef(actors.irrelevant), principal(actors.irrelevant),
-    ).cursor;
-    const irrelevantSkip = coordinator.advanceAttentionCursor(taskRef(actors.irrelevant), {
-      eventCursor: irrelevantObserved.cursor,
-      eventId: irrelevantObserved.eventId,
-      classificationDigest: sha256Digest({
-        state: irrelevantRoute.state,
-        reasonCode: irrelevantRoute.reasonCode,
-        eventType: irrelevantRoute.eventType,
-        messageId: irrelevantRoute.messageId,
-      }),
-      expectedRevision: irrelevantCursor.revision,
-    }, principal(actors.irrelevant));
+    const pumpResult = await pump.runUntilIdle();
+    if (!rActivation || !sameAActivation) {
+      throw new Error("threadmesh_event_pump_expected_activations_missing");
+    }
 
     const counts = {
       lifecycleActionPublications: coordinator.db.prepare(
@@ -467,18 +486,30 @@ export async function runCoordinatorDrivenNoPlanScenario({
       ).get().count,
     };
     result = {
-      state: "passed-plumbing-partial",
+      state: "passed-autonomous-pump-in-process-partial",
       liveProductEvidence: false,
       initialUserStartPrompts: 1,
       deterministicPolicyOracle: true,
-      activationDispatchesByFixtureRunner,
-      autonomousEventPump: false,
+      activationDispatchesByFixtureRunner: 0,
+      eventPumpDispatches: pumpResult.dispatches,
+      eventPumpSkips: pumpResult.skips,
+      eventPumpSelectionRecordCount: pumpResult.selectionRecordCount,
+      eventPumpSelectionHeadDigest: pumpResult.selectionHeadDigest,
+      eventPumpSelectionChainValid: pumpResult.selectionChainValid,
+      eventPumpSelectionDurable: false,
+      autonomousEventPump: true,
+      autonomousEventPumpScope: "in-process-partial",
       rawPhasePromptsSubmittedByFixtureRunner: 0,
       humanRelayCount: 0,
       pollingCount: 0,
       completedRoles: ["a-kickoff", "r", "same-a"],
       pendingRoles: ["v", "dependent"],
       pendingReason: "Verifier and dependent activation are not implemented by this partial gate.",
+      pendingGates: [
+        "durable-pump-restart-checkpoint",
+        "cross-process-concurrent-pump-lease",
+        "verifier-and-dependent-activation",
+      ],
       sameARef: sameAActivation.admitted &&
         kickoff.turn.evidence.threadId === refs.a.threadId &&
         sameAActivation.decisionTurnEvidence?.threadId === refs.a.threadId &&
@@ -494,7 +525,9 @@ export async function runCoordinatorDrivenNoPlanScenario({
           "SELECT COUNT(*) AS count FROM attention_handler_claims WHERE receiver_task_id = ?",
         ).get(actors.irrelevant.taskId).count,
         turnCount: adapter.threads.get(refs.irrelevant.threadId).turns.length,
-        durableSkip: irrelevantSkip.commit.kind === "irrelevant-skip",
+        durableSkip: coordinator.getAttentionCursor(
+          taskRef(actors.irrelevant), principal(actors.irrelevant),
+        ).cursor.commitCount === 1,
       },
       runtime: {
         planSurfaceUsed: adapter.invocations.some((entry) =>
@@ -523,16 +556,22 @@ export async function runCoordinatorDrivenNoPlanScenario({
   }
   const remainingJournalsBeforeCleanup = fs.readdirSync(artifactsDirectory)
     .filter((name) => name.endsWith(".json") || name.endsWith(".decision-action"));
+  for (const name of remainingJournalsBeforeCleanup) {
+    fs.rmSync(path.join(artifactsDirectory, name), { force: true });
+  }
   for (const filename of [databasePath, `${databasePath}-wal`, `${databasePath}-shm`,
     `${databasePath}-journal`]) {
     fs.rmSync(filename, { force: true });
   }
+  const remainingJournalsAfterCleanup = fs.readdirSync(artifactsDirectory)
+    .filter((name) => name.endsWith(".json") || name.endsWith(".decision-action"));
   const cleanup = {
     complete: cleanupRoles.length === Object.keys(refs).length &&
       cleanupRoles.every(({ deleted, absenceVerified }) => deleted && absenceVerified) &&
-      remainingJournalsBeforeCleanup.length === 0 && !fs.existsSync(databasePath),
+      remainingJournalsAfterCleanup.length === 0 && !fs.existsSync(databasePath),
     roles: cleanupRoles,
-    remainingJournalCount: remainingJournalsBeforeCleanup.length,
+    recoveredJournalCount: remainingJournalsBeforeCleanup.length,
+    remainingJournalCount: remainingJournalsAfterCleanup.length,
     coordinatorRemoved: !fs.existsSync(databasePath),
   };
   if (failure) {

@@ -7,7 +7,7 @@ import test from "node:test";
 import { runCoordinatorDrivenNoPlanScenario } from
   "../src/validation/coordinator-driven-no-plan-scenario.mjs";
 
-test("fixture runner exercises A to R to same-A activation plumbing honestly", async (t) => {
+test("one pump lifecycle autonomously dispatches A to R to same-A", async (t) => {
   const artifactsDirectory = fs.mkdtempSync(
     path.join(os.tmpdir(), "threadmesh-coordinator-driven-"),
   );
@@ -15,17 +15,29 @@ test("fixture runner exercises A to R to same-A activation plumbing honestly", a
 
   const result = await runCoordinatorDrivenNoPlanScenario({ artifactsDirectory });
 
-  assert.equal(result.state, "passed-plumbing-partial");
+  assert.equal(result.state, "passed-autonomous-pump-in-process-partial");
   assert.equal(result.liveProductEvidence, false);
   assert.equal(result.initialUserStartPrompts, 1);
   assert.equal(result.deterministicPolicyOracle, true);
-  assert.equal(result.activationDispatchesByFixtureRunner, 2);
-  assert.equal(result.autonomousEventPump, false);
+  assert.equal(result.activationDispatchesByFixtureRunner, 0);
+  assert.equal(result.eventPumpDispatches, 2);
+  assert.equal(result.eventPumpSkips, 1);
+  assert.equal(result.eventPumpSelectionRecordCount, 3);
+  assert.match(result.eventPumpSelectionHeadDigest, /^sha256:[a-f0-9]{64}$/u);
+  assert.equal(result.eventPumpSelectionChainValid, true);
+  assert.equal(result.eventPumpSelectionDurable, false);
+  assert.equal(result.autonomousEventPump, true);
+  assert.equal(result.autonomousEventPumpScope, "in-process-partial");
   assert.equal(result.rawPhasePromptsSubmittedByFixtureRunner, 0);
   assert.equal(result.humanRelayCount, 0);
   assert.equal(result.pollingCount, 0);
   assert.deepEqual(result.completedRoles, ["a-kickoff", "r", "same-a"]);
   assert.deepEqual(result.pendingRoles, ["v", "dependent"]);
+  assert.deepEqual(result.pendingGates, [
+    "durable-pump-restart-checkpoint",
+    "cross-process-concurrent-pump-lease",
+    "verifier-and-dependent-activation",
+  ]);
   assert.equal(result.sameARef, true);
   assert.equal(result.irrelevant.claimCount, 0);
   assert.equal(result.irrelevant.turnCount, 0);
@@ -40,7 +52,7 @@ test("fixture runner exercises A to R to same-A activation plumbing honestly", a
     deleted && absenceVerified));
 });
 
-test("fixture never skips a prior relevant event to reach an expected later message", async (t) => {
+test("pump never looks ahead past a prior relevant event", async (t) => {
   const artifactsDirectory = fs.mkdtempSync(
     path.join(os.tmpdir(), "threadmesh-coordinator-next-only-"),
   );
@@ -51,7 +63,7 @@ test("fixture never skips a prior relevant event to reach an expected later mess
       artifactsDirectory,
       injectPriorRelevant: true,
     }),
-    (error) => error?.code === "threadmesh_activation_route_event_mismatch" &&
+    (error) => error?.code === "threadmesh_policy_oracle_event_unregistered" &&
       error.cleanup?.complete === true,
   );
 });
