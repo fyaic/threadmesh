@@ -117,6 +117,16 @@ test("creates, resumes, and deletes a persistent logical Codex thread", async ()
     });
     assert.equal(deleted.threadId, created.threadId);
     assert.equal(deleted.deleted, true);
+    const absence = await adapter.confirmThreadAbsent({
+      command: process.execPath,
+      args: [fixture],
+      cwd: root,
+      env: state.env,
+      threadId: created.threadId,
+    });
+    assert.equal(absence.absent, true);
+    assert.equal(absence.checkedBy, "thread/read");
+    assert.equal(JSON.stringify(absence).includes(created.threadId), false);
     await assert.rejects(
       adapter.resumeThread({
         command: process.execPath,
@@ -126,6 +136,143 @@ test("creates, resumes, and deletes a persistent logical Codex thread", async ()
         threadId: created.threadId,
       }),
       { code: "codex_app_server_remote_error" },
+    );
+  } finally {
+    fs.rmSync(state.directory, { recursive: true, force: true });
+  }
+});
+
+test("thread absence query reports an existing thread without exposing its raw id", async () => {
+  const state = temporaryState();
+  try {
+    const created = await adapter.createThread({
+      command: process.execPath,
+      args: [fixture],
+      cwd: root,
+      env: state.env,
+    });
+    const observation = await adapter.confirmThreadAbsent({
+      command: process.execPath,
+      args: [fixture],
+      cwd: root,
+      env: state.env,
+      threadId: created.threadId,
+    });
+    assert.equal(observation.absent, false);
+    assert.equal(observation.checkedBy, "thread/read");
+    assert.equal(JSON.stringify(observation).includes(created.threadId), false);
+  } finally {
+    fs.rmSync(state.directory, { recursive: true, force: true });
+  }
+});
+
+test("thread absence query recognizes the exact real Codex no-rollout error shape", async () => {
+  const state = temporaryState();
+  try {
+    const created = await adapter.createThread({
+      command: process.execPath,
+      args: [fixture],
+      cwd: root,
+      env: state.env,
+    });
+    await adapter.deleteThread({
+      command: process.execPath,
+      args: [fixture],
+      cwd: root,
+      env: state.env,
+      threadId: created.threadId,
+    });
+    for (const withId of ["0", "1"]) {
+      const observation = await adapter.confirmThreadAbsent({
+        command: process.execPath,
+        args: [fixture],
+        cwd: root,
+        env: {
+          ...state.env,
+          FAKE_CODEX_THREAD_READ_REAL_NOT_FOUND: "1",
+          FAKE_CODEX_THREAD_READ_NOT_FOUND_WITH_ID: withId,
+        },
+        threadId: created.threadId,
+      });
+      assert.equal(observation.absent, true);
+      assert.equal(JSON.stringify(observation).includes(created.threadId), false);
+    }
+  } finally {
+    fs.rmSync(state.directory, { recursive: true, force: true });
+  }
+});
+
+test("thread absence query binds the current real Codex not-loaded shape to the requested id", async () => {
+  const state = temporaryState();
+  try {
+    const threadId = "11111111-1111-4111-8111-111111111111";
+    const observation = await adapter.confirmThreadAbsent({
+      command: process.execPath,
+      args: [fixture],
+      cwd: root,
+      env: { ...state.env, FAKE_CODEX_THREAD_READ_REAL_NOT_LOADED: "1" },
+      threadId,
+    });
+    assert.equal(observation.absent, true);
+    assert.equal(JSON.stringify(observation).includes(threadId), false);
+    await assert.rejects(
+      adapter.confirmThreadAbsent({
+        command: process.execPath,
+        args: [fixture],
+        cwd: root,
+        env: {
+          ...state.env,
+          FAKE_CODEX_THREAD_READ_REAL_NOT_LOADED: "1",
+          FAKE_CODEX_THREAD_READ_WRONG_ID: "1",
+        },
+        threadId,
+      }),
+      { code: "codex_app_server_remote_error" },
+    );
+  } finally {
+    fs.rmSync(state.directory, { recursive: true, force: true });
+  }
+});
+
+test("thread absence query fails closed on non-not-found and malformed responses", async () => {
+  const state = temporaryState();
+  try {
+    const created = await adapter.createThread({
+      command: process.execPath,
+      args: [fixture],
+      cwd: root,
+      env: state.env,
+    });
+    await assert.rejects(
+      adapter.confirmThreadAbsent({
+        command: process.execPath,
+        args: [fixture],
+        cwd: root,
+        env: { ...state.env, FAKE_CODEX_THREAD_READ_ERROR: "1" },
+        threadId: created.threadId,
+      }),
+      (error) => error.code === "codex_app_server_remote_error" &&
+        error.remoteCode === -32000,
+    );
+    await assert.rejects(
+      adapter.confirmThreadAbsent({
+        command: process.execPath,
+        args: [fixture],
+        cwd: root,
+        env: { ...state.env, FAKE_CODEX_THREAD_READ_ERROR_CODE: "-32600" },
+        threadId: created.threadId,
+      }),
+      { code: "codex_app_server_remote_error" },
+    );
+    await assert.rejects(
+      adapter.confirmThreadAbsent({
+        command: process.execPath,
+        args: [fixture],
+        cwd: root,
+        env: { ...state.env, FAKE_CODEX_THREAD_READ_MALFORMED: "1" },
+        threadId: created.threadId,
+      }),
+      { code: "codex_app_server_thread_absence_observation_invalid" },
     );
   } finally {
     fs.rmSync(state.directory, { recursive: true, force: true });

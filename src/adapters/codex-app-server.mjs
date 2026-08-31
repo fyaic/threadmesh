@@ -15,6 +15,13 @@ const NOTIFICATION_LIMIT = 10_000;
 const SERVER_REQUEST_LIMIT = 1_000;
 const SAFE_ENV_KEYS = ["HOME", "PATH", "LANG", "LC_ALL", "TMPDIR", "TERM", "USER", "SHELL"];
 const TERMINAL_TURN_STATUSES = new Set(["completed", "interrupted", "failed"]);
+const THREAD_NOT_FOUND_MESSAGES = new Set([
+  "unknown thread",
+  "thread not found",
+  "thread does not exist",
+]);
+const CODEX_NO_ROLLOUT_MESSAGE = "no rollout found for thread id";
+const CODEX_THREAD_NOT_LOADED_PREFIX = "thread not loaded: ";
 
 export const CODEX_APP_SERVER_CAPABILITIES = Object.freeze({
   specVersion: "0.0-draft",
@@ -277,6 +284,23 @@ function isUnsupportedAppServerMethod(error) {
   );
 }
 
+function isExplicitThreadNotFound(error, expectedThreadId) {
+  if (
+    error?.code !== "codex_app_server_remote_error" ||
+    typeof error.remoteMessage !== "string"
+  ) return false;
+  const message = error.remoteMessage.trim();
+  if (
+    error.remoteCode === -32004 &&
+    THREAD_NOT_FOUND_MESSAGES.has(message.toLowerCase())
+  ) return true;
+  if (error.remoteCode !== -32600) return false;
+  return message === CODEX_NO_ROLLOUT_MESSAGE ||
+    message === `${CODEX_NO_ROLLOUT_MESSAGE}: ${expectedThreadId}` ||
+    message === `${CODEX_NO_ROLLOUT_MESSAGE} ${expectedThreadId}` ||
+    message === `${CODEX_THREAD_NOT_LOADED_PREFIX}${expectedThreadId}`;
+}
+
 function assertTurnPage(page, label) {
   if (!page || !Array.isArray(page.data)) {
     throw codedError("codex_app_server_persisted_turn_observation_invalid", label);
@@ -451,12 +475,21 @@ class JsonLinePeer {
       }
       this.pending.delete(message.id);
       if (message.error) {
-        pending.reject(
-          codedError(
-            "codex_app_server_remote_error",
-            `${message.error.code ?? "unknown"}: ${message.error.message ?? "remote error"}`,
-          ),
+        if (
+          typeof message.error !== "object" || Array.isArray(message.error) ||
+          !Number.isInteger(message.error.code) || typeof message.error.message !== "string" ||
+          message.error.message.length === 0
+        ) {
+          pending.reject(codedError("codex_app_server_protocol_error", "invalid error response"));
+          return;
+        }
+        const error = codedError(
+          "codex_app_server_remote_error",
+          `${message.error.code}: ${message.error.message}`,
         );
+        error.remoteCode = message.error.code;
+        error.remoteMessage = message.error.message;
+        pending.reject(error);
       } else if (Object.hasOwn(message, "result")) {
         pending.resolve(message.result);
       } else {
@@ -945,6 +978,41 @@ export class CodexAppServerAdapter {
         deleted: true,
         snapshotDigest: initialization.snapshotDigest,
       };
+    });
+  }
+
+  async confirmThreadAbsent({
+    command,
+    args = ["app-server", "--listen", "stdio://"],
+    cwd,
+    env = {},
+    threadId,
+    timeoutMs = 15_000,
+  }) {
+    assertInvocation(command, args, cwd, env);
+    if (typeof threadId !== "string" || threadId.length === 0) {
+      throw codedError("codex_app_server_thread_id_invalid");
+    }
+    return this.#withServer({ command, args, cwd, env, timeoutMs }, async (peer) => {
+      const initialization = await this.#initialize(peer);
+      try {
+        const response = await peer.request("thread/read", { threadId, includeTurns: false });
+        if (response?.thread?.id !== threadId) {
+          throw codedError("codex_app_server_thread_absence_observation_invalid");
+        }
+        return {
+          absent: false,
+          checkedBy: "thread/read",
+          snapshotDigest: initialization.snapshotDigest,
+        };
+      } catch (error) {
+        if (!isExplicitThreadNotFound(error, threadId)) throw error;
+        return {
+          absent: true,
+          checkedBy: "thread/read",
+          snapshotDigest: initialization.snapshotDigest,
+        };
+      }
     });
   }
 

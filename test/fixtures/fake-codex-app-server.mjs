@@ -147,8 +147,44 @@ lines.on("line", async (line) => {
   }
 
   if (message.method === "thread/read") {
+    if (process.env.FAKE_CODEX_THREAD_READ_ERROR_CODE) {
+      send({
+        id: message.id,
+        error: {
+          code: Number(process.env.FAKE_CODEX_THREAD_READ_ERROR_CODE),
+          message: "different application error",
+        },
+      });
+      return;
+    }
+    if (process.env.FAKE_CODEX_THREAD_READ_ERROR === "1") {
+      send({ id: message.id, error: { code: -32000, message: "storage unavailable" } });
+      return;
+    }
     if (!readState().threads[message.params.threadId]) {
-      send({ id: message.id, error: { code: -32004, message: "unknown thread" } });
+      if (process.env.FAKE_CODEX_THREAD_READ_REAL_NOT_LOADED === "1") {
+        const observedThreadId = process.env.FAKE_CODEX_THREAD_READ_WRONG_ID === "1"
+          ? "00000000-0000-4000-8000-000000000000"
+          : message.params.threadId;
+        send({
+          id: message.id,
+          error: { code: -32600, message: `thread not loaded: ${observedThreadId}` },
+        });
+      } else if (process.env.FAKE_CODEX_THREAD_READ_REAL_NOT_FOUND === "1") {
+        const suffix = process.env.FAKE_CODEX_THREAD_READ_NOT_FOUND_WITH_ID === "1"
+          ? `: ${message.params.threadId}`
+          : "";
+        send({
+          id: message.id,
+          error: { code: -32600, message: `no rollout found for thread id${suffix}` },
+        });
+      } else {
+        send({ id: message.id, error: { code: -32004, message: "unknown thread" } });
+      }
+      return;
+    }
+    if (process.env.FAKE_CODEX_THREAD_READ_MALFORMED === "1") {
+      send({ id: message.id, result: { thread: { id: 17 } } });
       return;
     }
     send({

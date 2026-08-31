@@ -13,7 +13,8 @@ Primary reference: [official Codex App Server documentation](https://developers.
 ## Implemented surface
 
 - `initialize` followed by `initialized`;
-- `thread/start`, `thread/resume`, and exact-target `thread/delete`;
+- `thread/start`, `thread/resume`, exact-target `thread/delete`, and a
+  query-based `thread/read` absence check;
 - experimental `dynamicTools` registration and bounded `item/tool/call`
   handling for the proactive A-to-B validation;
 - a local bootstrap turn for persistence, plus accepted suggestion admission
@@ -29,6 +30,17 @@ Primary reference: [official Codex App Server documentation](https://developers.
 The adapter always starts or resumes the receiver with approval policy `never`
 and sandbox mode `read-only`. This is an adapter default, not an operating-system
 sandbox supplied by ThreadMesh.
+
+`confirmThreadAbsent` reports `absent: true` only for an explicit `-32004`
+thread-not-found shape or Codex `0.145.0`'s exact
+`-32600: no rollout found for thread id` shape. The current installed product's
+`-32600: thread not loaded: <threadId>` shape is accepted only when its suffix
+equals the requested ID exactly. If any not-found message carries a thread ID,
+it must equal the requested ID. A present thread returns
+`absent: false` without returning its raw ID.
+Timeouts, transport failures, malformed responses, and every other application
+error fail closed. This is a cleanup primitive; its presence alone is not a
+successful cleanup or live-product claim.
 
 ## Capability claim
 
