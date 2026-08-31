@@ -111,12 +111,12 @@ importing coordinator, adapter, or validation internals.
 
 ## M5 — Attention and handoff router MVP
 
-The first deterministic vertical slice now passes locally and from a packed
-consumer: the six lifecycle events project onto the existing protocol,
-attention offers remain separate from verified dependency effects, durable
-edge/event state survives restart, dropped wake hints reconcile from a cursor,
-and a bounded inspector explains the final state. Real-agent evidence remains
-the next milestone gate.
+The deterministic vertical slice now passes locally and from a packed consumer,
+and M5.1 has added a real two-session Codex pass: Agent A model-selected the
+dependency publication, durable cursor reconciliation resumed the pre-created
+Agent B once, and verified dependency state recovered after restart. This is a
+ThreadMesh logical wake with `idleWake: false` and a local verifier simulation;
+the full multi-role loop and repetition matrix remain the next gates.
 
 - [x] Ship a one-command local demo with generated identities, grants, example
   sessions, and an inspector
@@ -130,7 +130,7 @@ the next milestone gate.
 - [ ] Demonstrate a real Codex-first implementation/review/fix loop with zero
   manual relay and zero polling turns
   ([#91](https://github.com/fyaic/threadmesh/issues/91)):
-  - [ ] M5.1: prove the real Codex dependency wake/unlock seam using durable
+  - [x] M5.1: prove the real Codex dependency wake/unlock seam using durable
     cursor reconciliation; the adapter remains `idleWake: false`.
   - [ ] M5.2: complete the model-selected implementation → review → fix →
     verify chain across three or four persistent sessions.

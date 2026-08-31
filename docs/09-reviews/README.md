@@ -21,6 +21,7 @@ accepted until two qualifying public records exist and pass
 
 ## Real product evidence
 
+- [Real Codex attention seam: M5.1 live evidence](2026-08-31-codex-attention-live.md)
 - [Deterministic M5 attention-router vertical slice](2026-08-31-attention-router-slice.md)
 - [Real Codex attention validation guide](../06-guides/codex-attention-validation.md)
 - [Reader-oriented real agent case portfolio](../06-guides/real-world-cases.md)

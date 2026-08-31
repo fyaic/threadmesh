@@ -58,3 +58,16 @@ remote repository boundaries again before accepting the result.
 
 Do not report a fake pass, a provider-blocked result, an exact marker alone, or
 the local verifier simulation as completion of issue #91.
+
+## Recorded live result
+
+M5.1 passed on 2026-08-31 at GitHub `main`
+`3d5caee4ea28176b9a935152d984c0aaa5b3cdd1` using Codex CLI/App Server
+`0.145.0` and `gpt-5.6-sol`. The accepted run used two distinct persistent
+Codex threads, recorded one model-selected publication and one exact B resume,
+recovered the satisfied dependency after restart, and completed exact cleanup.
+
+The full public record—including two fail-closed attempts, bounded correlation
+digests, and the native-idle-wake and local-verifier limitations—is in
+[Real Codex attention seam: live evidence](../09-reviews/2026-08-31-codex-attention-live.md).
+This result completes M5.1 only; issue #91 remains open for M5.2 and M5.3.
