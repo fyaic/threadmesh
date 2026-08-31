@@ -6446,6 +6446,10 @@ export class SqliteCoordinator {
 
   readAttentionEvents(taskRef, { afterCursor = 0, limit = 50 } = {}, principal) {
     assertTaskPrincipal(principal, taskRef.taskId, taskRef.incarnationId);
+    if (!Number.isInteger(afterCursor) || afterCursor < 0 ||
+        !Number.isInteger(limit) || limit < 1 || limit > 100) {
+      throw codedError("threadmesh_attention_cursor_read_invalid");
+    }
     const rows = this.db.prepare(
       `SELECT a.sequence AS cursor, a.event_id AS eventId,
               a.event_type AS eventType, a.revision,
@@ -6458,7 +6462,7 @@ export class SqliteCoordinator {
          AND m.target_task_id = ? AND m.target_incarnation_id = ?
        ORDER BY a.sequence ASC LIMIT ?`,
     ).all(
-      afterCursor, taskRef.taskId, taskRef.incarnationId, Math.min(limit, 100),
+      afterCursor, taskRef.taskId, taskRef.incarnationId, limit,
     );
     return {
       events: rows.map((event) => ({ ...event, detail: JSON.parse(event.detailJson) })),

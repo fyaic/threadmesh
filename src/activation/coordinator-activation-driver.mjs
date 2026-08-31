@@ -334,6 +334,8 @@ export async function runCoordinatorActivation({
     return Object.freeze({
       state: "completed", decision, admitted: false, replay: decisionTurn === null,
       claim: handler.claim, decisionExecutionId, businessExecutionId: null,
+      decisionTurnEvidence: decisionTurn?.evidence ?? null,
+      businessTurnEvidence: null,
     });
   }
 
@@ -494,5 +496,7 @@ export async function runCoordinatorActivation({
     state: "completed", decision: "accepted", admitted: true,
     replay: decisionTurn === null && businessTurn === null,
     claim: handler.claim, decisionExecutionId, businessExecutionId,
+    decisionTurnEvidence: decisionTurn?.evidence ?? null,
+    businessTurnEvidence: businessTurn?.evidence ?? null,
   });
 }

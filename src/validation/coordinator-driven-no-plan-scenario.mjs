@@ -201,7 +201,7 @@ async function runKickoff({ coordinator, runtime, actor, ref, event, args, cwd, 
     event,
     expectedMaterial: { commitSha: args.commitSha },
   }, actorPrincipal);
-  return execution;
+  return { execution, turn };
 }
 
 function registerTask(coordinator, actor, ref) {
@@ -217,29 +217,12 @@ function registerTask(coordinator, actor, ref) {
   return registered;
 }
 
-function commitPriorAttentionSkips(coordinator, receiver, expectedMessageId) {
-  let count = 0;
-  for (;;) {
-    const current = coordinator.getAttentionCursor(taskRef(receiver), principal(receiver)).cursor;
-    const next = coordinator.readAttentionEvents(
-      taskRef(receiver), { afterCursor: current.committedCursor, limit: 1 }, principal(receiver),
-    ).events[0];
-    if (!next || next.messageId === expectedMessageId) return count;
-    coordinator.advanceAttentionCursor(taskRef(receiver), {
-      eventCursor: next.cursor,
-      eventId: next.eventId,
-      classificationDigest: sha256Digest({
-        state: "irrelevant", reasonCode: "not-target-lifecycle-message",
-        eventType: next.eventType, messageId: next.messageId,
-      }),
-      expectedRevision: current.revision,
-    }, principal(receiver));
-    count += 1;
-  }
-}
-
-export async function runCoordinatorDrivenNoPlanScenario({ artifactsDirectory }) {
-  if (!path.isAbsolute(artifactsDirectory ?? "")) {
+export async function runCoordinatorDrivenNoPlanScenario({
+  artifactsDirectory,
+  injectPriorRelevant = false,
+}) {
+  if (!path.isAbsolute(artifactsDirectory ?? "") ||
+      typeof injectPriorRelevant !== "boolean") {
     throw new Error("threadmesh_coordinator_driven_artifacts_invalid");
   }
   fs.mkdirSync(artifactsDirectory, { recursive: true });
@@ -294,6 +277,14 @@ export async function runCoordinatorDrivenNoPlanScenario({ artifactsDirectory })
     target: actors.irrelevant,
     relationshipId: grants.ai.relationshipId,
     content: "Authorized negative control that is outside the receiver subscription.",
+  });
+  const priorRelevantEvent = lifecycleEvent({
+    eventType: "artifact-ready",
+    messageId: "msg_no_plan_prior_relevant_0001",
+    sender: actors.a,
+    target: actors.r,
+    relationshipId: grants.ar.relationshipId,
+    content: "A prior relevant event must never be skipped for a later expected message.",
   });
 
   let refs = {};
@@ -390,13 +381,19 @@ export async function runCoordinatorDrivenNoPlanScenario({ artifactsDirectory })
         decidedAt: CREATED_AT,
       }, owner);
     }
+    if (injectPriorRelevant) {
+      coordinator.submit(
+        projectLifecycleEventToEnvelope(priorRelevantEvent),
+        principal(actors.a),
+      );
+    }
 
     const kickoffArgs = {
       sourceEventId: artifactEvent.messageId,
       event: actionEventBody(artifactEvent),
       commitSha: implementationSha,
     };
-    await runKickoff({
+    const kickoff = await runKickoff({
       coordinator, runtime, actor: actors.a, ref: refs.a,
       event: artifactEvent, args: kickoffArgs,
       cwd: artifactsDirectory, recoveryDirectory: artifactsDirectory,
@@ -405,6 +402,8 @@ export async function runCoordinatorDrivenNoPlanScenario({ artifactsDirectory })
     const rRoute = route(
       coordinator, artifactEvent, actors.r, actors.a, grants.ar, ["artifact-ready"],
     );
+    let activationDispatchesByFixtureRunner = 0;
+    activationDispatchesByFixtureRunner += 1;
     const rActivation = await runCoordinatorActivation({
       coordinator, runtime, receiver: actors.r, principal: principal(actors.r),
       role: "r", cwd: artifactsDirectory, ref: refs.r, routeProjection: rRoute,
@@ -421,12 +420,10 @@ export async function runCoordinatorDrivenNoPlanScenario({ artifactsDirectory })
       expectedMaterial: { findingDigest },
     }, principal(actors.r));
 
-    const aPriorSkipCount = commitPriorAttentionSkips(
-      coordinator, actors.a, reviewEvent.messageId,
-    );
     const sameARoute = route(
       coordinator, reviewEvent, actors.a, actors.r, grants.ra, ["review-failed"],
     );
+    activationDispatchesByFixtureRunner += 1;
     const sameAActivation = await runCoordinatorActivation({
       coordinator, runtime, receiver: actors.a, principal: principal(actors.a),
       role: "a", cwd: artifactsDirectory, ref: refs.a, routeProjection: sameARoute,
@@ -470,17 +467,27 @@ export async function runCoordinatorDrivenNoPlanScenario({ artifactsDirectory })
       ).get().count,
     };
     result = {
-      state: "passed-partial",
+      state: "passed-plumbing-partial",
       liveProductEvidence: false,
       initialUserStartPrompts: 1,
-      phasePromptsSubmittedByRunner: 0,
+      deterministicPolicyOracle: true,
+      activationDispatchesByFixtureRunner,
+      autonomousEventPump: false,
+      rawPhasePromptsSubmittedByFixtureRunner: 0,
       humanRelayCount: 0,
       pollingCount: 0,
       completedRoles: ["a-kickoff", "r", "same-a"],
       pendingRoles: ["v", "dependent"],
       pendingReason: "Verifier and dependent activation are not implemented by this partial gate.",
-      priorAttentionSkipCount: aPriorSkipCount,
-      sameARef: sameAActivation.admitted && refs.a.threadId === actors.a.threadId,
+      sameARef: sameAActivation.admitted &&
+        kickoff.turn.evidence.threadId === refs.a.threadId &&
+        sameAActivation.decisionTurnEvidence?.threadId === refs.a.threadId &&
+        sameAActivation.businessTurnEvidence?.threadId === refs.a.threadId &&
+        new Set([
+          kickoff.turn.evidence.turnId,
+          sameAActivation.decisionTurnEvidence?.turnId,
+          sameAActivation.businessTurnEvidence?.turnId,
+        ]).size === 3,
       bindings: counts,
       irrelevant: {
         claimCount: coordinator.db.prepare(
