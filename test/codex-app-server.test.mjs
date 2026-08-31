@@ -229,6 +229,7 @@ test("lets the model choose bounded ThreadMesh dynamic tools on a resumed task",
       adapterIdempotencyKey: "idem_codex_proactive_bootstrap01",
     });
     const handled = [];
+    const boundaries = [];
     const result = await adapter.runAutonomousToolTurn({
       command: process.execPath,
       args: [fixture],
@@ -238,8 +239,21 @@ test("lets the model choose bounded ThreadMesh dynamic tools on a resumed task",
       prompt: "Decide whether the related task is needed for this release decision.",
       dynamicTools,
       adapterIdempotencyKey: "idem_codex_proactive01",
-      onToolCall: ({ tool, arguments: value }) => {
-        handled.push({ tool, value });
+      beforeTurnStart: (metadata) => {
+        boundaries.push({ kind: "before", metadata });
+      },
+      onTurnStarted: (metadata) => {
+        boundaries.push({ kind: "started", metadata });
+      },
+      beforeToolCall: ({ turnId, ordinal, argumentsDigest }) => {
+        boundaries.push({ kind: "admit", turnId, ordinal, argumentsDigest });
+      },
+      afterToolCall: ({ turnId, ordinal, outputDigest, resultStatus }) => {
+        boundaries.push({ kind: "result", turnId, ordinal, outputDigest, resultStatus });
+      },
+      onToolCall: ({ threadId, turnId, callId, ordinal, tool, arguments: value }) => {
+        boundaries.push({ kind: "tool", turnId, ordinal });
+        handled.push({ threadId, turnId, callId, ordinal, tool, value });
         return tool === "threadmesh_related_tasks"
           ? { tasks: [{ taskId: "task_proactive_b", state: "completed" }] }
           : { sent: true, messageId: "msg_proactive_a_b01" };
@@ -250,7 +264,28 @@ test("lets the model choose bounded ThreadMesh dynamic tools on a resumed task",
       "threadmesh_related_tasks",
       "threadmesh_send_suggestion",
     ]);
+    assert.deepEqual(boundaries.map(({ kind }) => kind), [
+      "before", "started", "admit", "tool", "result", "admit", "tool", "result",
+    ]);
+    assert.equal(boundaries[0].metadata.threadId, created.threadId);
+    assert.equal(boundaries[0].metadata.adapterIdempotencyKey, "idem_codex_proactive01");
+    assert.equal(boundaries[1].metadata.turnId, result.evidence.turnId);
+    assert.deepEqual(handled.map(({ ordinal }) => ordinal), [0, 1]);
+    assert.ok(boundaries.filter(({ kind }) => kind === "admit")
+      .every(({ argumentsDigest }) => /^sha256:[a-f0-9]{64}$/u.test(argumentsDigest)));
+    assert.ok(boundaries.filter(({ kind }) => kind === "result")
+      .every(({ outputDigest, resultStatus }) =>
+        /^sha256:[a-f0-9]{64}$/u.test(outputDigest) && resultStatus === "completed"));
+    assert.ok(handled.every(({ threadId, turnId, callId }) =>
+      threadId === created.threadId && turnId === result.evidence.turnId &&
+      typeof callId === "string"));
     assert.equal(result.toolCalls.length, 2);
+    assert.deepEqual(result.toolCalls.map(({ ordinal, resultStatus }) => ({
+      ordinal, resultStatus,
+    })), [
+      { ordinal: 0, resultStatus: "completed" },
+      { ordinal: 1, resultStatus: "completed" },
+    ]);
     assert.equal(result.nonThreadMeshToolCalls, 0);
     assert.equal(result.evidence.serverRequestDeniedCount, 0);
     assert.equal(result.evidence.serverRequestHandledCount, 2);

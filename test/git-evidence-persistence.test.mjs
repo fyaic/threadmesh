@@ -556,10 +556,15 @@ test("migrates v4 append-only without changing its checksum or existing task dat
   ).pluck().get();
   const taskCount = database.prepare("SELECT COUNT(*) FROM tasks").pluck().get();
   database.exec(`
+    DROP TABLE attention_handler_claims;
+    DROP TABLE attention_cursor_commits;
+    DROP TABLE attention_receiver_cursors;
+    DROP TABLE turn_tool_actions;
+    DROP TABLE turn_execution_intents;
     DROP INDEX git_evidence_records_chain_sequence;
     DROP TABLE git_evidence_records;
     DROP TABLE git_evidence_requirements;
-    DELETE FROM schema_migrations WHERE version = 5;
+    DELETE FROM schema_migrations WHERE version >= 5;
     PRAGMA user_version = 4;
   `);
   database.close();
@@ -569,7 +574,7 @@ test("migrates v4 append-only without changing its checksum or existing task dat
   database = new Database(temporary.filename, { readonly: true });
   try {
     assert.equal(database.pragma("user_version", { simple: true }), SQLITE_SCHEMA_VERSION);
-    assert.equal(SQLITE_SCHEMA_VERSION, 5);
+    assert.equal(SQLITE_SCHEMA_VERSION, 6);
     assert.equal(database.prepare(
       "SELECT checksum FROM schema_migrations WHERE version = 4",
     ).pluck().get(), v4Checksum);
@@ -645,7 +650,7 @@ test("rejects v5 tables rebuilt with matching names but missing structural const
 
 test("v5 migration checksum commits to evidence constraints and index definitions", () => {
   const migration = SQLITE_SCHEMA_MIGRATIONS.find(({ version }) => version === 5);
-  assert.equal(migration.manifest, SQLITE_SCHEMA_MANIFEST);
+  assert.notEqual(migration.manifest, SQLITE_SCHEMA_MANIFEST);
   assert.equal(migration.manifest.constraints.tables.git_evidence_records.unique.includes(
     "chain_id,record_digest",
   ), true);
