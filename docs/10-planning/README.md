@@ -12,6 +12,8 @@ where the repository is now and what work should happen next.
   acceptance gates, risks, and the sequence into real-agent validation.
 - [M5 real Codex loop](m5-real-codex-loop.md) — staged #91 execution plan and
   strict closure evidence for initiative, controls, persistence, and cleanup.
+- [M5.2 implementation contract](m5-2-implementation-contract.md) — exact
+  session, Git evidence, independent-verifier, unlock, and no-go boundaries.
 - [Mainline plan](mainline-plan.md) — completed protocol/runtime workstreams and
   the transition from technical gates to the active product mainline.
 - [Milestone acceptance audit](acceptance-audit.md) — criterion-by-criterion

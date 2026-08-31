@@ -1,8 +1,9 @@
 # Project status
 
-> Snapshot: 2026-08-31. Technical evidence is current through the real Codex
-> M5.1 attention-seam pass; product direction reflects the community and
-> competitive review that established the attention-router mainline.
+> Snapshot: 2026-08-31. Technical evidence is current through the M5.2 isolated
+> Git/evidence/verifier foundation following the real Codex M5.1 attention-seam
+> pass; product direction reflects the community and competitive review that
+> established the attention-router mainline.
 
 ## Executive summary
 
@@ -37,7 +38,7 @@ orchestration are paused until this outcome is demonstrated.
 | Research and problem framing | Codex deep dive, community signals, ecosystem comparison, ADRs | Established |
 | Community adoption | No external stars, forks, watchers, issue comments, or independent setup result as of 2026-08-28 | Unvalidated |
 | Active product outcome | One-command lifecycle-event and dependency-handoff loop with an inspector | Deterministic slice merged; real Codex M5.1 seam passed; full multi-role loop pending |
-| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 185 unit/subtests | Executable draft |
+| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 204 unit/subtests | Executable draft |
 | Minimal adapter SDK | `@fyaic/threadmesh` `0.1.0-alpha.0`; six bounded client methods, per-turn proactive bridge, about 20 kB tarball, packed-consumer execution | Real Pi clean-consumer pass; not published to npm |
 | Local binding | Schema-validated JSON-RPC, transport-derived principals, typed errors | Executable local reference |
 | Local persistence | SQLite registry, proposals, grants, summaries, mailbox, claims, receipts, reconciliation, replay, audit, retention tombstones | Experimental |
@@ -54,6 +55,7 @@ orchestration are paused until this outcome is demonstrated.
 | Codex-to-Kimi proactive flow | Codex A selected discovery and one send; persistent Kimi ACP B completed; exact A deletion and B delete/absence passed at `e0adb0e` | First real cross-harness proactive case passed |
 | Pi integration-kit flow | Fresh packed consumer exposed exactly two native tools; real Pi passed relevant/irrelevant/control behavior and supplied one admitted input to Kimi at `02d8d24` | Maintainer integration passed; independent human feedback pending |
 | Codex M5 attention seam | Real persistent A model-selected discovery/publication; durable cursor resumed the pre-created persistent B exactly once; local verification unlocked the dependency and restart recovered B as ready at `3d5caee` | M5.1 passed; logical wake only, local verifier simulation; M5.2/M5.3 pending |
+| M5.2 Git evidence foundation | Independent temporary bare repo and role worktrees, same-worktree implementer fix, replay-verifiable four-stage evidence chain, and preconfigured-key child verifier bound to exact commits/finding/test | Deterministic safety foundation passed; coordinator persistence and real Codex multi-role loop pending |
 | Gemini CLI headless | Official package 0.56.0 integrity, required flags, isolated-home cleanup | Real no-model preflight passed |
 | Gemini live model behavior | Exact marker script requires explicit provider key | Not authorized, not run |
 | Multi-product admission | One mailbox/acceptance/claim/evidence path across ACP, Codex, and Gemini fakes | Merged experimental implementation |
@@ -189,6 +191,17 @@ complete exact cleanup. This is a ThreadMesh logical wake, not native Codex
 idle push, and it does not satisfy the M5.2 multi-role loop or M5.3 closure
 matrix. See the
 [public evidence record](../09-reviews/2026-08-31-codex-attention-live.md).
+
+The first M5.2 foundation slice now isolates bounded fixture commits from the
+source repository and preserves one prospective implementer worktree across the
+fix,
+checks exact reviewer and verifier commits, and permits the final evidence stage
+only through a preconfigured-key child verifier whose signed response survives
+JSON replay validation. It also rejects alternate keys, cross-chain replay,
+wrong parents/tree/diff/finding/test bindings, writable-test substitution, path
+escape, source `.git` placement, and incomplete cleanup. This is deterministic
+safety infrastructure, not a completed coordinator-persisted or real Codex
+implementation/review/fix loop.
 
 ## What the prototype proves
 

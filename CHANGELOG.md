@@ -6,6 +6,10 @@ All notable changes will be documented here. The project follows Keep a Changelo
 
 ### Added
 
+- M5.2 safety foundation with an isolated no-alternates Git fixture, persistent
+  implementer and detached reviewer/verifier worktrees, a replay-verifiable
+  four-stage evidence chain, and a preconfigured-key child verifier bound to
+  exact commit, finding, fixed-test, and routing evidence.
 - Codex attention validation seam with model-selected lifecycle publication,
   durable-cursor logical wake, exact receiver turn receipts, locally simulated
   signed verification, dependency unlock, restart recovery, quiet controls,

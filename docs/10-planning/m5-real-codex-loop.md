@@ -57,6 +57,9 @@ evidence, not yet proof of session initiative or an independent verifier.
 ## M5.2 — Complete implementation, review, fix, and verify loop
 
 Goal: prove useful session initiative across three or four persistent sessions.
+The exact implementation and no-go boundaries are frozen in the
+[M5.2 implementation contract](m5-2-implementation-contract.md); partial
+scenario output must not be projected as a pass.
 
 Required roles and effects:
 
