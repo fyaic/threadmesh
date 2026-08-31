@@ -46,6 +46,19 @@ const CONTRACT = [
 const LIVE_JOURNAL_SAFE_ENV_KEYS = new Set([
   "HOME", "PATH", "LANG", "LC_ALL", "TMPDIR", "TERM", "USER", "SHELL",
 ]);
+const LIVE_CODEX_EVIDENCE_CLASS = "real-codex-integrated-gate";
+const LIVE_CODEX_CANARY_EVIDENCE_CLASS = "real-codex-product-canary";
+const LIVE_CODEX_CLAIM = "real-codex-a-r-same-a-v-integrated-gate";
+const LIVE_CODEX_CANARY_CLAIM = "real_product_model_tool_canary";
+const LIVE_CODEX_CANARY_CODE = "threadmesh_m52_live_codex_integrated_gate_incomplete";
+const LIVE_CODEX_MISSING_GATES = Object.freeze([
+  "coordinator-attention-routing",
+  "receiver-owned-decisions",
+  "context-admission-receipts",
+  "durable-recovery-checkpoints",
+  "independent-verifier-attestation",
+  "dependency-finalization",
+]);
 
 const A_TOOLS = Object.freeze([
   {
@@ -985,24 +998,466 @@ const PENDING_CODEX_LIVE_GATES = Object.freeze([
   "restart recovery at event-created, native-started, receipt, final verification, and satisfaction",
 ]);
 
-async function runCodexCapabilityPreflight({ runtime, cwd, recorder }) {
-  const probe = await runtime.probe(cwd);
-  recorder.append("harness.capability-preflight", {
+function exactObject(value, keys, field) {
+  if (
+    !value || typeof value !== "object" || Array.isArray(value) ||
+    Object.getPrototypeOf(value) !== Object.prototype ||
+    canonicalJson(Object.keys(value).sort()) !== canonicalJson([...keys].sort())
+  ) throw scenarioError("threadmesh_live_codex_gate_result_invalid", field);
+  return value;
+}
+
+function count(value, field) {
+  if (!Number.isSafeInteger(value) || value < 0) {
+    throw scenarioError("threadmesh_live_codex_gate_result_invalid", field);
+  }
+  return value;
+}
+
+function bool(value, field) {
+  if (typeof value !== "boolean") {
+    throw scenarioError("threadmesh_live_codex_gate_result_invalid", field);
+  }
+  return value;
+}
+
+function digest(value, field) {
+  if (!/^sha256:[a-f0-9]{64}$/u.test(value ?? "")) {
+    throw scenarioError("threadmesh_live_codex_gate_result_invalid", field);
+  }
+  return value;
+}
+
+function commitSha(value, field) {
+  if (!/^[a-f0-9]{40}$/u.test(value ?? "")) {
+    throw scenarioError("threadmesh_live_codex_gate_result_invalid", field);
+  }
+  return value;
+}
+
+function optionalDigest(value, field) {
+  return value === null ? null : digest(value, field);
+}
+
+function optionalCommitSha(value, field) {
+  return value === null ? null : commitSha(value, field);
+}
+
+function projectLiveCodexProof(coreResult) {
+  const counts = exactObject(coreResult.counts, [
+    "rolesCreated", "modelTurnsStarted", "modelTurnsCompleted", "toolEffectsCommitted",
+    "receiverDecisionTurnsCompleted", "contextAdmissionReceipts",
+  ], "counts");
+  const chain = exactObject(coreResult.chain, [
+    "implementationSha", "fixSha", "directDescendant", "verified",
+    "dependencyUnlocked", "verificationMode", "attestationDigest",
+  ], "chain");
+  const initiative = exactObject(coreResult.initiative, [
+    "reviewTriggeredByLifecycle", "fixTriggeredByAdmittedContext",
+    "verificationTriggeredByLifecycle", "sameAResumed", "humanRelayActions",
+    "orchestratorPromptSubmissionsAfterReview", "pollingWakeups",
+    "scriptedPromptSubmissions",
+  ], "initiative");
+  const identityDigests = exactObject(coreResult.identityDigests, [
+    "implementerThreadDigest", "resumedImplementerThreadDigest",
+    "reviewerThreadDigest", "verifierThreadDigest", "dependentThreadDigest",
+    "irrelevantThreadDigest",
+  ], "identityDigests");
+  const recovery = exactObject(coreResult.recovery, [
+    "status", "restartCheckpointsPassed", "replayChecksPassed",
+    "outcomeUnknownReconciliations", "processKillCanaryDigest",
+  ], "recovery");
+  const controls = exactObject(coreResult.controls, [
+    "dependencyLockedBefore", "dependencySatisfiedAfter", "irrelevantAuthorized",
+    "irrelevantSkipped", "irrelevantModelTurns", "receiverOwnedDecisions",
+    "exactAdmissionReceiptsBound",
+  ], "controls");
+  if (![
+    "independent-service-signed", "product-model-tool-canary",
+  ].includes(chain.verificationMode)) {
+    throw scenarioError("threadmesh_live_codex_gate_result_invalid", "verificationMode");
+  }
+  if (!["complete", "partial", "not-run"].includes(recovery.status)) {
+    throw scenarioError("threadmesh_live_codex_gate_result_invalid", "recovery.status");
+  }
+  return {
+    claim: coreResult.claim,
+    counts: {
+      rolesCreated: count(counts.rolesCreated, "rolesCreated"),
+      modelTurnsStarted: count(counts.modelTurnsStarted, "modelTurnsStarted"),
+      modelTurnsCompleted: count(counts.modelTurnsCompleted, "modelTurnsCompleted"),
+      toolEffectsCommitted: count(counts.toolEffectsCommitted, "toolEffectsCommitted"),
+      receiverDecisionTurnsCompleted: count(counts.receiverDecisionTurnsCompleted, "receiverDecisionTurnsCompleted"),
+      contextAdmissionReceipts: count(counts.contextAdmissionReceipts, "contextAdmissionReceipts"),
+    },
+    chain: {
+      implementationSha: commitSha(chain.implementationSha, "implementationSha"),
+      fixSha: commitSha(chain.fixSha, "fixSha"),
+      directDescendant: bool(chain.directDescendant, "directDescendant"),
+      verified: bool(chain.verified, "verified"),
+      dependencyUnlocked: bool(chain.dependencyUnlocked, "dependencyUnlocked"),
+      verificationMode: chain.verificationMode,
+      attestationDigest: digest(chain.attestationDigest, "attestationDigest"),
+    },
+    initiative: {
+      reviewTriggeredByLifecycle: bool(initiative.reviewTriggeredByLifecycle, "reviewTriggeredByLifecycle"),
+      fixTriggeredByAdmittedContext: bool(initiative.fixTriggeredByAdmittedContext, "fixTriggeredByAdmittedContext"),
+      verificationTriggeredByLifecycle: bool(initiative.verificationTriggeredByLifecycle, "verificationTriggeredByLifecycle"),
+      sameAResumed: bool(initiative.sameAResumed, "sameAResumed"),
+      humanRelayActions: count(initiative.humanRelayActions, "humanRelayActions"),
+      orchestratorPromptSubmissionsAfterReview: count(initiative.orchestratorPromptSubmissionsAfterReview, "orchestratorPromptSubmissionsAfterReview"),
+      pollingWakeups: count(initiative.pollingWakeups, "pollingWakeups"),
+      scriptedPromptSubmissions: count(initiative.scriptedPromptSubmissions, "scriptedPromptSubmissions"),
+    },
+    identityDigests: {
+      implementerThreadDigest: digest(identityDigests.implementerThreadDigest, "implementerThreadDigest"),
+      resumedImplementerThreadDigest: digest(identityDigests.resumedImplementerThreadDigest, "resumedImplementerThreadDigest"),
+      reviewerThreadDigest: digest(identityDigests.reviewerThreadDigest, "reviewerThreadDigest"),
+      verifierThreadDigest: digest(identityDigests.verifierThreadDigest, "verifierThreadDigest"),
+      dependentThreadDigest: digest(identityDigests.dependentThreadDigest, "dependentThreadDigest"),
+      irrelevantThreadDigest: digest(identityDigests.irrelevantThreadDigest, "irrelevantThreadDigest"),
+    },
+    recovery: {
+      status: recovery.status,
+      restartCheckpointsPassed: count(recovery.restartCheckpointsPassed, "restartCheckpointsPassed"),
+      replayChecksPassed: count(recovery.replayChecksPassed, "replayChecksPassed"),
+      outcomeUnknownReconciliations: count(recovery.outcomeUnknownReconciliations, "outcomeUnknownReconciliations"),
+      processKillCanaryDigest: digest(recovery.processKillCanaryDigest, "processKillCanaryDigest"),
+    },
+    controls: {
+      dependencyLockedBefore: bool(controls.dependencyLockedBefore, "dependencyLockedBefore"),
+      dependencySatisfiedAfter: bool(controls.dependencySatisfiedAfter, "dependencySatisfiedAfter"),
+      irrelevantAuthorized: bool(controls.irrelevantAuthorized, "irrelevantAuthorized"),
+      irrelevantSkipped: bool(controls.irrelevantSkipped, "irrelevantSkipped"),
+      irrelevantModelTurns: count(controls.irrelevantModelTurns, "irrelevantModelTurns"),
+      receiverOwnedDecisions: bool(controls.receiverOwnedDecisions, "receiverOwnedDecisions"),
+      exactAdmissionReceiptsBound: bool(controls.exactAdmissionReceiptsBound, "exactAdmissionReceiptsBound"),
+    },
+  };
+}
+
+function projectLiveCodexCleanup(cleanup) {
+  const value = exactObject(cleanup, [
+    "attempted", "complete", "threadsCreated", "threadsDeleted",
+    "absenceChecksPassed", "temporaryResourcesRemoved", "unexpectedArtifacts",
+    "verifierServiceExited", "verifierKeyMaterialRemoved", "gitResourcesRemoved",
+    "sqliteSidecarsAbsent", "journalsRetired", "temporaryFilesAbsent",
+  ], "cleanup");
+  return {
+    attempted: bool(value.attempted, "cleanup.attempted"),
+    complete: bool(value.complete, "cleanup.complete"),
+    threadsCreated: count(value.threadsCreated, "cleanup.threadsCreated"),
+    threadsDeleted: count(value.threadsDeleted, "cleanup.threadsDeleted"),
+    absenceChecksPassed: count(value.absenceChecksPassed, "cleanup.absenceChecksPassed"),
+    temporaryResourcesRemoved: bool(value.temporaryResourcesRemoved, "cleanup.temporaryResourcesRemoved"),
+    unexpectedArtifacts: count(value.unexpectedArtifacts, "cleanup.unexpectedArtifacts"),
+    verifierServiceExited: bool(value.verifierServiceExited, "cleanup.verifierServiceExited"),
+    verifierKeyMaterialRemoved: bool(value.verifierKeyMaterialRemoved, "cleanup.verifierKeyMaterialRemoved"),
+    gitResourcesRemoved: bool(value.gitResourcesRemoved, "cleanup.gitResourcesRemoved"),
+    sqliteSidecarsAbsent: bool(value.sqliteSidecarsAbsent, "cleanup.sqliteSidecarsAbsent"),
+    journalsRetired: bool(value.journalsRetired, "cleanup.journalsRetired"),
+    temporaryFilesAbsent: bool(value.temporaryFilesAbsent, "cleanup.temporaryFilesAbsent"),
+  };
+}
+
+function projectLiveCodexCanaryResult(coreResult, { scenarioId, integrity }) {
+  exactObject(coreResult, [
+    "schemaVersion", "scenarioId", "state", "code", "product", "evidenceClass",
+    "liveProductEvidence", "claim", "counts", "chain", "initiative",
+    "identityDigests", "recovery", "controls", "cleanup", "missingGates",
+  ], "canary.result");
+  if (
+    coreResult.schemaVersion !== 1 || coreResult.scenarioId !== scenarioId ||
+    !["blocked", "failed"].includes(coreResult.state) ||
+    coreResult.product !== "codex" ||
+    coreResult.evidenceClass !== LIVE_CODEX_CANARY_EVIDENCE_CLASS ||
+    coreResult.liveProductEvidence !== false || coreResult.claim !== LIVE_CODEX_CANARY_CLAIM ||
+    integrity.valid !== true
+  ) throw scenarioError("threadmesh_live_codex_gate_result_invalid", "canary");
+  if (
+    canonicalJson(coreResult.missingGates) !== canonicalJson(LIVE_CODEX_MISSING_GATES)
+  ) throw scenarioError("threadmesh_live_codex_gate_result_invalid", "missingGates");
+  if (
+    coreResult.state === "blocked" && coreResult.code !== LIVE_CODEX_CANARY_CODE
+  ) throw scenarioError("threadmesh_live_codex_gate_result_invalid", "canary.code");
+  if (
+    coreResult.state === "failed" && !/^[a-z][a-z0-9_]{0,127}$/u.test(coreResult.code)
+  ) throw scenarioError("threadmesh_live_codex_gate_result_invalid", "canary.code");
+  const counts = exactObject(coreResult.counts, [
+    "rolesPrecreated", "postBootstrapTurns", "modelSelectedToolCalls", "commits",
+    "verifierRequests",
+  ], "canary.counts");
+  const chain = exactObject(coreResult.chain, [
+    "validatedBaseSha", "fixtureSeedSha", "implementationSha", "fixSha",
+    "directDescendant", "verified", "unlocked",
+  ], "canary.chain");
+  const initiative = exactObject(coreResult.initiative, [
+    "aPublishedArtifact", "rReportedFinding", "sameAFixed", "vRequestedVerification",
+    "humanRelayActions", "phasePromptsSubmittedByRunner", "lifecycleHandoffsByThreadMesh",
+  ], "canary.initiative");
+  const identityDigests = exactObject(coreResult.identityDigests, [
+    "implementerThread", "resumedImplementerThread", "reviewerThread", "verifierThread",
+    "dependentThread", "irrelevantThread",
+  ], "canary.identityDigests");
+  const recovery = exactObject(coreResult.recovery, [
+    "businessTurnJournalsRetired", "admissionJournalsRetired",
+    "reconciledWithoutResend", "duplicateNativeTurnsPrevented",
+  ], "canary.recovery");
+  const controls = exactObject(coreResult.controls, [
+    "sameARef", "sameAWorktree", "dependentUnlocked", "dependentPostBootstrapTurns",
+    "irrelevantPostBootstrapTurns", "allRolesDeleted", "fixtureRemoved", "cleanupComplete",
+  ], "canary.controls");
+  const cleanup = exactObject(coreResult.cleanup, [
+    "attempted", "complete", "threadsCreated", "threadsDeleted",
+    "absenceChecksPassed", "fixtureRemoved",
+  ], "canary.cleanup");
+  const projected = {
+    schemaVersion: 1,
+    scenarioId,
+    state: coreResult.state,
+    code: coreResult.code,
+    mode: "live",
+    product: "codex",
+    evidenceClass: LIVE_CODEX_CANARY_EVIDENCE_CLASS,
+    liveProductEvidence: false,
+    claim: LIVE_CODEX_CANARY_CLAIM,
+    counts: {
+      rolesPrecreated: count(counts.rolesPrecreated, "rolesPrecreated"),
+      postBootstrapTurns: count(counts.postBootstrapTurns, "postBootstrapTurns"),
+      modelSelectedToolCalls: count(counts.modelSelectedToolCalls, "modelSelectedToolCalls"),
+      commits: count(counts.commits, "commits"),
+      verifierRequests: count(counts.verifierRequests, "verifierRequests"),
+    },
+    chain: {
+      validatedBaseSha: optionalCommitSha(chain.validatedBaseSha, "validatedBaseSha"),
+      fixtureSeedSha: optionalCommitSha(chain.fixtureSeedSha, "fixtureSeedSha"),
+      implementationSha: optionalCommitSha(chain.implementationSha, "implementationSha"),
+      fixSha: optionalCommitSha(chain.fixSha, "fixSha"),
+      directDescendant: bool(chain.directDescendant, "directDescendant"),
+      verified: bool(chain.verified, "verified"),
+      unlocked: bool(chain.unlocked, "unlocked"),
+    },
+    initiative: {
+      aPublishedArtifact: bool(initiative.aPublishedArtifact, "aPublishedArtifact"),
+      rReportedFinding: bool(initiative.rReportedFinding, "rReportedFinding"),
+      sameAFixed: bool(initiative.sameAFixed, "sameAFixed"),
+      vRequestedVerification: bool(initiative.vRequestedVerification, "vRequestedVerification"),
+      humanRelayActions: count(initiative.humanRelayActions, "humanRelayActions"),
+      phasePromptsSubmittedByRunner: count(initiative.phasePromptsSubmittedByRunner, "phasePromptsSubmittedByRunner"),
+      lifecycleHandoffsByThreadMesh: bool(initiative.lifecycleHandoffsByThreadMesh, "lifecycleHandoffsByThreadMesh"),
+    },
+    identityDigests: Object.fromEntries(
+      Object.entries(identityDigests).map(([key, value]) => [key, optionalDigest(value, key)]),
+    ),
+    recovery: {
+      businessTurnJournalsRetired: count(recovery.businessTurnJournalsRetired, "businessTurnJournalsRetired"),
+      admissionJournalsRetired: count(recovery.admissionJournalsRetired, "admissionJournalsRetired"),
+      reconciledWithoutResend: bool(recovery.reconciledWithoutResend, "reconciledWithoutResend"),
+      duplicateNativeTurnsPrevented: bool(recovery.duplicateNativeTurnsPrevented, "duplicateNativeTurnsPrevented"),
+    },
+    controls: {
+      sameARef: bool(controls.sameARef, "sameARef"),
+      sameAWorktree: bool(controls.sameAWorktree, "sameAWorktree"),
+      dependentUnlocked: bool(controls.dependentUnlocked, "dependentUnlocked"),
+      dependentPostBootstrapTurns: count(controls.dependentPostBootstrapTurns, "dependentPostBootstrapTurns"),
+      irrelevantPostBootstrapTurns: count(controls.irrelevantPostBootstrapTurns, "irrelevantPostBootstrapTurns"),
+      allRolesDeleted: bool(controls.allRolesDeleted, "allRolesDeleted"),
+      fixtureRemoved: bool(controls.fixtureRemoved, "fixtureRemoved"),
+      cleanupComplete: bool(controls.cleanupComplete, "cleanupComplete"),
+    },
+    cleanup: {
+      attempted: bool(cleanup.attempted, "cleanup.attempted"),
+      complete: bool(cleanup.complete, "cleanup.complete"),
+      threadsCreated: count(cleanup.threadsCreated, "cleanup.threadsCreated"),
+      threadsDeleted: count(cleanup.threadsDeleted, "cleanup.threadsDeleted"),
+      absenceChecksPassed: count(cleanup.absenceChecksPassed, "cleanup.absenceChecksPassed"),
+      fixtureRemoved: bool(cleanup.fixtureRemoved, "cleanup.fixtureRemoved"),
+    },
+    missingGates: [...coreResult.missingGates],
+    evidence: integrity,
+  };
+  if (coreResult.state === "blocked") {
+    const successfulCanary =
+      projected.counts.rolesPrecreated === 5 && projected.counts.postBootstrapTurns === 4 &&
+      projected.counts.modelSelectedToolCalls > 0 && projected.counts.commits === 2 &&
+      projected.counts.verifierRequests === 1 && projected.chain.directDescendant === true &&
+      projected.chain.verified === true && projected.chain.unlocked === false &&
+      [projected.chain.validatedBaseSha, projected.chain.fixtureSeedSha,
+        projected.chain.implementationSha, projected.chain.fixSha]
+        .every((value) => value !== null) &&
+      projected.initiative.aPublishedArtifact === true &&
+      projected.initiative.rReportedFinding === true &&
+      projected.initiative.sameAFixed === true &&
+      projected.initiative.vRequestedVerification === true &&
+      projected.initiative.humanRelayActions === 0 &&
+      projected.initiative.phasePromptsSubmittedByRunner === 4 &&
+      projected.initiative.lifecycleHandoffsByThreadMesh === false &&
+      Object.values(projected.identityDigests).every((value) => value !== null) &&
+      projected.identityDigests.implementerThread === projected.identityDigests.resumedImplementerThread &&
+      new Set(Object.values(projected.identityDigests)).size === 5 &&
+      projected.controls.sameARef === true && projected.controls.sameAWorktree === true &&
+      projected.controls.dependentUnlocked === false &&
+      projected.controls.dependentPostBootstrapTurns === 0 &&
+      projected.controls.irrelevantPostBootstrapTurns === 0 &&
+      projected.controls.allRolesDeleted === true && projected.controls.fixtureRemoved === true &&
+      projected.controls.cleanupComplete === true && projected.cleanup.attempted === true &&
+      projected.cleanup.complete === true && projected.cleanup.threadsCreated === 5 &&
+      projected.cleanup.threadsDeleted === 5 && projected.cleanup.absenceChecksPassed === 5 &&
+      projected.cleanup.fixtureRemoved === true;
+    if (!successfulCanary) {
+      throw scenarioError("threadmesh_live_codex_gate_result_invalid", "canary.invariants");
+    }
+  }
+  return projected;
+}
+
+function projectLiveCodexGateResult(coreResult, { scenarioId, integrity }) {
+  if (!coreResult || typeof coreResult !== "object" || Array.isArray(coreResult)) {
+    throw scenarioError("threadmesh_live_codex_gate_result_invalid");
+  }
+  const canary = coreResult.evidenceClass === LIVE_CODEX_CANARY_EVIDENCE_CLASS;
+  if (canary) return projectLiveCodexCanaryResult(coreResult, { scenarioId, integrity });
+  const topLevel = [
+    "schemaVersion", "scenarioId", "state", "product", "evidenceClass",
+    "liveProductEvidence", "claim", "counts", "chain", "initiative",
+    "identityDigests", "recovery", "controls", "cleanup",
+    ...(coreResult.code === undefined ? [] : ["code"]),
+  ];
+  exactObject(coreResult, topLevel, "result");
+  if (
+    coreResult.schemaVersion !== 1 ||
+    !["passed", "failed", "blocked"].includes(coreResult.state) ||
+    coreResult.product !== "codex" ||
+    ![LIVE_CODEX_EVIDENCE_CLASS, LIVE_CODEX_CANARY_EVIDENCE_CLASS]
+      .includes(coreResult.evidenceClass) ||
+    typeof coreResult.liveProductEvidence !== "boolean" ||
+    coreResult.scenarioId !== scenarioId ||
+    ![LIVE_CODEX_CLAIM, LIVE_CODEX_CANARY_CLAIM].includes(coreResult.claim)
+  ) throw scenarioError("threadmesh_live_codex_gate_result_invalid");
+  if (coreResult.claim !== LIVE_CODEX_CLAIM) {
+    throw scenarioError("threadmesh_live_codex_gate_result_invalid", "claim");
+  }
+  const cleanup = projectLiveCodexCleanup(coreResult.cleanup);
+  const proof = projectLiveCodexProof(coreResult);
+  let state = coreResult.state;
+  let code = coreResult.code;
+  if (code !== undefined && !/^[a-z][a-z0-9_]{0,127}$/u.test(code)) {
+    throw scenarioError("threadmesh_live_codex_gate_result_invalid", "code");
+  }
+  const fullProof =
+    proof.claim === LIVE_CODEX_CLAIM &&
+    proof.counts.rolesCreated === 5 &&
+    proof.counts.modelTurnsStarted >= 4 &&
+    proof.counts.modelTurnsCompleted === proof.counts.modelTurnsStarted &&
+    proof.counts.toolEffectsCommitted >= 4 &&
+    proof.counts.receiverDecisionTurnsCompleted >= 4 &&
+    proof.counts.contextAdmissionReceipts >= 4 &&
+    proof.chain.directDescendant === true && proof.chain.verified === true &&
+    proof.chain.dependencyUnlocked === true &&
+    proof.chain.verificationMode === "independent-service-signed" &&
+    proof.initiative.reviewTriggeredByLifecycle === true &&
+    proof.initiative.fixTriggeredByAdmittedContext === true &&
+    proof.initiative.verificationTriggeredByLifecycle === true &&
+    proof.initiative.sameAResumed === true &&
+    proof.initiative.humanRelayActions === 0 &&
+    proof.initiative.orchestratorPromptSubmissionsAfterReview === 0 &&
+    proof.initiative.pollingWakeups === 0 &&
+    proof.initiative.scriptedPromptSubmissions === 0 &&
+    proof.identityDigests.implementerThreadDigest === proof.identityDigests.resumedImplementerThreadDigest &&
+    proof.identityDigests.implementerThreadDigest !== proof.identityDigests.reviewerThreadDigest &&
+    proof.identityDigests.implementerThreadDigest !== proof.identityDigests.verifierThreadDigest &&
+    proof.identityDigests.reviewerThreadDigest !== proof.identityDigests.verifierThreadDigest &&
+    new Set(Object.values(proof.identityDigests)).size === 5 &&
+    proof.recovery.status === "complete" &&
+    proof.recovery.restartCheckpointsPassed >= 5 && proof.recovery.replayChecksPassed >= 1 &&
+    proof.recovery.outcomeUnknownReconciliations >= 1 &&
+    proof.controls.dependencyLockedBefore === true &&
+    proof.controls.dependencySatisfiedAfter === true &&
+    proof.controls.receiverOwnedDecisions === true &&
+    proof.controls.exactAdmissionReceiptsBound === true &&
+    proof.controls.irrelevantAuthorized === true && proof.controls.irrelevantSkipped === true &&
+    proof.controls.irrelevantModelTurns === 0;
+  const completeCleanup =
+    cleanup.attempted === true && cleanup.complete === true &&
+    cleanup.threadsCreated === 5 && cleanup.threadsDeleted === 5 &&
+    cleanup.absenceChecksPassed === 5 && cleanup.temporaryResourcesRemoved === true &&
+    cleanup.unexpectedArtifacts === 0 && cleanup.verifierServiceExited === true &&
+    cleanup.verifierKeyMaterialRemoved === true && cleanup.gitResourcesRemoved === true &&
+    cleanup.sqliteSidecarsAbsent === true && cleanup.journalsRetired === true &&
+    cleanup.temporaryFilesAbsent === true;
+  const completePass =
+    state === "passed" && coreResult.liveProductEvidence === true &&
+    fullProof && completeCleanup && integrity.valid === true;
+  if (state === "passed" && !completePass) {
+    state = "failed";
+    code = !completeCleanup
+      ? "threadmesh_live_codex_gate_cleanup_incomplete"
+      : "threadmesh_live_codex_gate_evidence_incomplete";
+  }
+  if (state !== "passed" && coreResult.liveProductEvidence === true) {
+    state = "failed";
+    code = "threadmesh_live_codex_gate_claim_inconsistent";
+  }
+  if (!integrity.valid) {
+    state = "failed";
+    code = "threadmesh_live_codex_gate_evidence_invalid";
+  }
+  return {
+    schemaVersion: 1,
+    scenarioId,
+    state,
+    ...(code ? { code } : {}),
+    mode: "live",
+    product: "codex",
+    evidenceClass: coreResult.evidenceClass,
+    liveProductEvidence: completePass,
+    ...proof,
+    cleanup,
+    evidence: integrity,
+  };
+}
+
+async function resolveLiveCodexGate(injected) {
+  if (injected !== null && injected !== undefined) {
+    if (typeof injected !== "function") {
+      throw scenarioError("threadmesh_live_codex_gate_invalid");
+    }
+    return injected;
+  }
+  const module = await import("./m5-2-live-codex-gate.mjs");
+  if (typeof module.runM52LiveCodexGate !== "function") {
+    throw scenarioError("threadmesh_live_codex_gate_invalid");
+  }
+  return module.runM52LiveCodexGate;
+}
+
+async function runCodexLiveGate({
+  runtime,
+  sourceRoot,
+  validatedBaseSha,
+  artifactsDirectory,
+  temporaryParent,
+  scenarioId,
+  recorder,
+  liveCodexGate,
+}) {
+  const probe = await runtime.probe(sourceRoot);
+  recorder.append("harness.capability-probe", {
     harness: "codex-app-server",
     userAgent: probe.userAgent,
     snapshotDigest: probe.snapshotDigest,
-    pendingClosureGates: PENDING_CODEX_LIVE_GATES,
-    modelTurnsStarted: 0,
+    provesIntegratedGate: false,
   });
-  return {
-    state: "blocked",
-    code: "threadmesh_codex_live_attention_glue_not_closed",
-    evidenceClass: "real-product-capability-preflight",
-    liveProductEvidence: false,
-    product: "codex",
-    missingCapabilities: [...PENDING_CODEX_LIVE_GATES],
-    cleanup: { attempted: false, complete: true, threadsCreated: 0 },
-  };
+  const gate = await resolveLiveCodexGate(liveCodexGate);
+  return gate({
+    runtime,
+    sourceRoot,
+    validatedBaseSha,
+    artifactsDirectory,
+    temporaryParent,
+    scenarioId,
+    record: (type, detail) => recorder.append(type, detail),
+  });
 }
 
 export async function runLiveAgentScenario({
@@ -1019,8 +1474,12 @@ export async function runLiveAgentScenario({
   ack = null,
   scenarioId = `m52-${Date.now()}`,
   runtime = null,
+  liveCodexGate = null,
 } = {}) {
   if (!["dry-run", "live"].includes(mode)) throw scenarioError("threadmesh_live_scenario_mode_invalid");
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/u.test(scenarioId ?? "")) {
+    throw scenarioError("threadmesh_live_scenario_id_invalid");
+  }
   if (!path.isAbsolute(sourceRoot ?? "") || !path.isAbsolute(artifactsDirectory ?? "")) {
     throw scenarioError("threadmesh_live_scenario_path_invalid");
   }
@@ -1036,14 +1495,16 @@ export async function runLiveAgentScenario({
   if (mode === "live" && !["codex", "kimi"].includes(product)) {
     throw scenarioError("threadmesh_live_scenario_product_invalid");
   }
-  const evidenceClass = mode === "live"
-    ? "real-product-capability-preflight"
-    : "deterministic-fixture";
+  const evidenceClass = mode === "dry-run"
+    ? "deterministic-fixture"
+    : product === "codex"
+      ? "real-codex-live-gate-entry"
+      : "real-product-capability-preflight";
   const recorder = new EvidenceRecorder({ artifactsDirectory, scenarioId, evidenceClass, product });
   recorder.append("scenario.started", {
     mode,
     commandVersion: mode === "live" ? commandVersion(command) : null,
-    dependencyUnlockInScope: mode === "dry-run",
+    dependencyUnlockInScope: mode === "dry-run" || (mode === "live" && product === "codex"),
   });
 
   if (product === "kimi") {
@@ -1059,14 +1520,19 @@ export async function runLiveAgentScenario({
     ? new CodexLiveAgentRuntime({ command, args: commandArgs, env, model })
     : new DeterministicLiveAgentRuntime());
   if (mode === "live") {
-    const result = await runCodexCapabilityPreflight({
+    const coreResult = await runCodexLiveGate({
       runtime: activeRuntime,
-      cwd: sourceRoot,
+      sourceRoot,
+      validatedBaseSha,
+      artifactsDirectory,
+      temporaryParent,
+      scenarioId,
       recorder,
+      liveCodexGate,
     });
     const integrity = verifyLiveAgentEvidence(recorder.records);
-    const complete = { ...result, scenarioId, evidence: integrity };
-    recorder.writeCleanupManifest(result.cleanup);
+    const complete = projectLiveCodexGateResult(coreResult, { scenarioId, integrity });
+    recorder.writeCleanupManifest(complete.cleanup);
     recorder.writeResult(complete);
     return complete;
   }
