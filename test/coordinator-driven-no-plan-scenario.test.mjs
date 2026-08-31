@@ -25,7 +25,10 @@ test("one pump lifecycle autonomously dispatches A to R to same-A", async (t) =>
   assert.equal(result.eventPumpSelectionRecordCount, 3);
   assert.match(result.eventPumpSelectionHeadDigest, /^sha256:[a-f0-9]{64}$/u);
   assert.equal(result.eventPumpSelectionChainValid, true);
+  assert.equal(result.eventPumpSelectionChainScope, "in-process-self-checked");
   assert.equal(result.eventPumpSelectionDurable, false);
+  assert.equal(result.eventPumpTerminalState, "blocked-completed-bound");
+  assert.equal(result.eventPumpAwaitingPromotion, true);
   assert.equal(result.autonomousEventPump, true);
   assert.equal(result.autonomousEventPumpScope, "in-process-partial");
   assert.equal(result.rawPhasePromptsSubmittedByFixtureRunner, 0);
@@ -66,4 +69,25 @@ test("pump never looks ahead past a prior relevant event", async (t) => {
     (error) => error?.code === "threadmesh_policy_oracle_event_unregistered" &&
       error.cleanup?.complete === true,
   );
+});
+
+test("cleanup preserves caller-owned journal-like files and reports them", async (t) => {
+  const artifactsDirectory = fs.mkdtempSync(
+    path.join(os.tmpdir(), "threadmesh-coordinator-owned-cleanup-"),
+  );
+  t.after(() => fs.rmSync(artifactsDirectory, { recursive: true, force: true }));
+  const unrelatedJson = path.join(artifactsDirectory, "unrelated.json");
+  const unrelatedDecision = path.join(
+    artifactsDirectory, "unrelated.json.decision-action",
+  );
+  fs.writeFileSync(unrelatedJson, "caller-owned-json", { mode: 0o600 });
+  fs.writeFileSync(unrelatedDecision, "caller-owned-decision", { mode: 0o600 });
+
+  const result = await runCoordinatorDrivenNoPlanScenario({ artifactsDirectory });
+
+  assert.equal(result.cleanup.complete, false);
+  assert.equal(result.cleanup.unknownJournalCount, 2);
+  assert.equal(result.cleanup.remainingJournalCount, 0);
+  assert.equal(fs.readFileSync(unrelatedJson, "utf8"), "caller-owned-json");
+  assert.equal(fs.readFileSync(unrelatedDecision, "utf8"), "caller-owned-decision");
 });

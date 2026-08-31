@@ -113,7 +113,10 @@ function completionBinding(turn, execution) {
   };
 }
 
-async function runKickoff({ coordinator, runtime, actor, ref, event, args, cwd, recoveryDirectory }) {
+async function runKickoff({
+  coordinator, runtime, actor, ref, event, args, cwd, recoveryDirectory,
+  ownedJournalPaths,
+}) {
   const actorPrincipal = principal(actor);
   const executionId = "intent_no_plan_user_kickoff";
   const adapterIdempotencyKey = "idem_coordinator_driven_no_plan_a_user-kickoff";
@@ -129,6 +132,7 @@ async function runKickoff({ coordinator, runtime, actor, ref, event, args, cwd, 
     allowedTools: [TOOLS.implementation.name],
   }, 0, actorPrincipal);
   const filename = path.join(recoveryDirectory, `${executionId}.json`);
+  ownedJournalPaths.add(filename);
   const turn = await runtime.runTurn({
     role: "a",
     phase: "user-kickoff",
@@ -200,6 +204,14 @@ function registerTask(coordinator, actor, ref) {
   return registered;
 }
 
+function journalLikePaths(directory) {
+  if (!fs.existsSync(directory)) return [];
+  return fs.readdirSync(directory, { withFileTypes: true })
+    .filter((entry) => entry.isFile() &&
+      (entry.name.endsWith(".json") || entry.name.endsWith(".decision-action")))
+    .map((entry) => path.join(directory, entry.name));
+}
+
 export async function runCoordinatorDrivenNoPlanScenario({
   artifactsDirectory,
   injectPriorRelevant = false,
@@ -209,6 +221,11 @@ export async function runCoordinatorDrivenNoPlanScenario({
     throw new Error("threadmesh_coordinator_driven_artifacts_invalid");
   }
   fs.mkdirSync(artifactsDirectory, { recursive: true });
+  const journalDirectory = path.join(
+    artifactsDirectory, ".threadmesh-coordinator-driven-journals",
+  );
+  fs.mkdirSync(journalDirectory, { recursive: false, mode: 0o700 });
+  const ownedJournalPaths = new Set();
   const databasePath = path.join(artifactsDirectory, "coordinator-driven.sqlite");
   const coordinator = new SqliteCoordinator({ filename: databasePath, clock: () => NOW });
   const actors = {
@@ -383,8 +400,8 @@ export async function runCoordinatorDrivenNoPlanScenario({
       runtime,
       scenarioId: "coordinator_driven_no_plan",
       chainId: "chain_coordinator_driven_no_plan",
-      recoveryDirectory: artifactsDirectory,
-      maxEvents: 8,
+      recoveryDirectory: journalDirectory,
+      maxEvents: 3,
     });
     pump.registerReceiver({
       receiver: actors.r,
@@ -466,7 +483,8 @@ export async function runCoordinatorDrivenNoPlanScenario({
     const kickoff = await runKickoff({
       coordinator, runtime, actor: actors.a, ref: refs.a,
       event: artifactEvent, args: kickoffArgs,
-      cwd: artifactsDirectory, recoveryDirectory: artifactsDirectory,
+      cwd: artifactsDirectory, recoveryDirectory: journalDirectory,
+      ownedJournalPaths,
     });
     coordinator.submit(projectLifecycleEventToEnvelope(irrelevantEvent), principal(actors.a));
     const pumpResult = await pump.runUntilIdle();
@@ -496,7 +514,10 @@ export async function runCoordinatorDrivenNoPlanScenario({
       eventPumpSelectionRecordCount: pumpResult.selectionRecordCount,
       eventPumpSelectionHeadDigest: pumpResult.selectionHeadDigest,
       eventPumpSelectionChainValid: pumpResult.selectionChainValid,
+      eventPumpSelectionChainScope: pumpResult.selectionChainScope,
       eventPumpSelectionDurable: false,
+      eventPumpTerminalState: pumpResult.state,
+      eventPumpAwaitingPromotion: pumpResult.awaitingPromotion === true,
       autonomousEventPump: true,
       autonomousEventPumpScope: "in-process-partial",
       rawPhasePromptsSubmittedByFixtureRunner: 0,
@@ -552,26 +573,81 @@ export async function runCoordinatorDrivenNoPlanScenario({
         }
       }
     }
+    try {
+      const executions = coordinator.db.prepare(
+        "SELECT execution_id FROM turn_execution_intents WHERE scenario_id = ?",
+      ).all("coordinator_driven_no_plan");
+      for (const { execution_id: executionId } of executions) {
+        const journalPath = path.join(journalDirectory, `${executionId}.json`);
+        ownedJournalPaths.add(journalPath);
+        ownedJournalPaths.add(`${journalPath}.decision-action`);
+      }
+    } catch (error) {
+      failure ??= error;
+    }
     coordinator.close();
   }
-  const remainingJournalsBeforeCleanup = fs.readdirSync(artifactsDirectory)
-    .filter((name) => name.endsWith(".json") || name.endsWith(".decision-action"));
-  for (const name of remainingJournalsBeforeCleanup) {
-    fs.rmSync(path.join(artifactsDirectory, name), { force: true });
+  const journalRemovalFailures = [];
+  let ownedJournalRemovedCount = 0;
+  for (const filename of ownedJournalPaths) {
+    if (!fs.existsSync(filename)) continue;
+    try {
+      fs.rmSync(filename);
+      ownedJournalRemovedCount += 1;
+    } catch (error) {
+      journalRemovalFailures.push({
+        pathDigest: sha256Digest(filename),
+        errorCode: error?.code ?? "unknown_journal_removal_error",
+      });
+    }
   }
+  const databaseRemovalFailures = [];
   for (const filename of [databasePath, `${databasePath}-wal`, `${databasePath}-shm`,
     `${databasePath}-journal`]) {
-    fs.rmSync(filename, { force: true });
+    if (!fs.existsSync(filename)) continue;
+    try {
+      fs.rmSync(filename);
+    } catch (error) {
+      databaseRemovalFailures.push({
+        pathDigest: sha256Digest(filename),
+        errorCode: error?.code ?? "unknown_database_removal_error",
+      });
+    }
   }
-  const remainingJournalsAfterCleanup = fs.readdirSync(artifactsDirectory)
-    .filter((name) => name.endsWith(".json") || name.endsWith(".decision-action"));
+  const remainingOwnedJournals = [...ownedJournalPaths].filter(fs.existsSync);
+  const allJournalLikePaths = [
+    ...journalLikePaths(artifactsDirectory),
+    ...journalLikePaths(journalDirectory),
+  ];
+  const unknownJournalPaths = allJournalLikePaths.filter(
+    (filename) => !ownedJournalPaths.has(filename),
+  );
+  let journalDirectoryRemoved = false;
+  if (fs.existsSync(journalDirectory) && fs.readdirSync(journalDirectory).length === 0) {
+    try {
+      fs.rmdirSync(journalDirectory);
+      journalDirectoryRemoved = true;
+    } catch (error) {
+      journalRemovalFailures.push({
+        pathDigest: sha256Digest(journalDirectory),
+        errorCode: error?.code ?? "unknown_journal_directory_removal_error",
+      });
+    }
+  }
   const cleanup = {
     complete: cleanupRoles.length === Object.keys(refs).length &&
       cleanupRoles.every(({ deleted, absenceVerified }) => deleted && absenceVerified) &&
-      remainingJournalsAfterCleanup.length === 0 && !fs.existsSync(databasePath),
+      remainingOwnedJournals.length === 0 && unknownJournalPaths.length === 0 &&
+      journalRemovalFailures.length === 0 && databaseRemovalFailures.length === 0 &&
+      journalDirectoryRemoved && !fs.existsSync(databasePath),
     roles: cleanupRoles,
-    recoveredJournalCount: remainingJournalsBeforeCleanup.length,
-    remainingJournalCount: remainingJournalsAfterCleanup.length,
+    ownedJournalRemovedCount,
+    remainingJournalCount: remainingOwnedJournals.length,
+    unknownJournalCount: unknownJournalPaths.length,
+    unknownJournalPathDigests: unknownJournalPaths.map(sha256Digest),
+    journalRemovalFailures,
+    databaseRemovalFailures,
+    journalDirectoryRemoved,
     coordinatorRemoved: !fs.existsSync(databasePath),
   };
   if (failure) {
