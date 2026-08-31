@@ -133,8 +133,9 @@ export function gitEvidenceVerificationResultDigest({
   return sha256Digest({ request, response, expectedTrustAnchor });
 }
 
-export const SQLITE_SCHEMA_VERSION = 8;
-export const SQLITE_SCHEMA_NAME = "threadmesh-exact-lifecycle-binding";
+export const SQLITE_SCHEMA_VERSION = 9;
+export const SQLITE_SCHEMA_NAME = "threadmesh-durable-event-pump";
+const SQLITE_SCHEMA_V8_NAME = "threadmesh-exact-lifecycle-binding";
 const SQLITE_SCHEMA_V7_NAME = "threadmesh-trusted-evidence-unlock";
 const SQLITE_SCHEMA_V6_NAME = "threadmesh-durable-turn-intents";
 const SQLITE_SCHEMA_V4_NAME = "threadmesh-durable-dependency-state";
@@ -718,7 +719,7 @@ const SQLITE_SCHEMA_V8_CONSTRAINTS = Object.freeze({
   }),
   indexes: SQLITE_SCHEMA_V7_CONSTRAINTS.indexes,
 });
-export const SQLITE_SCHEMA_MANIFEST = Object.freeze({
+const SQLITE_SCHEMA_V8_MANIFEST = Object.freeze({
   ...SQLITE_SCHEMA_V7_MANIFEST,
   tables: Object.freeze({
     ...SQLITE_SCHEMA_V7_MANIFEST.tables,
@@ -742,6 +743,66 @@ export const SQLITE_SCHEMA_MANIFEST = Object.freeze({
     ]),
   }),
   constraints: SQLITE_SCHEMA_V8_CONSTRAINTS,
+});
+const SQLITE_SCHEMA_V9_CONSTRAINTS = Object.freeze({
+  tables: Object.freeze({
+    ...SQLITE_SCHEMA_V8_CONSTRAINTS.tables,
+    event_pump_dispatches: Object.freeze({
+      columns: Object.freeze([
+        "dispatch_id|TEXT|1||1", "receiver_task_id|TEXT|1||0",
+        "receiver_incarnation_id|TEXT|1||0", "event_cursor|INTEGER|1||0",
+        "event_id|TEXT|1||0", "event_digest|TEXT|1||0",
+        "registry_digest|TEXT|1||0", "handler_id|TEXT|1||0",
+        "route_digest|TEXT|1||0",
+        "state|TEXT|1||0", "owner_id|TEXT|1||0", "lease_epoch|INTEGER|1||0",
+        "lease_expires_at|TEXT|1||0", "turn_execution_id|TEXT|0||0",
+        "selection_record_json|TEXT|0||0", "selection_digest|TEXT|0||0",
+        "revision|INTEGER|1|0|0", "created_at|TEXT|1||0", "updated_at|TEXT|1||0",
+      ]),
+      unique: Object.freeze([
+        "dispatch_id", "receiver_task_id,receiver_incarnation_id,event_cursor",
+        "receiver_task_id,receiver_incarnation_id,event_id",
+      ]),
+      foreignKeys: Object.freeze([
+        "receiver_task_id->tasks.task_id,receiver_incarnation_id->tasks.incarnation_id",
+        "turn_execution_id->turn_execution_intents.execution_id",
+      ]),
+    }),
+    event_pump_checkpoints: Object.freeze({
+      columns: Object.freeze([
+        "dispatch_id|TEXT|1||1", "sequence|INTEGER|1||2", "state|TEXT|1||0",
+        "owner_id|TEXT|1||0", "lease_epoch|INTEGER|1||0",
+        "lease_expires_at|TEXT|1||0", "turn_execution_id|TEXT|0||0",
+        "selection_digest|TEXT|0||0", "previous_checkpoint_digest|TEXT|0||0",
+        "checkpoint_digest|TEXT|1||0", "recorded_at|TEXT|1||0",
+      ]),
+      unique: Object.freeze(["dispatch_id,sequence", "dispatch_id,checkpoint_digest"]),
+      foreignKeys: Object.freeze([
+        "dispatch_id->event_pump_dispatches.dispatch_id",
+        "turn_execution_id->turn_execution_intents.execution_id",
+      ]),
+    }),
+  }),
+  indexes: SQLITE_SCHEMA_V8_CONSTRAINTS.indexes,
+});
+export const SQLITE_SCHEMA_MANIFEST = Object.freeze({
+  ...SQLITE_SCHEMA_V8_MANIFEST,
+  tables: Object.freeze({
+    ...SQLITE_SCHEMA_V8_MANIFEST.tables,
+    event_pump_dispatches: Object.freeze([
+      "dispatch_id", "receiver_task_id", "receiver_incarnation_id",
+      "event_cursor", "event_id", "event_digest", "registry_digest",
+      "handler_id", "route_digest", "state", "owner_id", "lease_epoch", "lease_expires_at",
+      "turn_execution_id", "selection_record_json", "selection_digest",
+      "revision", "created_at", "updated_at",
+    ]),
+    event_pump_checkpoints: Object.freeze([
+      "dispatch_id", "sequence", "state", "owner_id", "lease_epoch",
+      "lease_expires_at", "turn_execution_id", "selection_digest",
+      "previous_checkpoint_digest", "checkpoint_digest", "recorded_at",
+    ]),
+  }),
+  constraints: SQLITE_SCHEMA_V9_CONSTRAINTS,
 });
 export const SQLITE_SCHEMA_MIGRATIONS = Object.freeze([
   Object.freeze({
@@ -781,6 +842,11 @@ export const SQLITE_SCHEMA_MIGRATIONS = Object.freeze([
   }),
   Object.freeze({
     version: 8,
+    name: SQLITE_SCHEMA_V8_NAME,
+    manifest: SQLITE_SCHEMA_V8_MANIFEST,
+  }),
+  Object.freeze({
+    version: 9,
     name: SQLITE_SCHEMA_NAME,
     manifest: SQLITE_SCHEMA_MANIFEST,
   }),
@@ -1181,6 +1247,7 @@ export class SqliteCoordinator {
       this.#validatePersistedAttentionState();
       this.#validatePersistedGitEvidenceDependencyFinalizations();
       this.#validatePersistedLifecycleBindings();
+      this.#validatePersistedEventPumpState();
     } catch (error) {
       this.db.close();
       throw error;
@@ -1260,6 +1327,9 @@ export class SqliteCoordinator {
       }
       if (version < 8) {
         this.#initializeExactLifecycleBindingSchema();
+      }
+      if (version < 9) {
+        this.#initializeDurableEventPumpSchema();
       }
       this.#assertSchemaCompatible();
       for (const migration of SQLITE_SCHEMA_MIGRATIONS) {
@@ -1828,6 +1898,58 @@ export class SqliteCoordinator {
         FOREIGN KEY (sender_incarnation_id, message_id)
           REFERENCES admission_claims (sender_incarnation_id, message_id),
         FOREIGN KEY (execution_id)
+          REFERENCES turn_execution_intents (execution_id)
+      );
+    `);
+  }
+
+  #initializeDurableEventPumpSchema() {
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS event_pump_dispatches (
+        dispatch_id TEXT NOT NULL PRIMARY KEY,
+        receiver_task_id TEXT NOT NULL,
+        receiver_incarnation_id TEXT NOT NULL,
+        event_cursor INTEGER NOT NULL,
+        event_id TEXT NOT NULL,
+        event_digest TEXT NOT NULL,
+        registry_digest TEXT NOT NULL,
+        handler_id TEXT NOT NULL,
+        route_digest TEXT NOT NULL,
+        state TEXT NOT NULL,
+        owner_id TEXT NOT NULL,
+        lease_epoch INTEGER NOT NULL,
+        lease_expires_at TEXT NOT NULL,
+        turn_execution_id TEXT,
+        selection_record_json TEXT,
+        selection_digest TEXT,
+        revision INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        UNIQUE (receiver_task_id, receiver_incarnation_id, event_cursor),
+        UNIQUE (receiver_task_id, receiver_incarnation_id, event_id),
+        FOREIGN KEY (receiver_task_id, receiver_incarnation_id)
+          REFERENCES tasks (task_id, incarnation_id),
+        FOREIGN KEY (turn_execution_id)
+          REFERENCES turn_execution_intents (execution_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS event_pump_checkpoints (
+        dispatch_id TEXT NOT NULL,
+        sequence INTEGER NOT NULL,
+        state TEXT NOT NULL,
+        owner_id TEXT NOT NULL,
+        lease_epoch INTEGER NOT NULL,
+        lease_expires_at TEXT NOT NULL,
+        turn_execution_id TEXT,
+        selection_digest TEXT,
+        previous_checkpoint_digest TEXT,
+        checkpoint_digest TEXT NOT NULL,
+        recorded_at TEXT NOT NULL,
+        PRIMARY KEY (dispatch_id, sequence),
+        UNIQUE (dispatch_id, checkpoint_digest),
+        FOREIGN KEY (dispatch_id)
+          REFERENCES event_pump_dispatches (dispatch_id),
+        FOREIGN KEY (turn_execution_id)
           REFERENCES turn_execution_intents (execution_id)
       );
     `);
@@ -6589,6 +6711,273 @@ export class SqliteCoordinator {
     };
   }
 
+  getEventPumpRouteAuthority(
+    receiver,
+    { eventCursor, eventId, relationshipId } = {},
+    principal,
+  ) {
+    assertTaskPrincipal(principal, receiver?.taskId, receiver?.incarnationId);
+    if (relationshipId !== undefined) {
+      this.#assertAttentionId(relationshipId, "threadmesh_event_pump_route_invalid");
+    }
+    this.#assertTaskActive(receiver);
+    const event = this.#attentionEventSnapshot(eventCursor, eventId, receiver);
+    const cursor = this.#attentionCursorRow(receiver, true);
+    this.#assertNextAttentionEvent(cursor, event);
+    if (event.eventType !== "message-durably-received") {
+      throw codedError("threadmesh_event_pump_event_type_invalid");
+    }
+    const message = this.#message(event.senderIncarnationId, event.messageId);
+    const envelope = JSON.parse(message.envelope_json);
+    if (relationshipId !== undefined && envelope.relationshipId !== relationshipId) {
+      throw codedError("threadmesh_event_pump_route_mismatch");
+    }
+    const grantRow = this.#activeGrantFor(envelope);
+    if (
+      message.grant_id !== grantRow.grant_id ||
+      message.grant_version !== grantRow.grant_version
+    ) throw codedError("threadmesh_event_pump_grant_snapshot_invalid");
+    const taskSnapshot = (ref) => {
+      const task = this.#taskRecord(ref);
+      const metadata = this.#taskMetadata(ref);
+      if (metadata.retired_at) {
+        throw codedError("threadmesh_event_pump_task_snapshot_invalid");
+      }
+      return {
+        taskId: task.task_id,
+        incarnationId: task.incarnation_id,
+        ...(metadata.run_id === null ? {} : { runId: metadata.run_id }),
+        ...(metadata.objective_version === null
+          ? {} : { objectiveVersion: metadata.objective_version }),
+        ...(metadata.checkpoint === null ? {} : { checkpoint: metadata.checkpoint }),
+      };
+    };
+    const grant = JSON.parse(grantRow.grant_json);
+    const snapshot = {
+      receiver: { ...receiver },
+      cursor: this.#projectAttentionCursor(cursor),
+      event,
+      envelope,
+      grant,
+      sourceTask: taskSnapshot(envelope.sender),
+      targetTask: taskSnapshot(envelope.target),
+    };
+    return Object.freeze({
+      ...snapshot,
+      authorityDigest: sha256Digest(snapshot),
+    });
+  }
+
+  claimEventPumpDispatch(
+    receiver,
+    {
+      eventCursor, eventId, eventDigest, registryDigest, handlerId,
+      routeDigest, ownerId, leaseMs = 30_000,
+    } = {},
+    principal,
+  ) {
+    assertTaskPrincipal(principal, receiver?.taskId, receiver?.incarnationId);
+    for (const digest of [eventDigest, registryDigest, routeDigest]) {
+      if (!/^sha256:[a-f0-9]{64}$/u.test(digest ?? "")) {
+        throw codedError("threadmesh_event_pump_digest_invalid");
+      }
+    }
+    this.#assertAttentionId(handlerId, "threadmesh_event_pump_handler_invalid");
+    this.#assertAttentionId(ownerId, "threadmesh_event_pump_owner_invalid");
+    if (!Number.isInteger(leaseMs) || leaseMs < 1 || leaseMs > 300_000) {
+      throw codedError("threadmesh_event_pump_lease_invalid");
+    }
+    return this.db.transaction(() => {
+      this.#assertTaskActive(receiver);
+      const event = this.#attentionEventSnapshot(eventCursor, eventId, receiver);
+      if (event.eventDigest !== eventDigest) {
+        throw codedError("threadmesh_event_pump_event_digest_mismatch");
+      }
+      const cursor = this.#attentionCursorRow(receiver, true);
+      this.#assertNextAttentionEvent(cursor, event);
+      const dispatchId = `pump_${sha256Digest({
+        receiver, eventCursor, eventId,
+      }).slice("sha256:".length)}`;
+      const existing = this.db.prepare(
+        `SELECT * FROM event_pump_dispatches
+         WHERE dispatch_id = ? OR
+           (receiver_task_id = ? AND receiver_incarnation_id = ? AND event_cursor = ?)`,
+      ).get(dispatchId, receiver.taskId, receiver.incarnationId, eventCursor);
+      const atMs = this.clock();
+      const at = new Date(atMs).toISOString();
+      const leaseExpiresAt = new Date(atMs + leaseMs).toISOString();
+      if (existing) {
+        if (
+          existing.dispatch_id !== dispatchId || existing.event_id !== eventId ||
+          existing.event_digest !== eventDigest ||
+          existing.registry_digest !== registryDigest ||
+          existing.handler_id !== handlerId || existing.route_digest !== routeDigest
+        ) throw codedError("threadmesh_event_pump_dispatch_conflict");
+        if (existing.state !== "selected") {
+          return {
+            dispatch: this.#projectEventPumpDispatch(existing),
+            replay: true, acquired: false, terminal: true,
+          };
+        }
+        if (Date.parse(existing.lease_expires_at) > atMs) {
+          return {
+            dispatch: this.#projectEventPumpDispatch(existing),
+            replay: true, acquired: existing.owner_id === ownerId,
+            busy: existing.owner_id !== ownerId,
+          };
+        }
+        const nextEpoch = existing.lease_epoch + 1;
+        const updated = this.db.prepare(
+          `UPDATE event_pump_dispatches
+           SET owner_id = ?, lease_epoch = ?, lease_expires_at = ?,
+               revision = revision + 1, updated_at = ?
+           WHERE dispatch_id = ? AND revision = ? AND state = 'selected'
+             AND lease_expires_at <= ?`,
+        ).run(
+          ownerId, nextEpoch, leaseExpiresAt, at,
+          dispatchId, existing.revision, at,
+        );
+        if (updated.changes !== 1) {
+          throw codedError("threadmesh_event_pump_lease_conflict");
+        }
+        const row = this.#eventPumpDispatchRow(dispatchId);
+        this.#appendEventPumpCheckpoint(row, "lease-taken-over");
+        return {
+          dispatch: this.#projectEventPumpDispatch(row),
+          replay: false, acquired: true, takeover: true,
+        };
+      }
+      this.db.prepare(
+        `INSERT INTO event_pump_dispatches (
+           dispatch_id, receiver_task_id, receiver_incarnation_id,
+           event_cursor, event_id, event_digest, registry_digest, handler_id,
+           route_digest, state, owner_id, lease_epoch, lease_expires_at,
+           turn_execution_id, selection_record_json, selection_digest,
+           revision, created_at, updated_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'selected', ?, 1, ?,
+                   NULL, NULL, NULL, 0, ?, ?)`,
+      ).run(
+        dispatchId, receiver.taskId, receiver.incarnationId,
+        eventCursor, eventId, eventDigest, registryDigest, handlerId,
+        routeDigest, ownerId, leaseExpiresAt, at, at,
+      );
+      const row = this.#eventPumpDispatchRow(dispatchId);
+      this.#appendEventPumpCheckpoint(row, "selected");
+      return {
+        dispatch: this.#projectEventPumpDispatch(row),
+        replay: false, acquired: true, takeover: false,
+      };
+    }).immediate();
+  }
+
+  settleEventPumpDispatch(
+    dispatchId,
+    { ownerId, leaseEpoch, outcome, turnExecutionId = null } = {},
+    principal,
+  ) {
+    this.#assertAttentionId(dispatchId, "threadmesh_event_pump_dispatch_invalid");
+    this.#assertAttentionId(ownerId, "threadmesh_event_pump_owner_invalid");
+    if (!Number.isInteger(leaseEpoch) || leaseEpoch < 1 ||
+        !["completed-bound", "skipped"].includes(outcome)) {
+      throw codedError("threadmesh_event_pump_settlement_invalid");
+    }
+    return this.db.transaction(() => {
+      const current = this.#eventPumpDispatchRow(dispatchId);
+      assertTaskPrincipal(
+        principal, current.receiver_task_id, current.receiver_incarnation_id,
+      );
+      if (current.state !== "selected") {
+        if (
+          current.state === outcome && current.owner_id === ownerId &&
+          current.lease_epoch === leaseEpoch &&
+          current.turn_execution_id === turnExecutionId
+        ) return { dispatch: this.#projectEventPumpDispatch(current), replay: true };
+        throw codedError("threadmesh_event_pump_settlement_conflict");
+      }
+      if (current.owner_id !== ownerId || current.lease_epoch !== leaseEpoch) {
+        throw codedError("threadmesh_event_pump_lease_fenced");
+      }
+      if (Date.parse(current.lease_expires_at) <= this.clock()) {
+        throw codedError("threadmesh_event_pump_lease_expired");
+      }
+      if (outcome === "completed-bound") {
+        if (typeof turnExecutionId !== "string") {
+          throw codedError("threadmesh_event_pump_turn_binding_invalid");
+        }
+        const execution = this.#turnExecutionSnapshot(turnExecutionId);
+        const attentionCursor = this.#attentionCursorRow({
+          taskId: current.receiver_task_id,
+          incarnationId: current.receiver_incarnation_id,
+        });
+        const activeClaim = attentionCursor.active_claim_epoch === null
+          ? null : this.#attentionClaimRow(attentionCursor.active_claim_epoch);
+        if (
+          !["completed-turn-bound", "promoted"].includes(execution.intent.state) ||
+          execution.intent.actor.taskId !== current.receiver_task_id ||
+          execution.intent.actor.incarnationId !== current.receiver_incarnation_id ||
+          activeClaim?.state !== "completed-bound" ||
+          activeClaim?.event_cursor !== current.event_cursor ||
+          activeClaim?.event_id !== current.event_id ||
+          activeClaim?.turn_execution_id !== turnExecutionId ||
+          execution.intent.messageId !== this.#attentionEventSnapshot(
+            current.event_cursor,
+            current.event_id,
+            { taskId: current.receiver_task_id, incarnationId: current.receiver_incarnation_id },
+          ).messageId
+        ) throw codedError("threadmesh_event_pump_turn_binding_invalid");
+      } else if (turnExecutionId !== null) {
+        throw codedError("threadmesh_event_pump_turn_binding_invalid");
+      }
+      const selectionRecord = {
+        dispatchId,
+        receiver: {
+          taskId: current.receiver_task_id,
+          incarnationId: current.receiver_incarnation_id,
+        },
+        eventCursor: current.event_cursor,
+        eventId: current.event_id,
+        eventDigest: current.event_digest,
+        registryDigest: current.registry_digest,
+        handlerId: current.handler_id,
+        routeDigest: current.route_digest,
+        kind: outcome === "completed-bound"
+          ? "coordinator-activation" : "durable-route-skip",
+        outcome,
+        ownerId,
+        leaseEpoch,
+        turnExecutionId,
+      };
+      const selectionDigest = sha256Digest(selectionRecord);
+      const at = nowIso(this.clock);
+      const updated = this.db.prepare(
+        `UPDATE event_pump_dispatches
+         SET state = ?, turn_execution_id = ?, selection_record_json = ?,
+             selection_digest = ?, revision = revision + 1, updated_at = ?
+         WHERE dispatch_id = ? AND revision = ? AND state = 'selected'
+           AND owner_id = ? AND lease_epoch = ?`,
+      ).run(
+        outcome, turnExecutionId, canonicalJson(selectionRecord), selectionDigest,
+        at, dispatchId, current.revision, ownerId, leaseEpoch,
+      );
+      if (updated.changes !== 1) {
+        throw codedError("threadmesh_event_pump_settlement_conflict");
+      }
+      const row = this.#eventPumpDispatchRow(dispatchId);
+      this.#appendEventPumpCheckpoint(row, outcome);
+      return { dispatch: this.#projectEventPumpDispatch(row), replay: false };
+    }).immediate();
+  }
+
+  getEventPumpDispatch(receiver, { eventCursor, eventId } = {}, principal) {
+    assertTaskPrincipal(principal, receiver?.taskId, receiver?.incarnationId);
+    const row = this.db.prepare(
+      `SELECT * FROM event_pump_dispatches
+       WHERE receiver_task_id = ? AND receiver_incarnation_id = ?
+         AND event_cursor = ? AND event_id = ?`,
+    ).get(receiver.taskId, receiver.incarnationId, eventCursor, eventId);
+    return row ? this.#projectEventPumpDispatch(row) : null;
+  }
+
   #currentDependencyEdgeRow(dependencyId, required = true) {
     if (typeof dependencyId !== "string" || dependencyId.length === 0) {
       throw codedError("threadmesh_dependency_edge_invalid", "dependencyId");
@@ -7061,6 +7450,174 @@ export class SqliteCoordinator {
       typeof value !== "string" || value.length < 1 || value.length > 256 ||
       !/^[A-Za-z0-9][A-Za-z0-9._:-]*$/u.test(value)
     ) throw codedError(code);
+  }
+
+  #eventPumpDispatchRow(dispatchId) {
+    const row = this.db.prepare(
+      "SELECT * FROM event_pump_dispatches WHERE dispatch_id = ?",
+    ).get(dispatchId);
+    if (!row) throw codedError("threadmesh_event_pump_dispatch_not_found");
+    return row;
+  }
+
+  #projectEventPumpDispatch(row) {
+    let selectionRecord = null;
+    try {
+      selectionRecord = row.selection_record_json === null
+        ? null : JSON.parse(row.selection_record_json);
+    } catch {
+      throw codedError("threadmesh_event_pump_storage_tampered");
+    }
+    return Object.freeze({
+      dispatchId: row.dispatch_id,
+      receiver: Object.freeze({
+        taskId: row.receiver_task_id,
+        incarnationId: row.receiver_incarnation_id,
+      }),
+      eventCursor: row.event_cursor,
+      eventId: row.event_id,
+      eventDigest: row.event_digest,
+      registryDigest: row.registry_digest,
+      handlerId: row.handler_id,
+      routeDigest: row.route_digest,
+      state: row.state,
+      ownerId: row.owner_id,
+      leaseEpoch: row.lease_epoch,
+      leaseExpiresAt: row.lease_expires_at,
+      turnExecutionId: row.turn_execution_id,
+      selectionRecord,
+      selectionDigest: row.selection_digest,
+      revision: row.revision,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    });
+  }
+
+  #appendEventPumpCheckpoint(row, checkpointState) {
+    const previous = this.db.prepare(
+      `SELECT sequence, checkpoint_digest FROM event_pump_checkpoints
+       WHERE dispatch_id = ? ORDER BY sequence DESC LIMIT 1`,
+    ).get(row.dispatch_id);
+    const body = {
+      dispatchId: row.dispatch_id,
+      sequence: (previous?.sequence ?? 0) + 1,
+      state: checkpointState,
+      ownerId: row.owner_id,
+      leaseEpoch: row.lease_epoch,
+      leaseExpiresAt: row.lease_expires_at,
+      turnExecutionId: row.turn_execution_id,
+      selectionDigest: row.selection_digest,
+      previousCheckpointDigest: previous?.checkpoint_digest ?? null,
+      recordedAt: nowIso(this.clock),
+    };
+    const checkpointDigest = sha256Digest(body);
+    this.db.prepare(
+      `INSERT INTO event_pump_checkpoints (
+         dispatch_id, sequence, state, owner_id, lease_epoch,
+         lease_expires_at, turn_execution_id, selection_digest,
+         previous_checkpoint_digest, checkpoint_digest, recorded_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(
+      body.dispatchId, body.sequence, body.state, body.ownerId, body.leaseEpoch,
+      body.leaseExpiresAt, body.turnExecutionId, body.selectionDigest,
+      body.previousCheckpointDigest, checkpointDigest, body.recordedAt,
+    );
+    return Object.freeze({ ...body, checkpointDigest });
+  }
+
+  #validatePersistedEventPumpState() {
+    const dispatches = this.db.prepare(
+      "SELECT * FROM event_pump_dispatches ORDER BY dispatch_id",
+    ).all();
+    for (const row of dispatches) {
+      const receiver = {
+        taskId: row.receiver_task_id,
+        incarnationId: row.receiver_incarnation_id,
+      };
+      const event = this.#attentionEventSnapshot(row.event_cursor, row.event_id, receiver);
+      const expectedDispatchId = `pump_${sha256Digest({
+        receiver, eventCursor: row.event_cursor, eventId: row.event_id,
+      }).slice("sha256:".length)}`;
+      if (
+        row.dispatch_id !== expectedDispatchId || event.eventDigest !== row.event_digest ||
+        !["selected", "completed-bound", "skipped"].includes(row.state) ||
+        !/^sha256:[a-f0-9]{64}$/u.test(row.event_digest) ||
+        !/^sha256:[a-f0-9]{64}$/u.test(row.registry_digest) ||
+        !/^sha256:[a-f0-9]{64}$/u.test(row.route_digest) ||
+        !Number.isInteger(row.lease_epoch) || row.lease_epoch < 1 ||
+        !Number.isInteger(Date.parse(row.lease_expires_at))
+      ) throw codedError("threadmesh_event_pump_storage_tampered");
+      this.#projectEventPumpDispatch(row);
+      if (row.state === "selected") {
+        if (row.selection_record_json !== null || row.selection_digest !== null ||
+            row.turn_execution_id !== null) {
+          throw codedError("threadmesh_event_pump_storage_tampered");
+        }
+      } else {
+        const projection = this.#projectEventPumpDispatch(row);
+        const expectedSelectionRecord = {
+          dispatchId: row.dispatch_id,
+          receiver,
+          eventCursor: row.event_cursor,
+          eventId: row.event_id,
+          eventDigest: row.event_digest,
+          registryDigest: row.registry_digest,
+          handlerId: row.handler_id,
+          routeDigest: row.route_digest,
+          kind: row.state === "completed-bound"
+            ? "coordinator-activation" : "durable-route-skip",
+          outcome: row.state,
+          ownerId: row.owner_id,
+          leaseEpoch: row.lease_epoch,
+          turnExecutionId: row.turn_execution_id,
+        };
+        if (
+          canonicalJson(projection.selectionRecord) !==
+            canonicalJson(expectedSelectionRecord) ||
+          sha256Digest(projection.selectionRecord) !== row.selection_digest
+        ) {
+          throw codedError("threadmesh_event_pump_storage_tampered");
+        }
+      }
+      const checkpoints = this.db.prepare(
+        `SELECT * FROM event_pump_checkpoints
+         WHERE dispatch_id = ? ORDER BY sequence`,
+      ).all(row.dispatch_id);
+      let previousDigest = null;
+      for (const [index, checkpoint] of checkpoints.entries()) {
+        const body = {
+          dispatchId: checkpoint.dispatch_id,
+          sequence: checkpoint.sequence,
+          state: checkpoint.state,
+          ownerId: checkpoint.owner_id,
+          leaseEpoch: checkpoint.lease_epoch,
+          leaseExpiresAt: checkpoint.lease_expires_at,
+          turnExecutionId: checkpoint.turn_execution_id,
+          selectionDigest: checkpoint.selection_digest,
+          previousCheckpointDigest: checkpoint.previous_checkpoint_digest,
+          recordedAt: checkpoint.recorded_at,
+        };
+        if (
+          checkpoint.sequence !== index + 1 ||
+          checkpoint.previous_checkpoint_digest !== previousDigest ||
+          sha256Digest(body) !== checkpoint.checkpoint_digest
+        ) throw codedError("threadmesh_event_pump_storage_tampered");
+        previousDigest = checkpoint.checkpoint_digest;
+      }
+      if (checkpoints.length < 1) {
+        throw codedError("threadmesh_event_pump_storage_tampered");
+      }
+      const finalCheckpoint = checkpoints.at(-1);
+      if (
+        checkpoints[0].state !== "selected" ||
+        finalCheckpoint.owner_id !== row.owner_id ||
+        finalCheckpoint.lease_epoch !== row.lease_epoch ||
+        finalCheckpoint.lease_expires_at !== row.lease_expires_at ||
+        finalCheckpoint.turn_execution_id !== row.turn_execution_id ||
+        finalCheckpoint.selection_digest !== row.selection_digest ||
+        (row.state !== "selected" && finalCheckpoint.state !== row.state)
+      ) throw codedError("threadmesh_event_pump_storage_tampered");
+    }
   }
 
   #attentionEventSnapshot(eventCursor, eventId, receiver) {

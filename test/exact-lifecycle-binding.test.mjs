@@ -490,7 +490,7 @@ test("v8 atomically binds lifecycle publication, receiver decision, and admitted
     }, 0, receiverPrincipal);
     coordinator.close();
     coordinator = new SqliteCoordinator({ filename: temporary.filename, clock: () => NOW });
-    assert.equal(coordinator.storageInfo().schemaVersion, 8);
+    assert.equal(coordinator.storageInfo().schemaVersion, 9);
     coordinator.close();
     coordinator = null;
 
@@ -1188,7 +1188,7 @@ test("v7 migrates append-only to v8 and restart detects binding tamper", () => {
     ).pluck().get(), v7Checksum);
     assert.equal(coordinator.db.prepare(
       "SELECT COUNT(*) FROM schema_migrations",
-    ).pluck().get(), 8);
+    ).pluck().get(), 9);
 
     const sourceEvent = event();
     const execution = completedExecution({

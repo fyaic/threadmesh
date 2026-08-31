@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import { canonicalJson, sha256Digest } from "../canonical-json.mjs";
 import { evaluateAttentionRoute } from "../routing/lifecycle-events.mjs";
 import { runCoordinatorActivation } from "./coordinator-activation-driver.mjs";
@@ -22,59 +24,6 @@ function deepFreeze(value) {
   if (!value || typeof value !== "object" || Object.isFrozen(value)) return value;
   for (const child of Object.values(value)) deepFreeze(child);
   return Object.freeze(value);
-}
-
-function currentTaskSnapshot(coordinator, ref) {
-  const row = coordinator.db.prepare(
-    `SELECT t.task_id AS taskId, t.incarnation_id AS incarnationId,
-            m.retired_at AS retiredAt, m.run_id AS runId,
-            m.objective_version AS objectiveVersion, m.checkpoint AS checkpoint
-     FROM tasks t JOIN task_metadata m USING (task_id, incarnation_id)
-     WHERE t.task_id = ? AND t.incarnation_id = ?`,
-  ).get(ref.taskId, ref.incarnationId);
-  if (!row || row.retiredAt) throw coded("threadmesh_event_pump_task_snapshot_invalid");
-  return deepFreeze({
-    taskId: row.taskId,
-    incarnationId: row.incarnationId,
-    ...(row.runId === null ? {} : { runId: row.runId }),
-    ...(row.objectiveVersion === null ? {} : { objectiveVersion: row.objectiveVersion }),
-    ...(row.checkpoint === null ? {} : { checkpoint: row.checkpoint }),
-  });
-}
-
-function currentGrantSnapshot(coordinator, envelope, relationshipId) {
-  const row = coordinator.db.prepare(
-    `SELECT * FROM grants WHERE relationship_id = ?
-       AND source_task_id = ? AND source_incarnation_id = ?
-       AND target_task_id = ? AND target_incarnation_id = ?
-     ORDER BY grant_version DESC LIMIT 1`,
-  ).get(
-    relationshipId,
-    envelope.sender.taskId,
-    envelope.sender.incarnationId,
-    envelope.target.taskId,
-    envelope.target.incarnationId,
-  );
-  let grant;
-  try { grant = row ? JSON.parse(row.grant_json) : null; } catch {
-    throw coded("threadmesh_event_pump_grant_snapshot_invalid");
-  }
-  const bound = coordinator.db.prepare(
-    `SELECT grant_id AS grantId, grant_version AS grantVersion
-     FROM messages WHERE sender_incarnation_id = ? AND message_id = ?`,
-  ).get(envelope.sender.incarnationId, envelope.messageId);
-  if (!row || !grant || !bound || row.revoked_at ||
-      row.relationship_id !== relationshipId ||
-      bound.grantId !== row.grant_id || bound.grantVersion !== row.grant_version ||
-      grant.grantId !== row.grant_id || grant.grantVersion !== row.grant_version ||
-      grant.relationshipId !== relationshipId ||
-      grant.source?.taskId !== row.source_task_id ||
-      grant.source?.incarnationId !== row.source_incarnation_id ||
-      grant.target?.taskId !== row.target_task_id ||
-      grant.target?.incarnationId !== row.target_incarnation_id) {
-    throw coded("threadmesh_event_pump_grant_snapshot_invalid");
-  }
-  return deepFreeze(copy(grant));
 }
 
 function eventFromEnvelope(envelope, eventType) {
@@ -103,10 +52,17 @@ function eventFromEnvelope(envelope, eventType) {
  * Receiver policy is registered once before start; callers cannot dispatch phases.
  */
 export class AutonomousEventPump {
-  constructor({ coordinator, runtime, scenarioId, chainId, recoveryDirectory, maxEvents = 16 }) {
+  constructor({
+    coordinator, runtime, scenarioId, chainId, recoveryDirectory, maxEvents = 16,
+    ownerId = `pump-owner-${randomUUID()}`, leaseMs = 30_000,
+    faultInjector = async () => {},
+  }) {
     if (!coordinator || !runtime || typeof scenarioId !== "string" ||
         typeof chainId !== "string" || typeof recoveryDirectory !== "string" ||
-        !Number.isInteger(maxEvents) || maxEvents < 1 || maxEvents > 1_000) {
+        !Number.isInteger(maxEvents) || maxEvents < 1 || maxEvents > 1_000 ||
+        typeof ownerId !== "string" || ownerId.length < 1 ||
+        !Number.isInteger(leaseMs) || leaseMs < 1 || leaseMs > 300_000 ||
+        typeof faultInjector !== "function") {
       throw coded("threadmesh_event_pump_input_invalid");
     }
     this.coordinator = coordinator;
@@ -115,10 +71,12 @@ export class AutonomousEventPump {
     this.chainId = chainId;
     this.recoveryDirectory = recoveryDirectory;
     this.maxEvents = maxEvents;
+    this.ownerId = ownerId;
+    this.leaseMs = leaseMs;
+    this.faultInjector = faultInjector;
     PUMP_REGISTRY.set(this, { entries: [], projection: null, digest: null });
     this.started = false;
     this.running = false;
-    this.settledEventIds = new Set();
     this.dispatches = 0;
     this.skips = 0;
     this.selectionRecords = [];
@@ -210,37 +168,14 @@ export class AutonomousEventPump {
     }
   }
 
-  #recordSelection(kind, registration, observed, routeProjection, routeData) {
-    const body = {
-      sequence: this.selectionRecords.length + 1,
-      previousDigest: this.selectionHeadDigest,
-      kind,
-      handlerId: routeData.handlerId,
-      handlerConfigDigest: sha256Digest(routeData),
-      receiverDigest: sha256Digest(taskRef(registration.receiver)),
-      eventDigest: sha256Digest({
-        cursor: observed.cursor,
-        eventId: observed.eventId,
-        messageId: observed.messageId,
-        senderIncarnationId: observed.senderIncarnationId,
-      }),
-      routeDigest: sha256Digest(routeProjection),
-    };
-    const record = Object.freeze({ ...body, recordDigest: sha256Digest(body) });
-    this.selectionRecords.push(record);
-    this.selectionHeadDigest = record.recordDigest;
-    return record;
-  }
-
   verifySelectionChain() {
-    let head = null;
-    for (const [index, record] of this.selectionRecords.entries()) {
-      const { recordDigest, ...body } = record;
-      if (body.sequence !== index + 1 || body.previousDigest !== head ||
-          sha256Digest(body) !== recordDigest) return false;
-      head = recordDigest;
+    if (this.selectionRecords.length === 0) return this.selectionHeadDigest === null;
+    const dispatchIds = new Set();
+    for (const record of this.selectionRecords) {
+      if (!record?.dispatchId || dispatchIds.has(record.dispatchId)) return false;
+      dispatchIds.add(record.dispatchId);
     }
-    return head === this.selectionHeadDigest;
+    return sha256Digest(this.selectionRecords.at(-1)) === this.selectionHeadDigest;
   }
 
   #nextCandidate() {
@@ -257,10 +192,16 @@ export class AutonomousEventPump {
       );
       const event = page.events[0];
       if (event) {
-        const target = { registration, cursorState, event };
+        const durableDispatch = this.coordinator.getEventPumpDispatch(
+          taskRef(registration.receiver),
+          { eventCursor: event.cursor, eventId: event.eventId },
+          registration.principal,
+        );
+        const target = { registration, cursorState, event, durableDispatch };
         const completedBound = cursorState.activeClaim?.eventId === event.eventId &&
           cursorState.activeClaim?.state === "completed-bound";
-        if (this.settledEventIds.has(event.eventId) || completedBound) blocked.push(target);
+        if (durableDispatch?.state === "completed-bound" ||
+            (!durableDispatch && completedBound)) blocked.push(target);
         else candidates.push(target);
       }
     }
@@ -293,53 +234,110 @@ export class AutonomousEventPump {
         });
       }
       const { registration, cursorState, event: observed } = candidate;
-      const pending = this.coordinator.listPending(
-        taskRef(registration.receiver), {}, registration.principal,
-      ).messages.find((entry) => entry.envelope.messageId === observed.messageId);
-      if (!pending || pending.envelope.sender.incarnationId !== observed.senderIncarnationId) {
-        throw coded("threadmesh_event_pump_next_event_mismatch");
-      }
-      const routeRegistration = registration.routes.find(({ data }) =>
-        data.relationshipId === pending.envelope.relationshipId);
-      if (!routeRegistration) throw coded("threadmesh_event_pump_route_missing");
-      const routeData = routeRegistration.data;
-      const lifecycleEvent = eventFromEnvelope(pending.envelope, routeData.eventType);
-      const grant = currentGrantSnapshot(
-        this.coordinator, pending.envelope, routeData.relationshipId,
-      );
-      const routeProjection = evaluateAttentionRoute({
-        event: lifecycleEvent,
-        receiverTask: taskRef(registration.receiver),
-        subscribedEventTypes: routeData.subscribedEventTypes,
-        seenMessageIds: [],
-        grant,
-        currentGrant: grant,
-        sourceTask: currentTaskSnapshot(this.coordinator, pending.envelope.sender),
-        targetTask: currentTaskSnapshot(this.coordinator, pending.envelope.target),
-        now: this.coordinator.clock(),
-      });
-      if (routeProjection.state !== "offered") {
+      if (candidate.durableDispatch?.state === "skipped") {
         const skipped = this.coordinator.advanceAttentionCursor(
           taskRef(registration.receiver),
           {
             eventCursor: observed.cursor,
             eventId: observed.eventId,
-            classificationDigest: sha256Digest(routeProjection),
+            classificationDigest: candidate.durableDispatch.routeDigest,
             expectedRevision: cursorState.cursor.revision,
           },
           registration.principal,
         );
-        this.settledEventIds.add(observed.eventId);
-        this.skips += 1;
-        const selectionRecord = this.#recordSelection(
-          "durable-route-skip", registration, observed, routeProjection, routeData,
-        );
-        return Object.freeze({ state: "skipped", routeProjection, skipped, selectionRecord });
+        return Object.freeze({ state: "recovered-skip", skipped });
       }
-      const admissionGrant = currentGrantSnapshot(
-        this.coordinator, pending.envelope, routeData.relationshipId,
+      const authority = this.coordinator.getEventPumpRouteAuthority(
+        taskRef(registration.receiver),
+        {
+          eventCursor: observed.cursor,
+          eventId: observed.eventId,
+        },
+        registration.principal,
       );
-      if (sha256Digest(admissionGrant) !== sha256Digest(grant)) {
+      if (authority.envelope.sender.incarnationId !== observed.senderIncarnationId ||
+          authority.envelope.messageId !== observed.messageId) {
+        throw coded("threadmesh_event_pump_next_event_mismatch");
+      }
+      const routeRegistration = registration.routes.find(({ data }) =>
+        data.relationshipId === authority.envelope.relationshipId);
+      if (!routeRegistration) throw coded("threadmesh_event_pump_route_missing");
+      const routeData = routeRegistration.data;
+      const lifecycleEvent = eventFromEnvelope(authority.envelope, routeData.eventType);
+      const routeProjection = evaluateAttentionRoute({
+        event: lifecycleEvent,
+        receiverTask: taskRef(registration.receiver),
+        subscribedEventTypes: routeData.subscribedEventTypes,
+        seenMessageIds: [],
+        grant: authority.grant,
+        currentGrant: authority.grant,
+        sourceTask: authority.sourceTask,
+        targetTask: authority.targetTask,
+        now: this.coordinator.clock(),
+      });
+      const routeDigest = sha256Digest(routeProjection);
+      await this.faultInjector("pre-record", { observed, routeProjection });
+      const claimed = this.coordinator.claimEventPumpDispatch(
+        taskRef(registration.receiver),
+        {
+          eventCursor: observed.cursor,
+          eventId: observed.eventId,
+          eventDigest: authority.event.eventDigest,
+          registryDigest: this.registryDigest,
+          handlerId: routeData.handlerId,
+          routeDigest,
+          ownerId: this.ownerId,
+          leaseMs: this.leaseMs,
+        },
+        registration.principal,
+      );
+      if (!claimed.acquired) {
+        if (claimed.dispatch.state === "completed-bound") {
+          return Object.freeze({ state: "blocked-completed-bound", awaitingPromotion: true });
+        }
+        return Object.freeze({ state: "blocked-durable-lease", dispatch: claimed.dispatch });
+      }
+      await this.faultInjector("post-record-pre-turn", {
+        observed, routeProjection, dispatch: claimed.dispatch,
+      });
+      if (routeProjection.state !== "offered") {
+        const settled = this.coordinator.settleEventPumpDispatch(
+          claimed.dispatch.dispatchId,
+          {
+            ownerId: this.ownerId,
+            leaseEpoch: claimed.dispatch.leaseEpoch,
+            outcome: "skipped",
+          },
+          registration.principal,
+        );
+        const skipped = this.coordinator.advanceAttentionCursor(
+          taskRef(registration.receiver),
+          {
+            eventCursor: observed.cursor,
+            eventId: observed.eventId,
+            classificationDigest: routeDigest,
+            expectedRevision: cursorState.cursor.revision,
+          },
+          registration.principal,
+        );
+        this.skips += 1;
+        this.selectionRecords.push(settled.dispatch.selectionRecord);
+        this.selectionHeadDigest = settled.dispatch.selectionDigest;
+        return Object.freeze({
+          state: "skipped", routeProjection, skipped,
+          selectionRecord: settled.dispatch.selectionRecord,
+        });
+      }
+      const admissionAuthority = this.coordinator.getEventPumpRouteAuthority(
+        taskRef(registration.receiver),
+        {
+          eventCursor: observed.cursor,
+          eventId: observed.eventId,
+          relationshipId: routeData.relationshipId,
+        },
+        registration.principal,
+      );
+      if (admissionAuthority.authorityDigest !== authority.authorityDigest) {
         throw coded("threadmesh_event_pump_grant_changed_before_admission");
       }
       const activation = await runCoordinatorActivation({
@@ -360,18 +358,35 @@ export class AutonomousEventPump {
         onBusinessToolCall: routeRegistration.onBusinessToolCall,
         afterAdmissionPrepared: routeRegistration.afterAdmissionPrepared,
       });
+      await this.faultInjector("post-turn-pre-settle", {
+        observed, routeProjection, activation, dispatch: claimed.dispatch,
+      });
+      const settled = this.coordinator.settleEventPumpDispatch(
+        claimed.dispatch.dispatchId,
+        {
+          ownerId: this.ownerId,
+          leaseEpoch: claimed.dispatch.leaseEpoch,
+          outcome: "completed-bound",
+          turnExecutionId: activation.businessExecutionId ?? activation.decisionExecutionId,
+        },
+        registration.principal,
+      );
+      await this.faultInjector("post-settle-pre-publication", {
+        observed, routeProjection, activation, dispatch: settled.dispatch,
+      });
       await routeRegistration.onLifecyclePublication({
         coordinator: this.coordinator,
         activation,
         lifecycleEvent,
         routeProjection,
       });
-      this.settledEventIds.add(observed.eventId);
       this.dispatches += 1;
-      const selectionRecord = this.#recordSelection(
-        "coordinator-activation", registration, observed, routeProjection, routeData,
-      );
-      return Object.freeze({ state: "dispatched", activation, routeProjection, selectionRecord });
+      this.selectionRecords.push(settled.dispatch.selectionRecord);
+      this.selectionHeadDigest = settled.dispatch.selectionDigest;
+      return Object.freeze({
+        state: "dispatched", activation, routeProjection,
+        selectionRecord: settled.dispatch.selectionRecord,
+      });
     } finally {
       this.running = false;
     }
@@ -384,7 +399,7 @@ export class AutonomousEventPump {
       const result = await this.drainOnce();
       if (result.state === "idle") {
         const dispatches = this.selectionRecords.filter(
-          ({ kind }) => kind === "coordinator-activation",
+          ({ outcome }) => outcome === "completed-bound",
         ).length;
         const skips = this.selectionRecords.length - dispatches;
         return Object.freeze({
@@ -395,9 +410,9 @@ export class AutonomousEventPump {
           selectionChainScope: "in-process-self-checked",
         });
       }
-      if (result.state === "blocked-completed-bound") {
+      if (["blocked-completed-bound", "blocked-durable-lease"].includes(result.state)) {
         const dispatches = this.selectionRecords.filter(
-          ({ kind }) => kind === "coordinator-activation",
+          ({ outcome }) => outcome === "completed-bound",
         ).length;
         return Object.freeze({
           ...result,
@@ -415,7 +430,7 @@ export class AutonomousEventPump {
     const remaining = this.#nextCandidate();
     if (remaining?.blocked) {
       const dispatches = this.selectionRecords.filter(
-        ({ kind }) => kind === "coordinator-activation",
+        ({ outcome }) => outcome === "completed-bound",
       ).length;
       return Object.freeze({
         state: "blocked-completed-bound",
@@ -437,7 +452,7 @@ export class AutonomousEventPump {
     }
     if (remaining) throw coded("threadmesh_event_pump_limit_reached");
     const dispatches = this.selectionRecords.filter(
-      ({ kind }) => kind === "coordinator-activation",
+      ({ outcome }) => outcome === "completed-bound",
     ).length;
     return Object.freeze({
       state: "idle", processed, dispatches,
