@@ -195,6 +195,7 @@ export async function runCodexAttentionScenario({
   temporaryParent = os.tmpdir(),
   adapter = new CodexAppServerAdapter(),
   clock = Date.now,
+  turnTimeoutMs = 180_000,
 } = {}) {
   if (!CONDITIONS.has(condition)) throw scenarioError("threadmesh_codex_attention_condition_invalid");
   for (const method of ["startValidationThread", "startAutonomousToolThread", "runAcceptedSuggestion", "deleteThread"]) {
@@ -202,6 +203,9 @@ export async function runCodexAttentionScenario({
   }
   if (typeof clock !== "function" || !Number.isFinite(clock())) {
     throw scenarioError("threadmesh_codex_attention_clock_invalid");
+  }
+  if (!Number.isInteger(turnTimeoutMs) || turnTimeoutMs < 30_000 || turnTimeoutMs > 300_000) {
+    throw scenarioError("threadmesh_codex_attention_timeout_invalid");
   }
   const startedAtMs = clock();
   const createdAt = new Date(startedAtMs).toISOString();
@@ -216,17 +220,21 @@ export async function runCodexAttentionScenario({
   let aRef;
   let bRef;
   let failure;
+  let failureStage;
   let result;
+  let stage = "setup";
   let cleanup = { attempted: false, complete: false, threadDeleted: false, aThreadDeleted: false, bThreadDeleted: false };
 
   try {
     let bBootstrap;
     try {
+      stage = "b-bootstrap";
       bBootstrap = await adapter.startValidationThread({
         command, args, cwd, env, model,
         marker: CODEX_ATTENTION_B_WAITING_MARKER,
         adapterIdempotencyKey: `idem_codex_attention_b_bootstrap_${runId}`,
         developerInstructions: `You are B. Wait for receiver-accepted ThreadMesh peer context. When that context contains the verified dependency checksum, reply with exactly ${CODEX_ATTENTION_B_READY_MARKER}. Never use tools.`,
+        timeoutMs: turnTimeoutMs,
       });
       bRef = bBootstrap.adapterRef;
     } catch (error) {
@@ -291,11 +299,13 @@ export async function runCodexAttentionScenario({
     let directSubmitOutsideTool = 0;
     let aTurn;
     try {
+      stage = "a-decision";
       aTurn = await adapter.startAutonomousToolThread({
         command, args, cwd, env, model,
         dynamicTools: CODEX_ATTENTION_TOOLS,
         adapterIdempotencyKey: `idem_codex_attention_a_turn_${runId}`,
         developerInstructions: "You are A. First inspect ThreadMesh related tasks if your completed checksum might help another task. Emit one lifecycle checkpoint only if the returned dependency explicitly needs that checksum. Never use non-ThreadMesh tools.",
+        timeoutMs: turnTimeoutMs,
         prompt: condition === "relevant"
           ? `You independently verified ${CODEX_ATTENTION_CHECKSUM}. Decide whether an authorized downstream task needs it.`
           : condition === "irrelevant"
@@ -398,6 +408,7 @@ export async function runCodexAttentionScenario({
       isRelevant: (auditEvent) => Boolean(event) &&
         auditEvent.eventType === "message-durably-received" && auditEvent.messageId === event.messageId,
       handleEvent: async () => {
+        stage = "b-receiver";
         const message = coordinator.inspectMessage(scenario.a.incarnationId, event.messageId, bPrincipal);
         const claim = coordinator.claimPending(scenario.a.incarnationId, event.messageId, message.disposition.revision, bPrincipal);
         const accepted = coordinator.acknowledgePending(
@@ -429,6 +440,7 @@ export async function runCodexAttentionScenario({
             revision: accepted.revision,
           },
           adapterIdempotencyKey: `idem_codex_attention_b_receive_${runId}`,
+          timeoutMs: turnTimeoutMs,
         });
         assertExact(receiverTurn, CODEX_ATTENTION_B_READY_MARKER, "threadmesh_codex_attention_b_marker_mismatch");
         if (
@@ -453,6 +465,7 @@ export async function runCodexAttentionScenario({
       },
     });
     // No wake hint: a dropped best-effort wake cannot lose the durable event.
+    stage = "durable-wake";
     const wake = await consumer.reconcile();
     if (condition === "relevant" && (!receiverTurn || wake.handled.length !== 1)) {
       throw scenarioError("threadmesh_codex_attention_durable_wake_missing");
@@ -463,6 +476,7 @@ export async function runCodexAttentionScenario({
     let effect = null;
     let externalDisposition = null;
     if (event) {
+      stage = "verification";
       const persisted = coordinator.getDisposition(scenario.a.incarnationId, event.messageId, bPrincipal);
       externalDisposition = verifiedDisposition({
         event,
@@ -495,6 +509,7 @@ export async function runCodexAttentionScenario({
     }
 
     coordinator.close();
+    stage = "restart-recovery";
     coordinator = new SqliteCoordinator({
       filename,
       clock,
@@ -560,6 +575,7 @@ export async function runCodexAttentionScenario({
     };
   } catch (error) {
     failure = error;
+    failureStage = stage;
   } finally {
     try { coordinator?.close(); } catch {}
     cleanup.attempted = true;
@@ -590,6 +606,7 @@ export async function runCodexAttentionScenario({
     condition,
     productId: "codex-attention",
     code: error.code ?? "threadmesh_codex_attention_failed",
+    stage: failureStage ?? "cleanup",
     cleanup,
   };
   error.cleanup = cleanup;
