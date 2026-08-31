@@ -309,7 +309,7 @@ test("validation timeout retains the created thread for exact cleanup", async ()
         env: { ...state.env, FAKE_CODEX_HANG: "1" },
         marker: "CODEX_TIMEOUT_CLEANUP",
         adapterIdempotencyKey: "idem_codex_timeout_cleanup01",
-        timeoutMs: 150,
+        timeoutMs: 1_000,
       }),
       (error) => {
         adapterRef = error.adapterRef;
