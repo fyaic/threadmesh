@@ -230,6 +230,10 @@ dependencies. Its packed-consumer import and full
 coordinator-mediated lifecycle pass locally; npm publication is not required
 for this gate and has not been performed.
 
+This paragraph records the M4 package boundary. The later M5 one-command demo
+adds explicit runtime subpaths, Ajv, native SQLite, and an installed CLI; the
+root export remains the bounded harness SDK.
+
 A maintainer-run clean-consumer validation now also passes with Pi `0.84.2`:
 the real model selected discovery/send only for the relevant case, did not send
 for the irrelevant case, stayed completely quiet for the control, and reached

@@ -36,7 +36,7 @@ orchestration are paused until this outcome is demonstrated.
 | Research and problem framing | Codex deep dive, community signals, ecosystem comparison, ADRs | Established |
 | Community adoption | No external stars, forks, watchers, issue comments, or independent setup result as of 2026-08-28 | Unvalidated |
 | Active product outcome | One-command lifecycle-event and dependency-handoff loop with an inspector | Planned; not implemented |
-| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 143 unit/subtests | Executable draft |
+| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 177 unit/subtests | Executable draft |
 | Minimal adapter SDK | `@fyaic/threadmesh` `0.1.0-alpha.0`; six bounded client methods, per-turn proactive bridge, about 20 kB tarball, packed-consumer execution | Real Pi clean-consumer pass; not published to npm |
 | Local binding | Schema-validated JSON-RPC, transport-derived principals, typed errors | Executable local reference |
 | Local persistence | SQLite registry, proposals, grants, summaries, mailbox, claims, receipts, reconciliation, replay, audit, retention tombstones | Experimental |
@@ -171,6 +171,13 @@ M5 is intentionally smaller than a general orchestration milestone. Its exit
 criterion is measurable removal of manual relay and polling while preserving
 receiver control, not broader protocol coverage.
 
+The 2026-08-31 deterministic vertical slice now runs the required
+implementation/review/fix event sequence with stable routing and unlock reason
+codes, durable dependency/event binding, coordinator-configured trust roots,
+restart recovery, a package-installed CLI, a redacted inspector, and complete
+temporary-state cleanup. It is deterministic product integration evidence, not
+yet evidence of real Codex initiative: the participants are scripted.
+
 ## What the prototype proves
 
 The current tests support the narrower claim that a local authenticated binding
@@ -254,7 +261,7 @@ can:
     dependency and send once to a persistent real Kimi Code `0.38.0` ACP Agent
     B, observe the expected downstream outcome, delete A, and delete plus
     absence-verify B.
-38. install the packed zero-runtime-dependency SDK in a fresh consumer project,
+38. install the packed SDK and CLI in a fresh consumer project,
     expose only host-configured related tasks as model tools, enforce
     discovery-before-send and per-turn budgets, then complete one bounded
     suggestion without importing coordinator or validation internals.

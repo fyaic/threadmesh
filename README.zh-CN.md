@@ -69,17 +69,32 @@ Kimi Code `0.38.0`**。Pi 主动选择联系 B，Kimi 保留自己的持久 sess
 
 ## 快速开始
 
-### 1. 运行三条件演示
+### 1. 运行闭环 attention-router 演示
+
+```sh
+npx --yes --package=github:fyaic/threadmesh threadmesh demo
+```
+
+也可以从源码运行：
 
 ```sh
 git clone https://github.com/fyaic/threadmesh.git
 cd threadmesh
 npm ci
-npm run validate:behavior:fake
+npm run demo
 ```
 
-这个确定性案例不消耗模型额度，也不触碰你的真实 Agent session，但会经过实际的
-关系、policy、mailbox、接受、证据、审计和清理链路。
+这个确定性案例会创建四个隔离 session，并执行“实现 → 评审 → 修复 → 再评审 →
+解锁下游任务”的完整链路。输出会分别展示事件、路由理由、接收方决定、外部验证、
+依赖效果与清理状态；它不消耗模型额度，也不触碰你的真实 Agent session。
+
+[查看 attention-router 演示指南](docs/06-guides/attention-router-demo.md)
+
+再运行早期的 control/relevant/irrelevant 模型选择对照：
+
+```sh
+npm run validate:behavior:fake
+```
 
 再运行最小跨 harness 证明：
 
@@ -188,11 +203,11 @@ sandbox。不要用它处理任意恶意 peer 内容或充当生产安全边界�
 ## 项目状态
 
 - 协议：可执行 `0.0-draft`，仍可能调整。
-- SDK：`@fyaic/threadmesh@0.1.0-alpha.0`，零 runtime dependency，可从 GitHub 安装。
+- 包：`@fyaic/threadmesh@0.1.0-alpha.0`，可从 GitHub 安装；根 export 是精简 SDK，CLI 与显式 runtime subpath 会安装 Ajv 和原生 `better-sqlite3`。
 - 参考 runtime：authenticated JSON-RPC + SQLite coordinator，面向本地可信进程实验。
-- 验证：143 项 unit/subtest，加 schema、状态转换、文档与链接检查；已记录 Pi、Codex、Kimi 真实证据。
+- 验证：177 项 unit/subtest，加 schema、状态转换、文档与链接检查；已记录 Pi、Codex、Kimi 真实证据。
 - 默认策略：除非 maintainer 明确选择有边界实验 profile，否则主动协调保持关闭。
-- 下一主线：独立 harness 作者反馈，然后推进版本化 `0.1` 互操作提案，而不是扩张协议表面。
+- 下一主线：运行真实 Codex 实现/评审/修复案例并与人工基线比较，再把其中一个角色迁移到 ACP。
 
 [当前状态](docs/10-planning/project-status.md) · [路线图](ROADMAP.md) ·
 [协议草案](spec/README.md) · [验证记录](docs/09-reviews/README.md)

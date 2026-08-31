@@ -46,7 +46,7 @@ Pi→Kimi 与 Codex→Kimi 的真实案例已经观察到 relevant 条件下的�
 
 ## 当前进度
 
-- 143 项 unit/subtest、14 个 schema 和状态转换测试通过。
+- 177 项 unit/subtest、14 个 schema 和状态转换测试通过。
 - control / relevant / irrelevant 的确定性 A→B 演示通过完整 coordinator 路径。
 - Codex 真实主动 A→B 曾把接收方结果从缺少依赖提升到完成，但重复可靠性不足，
   因此 proactive 默认关闭。

@@ -6,6 +6,11 @@ All notable changes will be documented here. The project follows Keep a Changelo
 
 ### Added
 
+- Deterministic implementation/review/fix attention-router loop with six
+  lifecycle-event projections, durable versioned dependency state,
+  coordinator-configured verification trust, cursor-based wake reconciliation,
+  a packed CLI, a bounded terminal inspector, stable JSON evidence, and
+  success/failure cleanup tests.
 - Public harness integration kit with a per-turn proactive tool bridge, packed
   consumer validation, and a complete sender/receiver example.
 - Real Pi-to-Kimi and Codex-to-Kimi proactive coordination cases with bounded

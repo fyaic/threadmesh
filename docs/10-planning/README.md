@@ -8,6 +8,8 @@ where the repository is now and what work should happen next.
   experimental, blocked, and unstarted work.
 - [Product mainline](product-mainline-2026-08-28.md) — current product thesis,
   community evidence, Now/Next/Later priorities, metrics, and stop conditions.
+- [M5 sprint 1](m5-sprint-1.md) — bounded parallel workstreams, dependencies,
+  acceptance gates, risks, and the sequence into real-agent validation.
 - [Mainline plan](mainline-plan.md) — completed protocol/runtime workstreams and
   the transition from technical gates to the active product mainline.
 - [Milestone acceptance audit](acceptance-audit.md) — criterion-by-criterion

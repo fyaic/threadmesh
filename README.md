@@ -75,18 +75,34 @@ sequence.
 
 ## Quickstart
 
-### 1. Run the three-condition demo
+### 1. Run the closed-loop attention-router demo
+
+```sh
+npx --yes --package=github:fyaic/threadmesh threadmesh demo
+```
+
+Or run from source:
 
 ```sh
 git clone https://github.com/fyaic/threadmesh.git
 cd threadmesh
 npm ci
-npm run validate:behavior:fake
+npm run demo
 ```
 
-This deterministic demo traverses the real policy, relationship, mailbox,
-acceptance, evidence, audit, and cleanup path. It proves the integration logic
-without spending model quota or touching your agent sessions.
+This deterministic demo creates four isolated sessions and runs an
+implementation → review → fix → review → dependent-task sequence. It exposes
+the event, routing reason, receiver decision, external verification,
+dependency effect, and cleanup state without spending model quota or touching
+your agent sessions.
+
+[Read the attention-router demo guide](docs/06-guides/attention-router-demo.md)
+
+Run the earlier model-selection control/relevant/irrelevant comparison next:
+
+```sh
+npm run validate:behavior:fake
+```
 
 Run the smallest cross-harness proof next:
 
@@ -236,16 +252,17 @@ peer content or as a production security boundary.
 ## Project status
 
 - **Protocol:** executable `0.0-draft`; changes are still expected.
-- **SDK:** `@fyaic/threadmesh@0.1.0-alpha.0`, zero runtime dependencies,
-  installable from GitHub.
+- **Package:** `@fyaic/threadmesh@0.1.0-alpha.0`, installable from GitHub. The
+  root export is the small harness SDK; explicit runtime subpaths and the CLI
+  install Ajv and native `better-sqlite3`.
 - **Reference runtime:** authenticated JSON-RPC + SQLite coordinator for local,
   trusted-process experiments.
-- **Validation:** 143 unit/subtests plus schema, transition, documentation, and
+- **Validation:** 177 unit/subtests plus schema, transition, documentation, and
   link checks; real Pi, Codex, and Kimi evidence recorded.
 - **Default:** proactive coordination remains off unless a maintainer explicitly
   opts into the bounded experimental profile.
-- **Next mainline:** independent harness-author feedback, then a versioned `0.1`
-  interoperability proposal—not a wider protocol surface.
+- **Next mainline:** run and compare the real Codex
+  implementation/review/fix case, then repeat one role through ACP.
 
 [Current status](docs/10-planning/project-status.md) ·
 [roadmap](ROADMAP.md) ·
@@ -258,7 +275,8 @@ peer content or as a production security boundary.
 |---|---|
 | Understand the product | [What ThreadMesh is](docs/00-overview/product-guide.md) |
 | See real proactive behavior | [Real agent case portfolio](docs/06-guides/real-world-cases.md) |
-| Run a safe local demo | [End-to-end demo](docs/06-guides/end-to-end-demo.md) |
+| Run the closed-loop local demo | [Attention-router demo](docs/06-guides/attention-router-demo.md) |
+| Compare selective model initiative | [End-to-end demo](docs/06-guides/end-to-end-demo.md) |
 | Add ThreadMesh to a harness | [Adapter implementation guide](docs/06-guides/implement-an-adapter.md) |
 | Evaluate a harness | [Harness support matrix](docs/00-overview/harness-support.md) |
 | Review safety and semantics | [Protocol](docs/03-protocol/README.md) → [safety](docs/04-safety/threat-model.md) |
