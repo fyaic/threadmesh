@@ -63,6 +63,32 @@ const GIT_EVIDENCE_STAGE_TOOL = Object.freeze({
   fix: "threadmesh_publish_dependency",
 });
 const FINAL_GIT_EVIDENCE_TOOL = "threadmesh_verify_exact_chain";
+const LIFECYCLE_PUBLICATION_TOOLS = Object.freeze({
+  threadmesh_publish_artifact: Object.freeze({
+    eventType: "artifact-ready", materialKeys: Object.freeze(["commitSha"]),
+  }),
+  threadmesh_report_review_finding: Object.freeze({
+    eventType: "review-failed", materialKeys: Object.freeze(["findingDigest"]),
+  }),
+  threadmesh_publish_dependency: Object.freeze({
+    eventType: "artifact-ready", materialKeys: Object.freeze(["commitSha"]),
+  }),
+  threadmesh_verify_exact_chain: Object.freeze({
+    eventType: "dependency-satisfied",
+    materialKeys: Object.freeze([
+      "chainId", "expectedEvidenceChainHead", "expectedEvidenceChainRevision",
+    ]),
+  }),
+});
+const ATTENTION_OFFER_ROUTE_KEYS = Object.freeze([
+  "state", "reasonCode", "eventType", "messageId", "offer", "envelope",
+  "grantId", "grantVersion",
+]);
+
+function hasExactKeys(value, expected) {
+  return value && typeof value === "object" && !Array.isArray(value) &&
+    canonicalJson(Object.keys(value).sort()) === canonicalJson([...expected].sort());
+}
 
 function boundedLifecycleActionEventBody(event) {
   return {
@@ -86,8 +112,9 @@ export function gitEvidenceVerificationResultDigest({
   return sha256Digest({ request, response, expectedTrustAnchor });
 }
 
-export const SQLITE_SCHEMA_VERSION = 7;
-export const SQLITE_SCHEMA_NAME = "threadmesh-trusted-evidence-unlock";
+export const SQLITE_SCHEMA_VERSION = 8;
+export const SQLITE_SCHEMA_NAME = "threadmesh-exact-lifecycle-binding";
+const SQLITE_SCHEMA_V7_NAME = "threadmesh-trusted-evidence-unlock";
 const SQLITE_SCHEMA_V6_NAME = "threadmesh-durable-turn-intents";
 const SQLITE_SCHEMA_V4_NAME = "threadmesh-durable-dependency-state";
 const SQLITE_SCHEMA_V5_NAME = "threadmesh-git-evidence-state";
@@ -592,7 +619,7 @@ const SQLITE_SCHEMA_V7_CONSTRAINTS = Object.freeze({
   }),
   indexes: SQLITE_SCHEMA_V6_CONSTRAINTS.indexes,
 });
-export const SQLITE_SCHEMA_MANIFEST = Object.freeze({
+const SQLITE_SCHEMA_V7_MANIFEST = Object.freeze({
   ...SQLITE_SCHEMA_V6_MANIFEST,
   tables: Object.freeze({
     ...SQLITE_SCHEMA_V6_MANIFEST.tables,
@@ -610,6 +637,90 @@ export const SQLITE_SCHEMA_MANIFEST = Object.freeze({
     ]),
   }),
   constraints: SQLITE_SCHEMA_V7_CONSTRAINTS,
+});
+const SQLITE_SCHEMA_V8_CONSTRAINTS = Object.freeze({
+  tables: Object.freeze({
+    ...SQLITE_SCHEMA_V7_CONSTRAINTS.tables,
+    lifecycle_action_publications: Object.freeze({
+      columns: Object.freeze([
+        "execution_id|TEXT|1||1", "action_ordinal|INTEGER|1||2",
+        "action_digest|TEXT|1||0", "sender_incarnation_id|TEXT|1||0",
+        "message_id|TEXT|1||0", "event_json|TEXT|1||0",
+        "event_digest|TEXT|1||0", "envelope_digest|TEXT|1||0",
+        "publication_digest|TEXT|1||0", "published_at|TEXT|1||0",
+      ]),
+      unique: Object.freeze([
+        "execution_id,action_ordinal", "publication_digest",
+        "sender_incarnation_id,message_id",
+      ]),
+      foreignKeys: Object.freeze([
+        "execution_id->turn_tool_actions.execution_id,action_ordinal->turn_tool_actions.ordinal",
+        "sender_incarnation_id->messages.sender_incarnation_id,message_id->messages.message_id",
+      ]),
+    }),
+    attention_route_decision_bindings: Object.freeze({
+      columns: Object.freeze([
+        "claim_epoch|TEXT|1||1", "route_projection_json|TEXT|1||0",
+        "route_projection_digest|TEXT|1||0",
+        "receiver_decision_execution_id|TEXT|1||0",
+        "decision_action_ordinal|INTEGER|1||0", "decision_action_digest|TEXT|1||0",
+        "decision_projection_json|TEXT|1||0", "decision_projection_digest|TEXT|1||0",
+        "mailbox_claim_token_digest|TEXT|1||0", "binding_digest|TEXT|1||0",
+        "committed_at|TEXT|1||0",
+      ]),
+      unique: Object.freeze([
+        "binding_digest", "claim_epoch", "receiver_decision_execution_id",
+      ]),
+      foreignKeys: Object.freeze([
+        "claim_epoch->attention_handler_claims.claim_epoch",
+        "receiver_decision_execution_id->turn_execution_intents.execution_id",
+        "receiver_decision_execution_id->turn_tool_actions.execution_id,decision_action_ordinal->turn_tool_actions.ordinal",
+      ]),
+    }),
+    context_admission_turn_bindings: Object.freeze({
+      columns: Object.freeze([
+        "sender_incarnation_id|TEXT|1||1", "message_id|TEXT|1||2",
+        "execution_id|TEXT|1||0", "turn_id|TEXT|1||0",
+        "expected_revision|INTEGER|1||0", "admission_token_digest|TEXT|1||0",
+        "adapter_ref_digest|TEXT|1||0", "completed_binding_digest|TEXT|1||0",
+        "turn_receipt_digest|TEXT|1||0", "adapter_evidence_digest|TEXT|1||0",
+        "binding_digest|TEXT|1||0", "confirmed_at|TEXT|1||0",
+      ]),
+      unique: Object.freeze([
+        "binding_digest", "execution_id", "sender_incarnation_id,message_id",
+      ]),
+      foreignKeys: Object.freeze([
+        "sender_incarnation_id->admission_claims.sender_incarnation_id,message_id->admission_claims.message_id",
+        "execution_id->turn_execution_intents.execution_id",
+      ]),
+    }),
+  }),
+  indexes: SQLITE_SCHEMA_V7_CONSTRAINTS.indexes,
+});
+export const SQLITE_SCHEMA_MANIFEST = Object.freeze({
+  ...SQLITE_SCHEMA_V7_MANIFEST,
+  tables: Object.freeze({
+    ...SQLITE_SCHEMA_V7_MANIFEST.tables,
+    lifecycle_action_publications: Object.freeze([
+      "execution_id", "action_ordinal", "action_digest",
+      "sender_incarnation_id", "message_id", "event_json", "event_digest",
+      "envelope_digest", "publication_digest", "published_at",
+    ]),
+    attention_route_decision_bindings: Object.freeze([
+      "claim_epoch", "route_projection_json", "route_projection_digest",
+      "receiver_decision_execution_id", "decision_action_ordinal",
+      "decision_action_digest", "decision_projection_json",
+      "decision_projection_digest", "mailbox_claim_token_digest",
+      "binding_digest", "committed_at",
+    ]),
+    context_admission_turn_bindings: Object.freeze([
+      "sender_incarnation_id", "message_id", "execution_id", "turn_id",
+      "expected_revision", "admission_token_digest",
+      "adapter_ref_digest", "completed_binding_digest", "turn_receipt_digest",
+      "adapter_evidence_digest", "binding_digest", "confirmed_at",
+    ]),
+  }),
+  constraints: SQLITE_SCHEMA_V8_CONSTRAINTS,
 });
 export const SQLITE_SCHEMA_MIGRATIONS = Object.freeze([
   Object.freeze({
@@ -644,6 +755,11 @@ export const SQLITE_SCHEMA_MIGRATIONS = Object.freeze([
   }),
   Object.freeze({
     version: 7,
+    name: SQLITE_SCHEMA_V7_NAME,
+    manifest: SQLITE_SCHEMA_V7_MANIFEST,
+  }),
+  Object.freeze({
+    version: 8,
     name: SQLITE_SCHEMA_NAME,
     manifest: SQLITE_SCHEMA_MANIFEST,
   }),
@@ -1043,6 +1159,7 @@ export class SqliteCoordinator {
       this.#validatePersistedTurnExecutions();
       this.#validatePersistedAttentionState();
       this.#validatePersistedGitEvidenceDependencyFinalizations();
+      this.#validatePersistedLifecycleBindings();
     } catch (error) {
       this.db.close();
       throw error;
@@ -1119,6 +1236,9 @@ export class SqliteCoordinator {
       }
       if (version < 7) {
         this.#initializeTrustedEvidenceUnlockSchema();
+      }
+      if (version < 8) {
+        this.#initializeExactLifecycleBindingSchema();
       }
       this.#assertSchemaCompatible();
       for (const migration of SQLITE_SCHEMA_MIGRATIONS) {
@@ -1625,6 +1745,69 @@ export class SqliteCoordinator {
           REFERENCES dependency_satisfactions (dependency_id),
         FOREIGN KEY (sender_incarnation_id, message_id)
           REFERENCES messages (sender_incarnation_id, message_id)
+      );
+    `);
+  }
+
+  #initializeExactLifecycleBindingSchema() {
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS lifecycle_action_publications (
+        execution_id TEXT NOT NULL,
+        action_ordinal INTEGER NOT NULL,
+        action_digest TEXT NOT NULL,
+        sender_incarnation_id TEXT NOT NULL,
+        message_id TEXT NOT NULL,
+        event_json TEXT NOT NULL,
+        event_digest TEXT NOT NULL,
+        envelope_digest TEXT NOT NULL,
+        publication_digest TEXT NOT NULL UNIQUE,
+        published_at TEXT NOT NULL,
+        PRIMARY KEY (execution_id, action_ordinal),
+        UNIQUE (sender_incarnation_id, message_id),
+        FOREIGN KEY (execution_id, action_ordinal)
+          REFERENCES turn_tool_actions (execution_id, ordinal),
+        FOREIGN KEY (sender_incarnation_id, message_id)
+          REFERENCES messages (sender_incarnation_id, message_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS attention_route_decision_bindings (
+        claim_epoch TEXT NOT NULL PRIMARY KEY,
+        route_projection_json TEXT NOT NULL,
+        route_projection_digest TEXT NOT NULL,
+        receiver_decision_execution_id TEXT NOT NULL UNIQUE,
+        decision_action_ordinal INTEGER NOT NULL,
+        decision_action_digest TEXT NOT NULL,
+        decision_projection_json TEXT NOT NULL,
+        decision_projection_digest TEXT NOT NULL,
+        mailbox_claim_token_digest TEXT NOT NULL,
+        binding_digest TEXT NOT NULL UNIQUE,
+        committed_at TEXT NOT NULL,
+        FOREIGN KEY (claim_epoch)
+          REFERENCES attention_handler_claims (claim_epoch),
+        FOREIGN KEY (receiver_decision_execution_id)
+          REFERENCES turn_execution_intents (execution_id),
+        FOREIGN KEY (receiver_decision_execution_id, decision_action_ordinal)
+          REFERENCES turn_tool_actions (execution_id, ordinal)
+      );
+
+      CREATE TABLE IF NOT EXISTS context_admission_turn_bindings (
+        sender_incarnation_id TEXT NOT NULL,
+        message_id TEXT NOT NULL,
+        execution_id TEXT NOT NULL UNIQUE,
+        turn_id TEXT NOT NULL,
+        expected_revision INTEGER NOT NULL,
+        admission_token_digest TEXT NOT NULL,
+        adapter_ref_digest TEXT NOT NULL,
+        completed_binding_digest TEXT NOT NULL,
+        turn_receipt_digest TEXT NOT NULL,
+        adapter_evidence_digest TEXT NOT NULL,
+        binding_digest TEXT NOT NULL UNIQUE,
+        confirmed_at TEXT NOT NULL,
+        PRIMARY KEY (sender_incarnation_id, message_id),
+        FOREIGN KEY (sender_incarnation_id, message_id)
+          REFERENCES admission_claims (sender_incarnation_id, message_id),
+        FOREIGN KEY (execution_id)
+          REFERENCES turn_execution_intents (execution_id)
       );
     `);
   }
@@ -2815,6 +2998,98 @@ export class SqliteCoordinator {
     return snapshot;
   }
 
+  // V8 deliberately accepts only completed model-action origins. Authenticated
+  // requester kickoff is a separate origin kind and cannot be adopted here.
+  publishLifecycleFromCompletedAction(
+    executionId,
+    { actionOrdinal = 0, expectedTool, event, expectedMaterial } = {},
+    principal,
+  ) {
+    assertLifecycleEvent(event);
+    return this.db.transaction(() => {
+      const execution = this.#turnExecutionSnapshot(executionId);
+      this.#assertTurnExecutionPrincipalAndBinding(execution, principal);
+      const action = execution.actions.find((entry) => entry.ordinal === actionOrdinal);
+      const specification = LIFECYCLE_PUBLICATION_TOOLS[expectedTool];
+      let argumentsValue = null;
+      try { argumentsValue = action ? JSON.parse(action.argsJson) : null; } catch {
+        throw codedError("threadmesh_lifecycle_publication_action_mismatch");
+      }
+      const materialKeys = Object.keys(expectedMaterial ?? {}).sort();
+      const expectedKeys = [...(specification?.materialKeys ?? [])].sort();
+      const expectedArguments = specification ? {
+        sourceEventId: execution.intent.eventId,
+        event: boundedLifecycleActionEventBody(event),
+        ...expectedMaterial,
+      } : null;
+      if (
+        !["completed-turn-bound", "promoted"].includes(execution.intent.state) ||
+        !action || action.name !== expectedTool || !action.actionDigest ||
+        action.resultStatus !== "completed" || specification?.eventType !== event.eventType ||
+        canonicalJson(materialKeys) !== canonicalJson(expectedKeys) ||
+        canonicalJson(argumentsValue) !== canonicalJson(expectedArguments) ||
+        execution.intent.turnStart?.turnId !== action.turnId ||
+        execution.intent.actor.taskId !== event.sender.taskId ||
+        execution.intent.actor.incarnationId !== event.sender.incarnationId
+      ) throw codedError("threadmesh_lifecycle_publication_action_mismatch");
+
+      const envelope = projectLifecycleEventToEnvelope(event);
+      const eventDigest = sha256Digest(event);
+      const envelopeDigest = sha256Digest(envelope);
+      const binding = {
+        executionId,
+        actionOrdinal,
+        actionDigest: action.actionDigest,
+        senderIncarnationId: event.sender.incarnationId,
+        messageId: event.messageId,
+        eventDigest,
+        envelopeDigest,
+      };
+      const publicationDigest = sha256Digest(binding);
+      const existing = this.db.prepare(
+        `SELECT * FROM lifecycle_action_publications
+         WHERE (execution_id = ? AND action_ordinal = ?) OR
+           (sender_incarnation_id = ? AND message_id = ?)`,
+      ).get(executionId, actionOrdinal, event.sender.incarnationId, event.messageId);
+      if (existing) {
+        if (
+          existing.publication_digest !== publicationDigest ||
+          existing.event_json !== canonicalJson(event)
+        ) throw codedError("threadmesh_lifecycle_publication_conflict");
+        return {
+          replay: true,
+          publicationDigest,
+          envelopeDigest,
+          disposition: this.#getDisposition(event.sender.incarnationId, event.messageId),
+        };
+      }
+      if (this.db.prepare(
+        `SELECT 1 FROM messages WHERE sender_incarnation_id = ? AND message_id = ?`,
+      ).get(event.sender.incarnationId, event.messageId)) {
+        throw codedError("threadmesh_lifecycle_publication_conflict");
+      }
+      const submitted = this.submit(envelope, principal);
+      if (submitted.replay) throw codedError("threadmesh_lifecycle_publication_conflict");
+      this.db.prepare(
+        `INSERT INTO lifecycle_action_publications (
+           execution_id, action_ordinal, action_digest, sender_incarnation_id,
+           message_id, event_json, event_digest, envelope_digest,
+           publication_digest, published_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).run(
+        executionId, actionOrdinal, action.actionDigest,
+        event.sender.incarnationId, event.messageId, canonicalJson(event),
+        eventDigest, envelopeDigest, publicationDigest, nowIso(this.clock),
+      );
+      return {
+        replay: false,
+        publicationDigest,
+        envelopeDigest,
+        disposition: submitted.disposition,
+      };
+    }).immediate();
+  }
+
   claimAttentionEvent(
     receiver,
     { claimEpoch, eventCursor, eventId, expectedRevision } = {},
@@ -2899,11 +3174,31 @@ export class SqliteCoordinator {
       }
       const execution = this.#turnExecutionSnapshot(turnExecutionId);
       this.#assertTurnExecutionPrincipalAndBinding(execution, principal);
+      const admissionBinding = this.db.prepare(
+        `SELECT b.*, a.admission_token FROM context_admission_turn_bindings b
+         JOIN admission_claims a USING (sender_incarnation_id, message_id)
+         WHERE b.sender_incarnation_id = ? AND b.message_id = ?`,
+      ).get(claim.sender_incarnation_id, claim.message_id);
+      const exactAdmittedBusinessExecution =
+        admissionBinding?.execution_id === turnExecutionId &&
+        admissionBinding?.sender_incarnation_id === claim.sender_incarnation_id &&
+        admissionBinding?.message_id === claim.message_id &&
+        execution.intent.eventId === admissionBinding?.admission_token;
+      if (exactAdmittedBusinessExecution) {
+        const decisionBinding = this.db.prepare(
+          `SELECT 1 FROM attention_route_decision_bindings WHERE claim_epoch = ?`,
+        ).get(claimEpoch);
+        if (!decisionBinding) {
+          throw codedError("threadmesh_attention_handler_decision_binding_missing");
+        }
+        this.#validatePersistedLifecycleBindings();
+      }
       if (
         !["completed-turn-bound", "promoted"].includes(execution.intent.state) ||
         execution.intent.actor.taskId !== claim.receiver_task_id ||
         execution.intent.actor.incarnationId !== claim.receiver_incarnation_id ||
-        execution.intent.eventId !== claim.event_id ||
+        (admissionBinding && !exactAdmittedBusinessExecution) ||
+        (!admissionBinding && execution.intent.eventId !== claim.event_id) ||
         execution.intent.messageId !== claim.message_id
       ) throw codedError("threadmesh_attention_handler_binding_mismatch");
       const at = nowIso(this.clock);
@@ -2920,6 +3215,182 @@ export class SqliteCoordinator {
         claim: this.#projectAttentionClaim(this.#attentionClaimRow(claimEpoch)),
         replay: false,
       };
+    }).immediate();
+  }
+
+  commitReceiverDecision(
+    claimEpoch,
+    {
+      routeProjection,
+      receiverDecisionExecutionId,
+      decisionActionOrdinal = 0,
+      mailboxClaimToken,
+      decision,
+      expectedDispositionRevision,
+    } = {},
+    principal,
+  ) {
+    return this.db.transaction(() => {
+      const claim = this.#attentionClaimRow(claimEpoch);
+      assertTaskPrincipal(
+        principal, claim.receiver_task_id, claim.receiver_incarnation_id,
+      );
+      const execution = this.#turnExecutionSnapshot(receiverDecisionExecutionId);
+      this.#assertTurnExecutionPrincipalAndBinding(execution, principal);
+      const action = execution.actions.find(
+        (entry) => entry.ordinal === decisionActionOrdinal,
+      );
+      let actionArguments = null;
+      try { actionArguments = action ? JSON.parse(action.argsJson) : null; } catch {
+        throw codedError("threadmesh_receiver_decision_execution_mismatch");
+      }
+      const message = this.#message(claim.sender_incarnation_id, claim.message_id);
+      let persistedEnvelope;
+      try { persistedEnvelope = JSON.parse(message.envelope_json); } catch {
+        throw codedError("threadmesh_receiver_decision_route_mismatch");
+      }
+      const publication = this.db.prepare(
+        `SELECT * FROM lifecycle_action_publications
+         WHERE sender_incarnation_id = ? AND message_id = ?`,
+      ).get(claim.sender_incarnation_id, claim.message_id);
+      let lifecycleEvent;
+      try { lifecycleEvent = publication ? JSON.parse(publication.event_json) : null; } catch {
+        throw codedError("threadmesh_receiver_decision_route_mismatch");
+      }
+      if (
+        !hasExactKeys(routeProjection, ATTENTION_OFFER_ROUTE_KEYS) ||
+        routeProjection.state !== "offered" || routeProjection.offer !== true ||
+        routeProjection.messageId !== claim.message_id ||
+        routeProjection.reasonCode !== "attention-offer-authorized" ||
+        routeProjection.eventType !== lifecycleEvent?.eventType ||
+        routeProjection.grantId !== message.grant_id ||
+        routeProjection.grantVersion !== message.grant_version ||
+        canonicalJson(routeProjection.envelope) !== canonicalJson(persistedEnvelope)
+      ) throw codedError("threadmesh_receiver_decision_route_mismatch");
+      if (
+        !["completed-turn-bound", "promoted"].includes(execution.intent.state) ||
+        execution.intent.actor.taskId !== claim.receiver_task_id ||
+        execution.intent.actor.incarnationId !== claim.receiver_incarnation_id ||
+        execution.intent.eventId !== claim.event_id ||
+        execution.intent.messageId !== claim.message_id ||
+        execution.intent.turnStart?.turnId !== action?.turnId ||
+        action?.name !== "threadmesh_decide_offer" || !action.actionDigest ||
+        action.resultStatus !== "completed" ||
+        canonicalJson(actionArguments) !== canonicalJson({
+          messageId: claim.message_id,
+          decision,
+        })
+      ) throw codedError("threadmesh_receiver_decision_execution_mismatch");
+      if (!isDecisionReasonAllowed(decision, DEFAULT_DECISION_REASONS[decision])) {
+        throw codedError("threadmesh_decision_reason_invalid");
+      }
+      const routeProjectionDigest = sha256Digest(routeProjection);
+      const mailboxClaimTokenDigest = sha256Digest(mailboxClaimToken);
+      const existing = this.db.prepare(
+        `SELECT * FROM attention_route_decision_bindings WHERE claim_epoch = ? OR
+           receiver_decision_execution_id = ?`,
+      ).get(claimEpoch, receiverDecisionExecutionId);
+      if (existing) {
+        let decisionProjection;
+        try { decisionProjection = JSON.parse(existing.decision_projection_json); } catch {
+          throw codedError("threadmesh_receiver_decision_binding_tampered");
+        }
+        const candidate = {
+          claimEpoch,
+          eventDigest: claim.event_digest,
+          routeProjectionDigest,
+          receiverDecisionExecutionId,
+          decisionActionOrdinal,
+          decisionActionDigest: action.actionDigest,
+          decisionProjectionDigest: sha256Digest(decisionProjection),
+          mailboxClaimTokenDigest,
+        };
+        const decisionAudit = this.db.prepare(
+          `SELECT revision, detail_json FROM audit_events
+           WHERE sender_incarnation_id = ? AND message_id = ?
+             AND event_type = 'receiver-decided' ORDER BY sequence`,
+        ).all(claim.sender_incarnation_id, claim.message_id);
+        let auditDetails = null;
+        try {
+          auditDetails = decisionAudit.map((entry) => ({
+            revision: entry.revision,
+            ...JSON.parse(entry.detail_json),
+          }));
+        } catch { /* conflict below */ }
+        const exactHistoricalAudit = auditDetails?.filter((entry) =>
+          entry.revision === decisionProjection.decision?.decisionRevision &&
+          entry.decision === decisionProjection.decision?.state &&
+          entry.reasonCode === decisionProjection.decision?.reasonCode) ?? [];
+        if (
+          existing.binding_digest !== sha256Digest(candidate) ||
+          existing.route_projection_json !== canonicalJson(routeProjection) ||
+          action.resultDigest !== existing.decision_projection_digest ||
+          !isDecisionReasonAllowed(
+            decisionProjection.decision?.state,
+            decisionProjection.decision?.reasonCode,
+          ) ||
+          exactHistoricalAudit.length !== 1
+        ) throw codedError("threadmesh_receiver_decision_binding_conflict");
+        return { replay: true, bindingDigest: existing.binding_digest, decisionProjection };
+      }
+      if (claim.state !== "claimed") {
+        throw codedError("threadmesh_receiver_decision_claim_state_mismatch");
+      }
+      const decisionProjection = {
+        messageId: claim.message_id,
+        receiver: {
+          taskId: claim.receiver_task_id,
+          incarnationId: claim.receiver_incarnation_id,
+        },
+        decision: {
+          state: decision,
+          reasonCode: DEFAULT_DECISION_REASONS[decision],
+          decisionRevision: expectedDispositionRevision + 1,
+        },
+      };
+      const decisionProjectionDigest = sha256Digest(decisionProjection);
+      if (action.resultDigest !== decisionProjectionDigest) {
+        throw codedError("threadmesh_receiver_decision_result_mismatch");
+      }
+      const binding = {
+        claimEpoch,
+        eventDigest: claim.event_digest,
+        routeProjectionDigest,
+        receiverDecisionExecutionId,
+        decisionActionOrdinal,
+        decisionActionDigest: action.actionDigest,
+        decisionProjectionDigest,
+        mailboxClaimTokenDigest,
+      };
+      const bindingDigest = sha256Digest(binding);
+      const disposition = this.acknowledgePending(
+        claim.sender_incarnation_id,
+        claim.message_id,
+        mailboxClaimToken,
+        decision,
+        expectedDispositionRevision,
+        principal,
+      );
+      if (
+        disposition.revision !== decisionProjection.decision.decisionRevision ||
+        disposition.decision !== decisionProjection.decision.state ||
+        disposition.decisionReasonCode !== decisionProjection.decision.reasonCode
+      ) throw codedError("threadmesh_receiver_decision_result_mismatch");
+      this.db.prepare(
+        `INSERT INTO attention_route_decision_bindings (
+           claim_epoch, route_projection_json, route_projection_digest,
+           receiver_decision_execution_id, decision_action_ordinal,
+           decision_action_digest, decision_projection_json,
+           decision_projection_digest, mailbox_claim_token_digest,
+           binding_digest, committed_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).run(
+        claimEpoch, canonicalJson(routeProjection), routeProjectionDigest,
+        receiverDecisionExecutionId, decisionActionOrdinal, action.actionDigest,
+        canonicalJson(decisionProjection), decisionProjectionDigest,
+        mailboxClaimTokenDigest, bindingDigest, nowIso(this.clock),
+      );
+      return { replay: false, bindingDigest, decisionProjection, disposition };
     }).immediate();
   }
 
@@ -4902,6 +5373,119 @@ export class SqliteCoordinator {
     }).immediate();
   }
 
+  confirmContextAdmissionFromTurn(
+    senderIncarnationId,
+    messageId,
+    {
+      executionId,
+      expectedRevision,
+      admissionToken,
+    } = {},
+    principal,
+  ) {
+    return this.db.transaction(() => {
+      const row = this.#message(senderIncarnationId, messageId);
+      assertTaskPrincipal(principal, row.target_task_id, row.target_incarnation_id);
+      const execution = this.#turnExecutionSnapshot(executionId);
+      this.#assertTurnExecutionPrincipalAndBinding(execution, principal);
+      let completedBinding;
+      try {
+        completedBinding = execution.row.receipt_json
+          ? JSON.parse(execution.row.receipt_json)
+          : null;
+      } catch {
+        throw codedError("threadmesh_context_admission_turn_receipt_mismatch");
+      }
+      const claim = this.db.prepare(
+        `SELECT * FROM admission_claims
+         WHERE sender_incarnation_id = ? AND message_id = ?`,
+      ).get(senderIncarnationId, messageId);
+      let adapterRef;
+      try { adapterRef = claim?.adapter_ref_json ? JSON.parse(claim.adapter_ref_json) : null; } catch {
+        throw codedError("threadmesh_context_admission_turn_ref_mismatch");
+      }
+      const evidence = completedBinding?.evidence;
+      const receipt = completedBinding?.receipt;
+      const projectedEvidence = adapterRef
+        ? projectContextAdapterEvidence(assertContextAdapterRef(adapterRef), evidence)
+        : null;
+      if (
+        !claim ||
+        !["completed-turn-bound", "promoted"].includes(execution.intent.state) ||
+        execution.intent.actor.taskId !== row.target_task_id ||
+        execution.intent.actor.incarnationId !== row.target_incarnation_id ||
+        execution.intent.messageId !== messageId ||
+        execution.intent.eventId !== claim.admission_token ||
+        execution.intent.actor.threadId !== adapterRef?.threadId ||
+        execution.intent.actor.snapshotDigest !== adapterRef?.snapshotDigest ||
+        execution.row.adapter_ref_digest !== claim.adapter_ref_digest ||
+        execution.intent.turnStart?.turnId !== execution.row.turn_id ||
+        evidence?.turnId !== execution.row.turn_id ||
+        receipt?.adapterOperationId !== execution.row.turn_id ||
+        completedBinding?.adapterReceiptDigest !== sha256Digest(receipt) ||
+        execution.row.receipt_digest !== completedBinding.adapterReceiptDigest
+      ) throw codedError("threadmesh_context_admission_turn_receipt_mismatch");
+      const completedBindingDigest = sha256Digest(completedBinding);
+      const turnReceiptDigest = sha256Digest(receipt);
+      const adapterEvidenceDigest = sha256Digest(evidence);
+      const admissionTokenDigest = sha256Digest(admissionToken);
+      const binding = {
+        senderIncarnationId,
+        messageId,
+        executionId,
+        turnId: execution.row.turn_id,
+        expectedRevision,
+        admissionTokenDigest,
+        adapterRefDigest: claim.adapter_ref_digest,
+        completedBindingDigest,
+        turnReceiptDigest,
+        adapterEvidenceDigest,
+      };
+      const bindingDigest = sha256Digest(binding);
+      const existing = this.db.prepare(
+        `SELECT * FROM context_admission_turn_bindings
+         WHERE (sender_incarnation_id = ? AND message_id = ?) OR execution_id = ?`,
+      ).get(senderIncarnationId, messageId, executionId);
+      if (existing) {
+        if (
+          existing.binding_digest !== bindingDigest ||
+          claim.state !== "completed" || row.delivery_state !== "context-admitted"
+        ) throw codedError("threadmesh_context_admission_turn_binding_conflict");
+        return {
+          replay: true,
+          bindingDigest,
+          disposition: this.#getDisposition(senderIncarnationId, messageId),
+        };
+      }
+      if (
+        claim.state !== "in-flight" || claim.expected_revision !== expectedRevision ||
+        claim.admission_token !== admissionToken
+      ) throw codedError("threadmesh_context_admission_token_invalid");
+      const disposition = this.confirmContextAdmission(
+        senderIncarnationId,
+        messageId,
+        expectedRevision,
+        admissionToken,
+        evidence,
+        principal,
+      );
+      this.db.prepare(
+        `INSERT INTO context_admission_turn_bindings (
+           sender_incarnation_id, message_id, execution_id, turn_id,
+           expected_revision, admission_token_digest, adapter_ref_digest,
+           completed_binding_digest, turn_receipt_digest,
+           adapter_evidence_digest, binding_digest, confirmed_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).run(
+        senderIncarnationId, messageId, executionId, execution.row.turn_id,
+        expectedRevision, admissionTokenDigest, claim.adapter_ref_digest,
+        completedBindingDigest, turnReceiptDigest, adapterEvidenceDigest,
+        bindingDigest, nowIso(this.clock),
+      );
+      return { replay: false, bindingDigest, disposition };
+    }).immediate();
+  }
+
   prepareAdapterSubmission(senderIncarnationId, messageId, expectedRevision, principal) {
     return this.db.transaction(() => {
       const row = this.#message(senderIncarnationId, messageId);
@@ -6491,9 +7075,26 @@ export class SqliteCoordinator {
       ) throw codedError("threadmesh_attention_storage_tampered");
       if (claim.turn_execution_id !== null) {
         const execution = this.#turnExecutionSnapshot(claim.turn_execution_id);
+        const admissionBinding = this.db.prepare(
+          `SELECT b.*, a.admission_token FROM context_admission_turn_bindings b
+           JOIN admission_claims a USING (sender_incarnation_id, message_id)
+           WHERE b.sender_incarnation_id = ? AND b.message_id = ?`,
+        ).get(claim.sender_incarnation_id, claim.message_id);
+        const exactAdmittedBusinessExecution =
+          admissionBinding?.execution_id === claim.turn_execution_id &&
+          admissionBinding?.sender_incarnation_id === claim.sender_incarnation_id &&
+          admissionBinding?.message_id === claim.message_id &&
+          execution.intent.eventId === admissionBinding?.admission_token;
+        const exactDecisionBinding = exactAdmittedBusinessExecution
+          ? this.db.prepare(
+              `SELECT 1 FROM attention_route_decision_bindings WHERE claim_epoch = ?`,
+            ).get(claim.claim_epoch)
+          : null;
         if (
           claim.state === "claimed" ||
-          execution.intent.eventId !== claim.event_id ||
+          (admissionBinding && !exactAdmittedBusinessExecution) ||
+          (!admissionBinding && execution.intent.eventId !== claim.event_id) ||
+          (exactAdmittedBusinessExecution && !exactDecisionBinding) ||
           execution.intent.messageId !== claim.message_id ||
           execution.intent.actor.taskId !== claim.receiver_task_id ||
           execution.intent.actor.incarnationId !== claim.receiver_incarnation_id ||
@@ -6503,6 +7104,300 @@ export class SqliteCoordinator {
       } else if (["completed-bound", "promoted"].includes(claim.state)) {
         throw codedError("threadmesh_attention_storage_tampered");
       }
+    }
+  }
+
+  #validatePersistedLifecycleBindings() {
+    const fail = () => {
+      throw codedError("threadmesh_lifecycle_binding_storage_tampered");
+    };
+    for (const row of this.db.prepare(
+      "SELECT * FROM lifecycle_action_publications ORDER BY execution_id, action_ordinal",
+    ).all()) {
+      let event;
+      try { event = JSON.parse(row.event_json); assertLifecycleEvent(event); } catch { fail(); }
+      const execution = this.#turnExecutionSnapshot(row.execution_id);
+      const action = execution.actions.find((entry) => entry.ordinal === row.action_ordinal);
+      const publicationTool = LIFECYCLE_PUBLICATION_TOOLS[action?.name];
+      let actionArguments = null;
+      try { actionArguments = action ? JSON.parse(action.argsJson) : null; } catch { fail(); }
+      const actionArgumentKeys = actionArguments && typeof actionArguments === "object"
+        ? Object.keys(actionArguments).sort()
+        : [];
+      const expectedArgumentKeys = publicationTool
+        ? ["sourceEventId", "event", ...publicationTool.materialKeys].sort()
+        : [];
+      const message = this.db.prepare(
+        `SELECT * FROM messages WHERE sender_incarnation_id = ? AND message_id = ?`,
+      ).get(row.sender_incarnation_id, row.message_id);
+      const envelope = event ? projectLifecycleEventToEnvelope(event) : null;
+      const receivedAudits = this.db.prepare(
+        `SELECT revision, detail_json FROM audit_events
+         WHERE sender_incarnation_id = ? AND message_id = ?
+           AND event_type = 'message-durably-received'`,
+      ).all(row.sender_incarnation_id, row.message_id);
+      let receivedDetail = null;
+      try {
+        receivedDetail = receivedAudits.length === 1
+          ? JSON.parse(receivedAudits[0].detail_json)
+          : null;
+      } catch { fail(); }
+      const binding = {
+        executionId: row.execution_id,
+        actionOrdinal: row.action_ordinal,
+        actionDigest: row.action_digest,
+        senderIncarnationId: row.sender_incarnation_id,
+        messageId: row.message_id,
+        eventDigest: row.event_digest,
+        envelopeDigest: row.envelope_digest,
+      };
+      if (
+        !["completed-turn-bound", "promoted"].includes(execution.intent.state) ||
+        !action || action.actionDigest !== row.action_digest ||
+        !publicationTool || publicationTool.eventType !== event.eventType ||
+        action.resultStatus !== "completed" ||
+        execution.intent.turnStart?.turnId !== action.turnId ||
+        execution.intent.actor.taskId !== event.sender.taskId ||
+        execution.intent.actor.incarnationId !== event.sender.incarnationId ||
+        canonicalJson(actionArgumentKeys) !== canonicalJson(expectedArgumentKeys) ||
+        actionArguments?.sourceEventId !== execution.intent.eventId ||
+        canonicalJson(actionArguments?.event) !==
+          canonicalJson(boundedLifecycleActionEventBody(event)) ||
+        event.sender.incarnationId !== row.sender_incarnation_id ||
+        event.messageId !== row.message_id || row.event_json !== canonicalJson(event) ||
+        row.event_digest !== sha256Digest(event) ||
+        row.envelope_digest !== sha256Digest(envelope) ||
+        message?.envelope_digest !== row.envelope_digest ||
+        canonicalJson(JSON.parse(message?.envelope_json ?? "null")) !== canonicalJson(envelope) ||
+        receivedAudits.length !== 1 || receivedAudits[0].revision !== 0 ||
+        canonicalJson(receivedDetail) !== canonicalJson({
+          envelopeDigest: row.envelope_digest,
+          grantId: message?.grant_id,
+          grantVersion: message?.grant_version,
+        }) ||
+        row.publication_digest !== sha256Digest(binding)
+      ) fail();
+    }
+    for (const row of this.db.prepare(
+      "SELECT * FROM attention_route_decision_bindings ORDER BY claim_epoch",
+    ).all()) {
+      let route;
+      let decisionProjection;
+      try {
+        route = JSON.parse(row.route_projection_json);
+        decisionProjection = JSON.parse(row.decision_projection_json);
+      } catch { fail(); }
+      const claim = this.db.prepare(
+        "SELECT * FROM attention_handler_claims WHERE claim_epoch = ?",
+      ).get(row.claim_epoch);
+      if (!claim) fail();
+      const execution = this.#turnExecutionSnapshot(row.receiver_decision_execution_id);
+      const action = execution.actions.find(
+        (entry) => entry.ordinal === row.decision_action_ordinal,
+      );
+      const message = this.#message(claim.sender_incarnation_id, claim.message_id);
+      const publication = this.db.prepare(
+        `SELECT event_json FROM lifecycle_action_publications
+         WHERE sender_incarnation_id = ? AND message_id = ?`,
+      ).get(claim.sender_incarnation_id, claim.message_id);
+      let lifecycleEvent;
+      try {
+        lifecycleEvent = JSON.parse(publication?.event_json ?? "null");
+        assertLifecycleEvent(lifecycleEvent);
+      } catch { fail(); }
+      const decisionAudit = this.db.prepare(
+        `SELECT revision, detail_json FROM audit_events
+         WHERE sender_incarnation_id = ? AND message_id = ?
+           AND event_type = 'receiver-decided' ORDER BY sequence`,
+      ).all(claim.sender_incarnation_id, claim.message_id);
+      let decisionAuditDetails = null;
+      try {
+        decisionAuditDetails = decisionAudit.map((entry) => ({
+          revision: entry.revision,
+          ...JSON.parse(entry.detail_json),
+        }));
+      } catch { fail(); }
+      const historicalDecisionAudits = decisionAuditDetails.filter((entry) =>
+        entry.revision === decisionProjection.decision?.decisionRevision &&
+        entry.decision === decisionProjection.decision?.state &&
+        entry.reasonCode === decisionProjection.decision?.reasonCode);
+      const decisionAuditChainValid = decisionAuditDetails.length > 0 &&
+        decisionAuditDetails.every((entry, index) =>
+          Number.isInteger(entry.revision) &&
+          isDecisionReasonAllowed(entry.decision, entry.reasonCode) &&
+          (index === 0 || (
+            entry.revision > decisionAuditDetails[index - 1].revision &&
+            isDispositionTransitionAllowed(
+              "decision", decisionAuditDetails[index - 1].decision, entry.decision,
+            )
+          )));
+      const latestDecisionAudit = decisionAuditDetails.at(-1);
+      const mailboxClaim = this.db.prepare(
+        `SELECT * FROM mailbox_claims
+         WHERE sender_incarnation_id = ? AND message_id = ?`,
+      ).get(claim.sender_incarnation_id, claim.message_id);
+      const mailboxAudits = this.db.prepare(
+        `SELECT revision, detail_json FROM audit_events
+         WHERE sender_incarnation_id = ? AND message_id = ?
+           AND event_type = 'mailbox-claimed'`,
+      ).all(claim.sender_incarnation_id, claim.message_id);
+      let mailboxAuditDetail = null;
+      try {
+        mailboxAuditDetail = mailboxAudits.length === 1
+          ? JSON.parse(mailboxAudits[0].detail_json)
+          : null;
+      } catch { fail(); }
+      let actionArguments = null;
+      try { actionArguments = action ? JSON.parse(action.argsJson) : null; } catch { fail(); }
+      const binding = {
+        claimEpoch: row.claim_epoch,
+        eventDigest: claim.event_digest,
+        routeProjectionDigest: row.route_projection_digest,
+        receiverDecisionExecutionId: row.receiver_decision_execution_id,
+        decisionActionOrdinal: row.decision_action_ordinal,
+        decisionActionDigest: row.decision_action_digest,
+        decisionProjectionDigest: row.decision_projection_digest,
+        mailboxClaimTokenDigest: row.mailbox_claim_token_digest,
+      };
+      if (
+        !hasExactKeys(route, ATTENTION_OFFER_ROUTE_KEYS) ||
+        route.state !== "offered" || route.offer !== true ||
+        route.reasonCode !== "attention-offer-authorized" ||
+        route.messageId !== claim.message_id ||
+        route.eventType !== lifecycleEvent?.eventType ||
+        route.grantId !== message.grant_id ||
+        route.grantVersion !== message.grant_version ||
+        canonicalJson(route.envelope) !== canonicalJson(JSON.parse(message.envelope_json)) ||
+        canonicalJson(route.envelope) !==
+          canonicalJson(projectLifecycleEventToEnvelope(lifecycleEvent)) ||
+        row.route_projection_json !== canonicalJson(route) ||
+        row.route_projection_digest !== sha256Digest(route) ||
+        !["completed-turn-bound", "promoted"].includes(execution.intent.state) ||
+        execution.intent.actor.taskId !== claim.receiver_task_id ||
+        execution.intent.actor.incarnationId !== claim.receiver_incarnation_id ||
+        execution.intent.eventId !== claim.event_id ||
+        execution.intent.messageId !== claim.message_id ||
+        !action || action.actionDigest !== row.decision_action_digest ||
+        action.name !== "threadmesh_decide_offer" ||
+        action.resultStatus !== "completed" ||
+        execution.intent.turnStart?.turnId !== action.turnId ||
+        canonicalJson(actionArguments) !== canonicalJson({
+          messageId: claim.message_id,
+          decision: decisionProjection.decision?.state,
+        }) ||
+        action.resultDigest !== row.decision_projection_digest ||
+        row.decision_projection_json !== canonicalJson(decisionProjection) ||
+        !hasExactKeys(decisionProjection, ["messageId", "receiver", "decision"]) ||
+        !hasExactKeys(decisionProjection.receiver, ["taskId", "incarnationId"]) ||
+        !hasExactKeys(
+          decisionProjection.decision,
+          ["state", "reasonCode", "decisionRevision"],
+        ) ||
+        row.decision_projection_digest !== sha256Digest(decisionProjection) ||
+        decisionProjection.messageId !== claim.message_id ||
+        decisionProjection.receiver?.taskId !== claim.receiver_task_id ||
+        decisionProjection.receiver?.incarnationId !== claim.receiver_incarnation_id ||
+        !isDecisionReasonAllowed(
+          decisionProjection.decision?.state,
+          decisionProjection.decision?.reasonCode,
+        ) ||
+        historicalDecisionAudits.length !== 1 || !decisionAuditChainValid ||
+        latestDecisionAudit?.decision !== message.decision_state ||
+        latestDecisionAudit?.reasonCode !== message.decision_reason_code ||
+        message.revision < latestDecisionAudit.revision ||
+        !mailboxClaim || mailboxClaim.state !== "acknowledged" ||
+        mailboxClaim.receiver_task_id !== claim.receiver_task_id ||
+        mailboxClaim.receiver_incarnation_id !== claim.receiver_incarnation_id ||
+        sha256Digest(mailboxClaim.claim_token) !== row.mailbox_claim_token_digest ||
+        mailboxClaim.expected_revision + 1 !==
+          decisionProjection.decision?.decisionRevision ||
+        mailboxAudits.length !== 1 ||
+        mailboxAudits[0].revision !== mailboxClaim.expected_revision ||
+        canonicalJson(mailboxAuditDetail) !== canonicalJson({
+          claimTokenDigest: sha256Digest(mailboxClaim.claim_token),
+          expiresAt: mailboxClaim.expires_at,
+        }) ||
+        row.binding_digest !== sha256Digest(binding) ||
+        (claim.turn_execution_id !== null &&
+          claim.turn_execution_id === row.receiver_decision_execution_id)
+      ) fail();
+    }
+    for (const row of this.db.prepare(
+      "SELECT * FROM context_admission_turn_bindings ORDER BY sender_incarnation_id, message_id",
+    ).all()) {
+      const claim = this.db.prepare(
+        `SELECT * FROM admission_claims
+         WHERE sender_incarnation_id = ? AND message_id = ?`,
+      ).get(row.sender_incarnation_id, row.message_id);
+      const message = this.#message(row.sender_incarnation_id, row.message_id);
+      const execution = this.#turnExecutionSnapshot(row.execution_id);
+      let completedBinding;
+      let adapterRef;
+      try {
+        completedBinding = JSON.parse(execution.row.receipt_json);
+        adapterRef = JSON.parse(claim.adapter_ref_json);
+      } catch { fail(); }
+      let projectedEvidence;
+      try {
+        projectedEvidence = projectContextAdapterEvidence(
+          assertContextAdapterRef(adapterRef), completedBinding.evidence,
+        );
+      } catch { fail(); }
+      const admissionAudits = this.db.prepare(
+        `SELECT revision, detail_json FROM audit_events
+         WHERE sender_incarnation_id = ? AND message_id = ?
+           AND event_type = 'context-admitted'`,
+      ).all(row.sender_incarnation_id, row.message_id);
+      let admissionAuditDetail = null;
+      try {
+        admissionAuditDetail = admissionAudits.length === 1
+          ? JSON.parse(admissionAudits[0].detail_json)
+          : null;
+      } catch { fail(); }
+      const binding = {
+        senderIncarnationId: row.sender_incarnation_id,
+        messageId: row.message_id,
+        executionId: row.execution_id,
+        turnId: row.turn_id,
+        expectedRevision: row.expected_revision,
+        admissionTokenDigest: row.admission_token_digest,
+        adapterRefDigest: row.adapter_ref_digest,
+        completedBindingDigest: row.completed_binding_digest,
+        turnReceiptDigest: row.turn_receipt_digest,
+        adapterEvidenceDigest: row.adapter_evidence_digest,
+      };
+      if (
+        claim?.state !== "completed" || message.delivery_state !== "context-admitted" ||
+        claim.expected_revision !== row.expected_revision ||
+        sha256Digest(claim.admission_token) !== row.admission_token_digest ||
+        claim.adapter_ref_digest !== row.adapter_ref_digest ||
+        sha256Digest(adapterRef) !== row.adapter_ref_digest ||
+        execution.row.adapter_ref_digest !== row.adapter_ref_digest ||
+        !["completed-turn-bound", "promoted"].includes(execution.intent.state) ||
+        execution.intent.actor.taskId !== message.target_task_id ||
+        execution.intent.actor.incarnationId !== message.target_incarnation_id ||
+        execution.intent.actor.threadId !== adapterRef.threadId ||
+        execution.intent.actor.snapshotDigest !== adapterRef.snapshotDigest ||
+        execution.intent.messageId !== row.message_id ||
+        execution.intent.eventId !== claim.admission_token ||
+        execution.intent.turnStart?.turnId !== row.turn_id ||
+        execution.row.turn_id !== row.turn_id ||
+        completedBinding.evidence?.turnId !== row.turn_id ||
+        completedBinding.receipt?.adapterOperationId !== row.turn_id ||
+        completedBinding.adapterReceiptDigest !==
+          sha256Digest(completedBinding.receipt) ||
+        execution.row.receipt_digest !== completedBinding.adapterReceiptDigest ||
+        row.completed_binding_digest !== sha256Digest(completedBinding) ||
+        row.turn_receipt_digest !== sha256Digest(completedBinding.receipt) ||
+        row.adapter_evidence_digest !== sha256Digest(completedBinding.evidence) ||
+        admissionAudits.length !== 1 ||
+        admissionAudits[0].revision !== row.expected_revision + 1 ||
+        canonicalJson(admissionAuditDetail) !== canonicalJson({
+          admissionToken: claim.admission_token,
+          adapterEvidence: projectedEvidence,
+        }) ||
+        row.binding_digest !== sha256Digest(binding)
+      ) fail();
     }
   }
 
