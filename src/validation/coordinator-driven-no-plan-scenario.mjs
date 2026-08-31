@@ -1,10 +1,15 @@
+import { generateKeyPairSync, sign } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
 import { createAutonomousEventPump } from
   "../activation/autonomous-event-pump.mjs";
 import { sha256Digest } from "../canonical-json.mjs";
-import { SqliteCoordinator } from "../coordinator/sqlite-coordinator.mjs";
+import {
+  gitEvidenceVerificationResultDigest,
+  SqliteCoordinator,
+} from "../coordinator/sqlite-coordinator.mjs";
+import { verificationAttestationDigest } from "../protocol-validator.mjs";
 import { projectLifecycleEventToEnvelope } from "../routing/lifecycle-events.mjs";
 import { retireM52LiveTurnJournal } from "./m5-2-live-turn-journal.mjs";
 import {
@@ -13,11 +18,23 @@ import {
 } from "./live-agent-scenario.mjs";
 import { DeterministicNoPlanCodexAdapter } from
   "./deterministic-no-plan-codex-adapter.mjs";
+import {
+  independentGitClaimDigest,
+  independentGitFindingDigest,
+  verifyIndependentGitVerification,
+} from "./independent-git-verifier.mjs";
 
 const NOW = Date.parse("2026-09-01T08:00:00.000Z");
 const CREATED_AT = "2026-09-01T07:00:00.000Z";
 const EXPIRES_AT = "2026-09-01T10:00:00.000Z";
+const DEPENDENT_ADAPTER_RECEIPT = Object.freeze({
+  adapterOperationId: "fixture-no-plan-dependent-post-admission-receipt",
+  acceptedAt: new Date(NOW).toISOString(),
+  evidenceRefs: ["fixture://no-plan-dependent/post-admission-receipt"],
+});
 const owner = Object.freeze({ kind: "user", principalId: "owner_no_plan_scenario" });
+const sha = (character) => character.repeat(40);
+const digest = (value) => sha256Digest({ value });
 
 function principal(actor) {
   return { kind: "task", taskId: actor.taskId, incarnationId: actor.incarnationId };
@@ -40,7 +57,40 @@ const TOOLS = Object.freeze({
   implementation: tool("threadmesh_publish_artifact", "Publish the bounded implementation."),
   review: tool("threadmesh_report_review_finding", "Publish the exact review finding."),
   fix: tool("threadmesh_publish_dependency", "Publish the bounded review fix."),
+  verify: tool("threadmesh_verify_exact_chain", "Verify and sign the exact evidence chain."),
+  dependent: tool(
+    "threadmesh_activate_verified_dependency",
+    "Request activation; the coordinator commits it only after trusted finalization.",
+  ),
 });
+
+const ROUTE_HANDLER_CONFIGS = Object.freeze([
+  Object.freeze({
+    handlerId: "handler.no-plan.review.v1", receiverRole: "r",
+    eventType: "artifact-ready", businessPhase: "r-review",
+    businessTool: TOOLS.review,
+  }),
+  Object.freeze({
+    handlerId: "handler.no-plan.same-a-fix.v1", receiverRole: "a",
+    eventType: "review-failed", businessPhase: "same-a-fix",
+    businessTool: TOOLS.fix,
+  }),
+  Object.freeze({
+    handlerId: "handler.no-plan.verify.v1", receiverRole: "v",
+    eventType: "artifact-ready", businessPhase: "v-verify",
+    businessTool: TOOLS.verify,
+  }),
+  Object.freeze({
+    handlerId: "handler.no-plan.dependent.v1", receiverRole: "dependent",
+    eventType: "dependency-satisfied", businessPhase: "dependent-gated-activation",
+    businessTool: TOOLS.dependent,
+  }),
+  Object.freeze({
+    handlerId: "handler.no-plan.irrelevant.v1", receiverRole: "irrelevant",
+    eventType: "artifact-ready", businessPhase: "irrelevant-never-runs",
+    businessTool: TOOLS.review,
+  }),
+]);
 
 function actionEventBody(event) {
   return {
@@ -111,6 +161,175 @@ function completionBinding(turn, execution) {
     })),
     nonThreadMeshToolCalls: 0,
   };
+}
+
+function promoteStage(coordinator, executionId, stage, payload, revision, head, actor) {
+  return coordinator.promoteTurnExecutionWithGitEvidenceRecord(executionId, {
+    stage,
+    payload,
+    expectedEvidenceChainRevision: revision,
+    expectedEvidenceChainHead: head,
+    expectedRevision: 5,
+  }, principal(actor));
+}
+
+function promoteAttention(coordinator, activation, execution, actor) {
+  const cursor = coordinator.getAttentionCursor(taskRef(actor), principal(actor)).cursor;
+  return coordinator.promoteAttentionHandler(activation.claim.claimEpoch, {
+    expectedClaimRevision: activation.claim.revision,
+    expectedCursorRevision: cursor.revision,
+  }, principal(actor));
+}
+
+function createVerification({
+  requirement, payloads, verifier, dependent, trustAnchor, privateKey,
+}) {
+  const request = {
+    repoPath: "/private/deterministic-fixture/repository",
+    chain: {
+      chainId: requirement.chainId,
+      requirementDigest: requirement.requirementDigest,
+      validatedBaseSha: requirement.validatedBaseSha,
+      fixtureSeedSha: requirement.fixtureSeedSha,
+      fixtureDefinitionDigest: requirement.fixtureDefinitionDigest,
+    },
+    implementation: {
+      sha: payloads.implementation.commitSha,
+      treeSha: payloads.implementation.treeSha,
+      diffDigest: payloads.implementation.diffDigest,
+    },
+    fix: {
+      sha: payloads.fix.commitSha,
+      treeSha: payloads.fix.treeSha,
+      diffDigest: payloads.fix.diffDigest,
+    },
+    finding: {
+      resourcePath: "artifact.txt",
+      counterexample: "BAD_COUNTEREXAMPLE",
+      digest: payloads["review-failed"].findingDigest,
+    },
+    trustedTest: {
+      resourcePath: "test/fixtures/independent-git-verifier-target.test.mjs",
+      blobDigest: requirement.trustedTestBlobDigest,
+    },
+    subject: {
+      messageId: "msg_no_plan_fix_0001",
+      senderIncarnationId: verifier.incarnationId,
+      receiver: taskRef(dependent),
+    },
+  };
+  const proof = {
+    chain: request.chain,
+    implementation: {
+      ...request.implementation,
+      parentSha: request.chain.fixtureSeedSha,
+      resourceDigest: digest("implementation-resource"),
+    },
+    fix: {
+      ...request.fix,
+      parentSha: request.implementation.sha,
+      resourceDigest: digest("fix-resource"),
+    },
+    finding: {
+      resourcePath: request.finding.resourcePath,
+      digest: request.finding.digest,
+      counterexampleDigest: sha256Digest(request.finding.counterexample),
+    },
+    test: {
+      command: "node",
+      args: ["--test", "test/fixtures/independent-git-verifier-target.test.mjs"],
+      resourcePath: request.trustedTest.resourcePath,
+      seedBlobDigest: request.trustedTest.blobDigest,
+      fixBlobDigest: request.trustedTest.blobDigest,
+      trustedBlobDigest: request.trustedTest.blobDigest,
+    },
+  };
+  const binding = {
+    chain: request.chain,
+    implementationSha: request.implementation.sha,
+    fixSha: request.fix.sha,
+    findingDigest: request.finding.digest,
+  };
+  const suffix = sha256Digest(binding).slice(7, 31);
+  const attestation = {
+    specVersion: "0.0-draft",
+    attestationId: `att_git_${suffix}`,
+    verifier: {
+      actorType: "service",
+      actorId: trustAnchor.actorId,
+      authenticationId: "authn_no_plan_fixture_verifier",
+      trustDomain: trustAnchor.trustDomain,
+    },
+    subject: {
+      ...request.subject,
+      claimType: "artifact-state",
+      claimDigest: independentGitClaimDigest({ chain: proof.chain, proof }),
+    },
+    method: "independent-reproduction",
+    evidenceDigest: sha256Digest(proof),
+    verifiedAt: new Date(NOW).toISOString(),
+    trustPolicy: {
+      policyId: trustAnchor.policyId,
+      decisionId: `decision_git_${suffix}`,
+      decision: "trusted",
+      decidedAt: new Date(NOW).toISOString(),
+    },
+  };
+  attestation.signedPayloadDigest = verificationAttestationDigest(attestation);
+  attestation.proof = {
+    algorithm: "ed25519",
+    keyId: trustAnchor.keyId,
+    signature: sign(
+      null, Buffer.from(attestation.signedPayloadDigest, "utf8"), privateKey,
+    ).toString("base64url"),
+  };
+  const response = { trustAnchor, attestation, proof };
+  verifyIndependentGitVerification({ request, response, expectedTrustAnchor: trustAnchor });
+  return { request, response, expectedTrustAnchor: trustAnchor };
+}
+
+function externallyVerifiedDisposition(coordinator, verifier, dependent, event, attestation) {
+  const persisted = coordinator.getDisposition(
+    verifier.incarnationId, event.messageId, principal(dependent),
+  );
+  const at = new Date(NOW).toISOString();
+  return {
+    specVersion: "0.0-draft",
+    dispositionId: "dsp_no_plan_verified_0001",
+    messageId: event.messageId,
+    receiver: taskRef(dependent),
+    revision: persisted.revision + 1,
+    delivery: { state: persisted.delivery, observedAt: at },
+    decision: {
+      state: persisted.decision,
+      decidedAt: at,
+      decidedBy: { actorType: "agent", task: taskRef(dependent) },
+      reasonCode: persisted.decisionReasonCode,
+    },
+    outcome: {
+      state: "externally-verified",
+      observedAt: at,
+      evidenceRefs: ["threadmesh://git-evidence/final"],
+      verificationAttestations: [attestation],
+    },
+    updatedAt: at,
+  };
+}
+
+function recordDependentAdapterReceipt(coordinator, verifier, dependent, event) {
+  const dependentPrincipal = principal(dependent);
+  const prepared = coordinator.prepareAdapterSubmission(
+    verifier.incarnationId, event.messageId, 2, dependentPrincipal,
+  );
+  coordinator.beginAdapterSubmission(
+    prepared.submission.submissionId, 2, dependentPrincipal,
+  );
+  return coordinator.recordAdapterReceipt(
+    prepared.submission.submissionId,
+    2,
+    DEPENDENT_ADAPTER_RECEIPT,
+    dependentPrincipal,
+  );
 }
 
 async function runKickoff({
@@ -191,14 +410,16 @@ async function runKickoff({
   return { execution, turn };
 }
 
-function registerTask(coordinator, actor, ref) {
+function registerTask(coordinator, actor, ref, {
+  state = "idle", runtime = { objectiveVersion: 1 },
+} = {}) {
   const registered = { ...actor, threadId: ref.threadId, snapshotDigest: ref.snapshotDigest };
   coordinator.registerTask({
     taskId: actor.taskId,
     incarnationId: actor.incarnationId,
     harness: "codex",
-    state: "idle",
-    runtime: { objectiveVersion: 1 },
+    state,
+    runtime,
     adapterRef: ref,
   }, owner);
   return registered;
@@ -231,24 +452,43 @@ export async function runCoordinatorDrivenNoPlanScenario({
   fs.mkdirSync(journalDirectory, { recursive: false, mode: 0o700 });
   const ownedJournalPaths = new Set();
   const databasePath = path.join(scenarioRunRoot, "coordinator-driven.sqlite");
-  const coordinator = new SqliteCoordinator({ filename: databasePath, clock: () => NOW });
+  const { publicKey, privateKey } = generateKeyPairSync("ed25519");
+  const trustAnchor = {
+    keyId: "threadmesh://independent-git-verifier/key/ephemeral",
+    algorithm: "ed25519",
+    actorId: "threadmesh-independent-git-verifier",
+    trustDomain: "threadmesh://independent-git-verifier",
+    policyId: "threadmesh://independent-git-verifier/policy/1",
+    publicKeyPem: publicKey.export({ type: "spki", format: "pem" }),
+  };
+  const coordinator = new SqliteCoordinator({
+    filename: databasePath,
+    clock: () => NOW,
+    verificationTrustAnchors: [trustAnchor],
+  });
   const actors = {
     a: { taskId: "task_no_plan_a", incarnationId: "inc_no_plan_a_0001" },
     r: { taskId: "task_no_plan_r", incarnationId: "inc_no_plan_r_0001" },
     irrelevant: {
       taskId: "task_no_plan_irrelevant", incarnationId: "inc_no_plan_irrelevant_0001",
     },
-    v: { taskId: "task_no_plan_v_pending", incarnationId: "inc_no_plan_v_pending_0001" },
+    v: { taskId: "task_no_plan_v", incarnationId: "inc_no_plan_v_0001" },
+    dependent: {
+      taskId: "task_no_plan_dependent", incarnationId: "inc_no_plan_dependent_0001",
+    },
   };
   const grants = {
     ar: grant("no_plan_a_r", actors.a, actors.r),
     ra: grant("no_plan_r_a", actors.r, actors.a),
+    av: grant("no_plan_a_v", actors.a, actors.v),
+    vd: grant("no_plan_v_dependent", actors.v, actors.dependent),
     ai: grant("no_plan_a_irrelevant", actors.a, actors.irrelevant),
   };
-  const implementationSha = "1".repeat(40);
-  const fixSha = "2".repeat(40);
-  const findingDigest = sha256Digest({
-    finding: "The bounded candidate returns 41 instead of the required 42.",
+  const implementationSha = sha("3");
+  const fixSha = sha("5");
+  const findingDigest = independentGitFindingDigest({
+    resourcePath: "artifact.txt",
+    counterexample: "BAD_COUNTEREXAMPLE",
   });
   const artifactEvent = lifecycleEvent({
     eventType: "artifact-ready",
@@ -266,14 +506,29 @@ export async function runCoordinatorDrivenNoPlanScenario({
     relationshipId: grants.ra.relationshipId,
     content: "Blocking finding: the bounded candidate returns 41, not 42.",
   });
-  const pendingFixEvent = lifecycleEvent({
+  const fixEvent = lifecycleEvent({
     eventType: "artifact-ready",
-    messageId: "msg_no_plan_fix_pending_v_0001",
+    messageId: "msg_no_plan_fix_0001",
     sender: actors.a,
     target: actors.v,
-    relationshipId: "rel_no_plan_a_v_pending",
-    content: `Review fix ${fixSha} is ready; V is intentionally pending in this partial gate.`,
+    relationshipId: grants.av.relationshipId,
+    content: `Review fix ${fixSha} is ready for independent verification.`,
   });
+  const verifiedEvent = {
+    ...lifecycleEvent({
+      eventType: "dependency-satisfied",
+      messageId: fixEvent.messageId,
+      sender: actors.v,
+      target: actors.dependent,
+      relationshipId: grants.vd.relationshipId,
+      content: "The exact signed evidence chain passed trusted fixture verification.",
+    }),
+    freshness: {
+      expectedRunId: "run-no-plan-dependent",
+      expectedObjectiveVersion: 2,
+      expectedCheckpoint: "waiting-for-verified-fix",
+    },
+  };
   const irrelevantEvent = lifecycleEvent({
     eventType: "artifact-ready",
     messageId: "msg_no_plan_irrelevant_0001",
@@ -295,13 +550,16 @@ export async function runCoordinatorDrivenNoPlanScenario({
   let runtime;
   let result;
   let failure;
+  let evidenceRevision = 0;
+  let evidenceHead = null;
+  let verification = null;
   const cleanupRoles = [];
   try {
     const adapter = new DeterministicNoPlanCodexAdapter({
       decideTurn(canonicalInput) {
         const input = JSON.parse(canonicalInput);
         const selectedTool = input.dynamicTools[0]?.name;
-        const knownMessage = [artifactEvent, reviewEvent]
+        const knownMessage = [artifactEvent, reviewEvent, fixEvent, verifiedEvent]
           .find(({ messageId }) => input.prompt.includes(messageId));
         if (selectedTool === REGISTERED_PEER_DECISION_TOOL.name) {
           if (!knownMessage) {
@@ -340,8 +598,25 @@ export async function runCoordinatorDrivenNoPlanScenario({
             tool: selectedTool,
             arguments: {
               sourceEventId: knownMessage.messageId,
-              event: actionEventBody(pendingFixEvent), commitSha: fixSha,
+              event: actionEventBody(fixEvent), commitSha: fixSha,
             },
+          }] };
+        }
+        if (selectedTool === TOOLS.verify.name) {
+          return { text: "Independent signed verification selected.", toolCalls: [{
+            tool: selectedTool,
+            arguments: {
+              sourceEventId: knownMessage.messageId,
+              event: actionEventBody(verifiedEvent),
+              chainId: "chain_coordinator_driven_no_plan",
+              expectedEvidenceChainRevision: evidenceRevision,
+              expectedEvidenceChainHead: evidenceHead,
+            },
+          }] };
+        }
+        if (selectedTool === TOOLS.dependent.name) {
+          return { text: "Dependency activation requested behind finalization gate.", toolCalls: [{
+            tool: selectedTool, arguments: {},
           }] };
         }
         return { text: "No relevant action.", toolCalls: [] };
@@ -374,6 +649,32 @@ export async function runCoordinatorDrivenNoPlanScenario({
       instructions: "Review only coordinator-admitted context.",
       scenarioId: "coordinator_driven_no_plan",
     });
+    refs.v = await runtime.createRole({
+      role: "v", cwd: artifactsDirectory,
+      tools: [REGISTERED_PEER_DECISION_TOOL, TOOLS.verify],
+      phaseTools: {
+        "receiver-decision": [REGISTERED_PEER_DECISION_TOOL], "v-verify": [TOOLS.verify],
+      },
+      protectedPhases: {
+        "receiver-decision": "receiver-decision", "v-verify": "admitted-tool",
+      },
+      instructions: "Verify only the exact coordinator-bound evidence chain.",
+      scenarioId: "coordinator_driven_no_plan",
+    });
+    refs.dependent = await runtime.createRole({
+      role: "dependent", cwd: artifactsDirectory,
+      tools: [REGISTERED_PEER_DECISION_TOOL, TOOLS.dependent],
+      phaseTools: {
+        "receiver-decision": [REGISTERED_PEER_DECISION_TOOL],
+        "dependent-gated-activation": [TOOLS.dependent],
+      },
+      protectedPhases: {
+        "receiver-decision": "receiver-decision",
+        "dependent-gated-activation": "admitted-tool",
+      },
+      instructions: "Request activation; trust only coordinator finalization state.",
+      scenarioId: "coordinator_driven_no_plan",
+    });
     refs.irrelevant = await runtime.createRole({
       role: "irrelevant", cwd: artifactsDirectory,
       tools: [REGISTERED_PEER_DECISION_TOOL],
@@ -382,6 +683,15 @@ export async function runCoordinatorDrivenNoPlanScenario({
     });
     actors.a = registerTask(coordinator, actors.a, refs.a);
     actors.r = registerTask(coordinator, actors.r, refs.r);
+    actors.v = registerTask(coordinator, actors.v, refs.v);
+    actors.dependent = registerTask(coordinator, actors.dependent, refs.dependent, {
+      state: "waiting",
+      runtime: {
+        runId: "run-no-plan-dependent",
+        objectiveVersion: 2,
+        checkpoint: "waiting-for-verified-fix",
+      },
+    });
     actors.irrelevant = registerTask(coordinator, actors.irrelevant, refs.irrelevant);
     for (const [index, current] of Object.values(grants).entries()) {
       coordinator.issueGrant(current, {
@@ -390,6 +700,55 @@ export async function runCoordinatorDrivenNoPlanScenario({
         decidedAt: CREATED_AT,
       }, owner);
     }
+    coordinator.createDependencyEdge({
+      dependencyId: "dependency_no_plan_verified",
+      version: 1,
+      edgeType: "dependency",
+      prerequisite: taskRef(actors.v),
+      dependent: taskRef(actors.dependent),
+      relationshipId: grants.vd.relationshipId,
+      expectedEventType: "dependency-satisfied",
+      freshness: {
+        expectedRunId: "run-no-plan-dependent",
+        expectedObjectiveVersion: 2,
+        expectedCheckpoint: "waiting-for-verified-fix",
+      },
+      createdAt: CREATED_AT,
+      expiresAt: EXPIRES_AT,
+    }, owner);
+    const requirement = coordinator.createGitEvidenceRequirement({
+      chainId: "chain_coordinator_driven_no_plan",
+      validatedBaseSha: sha("1"),
+      fixtureSeedSha: sha("2"),
+      fixtureDefinitionDigest: digest("fixture-definition"),
+      trustedTestBlobDigest: digest("trusted-test"),
+      implementer: actors.a,
+      reviewer: actors.r,
+      verifier: actors.v,
+      preconfiguredTrustAnchorDigest: sha256Digest(trustAnchor),
+    }, owner).requirement;
+    coordinator.bindGitEvidenceDependency(requirement.chainId, {
+      dependencyId: "dependency_no_plan_verified", expectedVersion: 1,
+    }, owner);
+    const payloads = {
+      implementation: {
+        actor: actors.a, turnId: null, toolCallDigest: null,
+        commitSha: implementationSha, parentSha: sha("2"), treeSha: sha("4"),
+        diffDigest: digest("implementation-diff"),
+        testEvidenceDigest: digest("implementation-test"),
+      },
+      "review-failed": {
+        actor: actors.r, turnId: null, toolCallDigest: null,
+        implementationSha, findingDigest,
+        reproductionEvidenceDigest: digest("reproduction"),
+      },
+      fix: {
+        actor: actors.a, turnId: null, toolCallDigest: null,
+        commitSha: fixSha, parentSha: implementationSha, treeSha: sha("6"),
+        diffDigest: digest("fix-diff"), resolvesFindingDigest: findingDigest,
+        testEvidenceDigest: digest("fix-test"),
+      },
+    };
     if (injectPriorRelevant) {
       coordinator.submit(
         projectLifecycleEventToEnvelope(priorRelevantEvent),
@@ -399,13 +758,17 @@ export async function runCoordinatorDrivenNoPlanScenario({
 
     let sameAActivation = null;
     let rActivation = null;
+    let verifierActivation = null;
+    let dependentActivation = null;
+    let finalized = null;
+    let dependentActivationCommitted = false;
     const pump = createAutonomousEventPump({
       coordinator,
       runtime,
       scenarioId: "coordinator_driven_no_plan",
       chainId: "chain_coordinator_driven_no_plan",
       recoveryDirectory: journalDirectory,
-      maxEvents: 3,
+      maxEvents: 5,
     });
     pump.registerReceiver({
       receiver: actors.r,
@@ -414,6 +777,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
       cwd: artifactsDirectory,
       ref: refs.r,
       routes: [{
+        handlerId: ROUTE_HANDLER_CONFIGS[0].handlerId,
         eventType: "artifact-ready",
         subscribedEventTypes: ["artifact-ready"],
         grant: grants.ar,
@@ -427,11 +791,23 @@ export async function runCoordinatorDrivenNoPlanScenario({
         },
         async onLifecyclePublication({ activation }) {
           rActivation = activation;
-          coordinator.publishLifecycleFromCompletedAction(activation.businessExecutionId, {
+          const execution = coordinator.getTurnExecution(
+            activation.businessExecutionId, principal(actors.r),
+          );
+          payloads["review-failed"].turnId = execution.actions[0].turnId;
+          payloads["review-failed"].toolCallDigest = execution.actions[0].actionDigest;
+          const promoted = promoteStage(
+            coordinator, activation.businessExecutionId, "review-failed",
+            payloads["review-failed"], evidenceRevision, evidenceHead, actors.r,
+          );
+          evidenceRevision = promoted.evidenceState.recordCount;
+          evidenceHead = promoted.evidenceState.headDigest;
+          coordinator.publishLifecycleFromCompletedAction(promoted.executionId, {
             expectedTool: TOOLS.review.name,
             event: reviewEvent,
             expectedMaterial: { findingDigest },
           }, principal(actors.r));
+          promoteAttention(coordinator, activation, promoted, actors.r);
         },
       }],
     });
@@ -442,6 +818,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
       cwd: artifactsDirectory,
       ref: refs.a,
       routes: [{
+        handlerId: ROUTE_HANDLER_CONFIGS[1].handlerId,
         eventType: "review-failed",
         subscribedEventTypes: ["review-failed"],
         grant: grants.ra,
@@ -455,7 +832,147 @@ export async function runCoordinatorDrivenNoPlanScenario({
         },
         async onLifecyclePublication({ activation }) {
           sameAActivation = activation;
-          return { state: "pending-unregistered-verifier", event: pendingFixEvent };
+          const execution = coordinator.getTurnExecution(
+            activation.businessExecutionId, principal(actors.a),
+          );
+          payloads.fix.turnId = execution.actions[0].turnId;
+          payloads.fix.toolCallDigest = execution.actions[0].actionDigest;
+          const promoted = promoteStage(
+            coordinator, activation.businessExecutionId, "fix", payloads.fix,
+            evidenceRevision, evidenceHead, actors.a,
+          );
+          evidenceRevision = promoted.evidenceState.recordCount;
+          evidenceHead = promoted.evidenceState.headDigest;
+          coordinator.publishLifecycleFromCompletedAction(promoted.executionId, {
+            expectedTool: TOOLS.fix.name,
+            event: fixEvent,
+            expectedMaterial: { commitSha: fixSha },
+          }, principal(actors.a));
+          promoteAttention(coordinator, activation, promoted, actors.a);
+        },
+      }],
+    });
+    pump.registerReceiver({
+      receiver: actors.v,
+      principal: principal(actors.v),
+      role: "v",
+      cwd: artifactsDirectory,
+      ref: refs.v,
+      routes: [{
+        handlerId: ROUTE_HANDLER_CONFIGS[2].handlerId,
+        eventType: "artifact-ready",
+        subscribedEventTypes: ["artifact-ready"],
+        grant: grants.av,
+        sourceTask: actors.a,
+        targetTask: { ...actors.v, objectiveVersion: 1 },
+        now: NOW,
+        businessPhase: "v-verify",
+        businessTool: TOOLS.verify,
+        async onBusinessToolCall() {
+          verification = createVerification({
+            requirement, payloads, verifier: actors.v, dependent: actors.dependent,
+            trustAnchor, privateKey,
+          });
+          return verification;
+        },
+        async onLifecyclePublication({ activation }) {
+          verifierActivation = activation;
+          coordinator.publishLifecycleFromCompletedAction(activation.businessExecutionId, {
+            expectedTool: TOOLS.verify.name,
+            event: verifiedEvent,
+            expectedMaterial: {
+              chainId: requirement.chainId,
+              expectedEvidenceChainRevision: evidenceRevision,
+              expectedEvidenceChainHead: evidenceHead,
+            },
+          }, principal(actors.v));
+        },
+      }],
+    });
+    pump.registerReceiver({
+      receiver: actors.dependent,
+      principal: principal(actors.dependent),
+      role: "dependent",
+      cwd: artifactsDirectory,
+      ref: refs.dependent,
+      routes: [{
+        handlerId: ROUTE_HANDLER_CONFIGS[3].handlerId,
+        eventType: "dependency-satisfied",
+        subscribedEventTypes: ["dependency-satisfied"],
+        grant: grants.vd,
+        sourceTask: actors.v,
+        targetTask: {
+          ...actors.dependent,
+          runId: "run-no-plan-dependent",
+          objectiveVersion: 2,
+          checkpoint: "waiting-for-verified-fix",
+        },
+        now: NOW,
+        businessPhase: "dependent-gated-activation",
+        businessTool: TOOLS.dependent,
+        async onBusinessToolCall() {
+          const edge = coordinator.getDependencyEdge(
+            "dependency_no_plan_verified", principal(actors.dependent),
+          );
+          const task = coordinator.getTask(taskRef(actors.dependent), owner);
+          if (edge.version !== 1 || edge.status !== "waiting" || task.state !== "waiting") {
+            throw new Error("threadmesh_dependent_pre_finalize_gate_drift");
+          }
+          return { activationRequested: true, effectCommitted: false };
+        },
+        async onLifecyclePublication({ activation }) {
+          dependentActivation = activation;
+          recordDependentAdapterReceipt(
+            coordinator, actors.v, actors.dependent, verifiedEvent,
+          );
+          const disposition = externallyVerifiedDisposition(
+            coordinator, actors.v, actors.dependent, verifiedEvent,
+            verification.response.attestation,
+          );
+          const verifierExecution = coordinator.getTurnExecution(
+            verifierActivation.businessExecutionId, principal(actors.v),
+          );
+          const action = verifierExecution.actions[0];
+          if (action.resultDigest !== gitEvidenceVerificationResultDigest(verification)) {
+            throw new Error("threadmesh_verifier_result_digest_mismatch");
+          }
+          finalized = coordinator.finalizeGitEvidenceDependency(
+            verifierExecution.executionId,
+            {
+              actionOrdinal: 0,
+              verificationToolArguments: JSON.parse(action.argsJson),
+              ...verification,
+              dependencyId: "dependency_no_plan_verified",
+              expectedDependencyVersion: 1,
+              event: verifiedEvent,
+              disposition,
+              expectedEvidenceChainRevision: evidenceRevision,
+              expectedEvidenceChainHead: evidenceHead,
+              expectedRevision: verifierExecution.revision,
+            },
+            principal(actors.v),
+          );
+          evidenceRevision = finalized.evidenceState.recordCount;
+          evidenceHead = finalized.evidenceState.headDigest;
+          const dependentCursor = coordinator.getAttentionCursor(
+            taskRef(actors.dependent), principal(actors.dependent),
+          ).cursor;
+          coordinator.commitFinalizedDependencyAttentionHandler(
+            activation.claim.claimEpoch,
+            {
+              dependencyId: "dependency_no_plan_verified",
+              expectedClaimRevision: activation.claim.revision,
+              expectedCursorRevision: dependentCursor.revision,
+            },
+            principal(actors.dependent),
+          );
+          promoteAttention(coordinator, verifierActivation, finalized, actors.v);
+          const edgeAfter = coordinator.getDependencyEdge(
+            "dependency_no_plan_verified", principal(actors.dependent),
+          );
+          const taskAfter = coordinator.getTask(taskRef(actors.dependent), owner);
+          dependentActivationCommitted = edgeAfter.status === "satisfied" &&
+            taskAfter.state === "ready";
         },
       }],
     });
@@ -466,6 +983,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
       cwd: artifactsDirectory,
       ref: refs.irrelevant,
       routes: [{
+        handlerId: ROUTE_HANDLER_CONFIGS[4].handlerId,
         eventType: "artifact-ready",
         subscribedEventTypes: ["review-failed"],
         grant: grants.ai,
@@ -490,9 +1008,18 @@ export async function runCoordinatorDrivenNoPlanScenario({
       cwd: artifactsDirectory, recoveryDirectory: journalDirectory,
       ownedJournalPaths,
     });
+    payloads.implementation.turnId = kickoff.execution.actions[0].turnId;
+    payloads.implementation.toolCallDigest = kickoff.execution.actions[0].actionDigest;
+    const promotedKickoff = promoteStage(
+      coordinator, kickoff.execution.executionId, "implementation",
+      payloads.implementation, evidenceRevision, evidenceHead, actors.a,
+    );
+    evidenceRevision = promotedKickoff.evidenceState.recordCount;
+    evidenceHead = promotedKickoff.evidenceState.headDigest;
     coordinator.submit(projectLifecycleEventToEnvelope(irrelevantEvent), principal(actors.a));
     const pumpResult = await pump.runUntilIdle();
-    if (!rActivation || !sameAActivation) {
+    if (!rActivation || !sameAActivation || !verifierActivation ||
+        !dependentActivation || !finalized || !dependentActivationCommitted) {
       throw new Error("threadmesh_event_pump_expected_activations_missing");
     }
 
@@ -507,8 +1034,25 @@ export async function runCoordinatorDrivenNoPlanScenario({
         "SELECT COUNT(*) AS count FROM context_admission_turn_bindings",
       ).get().count,
     };
+    const chain = coordinator.getGitEvidenceChain(requirement.chainId, owner);
+    const dependency = coordinator.getDependencyEdge(
+      "dependency_no_plan_verified", principal(actors.dependent),
+    );
+    const dependentTask = coordinator.getTask(taskRef(actors.dependent), owner);
+    const dependentDisposition = coordinator.getDisposition(
+      actors.v.incarnationId, verifiedEvent.messageId, principal(actors.dependent),
+    );
+    const attentionCursors = Object.fromEntries(
+      ["r", "a", "v", "dependent", "irrelevant"].map((role) => [
+        role,
+        coordinator.getAttentionCursor(taskRef(actors[role]), principal(actors[role])).cursor,
+      ]),
+    );
+    const activeAttentionClaimCount = coordinator.db.prepare(
+      "SELECT COUNT(*) AS count FROM attention_handler_claims WHERE state = 'active'",
+    ).get().count;
     result = {
-      state: "passed-autonomous-pump-in-process-partial",
+      state: "passed-full-functional-in-process-fixture",
       liveProductEvidence: false,
       initialUserStartPrompts: 1,
       deterministicPolicyOracle: true,
@@ -523,18 +1067,25 @@ export async function runCoordinatorDrivenNoPlanScenario({
       eventPumpTerminalState: pumpResult.state,
       eventPumpAwaitingPromotion: pumpResult.awaitingPromotion === true,
       autonomousEventPump: true,
-      autonomousEventPumpScope: "in-process-partial",
+      autonomousEventPumpScope: "in-process-functional-fixture",
       rawPhasePromptsSubmittedByFixtureRunner: 0,
       humanRelayCount: 0,
       pollingCount: 0,
-      completedRoles: ["a-kickoff", "r", "same-a"],
-      pendingRoles: ["v", "dependent"],
-      pendingReason: "Verifier and dependent activation are not implemented by this partial gate.",
+      completedRoles: ["a-kickoff", "r", "same-a", "v", "dependent"],
+      pendingRoles: [],
+      pendingReason: "Durable pump restart and cross-process lease remain outside this fixture.",
       pendingGates: [
         "durable-pump-restart-checkpoint",
         "cross-process-concurrent-pump-lease",
-        "verifier-and-dependent-activation",
       ],
+      routeHandlerConfigs: ROUTE_HANDLER_CONFIGS,
+      attention: {
+        cursors: attentionCursors,
+        activeClaimCount: activeAttentionClaimCount,
+        allOfferedCursorsCommitted:
+          Object.values(attentionCursors).every((cursor) => cursor.commitCount === 1) &&
+          activeAttentionClaimCount === 0,
+      },
       sameARef: sameAActivation.admitted &&
         kickoff.turn.evidence.threadId === refs.a.threadId &&
         sameAActivation.decisionTurnEvidence?.threadId === refs.a.threadId &&
@@ -545,6 +1096,29 @@ export async function runCoordinatorDrivenNoPlanScenario({
           sameAActivation.businessTurnEvidence?.turnId,
         ]).size === 3,
       bindings: counts,
+      verification: {
+        mode: "deterministic-in-process-trusted-signing",
+        nativeVerifierRefIndependent:
+          refs.v.threadId !== refs.a.threadId && refs.v.threadId !== refs.r.threadId,
+        nativeVerifierTurnId: verifierActivation.businessTurnEvidence?.turnId,
+        signatureVerified: true,
+        trustAnchorDigest: sha256Digest(trustAnchor),
+        resultDigestBound: coordinator.getTurnExecution(
+          verifierActivation.businessExecutionId, principal(actors.v),
+        ).actions[0].resultDigest === gitEvidenceVerificationResultDigest(verification),
+      },
+      evidenceChain: {
+        recordCount: chain.state.recordCount,
+        trustedComplete: chain.state.trustedComplete,
+        headDigest: chain.state.headDigest,
+      },
+      dependent: {
+        decision: dependentDisposition.decision,
+        outcome: dependentDisposition.outcome,
+        edgeStatus: dependency.status,
+        taskState: dependentTask.state,
+        effectCommittedAfterFinalization: dependentActivationCommitted,
+      },
       irrelevant: {
         claimCount: coordinator.db.prepare(
           "SELECT COUNT(*) AS count FROM attention_handler_claims WHERE receiver_task_id = ?",

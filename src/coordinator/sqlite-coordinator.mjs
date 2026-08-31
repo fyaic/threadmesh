@@ -2831,20 +2831,24 @@ export class SqliteCoordinator {
       }
       const action = execution.actions[actionOrdinal];
       const toolArgs = action ? JSON.parse(action.argsJson) : null;
-      const expectedVerificationToolArguments = {
-        sourceEventId: execution.intent.eventId,
+      const expectedVerificationToolArguments = [
+        execution.intent.eventId,
+        execution.intent.messageId,
+      ].map((sourceEventId) => ({
+        sourceEventId,
         event: boundedLifecycleActionEventBody(event),
         chainId: chain.requirement.chainId,
         expectedEvidenceChainRevision: 3,
         expectedEvidenceChainHead,
-      };
+      }));
       if (
         !action || action.ordinal !== actionOrdinal ||
         action.name !== FINAL_GIT_EVIDENCE_TOOL ||
         action.resultStatus !== "completed" ||
         !action.actionDigest ||
         canonicalJson(toolArgs) !== canonicalJson(verificationToolArguments) ||
-        canonicalJson(toolArgs) !== canonicalJson(expectedVerificationToolArguments) ||
+        !expectedVerificationToolArguments.some((candidate) =>
+          canonicalJson(toolArgs) === canonicalJson(candidate)) ||
         action.resultDigest !== gitEvidenceVerificationResultDigest({
           request, response, expectedTrustAnchor,
         })
@@ -3520,7 +3524,23 @@ export class SqliteCoordinator {
       if (!claim.turn_execution_id) {
         throw codedError("threadmesh_finalized_dependency_attention_handler_unbound");
       }
-      const execution = this.#turnExecutionSnapshot(claim.turn_execution_id);
+      const handlerExecution = this.#turnExecutionSnapshot(claim.turn_execution_id);
+      const admissionTurnBinding = this.db.prepare(
+        `SELECT * FROM context_admission_turn_bindings
+         WHERE execution_id = ? AND sender_incarnation_id = ? AND message_id = ?`,
+      ).get(
+        claim.turn_execution_id, claim.sender_incarnation_id, claim.message_id,
+      );
+      const routeDecisionBinding = admissionTurnBinding ? this.db.prepare(
+        `SELECT * FROM attention_route_decision_bindings WHERE claim_epoch = ?`,
+      ).get(claimEpoch) : null;
+      const admittedBusinessHandler = Boolean(
+        admissionTurnBinding && routeDecisionBinding &&
+        admissionTurnBinding.execution_id === claim.turn_execution_id,
+      );
+      const execution = admittedBusinessHandler
+        ? this.#turnExecutionSnapshot(routeDecisionBinding.receiver_decision_execution_id)
+        : handlerExecution;
       const currentTask = this.#assertTaskActive({
         taskId: claim.receiver_task_id,
         incarnationId: claim.receiver_incarnation_id,
@@ -3530,14 +3550,14 @@ export class SqliteCoordinator {
         incarnationId: claim.receiver_incarnation_id,
       });
       if (
-        execution.row.task_id !== claim.receiver_task_id ||
-        execution.row.incarnation_id !== claim.receiver_incarnation_id ||
+        handlerExecution.row.task_id !== claim.receiver_task_id ||
+        handlerExecution.row.incarnation_id !== claim.receiver_incarnation_id ||
         !currentTask.adapter_ref_json ||
         sha256Digest(JSON.parse(currentTask.adapter_ref_json)) !==
-          execution.row.adapter_ref_digest ||
-        ![execution.row.task_revision, execution.row.task_revision + 1]
+          handlerExecution.row.adapter_ref_digest ||
+        ![handlerExecution.row.task_revision, handlerExecution.row.task_revision + 1]
           .includes(currentMetadata.revision) ||
-        (currentMetadata.revision === execution.row.task_revision + 1 &&
+        (currentMetadata.revision === handlerExecution.row.task_revision + 1 &&
           currentTask.state !== "ready")
       ) {
         throw codedError("threadmesh_finalized_dependency_attention_actor_mismatch");
@@ -3549,6 +3569,11 @@ export class SqliteCoordinator {
       }
       if (
         execution.intent.state !== "completed-turn-bound" ||
+        handlerExecution.intent.state !== "completed-turn-bound" ||
+        (admittedBusinessHandler &&
+          (handlerExecution.intent.messageId !== claim.message_id ||
+           handlerExecution.intent.actor.taskId !== claim.receiver_task_id ||
+           handlerExecution.intent.actor.incarnationId !== claim.receiver_incarnation_id)) ||
         execution.intent.actor.taskId !== claim.receiver_task_id ||
         execution.intent.actor.incarnationId !== claim.receiver_incarnation_id ||
         execution.intent.eventId !== claim.event_id ||
