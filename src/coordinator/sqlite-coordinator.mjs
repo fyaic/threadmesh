@@ -5387,6 +5387,93 @@ export class SqliteCoordinator {
     }).immediate();
   }
 
+  #hasPreverifiedAdmissionState(row, claim) {
+    return row.revision === claim.expected_revision + 2 &&
+      row.decision_state === "accepted" &&
+      row.delivery_state === "adapter-submitted" &&
+      row.outcome_state === "externally-verified";
+  }
+
+  #assertPreverifiedAdmissionProvenance(row, claim) {
+    const fail = (detail) => {
+      throw codedError("threadmesh_preverified_admission_provenance_invalid", detail);
+    };
+    if (!claim || !this.#hasPreverifiedAdmissionState(row, claim)) fail("state");
+    const submissions = this.db.prepare(
+      `SELECT * FROM adapter_submissions
+       WHERE sender_incarnation_id = ? AND message_id = ?`,
+    ).all(row.sender_incarnation_id, row.message_id);
+    const finalizations = this.db.prepare(
+      `SELECT * FROM git_evidence_dependency_finalizations
+       WHERE sender_incarnation_id = ? AND message_id = ?`,
+    ).all(row.sender_incarnation_id, row.message_id);
+    const satisfactions = this.db.prepare(
+      `SELECT * FROM dependency_satisfactions
+       WHERE sender_incarnation_id = ? AND message_id = ?`,
+    ).all(row.sender_incarnation_id, row.message_id);
+    if (submissions.length !== 1 || finalizations.length !== 1 ||
+        satisfactions.length !== 1) fail("cardinality");
+    const submission = submissions[0];
+    const finalization = finalizations[0];
+    const satisfaction = satisfactions[0];
+    const liveDisposition = this.db.prepare(
+      `SELECT updated_at FROM dispositions
+       WHERE sender_incarnation_id = ? AND message_id = ?`,
+    ).get(row.sender_incarnation_id, row.message_id);
+    const edge = this.db.prepare(
+      `SELECT * FROM dependency_edges
+       WHERE dependency_id = ? AND version = ?`,
+    ).get(finalization.dependency_id, finalization.edge_version);
+    let receipt;
+    let disposition;
+    try {
+      receipt = JSON.parse(submission.receipt_json);
+      disposition = JSON.parse(satisfaction.disposition_json);
+    } catch { fail("json"); }
+    if (
+      submission.state !== "receipt-recorded" ||
+      submission.sender_incarnation_id !== row.sender_incarnation_id ||
+      submission.message_id !== row.message_id ||
+      submission.expected_revision !== claim.expected_revision ||
+      submission.adapter_ref_digest !== claim.adapter_ref_digest ||
+      typeof receipt?.adapterOperationId !== "string" ||
+      !Number.isFinite(Date.parse(receipt?.acceptedAt ?? ""))
+    ) fail("receipt");
+    if (
+      finalization.sender_incarnation_id !== row.sender_incarnation_id ||
+      finalization.message_id !== row.message_id ||
+      satisfaction.sender_incarnation_id !== row.sender_incarnation_id ||
+      satisfaction.message_id !== row.message_id ||
+      satisfaction.dependency_id !== finalization.dependency_id ||
+      satisfaction.edge_version !== finalization.edge_version ||
+      satisfaction.disposition_digest !== finalization.disposition_digest ||
+      !edge || edge.status !== "waiting" || edge.revoked_at ||
+      edge.dependency_id !== finalization.dependency_id ||
+      edge.version !== finalization.edge_version
+    ) fail("finalization-link");
+    if (sha256Digest(disposition) !== finalization.disposition_digest) {
+      fail("disposition-digest");
+    }
+    if (
+      disposition.messageId !== row.message_id || disposition.revision !== row.revision ||
+      disposition.delivery?.state !== row.delivery_state ||
+      disposition.decision?.state !== row.decision_state ||
+      disposition.outcome?.state !== row.outcome_state
+    ) fail("disposition-state");
+    if (disposition.updatedAt !== liveDisposition?.updated_at) fail("disposition-time");
+    if (!sameTaskRef(disposition.receiver, {
+        taskId: row.target_task_id,
+        incarnationId: row.target_incarnation_id,
+      })) fail("disposition-receiver");
+    this.#validatePersistedGitEvidenceDependencyFinalizations();
+    return true;
+  }
+
+  #isProvenPreverifiedAdmission(row, claim) {
+    if (!claim || !this.#hasPreverifiedAdmissionState(row, claim)) return false;
+    return this.#assertPreverifiedAdmissionProvenance(row, claim);
+  }
+
   recoverContextAdmission(senderIncarnationId, messageId, principal) {
     const row = this.#message(senderIncarnationId, messageId);
     assertTaskPrincipal(principal, row.target_task_id, row.target_incarnation_id);
@@ -5401,10 +5488,7 @@ export class SqliteCoordinator {
     try { adapterRef = assertContextAdapterRef(JSON.parse(claim.adapter_ref_json)); } catch {
       throw codedError("threadmesh_context_admission_ref_invalid");
     }
-    const preverified = row.revision === claim.expected_revision + 2 &&
-      row.decision_state === "accepted" &&
-      row.delivery_state === "adapter-submitted" &&
-      row.outcome_state === "externally-verified";
+    const preverified = this.#isProvenPreverifiedAdmission(row, claim);
     if (
       sha256Digest(adapterRef) !== claim.adapter_ref_digest ||
       this.#admissionToken(
@@ -5464,10 +5548,7 @@ export class SqliteCoordinator {
       ) {
         throw codedError("threadmesh_context_admission_token_invalid");
       }
-      const preverified = row.revision === expectedRevision + 2 &&
-        row.decision_state === "accepted" &&
-        row.delivery_state === "adapter-submitted" &&
-        row.outcome_state === "externally-verified";
+      const preverified = this.#isProvenPreverifiedAdmission(row, claim);
       const ordinary = row.revision === expectedRevision &&
         row.decision_state === "accepted" &&
         ["durably-received", "checkpoint-offered"].includes(row.delivery_state);
@@ -5584,10 +5665,7 @@ export class SqliteCoordinator {
          WHERE (sender_incarnation_id = ? AND message_id = ?) OR execution_id = ?`,
       ).get(senderIncarnationId, messageId, executionId);
       if (existing) {
-        const replayPreverified = row.revision === expectedRevision + 2 &&
-          row.decision_state === "accepted" &&
-          row.delivery_state === "adapter-submitted" &&
-          row.outcome_state === "externally-verified";
+        const replayPreverified = this.#isProvenPreverifiedAdmission(row, claim);
         const replayOrdinary = row.revision === expectedRevision + 1 &&
           row.delivery_state === "context-admitted";
         if (
@@ -7281,6 +7359,14 @@ export class SqliteCoordinator {
     const fail = () => {
       throw codedError("threadmesh_lifecycle_binding_storage_tampered");
     };
+    for (const claim of this.db.prepare(
+      "SELECT * FROM admission_claims ORDER BY sender_incarnation_id, message_id",
+    ).all()) {
+      const message = this.#message(claim.sender_incarnation_id, claim.message_id);
+      if (this.#hasPreverifiedAdmissionState(message, claim)) {
+        this.#assertPreverifiedAdmissionProvenance(message, claim);
+      }
+    }
     for (const row of this.db.prepare(
       "SELECT * FROM lifecycle_action_publications ORDER BY execution_id, action_ordinal",
     ).all()) {
@@ -7539,10 +7625,7 @@ export class SqliteCoordinator {
         turnReceiptDigest: row.turn_receipt_digest,
         adapterEvidenceDigest: row.adapter_evidence_digest,
       };
-      const preverified = message.delivery_state === "adapter-submitted" &&
-        message.decision_state === "accepted" &&
-        message.outcome_state === "externally-verified" &&
-        message.revision === row.expected_revision + 2;
+      const preverified = this.#isProvenPreverifiedAdmission(message, claim);
       if (
         claim?.state !== "completed" ||
         (message.delivery_state !== "context-admitted" && !preverified) ||
@@ -7767,47 +7850,7 @@ export class SqliteCoordinator {
     }
   }
 
-  #validatePersistedGitEvidenceDependencyFinalizations() {
-    const bindings = this.db.prepare(
-      "SELECT * FROM git_evidence_dependency_bindings ORDER BY chain_id",
-    ).all();
-    for (const binding of bindings) {
-      const chain = this.#gitEvidenceSnapshot(binding.chain_id);
-      const edge = this.db.prepare(
-        `SELECT * FROM dependency_edges
-         WHERE dependency_id = ? AND version = ?`,
-      ).get(binding.dependency_id, binding.edge_version);
-      const body = edge && {
-        chainId: binding.chain_id,
-        requirementDigest: chain.requirement.requirementDigest,
-        dependencyId: binding.dependency_id,
-        edgeVersion: binding.edge_version,
-        verifier: {
-          taskId: chain.requirement.verifier.taskId,
-          incarnationId: chain.requirement.verifier.incarnationId,
-        },
-        dependent: {
-          taskId: edge.dependent_task_id,
-          incarnationId: edge.dependent_incarnation_id,
-        },
-      };
-      if (
-        !edge || binding.requirement_digest !== body.requirementDigest ||
-        binding.verifier_task_id !== body.verifier.taskId ||
-        binding.verifier_incarnation_id !== body.verifier.incarnationId ||
-        binding.dependent_task_id !== body.dependent.taskId ||
-        binding.dependent_incarnation_id !== body.dependent.incarnationId ||
-        binding.binding_digest !== sha256Digest(body) ||
-        edge.prerequisite_task_id !== body.verifier.taskId ||
-        edge.prerequisite_incarnation_id !== body.verifier.incarnationId
-      ) {
-        throw codedError("threadmesh_git_evidence_dependency_storage_tampered");
-      }
-    }
-    const rows = this.db.prepare(
-      "SELECT * FROM git_evidence_dependency_finalizations ORDER BY chain_id",
-    ).all();
-    for (const row of rows) {
+  #assertPersistedGitEvidenceDependencyFinalization(row) {
       const chain = this.#gitEvidenceSnapshot(row.chain_id);
       const execution = this.#turnExecutionSnapshot(row.execution_id);
       const action = execution.actions[row.action_ordinal];
@@ -7887,6 +7930,50 @@ export class SqliteCoordinator {
       ) {
         throw codedError("threadmesh_git_evidence_dependency_storage_tampered");
       }
+  }
+
+  #validatePersistedGitEvidenceDependencyFinalizations() {
+    const bindings = this.db.prepare(
+      "SELECT * FROM git_evidence_dependency_bindings ORDER BY chain_id",
+    ).all();
+    for (const binding of bindings) {
+      const chain = this.#gitEvidenceSnapshot(binding.chain_id);
+      const edge = this.db.prepare(
+        `SELECT * FROM dependency_edges
+         WHERE dependency_id = ? AND version = ?`,
+      ).get(binding.dependency_id, binding.edge_version);
+      const body = edge && {
+        chainId: binding.chain_id,
+        requirementDigest: chain.requirement.requirementDigest,
+        dependencyId: binding.dependency_id,
+        edgeVersion: binding.edge_version,
+        verifier: {
+          taskId: chain.requirement.verifier.taskId,
+          incarnationId: chain.requirement.verifier.incarnationId,
+        },
+        dependent: {
+          taskId: edge.dependent_task_id,
+          incarnationId: edge.dependent_incarnation_id,
+        },
+      };
+      if (
+        !edge || binding.requirement_digest !== body.requirementDigest ||
+        binding.verifier_task_id !== body.verifier.taskId ||
+        binding.verifier_incarnation_id !== body.verifier.incarnationId ||
+        binding.dependent_task_id !== body.dependent.taskId ||
+        binding.dependent_incarnation_id !== body.dependent.incarnationId ||
+        binding.binding_digest !== sha256Digest(body) ||
+        edge.prerequisite_task_id !== body.verifier.taskId ||
+        edge.prerequisite_incarnation_id !== body.verifier.incarnationId
+      ) {
+        throw codedError("threadmesh_git_evidence_dependency_storage_tampered");
+      }
+    }
+    const rows = this.db.prepare(
+      "SELECT * FROM git_evidence_dependency_finalizations ORDER BY chain_id",
+    ).all();
+    for (const row of rows) {
+      this.#assertPersistedGitEvidenceDependencyFinalization(row);
     }
   }
 

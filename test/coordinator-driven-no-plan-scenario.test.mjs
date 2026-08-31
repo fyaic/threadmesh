@@ -78,6 +78,7 @@ test("one pump autonomously closes A to R to same-A to V to dependent", async (t
   assert.equal(result.verification.nativeVerifierSessionIndependent, true);
   assert.match(result.verification.nativeVerifierTurnIdDigest, /^sha256:[a-f0-9]{64}$/u);
   assert.equal(result.verification.allLifecycleNativeTurnIdsDistinct, true);
+  assert.equal(result.verification.lifecycleNativeTurnCount, 9);
   assert.equal(result.verification.signatureVerified, true);
   assert.equal(result.verification.resultDigestBound, true);
   assert.match(result.verification.trustAnchorDigest, /^sha256:[a-f0-9]{64}$/u);
@@ -142,6 +143,49 @@ test("failed trusted finalization starts no dependent business turn", async (t) 
       return true;
     },
   );
+});
+
+test("preverified admission requires exact durable provenance before dependent turn", async (t) => {
+  for (const variant of [
+    "state-only",
+    "missing-receipt",
+    "missing-satisfaction",
+    "missing-finalization",
+    "wrong-digest",
+  ]) {
+    const artifactsDirectory = fs.mkdtempSync(
+      path.join(os.tmpdir(), `threadmesh-preverified-${variant}-`),
+    );
+    t.after(() => fs.rmSync(artifactsDirectory, { recursive: true, force: true }));
+    await assert.rejects(
+      () => runCoordinatorDrivenNoPlanScenario({
+        artifactsDirectory,
+        injectPreverifiedTamper: variant,
+      }),
+      (error) => {
+        assert.equal(error?.code, "threadmesh_preverified_admission_provenance_invalid");
+        assert.equal(error.failureEvidence.dependentBusinessTurnCount, 0, variant);
+        assert.equal(error.failureEvidence.dependentBusinessToolActionCount, 0, variant);
+        assert.ok([
+          "threadmesh_preverified_admission_provenance_invalid",
+          "threadmesh_git_evidence_dependency_storage_tampered",
+        ].includes(error.failureEvidence.tamperedReopenRejectionCode), variant);
+        assert.deepEqual(error.failureEvidence.sequence, [
+          "v-verification-tool-selected",
+          "verified-event-durable",
+          "dependent-admission-prepared",
+        ], variant);
+        assert.equal(error.failureEvidence.cleanupComplete, true, variant);
+        assert.equal(error.cleanup?.complete, true, variant);
+        if (variant === "state-only") {
+          assert.equal(error.failureEvidence.committedEffectCount, 0);
+          assert.equal(error.failureEvidence.edgeStatus, "waiting");
+          assert.equal(error.failureEvidence.taskState, "waiting");
+        }
+        return true;
+      },
+    );
+  }
 });
 
 test("pump never looks ahead past a prior relevant event", async (t) => {

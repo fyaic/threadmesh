@@ -439,10 +439,17 @@ export async function runCoordinatorDrivenNoPlanScenario({
   artifactsDirectory,
   injectPriorRelevant = false,
   injectFinalizationFailure = false,
+  injectPreverifiedTamper = null,
 }) {
+  const preverifiedTamperVariants = new Set([
+    "state-only", "missing-receipt", "missing-satisfaction",
+    "missing-finalization", "wrong-digest",
+  ]);
   if (!path.isAbsolute(artifactsDirectory ?? "") ||
       typeof injectPriorRelevant !== "boolean" ||
-      typeof injectFinalizationFailure !== "boolean") {
+      typeof injectFinalizationFailure !== "boolean" ||
+      (injectPreverifiedTamper !== null &&
+        !preverifiedTamperVariants.has(injectPreverifiedTamper))) {
     throw new Error("threadmesh_coordinator_driven_artifacts_invalid");
   }
   fs.mkdirSync(artifactsDirectory, { recursive: true });
@@ -559,6 +566,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
   let evidenceRevision = 0;
   let evidenceHead = null;
   let verification = null;
+  let tamperedReopenRejectionCode = null;
   const verifiedActivationOrder = [];
   const cleanupRoles = [];
   try {
@@ -769,6 +777,23 @@ export async function runCoordinatorDrivenNoPlanScenario({
     let dependentActivation = null;
     let finalized = null;
     let dependentActivationCommitted = false;
+    const recordTamperedReopen = () => {
+      let reopened = null;
+      try {
+        reopened = new SqliteCoordinator({
+          filename: databasePath,
+          clock: () => NOW,
+          verificationTrustAnchors: [trustAnchor],
+        });
+      } catch (error) {
+        tamperedReopenRejectionCode = error.code ?? "unknown_reopen_rejection";
+      } finally {
+        reopened?.close();
+      }
+      if (!tamperedReopenRejectionCode) {
+        throw new Error("threadmesh_preverified_tamper_reopen_accepted");
+      }
+    };
     const pump = createAutonomousEventPump({
       coordinator,
       runtime,
@@ -921,6 +946,20 @@ export async function runCoordinatorDrivenNoPlanScenario({
         businessTool: TOOLS.dependent,
         async afterAdmissionPrepared() {
           verifiedActivationOrder.push("dependent-admission-prepared");
+          if (injectPreverifiedTamper === "state-only") {
+            coordinator.db.prepare(
+              `UPDATE dispositions SET revision = 3, decision_state = 'accepted',
+                 delivery_state = 'adapter-submitted', outcome_state = 'externally-verified'
+               WHERE sender_incarnation_id = ? AND message_id = ?`,
+            ).run(actors.v.incarnationId, verifiedEvent.messageId);
+            coordinator.db.prepare(
+              `UPDATE audit_events SET revision = 3
+               WHERE sender_incarnation_id = ? AND message_id = ?
+                 AND event_type = 'receiver-decided'`,
+            ).run(actors.v.incarnationId, verifiedEvent.messageId);
+            recordTamperedReopen();
+            return;
+          }
           recordDependentAdapterReceipt(
             coordinator, actors.v, actors.dependent, verifiedEvent, 1,
           );
@@ -955,6 +994,35 @@ export async function runCoordinatorDrivenNoPlanScenario({
           );
           evidenceRevision = finalized.evidenceState.recordCount;
           evidenceHead = finalized.evidenceState.headDigest;
+          if (injectPreverifiedTamper) {
+            if (injectPreverifiedTamper === "missing-receipt") {
+              coordinator.db.prepare(
+                `DELETE FROM adapter_submissions
+                 WHERE sender_incarnation_id = ? AND message_id = ?`,
+              ).run(actors.v.incarnationId, verifiedEvent.messageId);
+            } else if (injectPreverifiedTamper === "missing-satisfaction") {
+              coordinator.db.pragma("foreign_keys = OFF");
+              coordinator.db.prepare(
+                "DELETE FROM dependency_satisfactions WHERE dependency_id = ?",
+              ).run("dependency_no_plan_verified");
+              coordinator.db.pragma("foreign_keys = ON");
+            } else if (injectPreverifiedTamper === "missing-finalization") {
+              coordinator.db.prepare(
+                `DELETE FROM git_evidence_dependency_finalizations
+                 WHERE dependency_id = ?`,
+              ).run("dependency_no_plan_verified");
+            } else if (injectPreverifiedTamper === "wrong-digest") {
+              coordinator.db.prepare(
+                `UPDATE dependency_satisfactions SET disposition_digest = ?
+                 WHERE dependency_id = ?`,
+              ).run(
+                digest("tampered-preverified-disposition"),
+                "dependency_no_plan_verified",
+              );
+            }
+            recordTamperedReopen();
+            return;
+          }
           promoteAttention(coordinator, verifierActivation, finalized, actors.v);
           const edge = coordinator.getDependencyEdge(
             "dependency_no_plan_verified", principal(actors.dependent),
@@ -1091,6 +1159,8 @@ export async function runCoordinatorDrivenNoPlanScenario({
       sameAActivation.businessTurnEvidence?.turnId,
       verifierActivation.decisionTurnEvidence?.turnId,
       verifierActivation.businessTurnEvidence?.turnId,
+      dependentActivation.decisionTurnEvidence?.turnId,
+      dependentActivation.businessTurnEvidence?.turnId,
     ];
     const selectionBindings = pump.selectionRecords.map((record) => ({
       kind: record.kind,
@@ -1158,6 +1228,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
         ),
         allLifecycleNativeTurnIdsDistinct:
           nativeTurnIds.every(Boolean) && new Set(nativeTurnIds).size === nativeTurnIds.length,
+        lifecycleNativeTurnCount: nativeTurnIds.length,
         signatureVerified: true,
         trustAnchorDigest: sha256Digest(trustAnchor),
         resultDigestBound: coordinator.getTurnExecution(
@@ -1206,7 +1277,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
       },
     };
   } catch (error) {
-    if (injectFinalizationFailure) {
+    if (injectFinalizationFailure || injectPreverifiedTamper) {
       let edgeStatus = "unavailable";
       let taskState = "unavailable";
       try {
@@ -1231,6 +1302,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
         edgeStatus,
         taskState,
         sequence: [...verifiedActivationOrder],
+        ...(injectPreverifiedTamper ? { tamperedReopenRejectionCode } : {}),
       };
     }
     failure = error;
