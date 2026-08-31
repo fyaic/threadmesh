@@ -56,6 +56,27 @@ const DEFAULT_DECISION_REASONS = Object.freeze({
   unsupported: "unsupported-intent",
   revoked: "revoked",
 });
+
+function receiverDecisionActionResultDigest(messageId, decision) {
+  return sha256Digest({
+    state: "selection-staged",
+    authority: "non-authoritative",
+    selectionDigest: sha256Digest({ messageId, decision }),
+  });
+}
+
+function exactReceiverDecisionActionResult(
+  action,
+  decisionProjection,
+  { allowLegacyProjectionDigest = false } = {},
+) {
+  return (allowLegacyProjectionDigest &&
+      action?.resultDigest === sha256Digest(decisionProjection)) ||
+    action?.resultDigest === receiverDecisionActionResultDigest(
+      decisionProjection?.messageId,
+      decisionProjection?.decision?.state,
+    );
+}
 const PURGED_TEXT = "Content purged by the ThreadMesh retention policy.";
 const GIT_EVIDENCE_STAGE_TOOL = Object.freeze({
   implementation: "threadmesh_publish_artifact",
@@ -3017,17 +3038,21 @@ export class SqliteCoordinator {
       }
       const materialKeys = Object.keys(expectedMaterial ?? {}).sort();
       const expectedKeys = [...(specification?.materialKeys ?? [])].sort();
-      const expectedArguments = specification ? {
-        sourceEventId: execution.intent.eventId,
+      const expectedArguments = specification ? [
+        execution.intent.eventId,
+        execution.intent.messageId,
+      ].map((sourceEventId) => ({
+        sourceEventId,
         event: boundedLifecycleActionEventBody(event),
         ...expectedMaterial,
-      } : null;
+      })) : [];
       if (
         !["completed-turn-bound", "promoted"].includes(execution.intent.state) ||
         !action || action.name !== expectedTool || !action.actionDigest ||
         action.resultStatus !== "completed" || specification?.eventType !== event.eventType ||
         canonicalJson(materialKeys) !== canonicalJson(expectedKeys) ||
-        canonicalJson(argumentsValue) !== canonicalJson(expectedArguments) ||
+        !expectedArguments.some((candidate) =>
+          canonicalJson(argumentsValue) === canonicalJson(candidate)) ||
         execution.intent.turnStart?.turnId !== action.turnId ||
         execution.intent.actor.taskId !== event.sender.taskId ||
         execution.intent.actor.incarnationId !== event.sender.incarnationId
@@ -3324,7 +3349,9 @@ export class SqliteCoordinator {
         if (
           existing.binding_digest !== sha256Digest(candidate) ||
           existing.route_projection_json !== canonicalJson(routeProjection) ||
-          action.resultDigest !== existing.decision_projection_digest ||
+          !exactReceiverDecisionActionResult(action, decisionProjection, {
+            allowLegacyProjectionDigest: true,
+          }) ||
           !isDecisionReasonAllowed(
             decisionProjection.decision?.state,
             decisionProjection.decision?.reasonCode,
@@ -3349,7 +3376,7 @@ export class SqliteCoordinator {
         },
       };
       const decisionProjectionDigest = sha256Digest(decisionProjection);
-      if (action.resultDigest !== decisionProjectionDigest) {
+      if (!exactReceiverDecisionActionResult(action, decisionProjection)) {
         throw codedError("threadmesh_receiver_decision_result_mismatch");
       }
       const binding = {
@@ -3392,6 +3419,32 @@ export class SqliteCoordinator {
       );
       return { replay: false, bindingDigest, decisionProjection, disposition };
     }).immediate();
+  }
+
+  recoverReceiverDecisionCommit(
+    claimEpoch,
+    receiverDecisionExecutionId,
+    principal,
+  ) {
+    const claim = this.#attentionClaimRow(claimEpoch);
+    assertTaskPrincipal(
+      principal, claim.receiver_task_id, claim.receiver_incarnation_id,
+    );
+    const row = this.db.prepare(
+      `SELECT * FROM attention_route_decision_bindings
+       WHERE claim_epoch = ? AND receiver_decision_execution_id = ?`,
+    ).get(claimEpoch, receiverDecisionExecutionId);
+    if (!row) throw codedError("threadmesh_receiver_decision_commit_missing");
+    this.#validatePersistedLifecycleBindings();
+    let decisionProjection;
+    try { decisionProjection = JSON.parse(row.decision_projection_json); } catch {
+      throw codedError("threadmesh_receiver_decision_binding_tampered");
+    }
+    return Object.freeze({
+      replay: true,
+      bindingDigest: row.binding_digest,
+      decisionProjection: Object.freeze(decisionProjection),
+    });
   }
 
   promoteAttentionHandler(
@@ -3539,7 +3592,9 @@ export class SqliteCoordinator {
       if (
         !decisionProjection ||
         decisionProjection.decision.state !== args.decision ||
-        action.resultDigest !== sha256Digest(decisionProjection)
+        !exactReceiverDecisionActionResult(action, decisionProjection, {
+          allowLegacyProjectionDigest: true,
+        })
       ) {
         throw codedError("threadmesh_finalized_dependency_attention_decision_result_mismatch");
       }
@@ -5307,6 +5362,54 @@ export class SqliteCoordinator {
     }).immediate();
   }
 
+  recoverContextAdmission(senderIncarnationId, messageId, principal) {
+    const row = this.#message(senderIncarnationId, messageId);
+    assertTaskPrincipal(principal, row.target_task_id, row.target_incarnation_id);
+    const claim = this.db.prepare(
+      `SELECT * FROM admission_claims
+       WHERE sender_incarnation_id = ? AND message_id = ?`,
+    ).get(senderIncarnationId, messageId);
+    if (!claim || !["in-flight", "completed"].includes(claim.state)) {
+      throw codedError("threadmesh_context_admission_missing");
+    }
+    let adapterRef;
+    try { adapterRef = assertContextAdapterRef(JSON.parse(claim.adapter_ref_json)); } catch {
+      throw codedError("threadmesh_context_admission_ref_invalid");
+    }
+    if (
+      sha256Digest(adapterRef) !== claim.adapter_ref_digest ||
+      this.#admissionToken(
+        row, claim.expected_revision, claim.nonce, claim.adapter_ref_digest,
+      ) !== claim.admission_token ||
+      (claim.state === "in-flight" && (
+        row.revision !== claim.expected_revision ||
+        row.decision_state !== "accepted" ||
+        !["durably-received", "checkpoint-offered"].includes(row.delivery_state)
+      )) ||
+      (claim.state === "completed" && (
+        row.revision !== claim.expected_revision + 1 ||
+        row.delivery_state !== "context-admitted"
+      ))
+    ) throw codedError("threadmesh_context_admission_binding_invalid");
+    const envelope = JSON.parse(row.envelope_json);
+    const admission = {
+      decision: "accepted",
+      receiverIncarnationId: envelope.target.incarnationId,
+      revision: claim.expected_revision,
+    };
+    return Object.freeze({
+      state: claim.state,
+      prepared: Object.freeze({
+        admissionToken: claim.admission_token,
+        adapterRef,
+        envelope,
+        admission,
+        revision: claim.expected_revision,
+        rendering: renderRegisteredPeerContext(envelope),
+      }),
+    });
+  }
+
   confirmContextAdmission(
     senderIncarnationId,
     messageId,
@@ -6341,6 +6444,33 @@ export class SqliteCoordinator {
     };
   }
 
+  readAttentionEvents(taskRef, { afterCursor = 0, limit = 50 } = {}, principal) {
+    assertTaskPrincipal(principal, taskRef.taskId, taskRef.incarnationId);
+    if (!Number.isInteger(afterCursor) || afterCursor < 0 ||
+        !Number.isInteger(limit) || limit < 1 || limit > 100) {
+      throw codedError("threadmesh_attention_cursor_read_invalid");
+    }
+    const rows = this.db.prepare(
+      `SELECT a.sequence AS cursor, a.event_id AS eventId,
+              a.event_type AS eventType, a.revision,
+              a.detail_json AS detailJson, a.occurred_at AS occurredAt,
+              a.sender_incarnation_id AS senderIncarnationId,
+              a.message_id AS messageId
+       FROM audit_events a
+       JOIN messages m USING (sender_incarnation_id, message_id)
+       WHERE a.sequence > ? AND a.event_type = 'message-durably-received'
+         AND m.target_task_id = ? AND m.target_incarnation_id = ?
+       ORDER BY a.sequence ASC LIMIT ?`,
+    ).all(
+      afterCursor, taskRef.taskId, taskRef.incarnationId, limit,
+    );
+    return {
+      events: rows.map((event) => ({ ...event, detail: JSON.parse(event.detailJson) })),
+      nextCursor: rows.at(-1)?.cursor ?? afterCursor,
+      timedOut: rows.length === 0,
+    };
+  }
+
   #currentDependencyEdgeRow(dependencyId, required = true) {
     if (typeof dependencyId !== "string" || dependencyId.length === 0) {
       throw codedError("threadmesh_dependency_edge_invalid", "dependencyId");
@@ -7160,7 +7290,8 @@ export class SqliteCoordinator {
         execution.intent.actor.taskId !== event.sender.taskId ||
         execution.intent.actor.incarnationId !== event.sender.incarnationId ||
         canonicalJson(actionArgumentKeys) !== canonicalJson(expectedArgumentKeys) ||
-        actionArguments?.sourceEventId !== execution.intent.eventId ||
+        ![execution.intent.eventId, execution.intent.messageId]
+          .includes(actionArguments?.sourceEventId) ||
         canonicalJson(actionArguments?.event) !==
           canonicalJson(boundedLifecycleActionEventBody(event)) ||
         event.sender.incarnationId !== row.sender_incarnation_id ||
@@ -7285,7 +7416,9 @@ export class SqliteCoordinator {
           messageId: claim.message_id,
           decision: decisionProjection.decision?.state,
         }) ||
-        action.resultDigest !== row.decision_projection_digest ||
+        !exactReceiverDecisionActionResult(action, decisionProjection, {
+          allowLegacyProjectionDigest: true,
+        }) ||
         row.decision_projection_json !== canonicalJson(decisionProjection) ||
         !hasExactKeys(decisionProjection, ["messageId", "receiver", "decision"]) ||
         !hasExactKeys(decisionProjection.receiver, ["taskId", "incarnationId"]) ||

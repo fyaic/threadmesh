@@ -223,9 +223,55 @@ function routeProjection(sourceEvent) {
   });
 }
 
+function stagedDecisionDigest(messageId, decision) {
+  return sha256Digest({
+    state: "selection-staged",
+    authority: "non-authoritative",
+    selectionDigest: sha256Digest({ messageId, decision }),
+  });
+}
+
 function expectCode(operation, code) {
   assert.throws(operation, (error) => error?.code === code);
 }
+
+test("lifecycle source binds to intent event/message id and rejects a third value", () => {
+  for (const [suffix, sourceEventId, accepted] of [
+    ["message_source", "msg_v8_artifact_01", true],
+    ["third_source", "event_unbound_third_value", false],
+  ]) {
+    const temporary = temporaryDatabase();
+    const coordinator = setup(temporary.filename);
+    try {
+      const sourceEvent = event();
+      const execution = completedExecution({
+        coordinator, actor: sender, suffix,
+        messageId: sourceEvent.messageId, eventId: `evt_v8_${suffix}`,
+        tool: "threadmesh_publish_artifact",
+        argumentsValue: {
+          sourceEventId,
+          event: actionEventBody(sourceEvent),
+          commitSha: "1".repeat(40),
+        },
+        resultDigest: sha256Digest({ published: true }),
+      });
+      const publish = () => coordinator.publishLifecycleFromCompletedAction(
+        execution.executionId,
+        {
+          expectedTool: "threadmesh_publish_artifact",
+          event: sourceEvent,
+          expectedMaterial: { commitSha: "1".repeat(40) },
+        },
+        senderPrincipal,
+      );
+      if (accepted) assert.equal(publish().replay, false);
+      else expectCode(publish, "threadmesh_lifecycle_publication_action_mismatch");
+    } finally {
+      coordinator.close();
+      temporary.cleanup();
+    }
+  }
+});
 
 function turnIntentHeaderDigest(intent) {
   return sha256Digest({
@@ -332,7 +378,7 @@ test("v8 atomically binds lifecycle publication, receiver decision, and admitted
       coordinator, actor: receiver, suffix: "decision", messageId: sourceEvent.messageId,
       eventId: observed.eventId, tool: "threadmesh_decide_offer",
       argumentsValue: { messageId: sourceEvent.messageId, decision: "accepted" },
-      resultDigest: sha256Digest(decisionProjection),
+      resultDigest: stagedDecisionDigest(sourceEvent.messageId, "accepted"),
     });
     const decision = coordinator.commitReceiverDecision(claim.claimEpoch, {
       routeProjection: routeProjection(sourceEvent),
@@ -986,7 +1032,7 @@ test("v8 preserves a bound deferred decision across a legal later acceptance", (
       messageId: sourceEvent.messageId, eventId: observed.eventId,
       tool: "threadmesh_decide_offer",
       argumentsValue: { messageId: sourceEvent.messageId, decision: "deferred" },
-      resultDigest: sha256Digest(deferredProjection),
+      resultDigest: stagedDecisionDigest(sourceEvent.messageId, "deferred"),
     });
     coordinator.commitReceiverDecision(claim.claimEpoch, {
       routeProjection: routeProjection(sourceEvent),
@@ -1061,7 +1107,7 @@ test("v8 binding insert failures roll back publication, acknowledge, and admissi
       coordinator, actor: receiver, suffix: "atomic-decision", messageId: sourceEvent.messageId,
       eventId: observed.eventId, tool: "threadmesh_decide_offer",
       argumentsValue: { messageId: sourceEvent.messageId, decision: "accepted" },
-      resultDigest: sha256Digest(decisionProjection),
+      resultDigest: stagedDecisionDigest(sourceEvent.messageId, "accepted"),
     });
     coordinator.db.exec(`
       CREATE TRIGGER fail_v8_decision BEFORE INSERT ON attention_route_decision_bindings

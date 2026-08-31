@@ -1,0 +1,543 @@
+import fs from "node:fs";
+import path from "node:path";
+
+import { runCoordinatorActivation } from
+  "../activation/coordinator-activation-driver.mjs";
+import { sha256Digest } from "../canonical-json.mjs";
+import { SqliteCoordinator } from "../coordinator/sqlite-coordinator.mjs";
+import {
+  evaluateAttentionRoute,
+  projectLifecycleEventToEnvelope,
+} from "../routing/lifecycle-events.mjs";
+import { retireM52LiveTurnJournal } from "./m5-2-live-turn-journal.mjs";
+import {
+  CodexLiveAgentRuntime,
+  REGISTERED_PEER_DECISION_TOOL,
+} from "./live-agent-scenario.mjs";
+import { DeterministicNoPlanCodexAdapter } from
+  "./deterministic-no-plan-codex-adapter.mjs";
+
+const NOW = Date.parse("2026-09-01T08:00:00.000Z");
+const CREATED_AT = "2026-09-01T07:00:00.000Z";
+const EXPIRES_AT = "2026-09-01T10:00:00.000Z";
+const owner = Object.freeze({ kind: "user", principalId: "owner_no_plan_scenario" });
+
+function principal(actor) {
+  return { kind: "task", taskId: actor.taskId, incarnationId: actor.incarnationId };
+}
+
+function taskRef(actor) {
+  return { taskId: actor.taskId, incarnationId: actor.incarnationId };
+}
+
+function tool(name, description) {
+  return Object.freeze({
+    type: "function",
+    name,
+    description,
+    inputSchema: Object.freeze({ type: "object", additionalProperties: true }),
+  });
+}
+
+const TOOLS = Object.freeze({
+  implementation: tool("threadmesh_publish_artifact", "Publish the bounded implementation."),
+  review: tool("threadmesh_report_review_finding", "Publish the exact review finding."),
+  fix: tool("threadmesh_publish_dependency", "Publish the bounded review fix."),
+});
+
+function actionEventBody(event) {
+  return {
+    eventType: event.eventType,
+    messageId: event.messageId,
+    target: { ...event.target },
+    relationshipId: event.relationshipId,
+    content: event.content,
+    reason: event.reason,
+    evidenceRefs: [...(event.evidenceRefs ?? [])],
+    freshness: event.freshness ? { ...event.freshness } : null,
+    causality: event.causality ?? null,
+  };
+}
+
+function lifecycleEvent({ eventType, messageId, sender, target, relationshipId, content }) {
+  return {
+    eventType,
+    messageId,
+    sender: {
+      taskId: sender.taskId, incarnationId: sender.incarnationId,
+      actorType: "agent", harness: "codex",
+    },
+    target: {
+      taskId: target.taskId, incarnationId: target.incarnationId, harness: "codex",
+    },
+    relationshipId,
+    content,
+    reason: "A completed model-selected ThreadMesh action published this event.",
+    evidenceRefs: [],
+    freshness: { expectedObjectiveVersion: 1 },
+    createdAt: new Date(NOW).toISOString(),
+    expiresAt: EXPIRES_AT,
+  };
+}
+
+function grant(id, source, target) {
+  return {
+    specVersion: "0.0-draft",
+    grantId: `grant_${id}`,
+    grantVersion: 1,
+    relationshipId: `rel_${id}`,
+    relationshipType: "peer",
+    source: taskRef(source),
+    target: taskRef(target),
+    allowedIntents: ["suggest"],
+    allowedDeliveryModes: ["checkpoint-offer"],
+    summaryVisibility: "coordination",
+    structuredGateResponses: false,
+    createdAt: CREATED_AT,
+    expiresAt: EXPIRES_AT,
+  };
+}
+
+function completionBinding(turn, execution) {
+  return {
+    evidence: turn.evidence,
+    receipt: turn.receipt,
+    adapterReceiptDigest: sha256Digest(turn.receipt),
+    toolCalls: execution.actions.map((action) => ({
+      ordinal: action.ordinal,
+      turnId: action.turnId,
+      callId: action.callId,
+      tool: action.name,
+      argumentsDigest: action.argumentsDigest,
+      outputDigest: action.resultDigest,
+      resultStatus: action.resultStatus,
+    })),
+    nonThreadMeshToolCalls: 0,
+  };
+}
+
+function route(coordinator, event, receiver, source, currentGrant, subscribedEventTypes) {
+  return evaluateAttentionRoute({
+    event,
+    receiverTask: taskRef(receiver),
+    subscribedEventTypes,
+    seenMessageIds: [],
+    grant: currentGrant,
+    currentGrant,
+    sourceTask: source,
+    targetTask: { ...receiver, objectiveVersion: 1 },
+    now: NOW,
+  });
+}
+
+async function runKickoff({ coordinator, runtime, actor, ref, event, args, cwd, recoveryDirectory }) {
+  const actorPrincipal = principal(actor);
+  const executionId = "intent_no_plan_user_kickoff";
+  const adapterIdempotencyKey = "idem_coordinator_driven_no_plan_a_user-kickoff";
+  let execution = coordinator.createTurnExecutionIntent({
+    intentId: executionId,
+    scenarioId: "coordinator_driven_no_plan",
+    chainId: "chain_coordinator_driven_no_plan",
+    messageId: event.messageId,
+    eventId: "event_authenticated_user_kickoff",
+    actor,
+    adapterIdempotencyKey,
+    promptDigest: sha256Digest(`Implement and publish source ${event.messageId}.`),
+    allowedTools: [TOOLS.implementation.name],
+  }, 0, actorPrincipal);
+  const filename = path.join(recoveryDirectory, `${executionId}.json`);
+  const turn = await runtime.runTurn({
+    role: "a",
+    phase: "user-kickoff",
+    cwd,
+    ref,
+    prompt: `Implement and publish source ${event.messageId}.`,
+    scenarioId: "coordinator_driven_no_plan",
+    allowedToolNames: [TOOLS.implementation.name],
+    turnRecovery: {
+      filename, executionId,
+      async onOutcomeUnknown() {}, async onTerminalReconciliation() {},
+    },
+    beforeTurnStart: async ({ adapterIdempotencyKey: actual }) => {
+      if (actual !== adapterIdempotencyKey) throw new Error("kickoff adapter key mismatch");
+      execution = coordinator.markTurnExecutionStarted(
+        executionId, { expectedRevision: execution.revision }, actorPrincipal,
+      );
+    },
+    onTurnStarted: async ({ turnId }) => {
+      execution = coordinator.bindStartedTurnExecutionOperation(
+        executionId, { turnId, expectedRevision: execution.revision }, actorPrincipal,
+      );
+    },
+    beforeToolCall: async (selected) => {
+      execution = coordinator.recordModelSelectedTurnToolAction(executionId, {
+        turnId: selected.turnId, callId: selected.callId, ordinal: selected.ordinal,
+        name: selected.tool, arguments: selected.arguments,
+        expectedRevision: execution.revision,
+        expectedActionHeadDigest: execution.actionHeadDigest,
+      }, actorPrincipal);
+    },
+    async onToolCall() { return { commitSha: args.commitSha, published: true }; },
+    afterToolCall: async (completed) => {
+      execution = coordinator.completeModelSelectedTurnToolAction(executionId, {
+        turnId: completed.turnId, callId: completed.callId, ordinal: completed.ordinal,
+        resultDigest: completed.outputDigest, resultStatus: completed.resultStatus,
+        expectedRevision: execution.revision,
+        expectedActionHeadDigest: execution.actionHeadDigest,
+      }, actorPrincipal);
+    },
+  });
+  execution = coordinator.bindCompletedTurnExecution(executionId, {
+    binding: completionBinding(turn, execution), expectedRevision: execution.revision,
+  }, actorPrincipal);
+  retireM52LiveTurnJournal({
+    filename,
+    expectedScenarioId: "coordinator_driven_no_plan",
+    expectedExecutionId: executionId,
+    expectedRecordDigest: turn.recoveryJournal.recordDigest,
+  });
+  coordinator.publishLifecycleFromCompletedAction(executionId, {
+    expectedTool: TOOLS.implementation.name,
+    event,
+    expectedMaterial: { commitSha: args.commitSha },
+  }, actorPrincipal);
+  return { execution, turn };
+}
+
+function registerTask(coordinator, actor, ref) {
+  const registered = { ...actor, threadId: ref.threadId, snapshotDigest: ref.snapshotDigest };
+  coordinator.registerTask({
+    taskId: actor.taskId,
+    incarnationId: actor.incarnationId,
+    harness: "codex",
+    state: "idle",
+    runtime: { objectiveVersion: 1 },
+    adapterRef: ref,
+  }, owner);
+  return registered;
+}
+
+export async function runCoordinatorDrivenNoPlanScenario({
+  artifactsDirectory,
+  injectPriorRelevant = false,
+}) {
+  if (!path.isAbsolute(artifactsDirectory ?? "") ||
+      typeof injectPriorRelevant !== "boolean") {
+    throw new Error("threadmesh_coordinator_driven_artifacts_invalid");
+  }
+  fs.mkdirSync(artifactsDirectory, { recursive: true });
+  const databasePath = path.join(artifactsDirectory, "coordinator-driven.sqlite");
+  const coordinator = new SqliteCoordinator({ filename: databasePath, clock: () => NOW });
+  const actors = {
+    a: { taskId: "task_no_plan_a", incarnationId: "inc_no_plan_a_0001" },
+    r: { taskId: "task_no_plan_r", incarnationId: "inc_no_plan_r_0001" },
+    irrelevant: {
+      taskId: "task_no_plan_irrelevant", incarnationId: "inc_no_plan_irrelevant_0001",
+    },
+    v: { taskId: "task_no_plan_v_pending", incarnationId: "inc_no_plan_v_pending_0001" },
+  };
+  const grants = {
+    ar: grant("no_plan_a_r", actors.a, actors.r),
+    ra: grant("no_plan_r_a", actors.r, actors.a),
+    ai: grant("no_plan_a_irrelevant", actors.a, actors.irrelevant),
+  };
+  const implementationSha = "1".repeat(40);
+  const fixSha = "2".repeat(40);
+  const findingDigest = sha256Digest({
+    finding: "The bounded candidate returns 41 instead of the required 42.",
+  });
+  const artifactEvent = lifecycleEvent({
+    eventType: "artifact-ready",
+    messageId: "msg_no_plan_artifact_0001",
+    sender: actors.a,
+    target: actors.r,
+    relationshipId: grants.ar.relationshipId,
+    content: `Candidate ${implementationSha} is ready for exact review.`,
+  });
+  const reviewEvent = lifecycleEvent({
+    eventType: "review-failed",
+    messageId: "msg_no_plan_review_0001",
+    sender: actors.r,
+    target: actors.a,
+    relationshipId: grants.ra.relationshipId,
+    content: "Blocking finding: the bounded candidate returns 41, not 42.",
+  });
+  const pendingFixEvent = lifecycleEvent({
+    eventType: "artifact-ready",
+    messageId: "msg_no_plan_fix_pending_v_0001",
+    sender: actors.a,
+    target: actors.v,
+    relationshipId: "rel_no_plan_a_v_pending",
+    content: `Review fix ${fixSha} is ready; V is intentionally pending in this partial gate.`,
+  });
+  const irrelevantEvent = lifecycleEvent({
+    eventType: "artifact-ready",
+    messageId: "msg_no_plan_irrelevant_0001",
+    sender: actors.a,
+    target: actors.irrelevant,
+    relationshipId: grants.ai.relationshipId,
+    content: "Authorized negative control that is outside the receiver subscription.",
+  });
+  const priorRelevantEvent = lifecycleEvent({
+    eventType: "artifact-ready",
+    messageId: "msg_no_plan_prior_relevant_0001",
+    sender: actors.a,
+    target: actors.r,
+    relationshipId: grants.ar.relationshipId,
+    content: "A prior relevant event must never be skipped for a later expected message.",
+  });
+
+  let refs = {};
+  let runtime;
+  let result;
+  let failure;
+  const cleanupRoles = [];
+  try {
+    const adapter = new DeterministicNoPlanCodexAdapter({
+      decideTurn(canonicalInput) {
+        const input = JSON.parse(canonicalInput);
+        const selectedTool = input.dynamicTools[0]?.name;
+        const knownMessage = [artifactEvent, reviewEvent]
+          .find(({ messageId }) => input.prompt.includes(messageId));
+        if (selectedTool === REGISTERED_PEER_DECISION_TOOL.name) {
+          return {
+            text: "Accepted from coordinator-owned offer metadata.",
+            toolCalls: [{
+              tool: selectedTool,
+              arguments: { messageId: knownMessage.messageId, decision: "accepted" },
+            }],
+          };
+        }
+        if (selectedTool === TOOLS.implementation.name) {
+          return { text: "Implementation published.", toolCalls: [{
+            tool: selectedTool,
+            arguments: {
+              sourceEventId: artifactEvent.messageId,
+              event: actionEventBody(artifactEvent), commitSha: implementationSha,
+            },
+          }] };
+        }
+        if (selectedTool === TOOLS.review.name) {
+          return { text: "Blocking review finding published.", toolCalls: [{
+            tool: selectedTool,
+            arguments: {
+              sourceEventId: knownMessage.messageId,
+              event: actionEventBody(reviewEvent), findingDigest,
+            },
+          }] };
+        }
+        if (selectedTool === TOOLS.fix.name) {
+          return { text: "Same implementer task applied the fix.", toolCalls: [{
+            tool: selectedTool,
+            arguments: {
+              sourceEventId: knownMessage.messageId,
+              event: actionEventBody(pendingFixEvent), commitSha: fixSha,
+            },
+          }] };
+        }
+        return { text: "No relevant action.", toolCalls: [] };
+      },
+    });
+    runtime = new CodexLiveAgentRuntime({ command: "/fake/codex", adapter });
+    refs.a = await runtime.createRole({
+      role: "a", cwd: artifactsDirectory,
+      tools: [TOOLS.implementation, REGISTERED_PEER_DECISION_TOOL, TOOLS.fix],
+      phaseTools: {
+        "user-kickoff": [TOOLS.implementation],
+        "receiver-decision": [REGISTERED_PEER_DECISION_TOOL],
+        "same-a-fix": [TOOLS.fix],
+      },
+      protectedPhases: {
+        "receiver-decision": "receiver-decision", "same-a-fix": "admitted-tool",
+      },
+      instructions: "Use only the current coordinator-admitted dynamic tool.",
+      scenarioId: "coordinator_driven_no_plan",
+    });
+    refs.r = await runtime.createRole({
+      role: "r", cwd: artifactsDirectory,
+      tools: [REGISTERED_PEER_DECISION_TOOL, TOOLS.review],
+      phaseTools: {
+        "receiver-decision": [REGISTERED_PEER_DECISION_TOOL], "r-review": [TOOLS.review],
+      },
+      protectedPhases: {
+        "receiver-decision": "receiver-decision", "r-review": "admitted-tool",
+      },
+      instructions: "Review only coordinator-admitted context.",
+      scenarioId: "coordinator_driven_no_plan",
+    });
+    refs.irrelevant = await runtime.createRole({
+      role: "irrelevant", cwd: artifactsDirectory,
+      tools: [REGISTERED_PEER_DECISION_TOOL],
+      instructions: "Remain idle unless coordinator attention is relevant.",
+      scenarioId: "coordinator_driven_no_plan",
+    });
+    actors.a = registerTask(coordinator, actors.a, refs.a);
+    actors.r = registerTask(coordinator, actors.r, refs.r);
+    actors.irrelevant = registerTask(coordinator, actors.irrelevant, refs.irrelevant);
+    for (const [index, current] of Object.values(grants).entries()) {
+      coordinator.issueGrant(current, {
+        decisionId: `decision_no_plan_${index}`,
+        authenticationId: `authn_no_plan_${index}`,
+        decidedAt: CREATED_AT,
+      }, owner);
+    }
+    if (injectPriorRelevant) {
+      coordinator.submit(
+        projectLifecycleEventToEnvelope(priorRelevantEvent),
+        principal(actors.a),
+      );
+    }
+
+    const kickoffArgs = {
+      sourceEventId: artifactEvent.messageId,
+      event: actionEventBody(artifactEvent),
+      commitSha: implementationSha,
+    };
+    const kickoff = await runKickoff({
+      coordinator, runtime, actor: actors.a, ref: refs.a,
+      event: artifactEvent, args: kickoffArgs,
+      cwd: artifactsDirectory, recoveryDirectory: artifactsDirectory,
+    });
+
+    const rRoute = route(
+      coordinator, artifactEvent, actors.r, actors.a, grants.ar, ["artifact-ready"],
+    );
+    let activationDispatchesByFixtureRunner = 0;
+    activationDispatchesByFixtureRunner += 1;
+    const rActivation = await runCoordinatorActivation({
+      coordinator, runtime, receiver: actors.r, principal: principal(actors.r),
+      role: "r", cwd: artifactsDirectory, ref: refs.r, routeProjection: rRoute,
+      scenarioId: "coordinator_driven_no_plan", chainId: "chain_coordinator_driven_no_plan",
+      recoveryDirectory: artifactsDirectory, businessPhase: "r-review",
+      businessTool: TOOLS.review,
+      async onBusinessToolCall() {
+        return { findingDigest, blocking: true, implementationSha };
+      },
+    });
+    coordinator.publishLifecycleFromCompletedAction(rActivation.businessExecutionId, {
+      expectedTool: TOOLS.review.name,
+      event: reviewEvent,
+      expectedMaterial: { findingDigest },
+    }, principal(actors.r));
+
+    const sameARoute = route(
+      coordinator, reviewEvent, actors.a, actors.r, grants.ra, ["review-failed"],
+    );
+    activationDispatchesByFixtureRunner += 1;
+    const sameAActivation = await runCoordinatorActivation({
+      coordinator, runtime, receiver: actors.a, principal: principal(actors.a),
+      role: "a", cwd: artifactsDirectory, ref: refs.a, routeProjection: sameARoute,
+      scenarioId: "coordinator_driven_no_plan", chainId: "chain_coordinator_driven_no_plan",
+      recoveryDirectory: artifactsDirectory, businessPhase: "same-a-fix",
+      businessTool: TOOLS.fix,
+      async onBusinessToolCall() { return { commitSha: fixSha, parentSha: implementationSha }; },
+    });
+
+    coordinator.submit(projectLifecycleEventToEnvelope(irrelevantEvent), principal(actors.a));
+    const irrelevantRoute = route(
+      coordinator, irrelevantEvent, actors.irrelevant, actors.a, grants.ai, ["review-failed"],
+    );
+    const irrelevantObserved = coordinator.readAttentionEvents(
+      taskRef(actors.irrelevant), { afterCursor: 0, limit: 1 }, principal(actors.irrelevant),
+    ).events[0];
+    const irrelevantCursor = coordinator.getAttentionCursor(
+      taskRef(actors.irrelevant), principal(actors.irrelevant),
+    ).cursor;
+    const irrelevantSkip = coordinator.advanceAttentionCursor(taskRef(actors.irrelevant), {
+      eventCursor: irrelevantObserved.cursor,
+      eventId: irrelevantObserved.eventId,
+      classificationDigest: sha256Digest({
+        state: irrelevantRoute.state,
+        reasonCode: irrelevantRoute.reasonCode,
+        eventType: irrelevantRoute.eventType,
+        messageId: irrelevantRoute.messageId,
+      }),
+      expectedRevision: irrelevantCursor.revision,
+    }, principal(actors.irrelevant));
+
+    const counts = {
+      lifecycleActionPublications: coordinator.db.prepare(
+        "SELECT COUNT(*) AS count FROM lifecycle_action_publications",
+      ).get().count,
+      receiverDecisions: coordinator.db.prepare(
+        "SELECT COUNT(*) AS count FROM attention_route_decision_bindings",
+      ).get().count,
+      contextAdmissions: coordinator.db.prepare(
+        "SELECT COUNT(*) AS count FROM context_admission_turn_bindings",
+      ).get().count,
+    };
+    result = {
+      state: "passed-plumbing-partial",
+      liveProductEvidence: false,
+      initialUserStartPrompts: 1,
+      deterministicPolicyOracle: true,
+      activationDispatchesByFixtureRunner,
+      autonomousEventPump: false,
+      rawPhasePromptsSubmittedByFixtureRunner: 0,
+      humanRelayCount: 0,
+      pollingCount: 0,
+      completedRoles: ["a-kickoff", "r", "same-a"],
+      pendingRoles: ["v", "dependent"],
+      pendingReason: "Verifier and dependent activation are not implemented by this partial gate.",
+      sameARef: sameAActivation.admitted &&
+        kickoff.turn.evidence.threadId === refs.a.threadId &&
+        sameAActivation.decisionTurnEvidence?.threadId === refs.a.threadId &&
+        sameAActivation.businessTurnEvidence?.threadId === refs.a.threadId &&
+        new Set([
+          kickoff.turn.evidence.turnId,
+          sameAActivation.decisionTurnEvidence?.turnId,
+          sameAActivation.businessTurnEvidence?.turnId,
+        ]).size === 3,
+      bindings: counts,
+      irrelevant: {
+        claimCount: coordinator.db.prepare(
+          "SELECT COUNT(*) AS count FROM attention_handler_claims WHERE receiver_task_id = ?",
+        ).get(actors.irrelevant.taskId).count,
+        turnCount: adapter.threads.get(refs.irrelevant.threadId).turns.length,
+        durableSkip: irrelevantSkip.commit.kind === "irrelevant-skip",
+      },
+      runtime: {
+        planSurfaceUsed: adapter.invocations.some((entry) =>
+          ["plan", "deliverContext", "phasePrompt", "runnerPhasePrompts"]
+            .some((key) => Object.hasOwn(entry, key))),
+        modelSelectedToolCalls: [...adapter.threads.values()]
+          .reduce((count, thread) => count + thread.turns
+            .reduce((sum, turn) => sum + turn.toolCalls.length, 0), 0),
+      },
+    };
+  } catch (error) {
+    failure = error;
+  } finally {
+    if (runtime) {
+      for (const [role, ref] of Object.entries(refs).reverse()) {
+        try {
+          cleanupRoles.push({ role, ...(await runtime.deleteRole({
+            role, ref, cwd: artifactsDirectory,
+          })) });
+        } catch (error) {
+          cleanupRoles.push({ role, deleted: false, absenceVerified: false, error: error.code });
+        }
+      }
+    }
+    coordinator.close();
+  }
+  const remainingJournalsBeforeCleanup = fs.readdirSync(artifactsDirectory)
+    .filter((name) => name.endsWith(".json") || name.endsWith(".decision-action"));
+  for (const filename of [databasePath, `${databasePath}-wal`, `${databasePath}-shm`,
+    `${databasePath}-journal`]) {
+    fs.rmSync(filename, { force: true });
+  }
+  const cleanup = {
+    complete: cleanupRoles.length === Object.keys(refs).length &&
+      cleanupRoles.every(({ deleted, absenceVerified }) => deleted && absenceVerified) &&
+      remainingJournalsBeforeCleanup.length === 0 && !fs.existsSync(databasePath),
+    roles: cleanupRoles,
+    remainingJournalCount: remainingJournalsBeforeCleanup.length,
+    coordinatorRemoved: !fs.existsSync(databasePath),
+  };
+  if (failure) {
+    failure.cleanup = cleanup;
+    throw failure;
+  }
+  return Object.freeze({ ...result, cleanup });
+}
