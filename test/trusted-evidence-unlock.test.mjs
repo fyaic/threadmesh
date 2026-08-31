@@ -555,11 +555,14 @@ function prepareAcceptedMessage(context, sourceEvent, { withAdmission = false } 
   );
 }
 
-function prepareFinalization(context, { withDependentAdmission = false } = {}) {
+function prepareFinalization(context, {
+  withDependentAdmission = false,
+  sourceEventId = "event_verification",
+} = {}) {
   const verification = createIndependentVerification(context);
   const sourceEvent = lifecycleEvent(context);
   const verificationToolArguments = {
-    sourceEventId: "event_verification",
+    sourceEventId,
     event: {
       eventType: sourceEvent.eventType,
       messageId: sourceEvent.messageId,
@@ -594,6 +597,31 @@ function prepareFinalization(context, { withDependentAdmission = false } = {}) {
   );
   return { verification, verificationToolArguments, execution, sourceEvent, disposition };
 }
+
+test("final verification source accepts the bound message id but no third value", () => {
+  for (const [sourceEventId, accepted] of [
+    ["msg_trusted_unlock", true],
+    ["event_unbound_third_value", false],
+  ]) {
+    const temporary = temporaryDatabase();
+    const context = setup(temporary.filename);
+    try {
+      const prepared = prepareFinalization(context, { sourceEventId });
+      const finalize = () => context.coordinator.finalizeGitEvidenceDependency(
+        prepared.execution.executionId,
+        finalizeArgs(context, prepared),
+        taskPrincipal(context.actors.verifier),
+      );
+      if (accepted) assert.equal(finalize().unlock, true);
+      else assert.throws(finalize, {
+        code: "threadmesh_git_evidence_finalization_tool_mismatch",
+      });
+    } finally {
+      context.coordinator.close();
+      temporary.cleanup();
+    }
+  }
+});
 
 function finalizeArgs(context, prepared, overrides = {}) {
   return {

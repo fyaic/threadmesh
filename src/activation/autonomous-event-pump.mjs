@@ -130,10 +130,14 @@ export class AutonomousEventPump {
     const { receiver, principal, role, cwd, ref, routes } = registration ?? {};
     if (!receiver || !principal || typeof role !== "string" || typeof cwd !== "string" ||
         !ref || !Array.isArray(routes) || routes.length < 1 ||
-        routes.some((route) => !route?.grant || typeof route.eventType !== "string" ||
+        routes.some((route) => !route?.grant ||
+          typeof route.handlerId !== "string" || route.handlerId.length < 1 ||
+          typeof route.eventType !== "string" ||
           !Array.isArray(route.subscribedEventTypes) || !route.businessTool ||
           typeof route.onBusinessToolCall !== "function" ||
-          typeof route.onLifecyclePublication !== "function")) {
+          typeof route.onLifecyclePublication !== "function" ||
+          (route.afterAdmissionPrepared !== undefined &&
+            typeof route.afterAdmissionPrepared !== "function"))) {
       throw coded("threadmesh_event_pump_registration_invalid");
     }
     const entries = PUMP_REGISTRY.get(this).entries;
@@ -146,6 +150,7 @@ export class AutonomousEventPump {
     const sealedPrincipal = deepFreeze(copy(principal));
     const sealedRef = deepFreeze(copy(ref));
     const sealedRoutes = routes.map((route) => deepFreeze({
+      handlerId: route.handlerId,
       eventType: route.eventType,
       subscribedEventTypes: copy(route.subscribedEventTypes),
       relationshipId: route.grant.relationshipId,
@@ -162,6 +167,7 @@ export class AutonomousEventPump {
       routes: sealedRoutes.map((route, index) => Object.freeze({
         data: route,
         onBusinessToolCall: routes[index].onBusinessToolCall,
+        afterAdmissionPrepared: routes[index].afterAdmissionPrepared ?? (async () => null),
         onLifecyclePublication: routes[index].onLifecyclePublication,
       })),
     }));
@@ -204,11 +210,13 @@ export class AutonomousEventPump {
     }
   }
 
-  #recordSelection(kind, registration, observed, routeProjection) {
+  #recordSelection(kind, registration, observed, routeProjection, routeData) {
     const body = {
       sequence: this.selectionRecords.length + 1,
       previousDigest: this.selectionHeadDigest,
       kind,
+      handlerId: routeData.handlerId,
+      handlerConfigDigest: sha256Digest(routeData),
       receiverDigest: sha256Digest(taskRef(registration.receiver)),
       eventDigest: sha256Digest({
         cursor: observed.cursor,
@@ -324,7 +332,7 @@ export class AutonomousEventPump {
         this.settledEventIds.add(observed.eventId);
         this.skips += 1;
         const selectionRecord = this.#recordSelection(
-          "durable-route-skip", registration, observed, routeProjection,
+          "durable-route-skip", registration, observed, routeProjection, routeData,
         );
         return Object.freeze({ state: "skipped", routeProjection, skipped, selectionRecord });
       }
@@ -350,6 +358,7 @@ export class AutonomousEventPump {
         decisionPhase: routeData.decisionPhase,
         businessTool: routeData.businessTool,
         onBusinessToolCall: routeRegistration.onBusinessToolCall,
+        afterAdmissionPrepared: routeRegistration.afterAdmissionPrepared,
       });
       await routeRegistration.onLifecyclePublication({
         coordinator: this.coordinator,
@@ -360,7 +369,7 @@ export class AutonomousEventPump {
       this.settledEventIds.add(observed.eventId);
       this.dispatches += 1;
       const selectionRecord = this.#recordSelection(
-        "coordinator-activation", registration, observed, routeProjection,
+        "coordinator-activation", registration, observed, routeProjection, routeData,
       );
       return Object.freeze({ state: "dispatched", activation, routeProjection, selectionRecord });
     } finally {
