@@ -6,6 +6,10 @@ All notable changes will be documented here. The project follows Keep a Changelo
 
 ### Added
 
+- Codex attention validation seam with model-selected lifecycle publication,
+  durable-cursor logical wake, exact receiver turn receipts, locally simulated
+  signed verification, dependency unlock, restart recovery, quiet controls,
+  and strict live-result projection.
 - Deterministic implementation/review/fix attention-router loop with six
   lifecycle-event projections, durable versioned dependency state,
   coordinator-configured verification trust, cursor-based wake reconciliation,

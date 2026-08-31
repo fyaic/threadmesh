@@ -7,6 +7,7 @@ import {
   LIVE_E2E_ACK,
   MAINTAINER_EXPERIMENTAL_ACK,
   publicProductErrorCode,
+  runFakeAttention,
   runFakeBehavior,
   runFakeAll,
   runFakeProactive,
@@ -95,6 +96,73 @@ function validProactiveChildResult(sha) {
   return result;
 }
 
+function validAttentionChildResult(sha) {
+  const result = validCodexChildResult(sha);
+  result.productId = "codex-attention";
+  result.outcome = "externally-verified";
+  result.cleanup = {
+    attempted: true,
+    complete: true,
+    threadDeleted: true,
+    aThreadDeleted: true,
+    bThreadDeleted: true,
+  };
+  Object.assign(result, {
+    condition: "relevant",
+    modelSelectedCommunication: true,
+    scriptedSubmitCount: 0,
+    manualRelayActions: 0,
+    modelPollingTurns: 0,
+    relatedTaskCalls: 1,
+    publishCalls: 1,
+    nonThreadMeshToolCalls: 0,
+    aToolCalls: ["threadmesh_related_tasks", "threadmesh_publish_dependency"],
+    lifecycleEventType: "dependency-satisfied",
+    cursorEventObserved: true,
+    wakeCursor: 17,
+    receiverResumeCount: 1,
+    routeReasonCode: "attention-offer-authorized",
+    wakeReasonCode: "attention-wake-reconciled",
+    receiverActivated: true,
+    receiverDecision: "accepted",
+    delivery: "adapter-submitted",
+    verificationMode: "local-simulation",
+    externalVerificationReasonCode: "dependency-satisfied-verified",
+    dependencyStatus: "satisfied",
+    dependencyUnlock: true,
+    restartRecovered: true,
+    recoveredTaskState: "ready",
+    threads: {
+      a: {
+        threadId: "thread-codex-attention-a",
+        snapshotDigest: `sha256:${"a".repeat(64)}`,
+      },
+      b: {
+        threadId: "thread-codex-attention-b",
+        snapshotDigest: `sha256:${"b".repeat(64)}`,
+      },
+    },
+    receiverEvidence: {
+      kind: "codex-app-server",
+      threadId: "thread-codex-attention-b",
+      turnId: "turn-codex-attention-b",
+      turnStatus: "completed",
+      snapshotDigest: `sha256:${"b".repeat(64)}`,
+    },
+    adapterReceipt: {
+      adapterOperationId: "turn-codex-attention-b",
+      acceptedAt: "2026-08-31T10:01:30.000Z",
+      evidenceRefs: ["codex-app-server://thread/attention-b/turn/attention-b"],
+    },
+    evidenceDigests: {
+      lifecycleEvent: `sha256:${"c".repeat(64)}`,
+      disposition: `sha256:${"d".repeat(64)}`,
+      dependencyEdge: `sha256:${"e".repeat(64)}`,
+    },
+  });
+  return result;
+}
+
 test("live product validation is refused without the exact review acknowledgement", async () => {
   const absent = await runLive("codex", {});
   assert.equal(absent.mode, "live");
@@ -175,6 +243,41 @@ test("the behavior fake separates control, relevant, and irrelevant communicatio
     { condition: "relevant", sendCalls: 1, receiverActivated: true },
     { condition: "irrelevant", sendCalls: 0, receiverActivated: false },
   ]);
+});
+
+test("the attention fake closes relevant, control, and irrelevant durable loops", async () => {
+  const result = await runFakeAttention();
+  assert.equal(result.state, "passed");
+  assert.deepEqual(result.conditions.map((condition) => ({
+    condition: condition.condition,
+    selected: condition.modelSelectedCommunication,
+    receiverActivated: condition.receiverActivated,
+    dependencyStatus: condition.dependencyStatus,
+    recoveredTaskState: condition.recoveredTaskState,
+  })), [
+    {
+      condition: "control",
+      selected: false,
+      receiverActivated: false,
+      dependencyStatus: "waiting",
+      recoveredTaskState: "waiting",
+    },
+    {
+      condition: "relevant",
+      selected: true,
+      receiverActivated: true,
+      dependencyStatus: "satisfied",
+      recoveredTaskState: "ready",
+    },
+    {
+      condition: "irrelevant",
+      selected: false,
+      receiverActivated: false,
+      dependencyStatus: "waiting",
+      recoveredTaskState: "waiting",
+    },
+  ]);
+  assert.ok(result.conditions.every((condition) => condition.cleanup.complete));
 });
 
 test("exact marker comparison rejects leading or trailing whitespace", async () => {
@@ -288,6 +391,81 @@ test("live bootstrap strictly binds autonomous A to B evidence", () => {
     stdout: JSON.stringify(result), status: 0, signal: null, error: undefined,
   }, { productId: "codex-proactive", executionSha: sha });
   assert.equal(rejected.accepted, false);
+});
+
+test("live bootstrap strictly projects durable Codex attention evidence", () => {
+  const sha = "a".repeat(40);
+  const result = validAttentionChildResult(sha);
+  const accepted = validateIsolatedLiveChild({
+    stdout: JSON.stringify(result),
+    status: 0,
+    signal: null,
+    error: undefined,
+  }, { productId: "codex-attention", executionSha: sha });
+  assert.equal(accepted.accepted, true);
+  assert.deepEqual(accepted.result.attention.aToolCalls, [
+    "threadmesh_related_tasks",
+    "threadmesh_publish_dependency",
+  ]);
+  assert.equal(accepted.result.attention.outcome, "externally-verified");
+  assert.equal(accepted.result.attention.dependencyUnlock, true);
+  assert.equal(accepted.result.attention.restartRecovered, true);
+  assert.equal(accepted.result.attention.receiverResumeCount, 1);
+  assert.equal(
+    accepted.result.attention.threadCorrelation.receiverMatchedPrecreatedThread,
+    true,
+  );
+  assert.deepEqual(Object.keys(accepted.result.attention.evidenceDigests).sort(), [
+    "dependencyEdge",
+    "disposition",
+    "lifecycleEvent",
+  ]);
+  assert.equal(Object.hasOwn(accepted.result, "aThreadId"), false);
+});
+
+test("Codex attention projection rejects relay, polling, route, trust, recovery, and cleanup shortcuts", () => {
+  const sha = "a".repeat(40);
+  const mutations = [
+    (result) => { result.scriptedSubmitCount = 1; },
+    (result) => { result.manualRelayActions = 1; },
+    (result) => { result.modelPollingTurns = 1; },
+    (result) => { result.aToolCalls = ["threadmesh_publish_dependency"]; },
+    (result) => { result.cursorEventObserved = false; },
+    (result) => { result.wakeCursor = 0; },
+    (result) => { result.receiverResumeCount = 2; },
+    (result) => { result.routeReasonCode = "attention-route-unauthorized"; },
+    (result) => { result.wakeReasonCode = "attention-wake-idle"; },
+    (result) => { result.receiverActivated = false; },
+    (result) => { result.receiverDecision = "deferred"; },
+    (result) => { result.delivery = "context-admitted"; },
+    (result) => { result.outcome = "effect-observed"; },
+    (result) => { result.verificationMode = "independent-service"; },
+    (result) => { result.externalVerificationReasonCode = "dependency-external-verification-required"; },
+    (result) => { result.threads.b.threadId = result.threads.a.threadId; },
+    (result) => { result.receiverEvidence.threadId = "thread-other"; },
+    (result) => { result.receiverEvidence.snapshotDigest = `sha256:${"f".repeat(64)}`; },
+    (result) => { result.adapterReceipt.adapterOperationId = "turn-other"; },
+    (result) => { result.dependencyStatus = "waiting"; },
+    (result) => { result.dependencyUnlock = false; },
+    (result) => { result.restartRecovered = false; },
+    (result) => { result.recoveredTaskState = "blocked"; },
+    (result) => { result.evidenceDigests.disposition = "caller-asserted"; },
+    (result) => { result.cleanup.bThreadDeleted = false; },
+  ];
+  for (const mutate of mutations) {
+    const result = validAttentionChildResult(sha);
+    mutate(result);
+    const rejected = validateIsolatedLiveChild({
+      stdout: JSON.stringify(result),
+      status: 0,
+      signal: null,
+      error: undefined,
+    }, { productId: "codex-attention", executionSha: sha });
+    assert.deepEqual(rejected, {
+      accepted: false,
+      code: "isolated_live_result_binding_mismatch",
+    });
+  }
 });
 
 test("live bootstrap accepts maintainer experiment only when the parent authorizes it", () => {

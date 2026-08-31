@@ -32,6 +32,86 @@ const markers = Object.freeze({
   gemini: "GEMINI_THREADMESH_COORDINATOR_OK",
 });
 
+async function runCodexAttention(options) {
+  const { runCodexAttentionScenario } = await import(
+    "../src/validation/codex-attention-scenario.mjs"
+  );
+  if (typeof runCodexAttentionScenario !== "function") {
+    const error = new Error("Codex attention scenario export is unavailable.");
+    error.code = "codex_attention_scenario_unavailable";
+    throw error;
+  }
+  return runCodexAttentionScenario(options);
+}
+
+function fakeCodexAttentionAdapter(condition, readyMarker) {
+  const refs = {
+    a: {
+      kind: "codex-app-server",
+      threadId: `fake-attention-a-${condition}`,
+      snapshotDigest: `sha256:${"a".repeat(64)}`,
+      userAgent: "codex_cli_rs/0.145.0 (ThreadMesh fake attention)",
+      model: "fake-model",
+      modelProvider: "fake",
+    },
+    b: {
+      kind: "codex-app-server",
+      threadId: `fake-attention-b-${condition}`,
+      snapshotDigest: `sha256:${"b".repeat(64)}`,
+      userAgent: "codex_cli_rs/0.145.0 (ThreadMesh fake attention)",
+      model: "fake-model",
+      modelProvider: "fake",
+    },
+  };
+  return {
+    async startValidationThread({ marker }) {
+      return { text: marker, truncated: false, adapterRef: refs.b };
+    },
+    async startAutonomousToolThread({ onToolCall }) {
+      const toolCalls = [];
+      if (condition !== "control") {
+        await onToolCall({ tool: "threadmesh_related_tasks", arguments: {} });
+        toolCalls.push({ tool: "threadmesh_related_tasks" });
+      }
+      if (condition === "relevant") {
+        await onToolCall({
+          tool: "threadmesh_publish_dependency",
+          arguments: { reason: "The exact dependent needs this verified result." },
+        });
+        toolCalls.push({ tool: "threadmesh_publish_dependency" });
+      }
+      return {
+        text: "Fake A completed the bounded attention decision.",
+        truncated: false,
+        adapterRef: refs.a,
+        toolCalls,
+        nonThreadMeshToolCalls: 0,
+      };
+    },
+    async runAcceptedSuggestion({ adapterRef }) {
+      return {
+        text: readyMarker,
+        truncated: false,
+        receipt: {
+          adapterOperationId: `fake-attention-turn-${condition}`,
+          acceptedAt: "2026-08-31T10:01:30.000Z",
+          evidenceRefs: [`threadmesh-fake://codex-attention/${condition}`],
+        },
+        evidence: {
+          kind: "codex-app-server",
+          threadId: adapterRef.threadId,
+          turnId: `fake-attention-turn-${condition}`,
+          turnStatus: "completed",
+          snapshotDigest: adapterRef.snapshotDigest,
+        },
+      };
+    },
+    async deleteThread({ threadId }) {
+      return { threadId, deleted: true };
+    },
+  };
+}
+
 export function publicProductErrorCode(error) {
   const code = error?.code;
   return typeof code === "string" && /^[a-z0-9_]{1,128}$/.test(code)
@@ -251,6 +331,41 @@ export async function runFakeBehavior() {
   }
 }
 
+export async function runFakeAttention() {
+  const startedAt = new Date().toISOString();
+  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "threadmesh-attention-e2e-"));
+  try {
+    const { CODEX_ATTENTION_B_READY_MARKER } = await import(
+      "../src/validation/codex-attention-scenario.mjs"
+    );
+    const conditions = [];
+    for (const condition of ["control", "relevant", "irrelevant"]) {
+      conditions.push(await runCodexAttention({
+        condition,
+        adapter: fakeCodexAttentionAdapter(
+          condition,
+          CODEX_ATTENTION_B_READY_MARKER,
+        ),
+        cwd: root,
+        runId: `fake_attention_${condition}`,
+        temporaryParent: temporaryRoot,
+      }));
+    }
+    return {
+      mode: "fake-attention",
+      startedAt,
+      finishedAt: new Date().toISOString(),
+      state: conditions.every(({ state }) => state === "passed")
+        ? "passed"
+        : "failed",
+      conditions,
+      cleanup: { temporaryRootRemoved: true },
+    };
+  } finally {
+    fs.rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+}
+
 export async function runLive(productId, env = process.env) {
   const startedAt = new Date().toISOString();
   if (env.THREADMESH_LIVE_E2E_ACK !== LIVE_E2E_ACK) {
@@ -307,6 +422,13 @@ export async function runLive(productId, env = process.env) {
             cwd: root,
             model: env.CODEX_PROACTIVE_MODEL ?? null,
           })
+        : productId === "codex-attention"
+          ? await runCodexAttention({
+              command: env.CODEX_BIN ?? "/opt/homebrew/bin/codex",
+              cwd: root,
+              model: env.CODEX_ATTENTION_MODEL ?? null,
+              condition: "relevant",
+            })
         : await runOne(productId, liveDriver(productId, env))),
       finishedAt: new Date().toISOString(),
     };
@@ -329,13 +451,20 @@ async function main() {
   if (mode === "--fake-all" && !productId) result = await runFakeAll();
   else if (mode === "--fake-proactive" && !productId) result = await runFakeProactive();
   else if (mode === "--fake-behavior" && !productId) result = await runFakeBehavior();
-  else if (mode === "--isolated-live" && ["codex", "codex-proactive", "kimi", "gemini"].includes(productId)) {
+  else if (mode === "--fake-attention" && !productId) result = await runFakeAttention();
+  else if (mode === "--isolated-live" && [
+    "codex",
+    "codex-proactive",
+    "codex-attention",
+    "kimi",
+    "gemini",
+  ].includes(productId)) {
     result = await runLive(productId);
   } else {
     result = {
       state: "not-run",
       code: "usage",
-      usage: "node scripts/validate-products-e2e.mjs --fake-all | --fake-proactive | --fake-behavior | --isolated-live <codex|codex-proactive|kimi|gemini>",
+      usage: "node scripts/validate-products-e2e.mjs --fake-all | --fake-proactive | --fake-behavior | --fake-attention | --isolated-live <codex|codex-proactive|codex-attention|kimi|gemini>",
     };
   }
   console.log(JSON.stringify(result, null, 2));

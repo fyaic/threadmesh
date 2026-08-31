@@ -22,6 +22,7 @@ accepted until two qualifying public records exist and pass
 ## Real product evidence
 
 - [Deterministic M5 attention-router vertical slice](2026-08-31-attention-router-slice.md)
+- [Real Codex attention validation guide](../06-guides/codex-attention-validation.md)
 - [Reader-oriented real agent case portfolio](../06-guides/real-world-cases.md)
 - [End-to-end A-to-B demonstration](../06-guides/end-to-end-demo.md)
 - [Codex scored behavior gate](2026-08-25-codex-behavior-gate.md)

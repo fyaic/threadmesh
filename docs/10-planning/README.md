@@ -10,6 +10,8 @@ where the repository is now and what work should happen next.
   community evidence, Now/Next/Later priorities, metrics, and stop conditions.
 - [M5 sprint 1](m5-sprint-1.md) — bounded parallel workstreams, dependencies,
   acceptance gates, risks, and the sequence into real-agent validation.
+- [M5 real Codex loop](m5-real-codex-loop.md) — staged #91 execution plan and
+  strict closure evidence for initiative, controls, persistence, and cleanup.
 - [Mainline plan](mainline-plan.md) — completed protocol/runtime workstreams and
   the transition from technical gates to the active product mainline.
 - [Milestone acceptance audit](acceptance-audit.md) — criterion-by-criterion
