@@ -160,15 +160,51 @@ SQLite v7 now supplies the authority-bearing seam:
   disposition/effect binding. Exact replay is idempotent; alteration fails
   closed, including after restart.
 
-This closes the deterministic authority seam, not M5.2. The next mainline work
-is the real persistent Codex A implementation, R review, same-A fix, and V
-verification run, followed by restart, negative variants, and cleanup evidence.
+The deterministic happy path is now integrated end-to-end: pre-created A/R/V,
+dependent, and irrelevant tasks traverse grants, durable lifecycle events,
+next-only cursor claims, receiver-owned decision tools, exact-reference context
+admission, completed-turn binding, evidence promotion, v7 finalization, and
+cursor commits. The same A adapter reference is used for implementation and
+fix; the dependent is waiting before finalization and satisfied afterward; the
+authorized irrelevant control records zero turns and a zero cursor. A generic
+unbound lifecycle-submit bypass is also covered. The plan remains explicitly
+scripted and cannot be reported as product initiative.
+
+Lifecycle publication is frozen to the completed model action: tool name,
+source event, complete bounded outgoing event body (including content, reason,
+evidence references, freshness, and causality), and material commit, finding,
+or chain coordinates must match exactly, and one fixture action is consumed at
+most once. Every decision callback first persists the acknowledgement and then
+returns only a stable projection of message, exact receiver, decision state,
+reason code, and decision revision; the completed action digest is therefore
+reconstructable without hashing a later-mutated final disposition. The final
+dependent no longer receives a harness-authored acceptance. It claims its next
+event, records a bounded `threadmesh_decide_offer`, admits the context into its
+exact adapter reference, and binds the completed decision before v7
+finalization. After finalization,
+`commitFinalizedDependencyAttentionHandler` reconstructs the ack-time decision
+projection from durable audit state, requires a completed admission with the
+same exact adapter-reference digest as the decision execution, verifies the
+persisted disposition, satisfaction, edge, effect, and attestation, and commits
+the cursor atomically. This specialized seam deliberately leaves the dependent
+decision execution `completed-turn-bound`; it does not invent a generic
+promotion or grant evidence authority. Exact replay remains stable after edge
+expiry, while decision-result, admission, adapter-reference, or
+satisfaction-time alteration fails closed.
+
+This closes the deterministic integrated happy path, not M5.2. Restart closure
+has two hard gaps: there is no adapter query/reconcile surface after native
+start but before operation binding, and a restarted runner cannot reconstruct
+the signed final verifier response from the digest stored in SQLite. The next
+mainline slice is therefore adapter reconciliation plus a private durable
+verifier-result journal, followed by the restart fault matrix. Only then should
+the real persistent Codex A implementation, R review, same-A fix, and V
+verification run be enabled. Kimi remains a capability-only compatibility
+preflight until it exposes bounded dynamic-tool and receipt evidence.
 
 The [persistent-agent scenario runner](../06-guides/m5-2-live-agent-scenario.md)
-provides a one-command deterministic rehearsal, hash-linked private trace,
-bounded public projection, cleanup manifest, and real Codex/Kimi capability
-preflights. Product modes remain fail-closed `blocked`: the scripted fixture is
-not live evidence, and real turns stay disabled until the event, next-only
-cursor claim, receiver decision, admission receipt, exact-task resume,
-promotion, cursor commit, and restart gates are all machine-verified against
-the v7 finalization path.
+provides a one-command deterministic integrated rehearsal, hash-linked private
+trace, bounded public projection, cleanup manifest, retained SQLite evidence,
+and real Codex/Kimi capability preflights. Product modes remain fail-closed
+`blocked`: the scripted fixture is not live evidence, and real turns stay
+disabled until the two recovery gaps and restart gates are closed.

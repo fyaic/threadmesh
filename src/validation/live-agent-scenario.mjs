@@ -7,6 +7,7 @@ import { AcpStdioAdapter } from "../adapters/acp-stdio.mjs";
 import { CodexAppServerAdapter } from "../adapters/codex-app-server.mjs";
 import { canonicalJson, sha256Digest } from "../canonical-json.mjs";
 import { createBoundedGitLoopFixture } from "./bounded-git-loop-fixture.mjs";
+import { runIntegratedCoordinatorLoop } from "./integrated-coordinator-loop.mjs";
 
 export const LIVE_AGENT_SCENARIO_ACK =
   "maintainer-approved-threadmesh-live-agent-scenario";
@@ -242,21 +243,27 @@ export class DeterministicLiveAgentRuntime {
 
   async createRole({ role }) {
     const ref = {
-      kind: "deterministic-fixture",
-      sessionId: `fixture-session-${role}`,
+      kind: "codex-app-server",
+      threadId: `fixture-thread-${role}`,
       snapshotDigest: sha256Digest({ runtime: "deterministic-fixture", role }),
+      userAgent: "threadmesh-deterministic-fixture/1",
     };
     this.created.push({ role, ref });
     return ref;
   }
 
-  async runTurn({ role, phase, ref, plan, onToolCall, beforeToolCall, afterToolCall }) {
+  async runTurn({
+    role, phase, ref, plan, onToolCall, beforeToolCall, afterToolCall,
+    beforeTurnStart = async () => {}, onTurnStarted = async () => {},
+  }) {
     const turnId = `fixture-turn-${role}-${phase}`;
+    await beforeTurnStart({ threadId: ref.threadId });
+    await onTurnStarted({ threadId: ref.threadId, turnId });
     const toolCalls = [];
     for (let ordinal = 0; ordinal < plan.length; ordinal += 1) {
       const selected = typeof plan[ordinal] === "function" ? plan[ordinal]() : plan[ordinal];
       const metadata = {
-        threadId: ref.sessionId,
+        threadId: ref.threadId,
         turnId,
         callId: `fixture-call-${role}-${phase}-${ordinal}`,
         ordinal,
@@ -282,7 +289,7 @@ export class DeterministicLiveAgentRuntime {
       evidence: {
         turnId,
         turnStatus: "completed",
-        threadId: ref.sessionId,
+        threadId: ref.threadId,
         snapshotDigest: ref.snapshotDigest,
       },
       toolCalls,
@@ -290,6 +297,40 @@ export class DeterministicLiveAgentRuntime {
     };
     this.turns.push({ role, phase, ref, turn });
     return turn;
+  }
+
+  async deliverContext({ role, ref, prepared }) {
+    if (prepared.adapterRef.threadId !== ref.threadId ||
+        prepared.adapterRef.snapshotDigest !== ref.snapshotDigest) {
+      throw scenarioError("threadmesh_live_scenario_role_ref_mismatch", role);
+    }
+    const turnId = `fixture-turn-${role}-admission-${this.turns.length}`;
+    const acceptedAt = "2026-08-31T12:00:00.000Z";
+    const result = {
+      text: "deterministic accepted peer context",
+      truncated: false,
+      receipt: {
+        adapterOperationId: turnId,
+        acceptedAt,
+        evidenceRefs: [`fixture://thread/${ref.threadId}/turn/${turnId}`],
+      },
+      evidence: {
+        kind: "codex-app-server",
+        threadId: ref.threadId,
+        turnId,
+        turnStatus: "completed",
+        snapshotDigest: ref.snapshotDigest,
+        completedAt: acceptedAt,
+        durationMs: 1,
+        userAgent: ref.userAgent,
+        serverRequestDeniedCount: 0,
+        serverRequestHandledCount: 0,
+        notificationCount: 1,
+        deltaCount: 1,
+      },
+    };
+    this.turns.push({ role, phase: "admission", ref, prepared, turn: result });
+    return result;
   }
 
   async deleteRole({ role, ref }) {
@@ -508,7 +549,7 @@ export async function runLiveAgentScenario({
   recorder.append("scenario.started", {
     mode,
     commandVersion: mode === "live" ? commandVersion(command) : null,
-    dependencyUnlockInScope: false,
+    dependencyUnlockInScope: mode === "dry-run",
   });
 
   if (product === "kimi") {
@@ -532,6 +573,30 @@ export async function runLiveAgentScenario({
     const integrity = verifyLiveAgentEvidence(recorder.records);
     const complete = { ...result, scenarioId, evidence: integrity };
     recorder.writeCleanupManifest(result.cleanup);
+    recorder.writeResult(complete);
+    return complete;
+  }
+  if (mode === "dry-run") {
+    const integrated = await runIntegratedCoordinatorLoop({
+      runtime: activeRuntime,
+      artifactsDirectory,
+      record: (type, detail) => recorder.append(type, detail),
+    });
+    recorder.append("scenario.completed", {
+      state: integrated.state,
+      evidenceClass: integrated.evidenceClass,
+      liveProductEvidence: false,
+    });
+    const integrity = verifyLiveAgentEvidence(recorder.records);
+    const complete = {
+      schemaVersion: 1,
+      scenarioId,
+      mode,
+      product,
+      ...integrated,
+      evidence: integrity,
+    };
+    recorder.writeCleanupManifest(integrated.cleanup);
     recorder.writeResult(complete);
     return complete;
   }
