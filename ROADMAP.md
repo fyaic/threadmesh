@@ -118,6 +118,19 @@ Agent B once, and verified dependency state recovered after restart. This is a
 ThreadMesh logical wake with `idleWake: false` and a local verifier simulation;
 the full multi-role loop and repetition matrix remain the next gates.
 
+M5.2 is now the sole implementation critical path. Its ordered blockers are:
+complete persisted-turn observation, identity-safe reconciliation, real
+multi-tool role wiring, killed-runner recovery, and correlated live evidence
+plus exact cleanup. The gate is A implementation -> R review -> same-A fix -> V
+verification, with the dependent changing from `waiting` to `ready` only after
+trusted finalization and the irrelevant control receiving zero native turns.
+That zero-turn assertion begins after the precreation/bootstrap baseline. In
+the current reconciliation slice, a missing client id is always ambiguous;
+unique-delta classification with exclusive-writer proof is a future option.
+The merged scripted fixture remains `fixture` evidence, not `live-product`
+evidence. Kimi parity and cross-harness repetition follow the Codex gate and
+do not delay it.
+
 - [x] Ship a one-command local demo with generated identities, grants, example
   sessions, and an inspector
   ([#89](https://github.com/fyaic/threadmesh/issues/89)).
@@ -132,8 +145,10 @@ the full multi-role loop and repetition matrix remain the next gates.
   ([#91](https://github.com/fyaic/threadmesh/issues/91)):
   - [x] M5.1: prove the real Codex dependency wake/unlock seam using durable
     cursor reconciliation; the adapter remains `idleWake: false`.
-  - [ ] M5.2: complete the model-selected implementation → review → fix →
-    verify chain across three or four persistent sessions.
+  - [ ] M5.2: complete the model-selected implementation -> review -> same-A
+    fix -> verify chain across persistent A/R/V sessions, including dependent
+    waiting-to-ready, irrelevant zero-turn-after-bootstrap, restart, and exact
+    cleanup checks.
   - [ ] M5.3: pass three fresh relevant runs plus the manual baseline,
     irrelevant, stale/unverified, restart, and cleanup matrix.
 - [ ] Repeat the loop across Codex and one ACP-compatible harness

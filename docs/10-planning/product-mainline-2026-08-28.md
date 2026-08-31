@@ -124,6 +124,39 @@ ThreadMesh consumes or delegates:
 - harness process/session control to ACP or native APIs;
 - workflow planning and execution to the user's chosen orchestrator.
 
+## Current M5.2 execution order — 2026-09-01
+
+The deterministic vertical slice is foundation evidence. The active product
+gate is one real Codex A -> R -> same-A -> V loop, with a waiting dependent and
+an authorized irrelevant control in the same correlated run. M5.2 remains
+open; a scripted fixture is never labeled as live initiative.
+
+Five blockers must close in order:
+
+1. observe the complete persisted Codex turn set and reconcile unknown starts
+   fail-closed;
+2. classify a turn by exact client identity; a missing client id is ambiguous
+   in the current slice. Unique-delta classification under a durable
+   exclusive-writer proof remains a future option;
+3. wire real persistent roles and bounded multi-tool callbacks so the models,
+   not the runner, own decisions, findings, publications, fixes, and verifier
+   requests;
+4. survive killed-runner boundaries without blind retry, replacement turns, or
+   duplicate effects;
+5. correlate native turns, admissions, lifecycle events, signed evidence,
+   dependent unlock, irrelevant zero-wake behavior, restart, and exact cleanup.
+
+The acceptance run requires A to publish an implementation, R to discover and
+publish a reproducible finding, the original A session/worktree to fix it, and
+V to request the pinned verifier. The dependent is `waiting` before trusted
+finalization and `ready` afterward. The irrelevant task receives no claim,
+admission, native turn, publication, or dependency effect after its
+precreation/bootstrap baseline.
+
+Only a correlated real-product record may advance to Kimi parity and
+cross-harness repetition. Kimi remains post-gate and does not block the Codex
+critical path.
+
 ## Roadmap: Now / Next / Later
 
 ### Now — prove the attention-router value
@@ -144,8 +177,10 @@ under 15 minutes.
    events into eligible next-session attention. It must never convert receipt
    alone into a dependency unlock
    ([#90](https://github.com/fyaic/threadmesh/issues/90)).
-4. Run the first real Codex-first implementation/review/fix loop, then repeat
-   it across Codex and one ACP harness using the existing adapters
+4. Run the first real Codex-first implementation/review/same-session-fix/
+   verification loop, including dependent and irrelevant controls. Only after
+   that correlated live-product pass, repeat it across Codex and one ACP
+   harness using the existing adapters
    ([#91](https://github.com/fyaic/threadmesh/issues/91),
    [#93](https://github.com/fyaic/threadmesh/issues/93)).
 5. Add a minimal inspector view for session status, dependency edges, recent
