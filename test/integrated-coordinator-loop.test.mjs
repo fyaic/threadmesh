@@ -30,6 +30,10 @@ test("integrated fixture traverses coordinator A-R-same-A-V and v7 finalize in s
     assert.equal(result.coordinator.irrelevantAuthorizedTaskClaimCount, 0);
     assert.equal(result.coordinator.irrelevantPersistedSkip, true);
     assert.equal(result.coordinator.irrelevantCursorCommitKind, "irrelevant-skip");
+    assert.equal(result.coordinator.irrelevantExactReplayNoDuplicate, true);
+    assert.equal(
+      result.coordinator.irrelevantConflictingClassificationRejected, true,
+    );
     assert.equal(result.coordinator.finalizedAttentionExpiryReplayStable, true);
     assert.equal(result.coordinator.finalizedAttentionTimestampTamperRejected, true);
     assert.equal(result.chain.recordCount, 4);
@@ -86,15 +90,30 @@ test("integrated fixture traverses coordinator A-R-same-A-V and v7 finalize in s
       assert.equal(proof.exactReplayNoDuplicate, true);
       assert.equal(proof.replayStateDigest, proof.afterDigest);
     }
+    const receiptProof = result.recovery.checkpoints.find(
+      ({ checkpoint }) => checkpoint === "receipt-recorded",
+    );
+    assert.equal(receiptProof.receipt.state, "receipt-recorded");
+    assert.equal(receiptProof.receipt.replay, true);
+    assert.equal(receiptProof.receipt.duplicateRows, 0);
     assert.ok(Object.values(result.recovery.expectedDeltas).every(Boolean));
     assert.equal(result.recovery.journal.projectedIntoTrace, false);
     assert.deepEqual(
       result.cleanup.resources.map(({ kind }) => kind),
       [
         "sqlite", "recovery-journal", "sqlite-wal", "sqlite-shm",
-        "sqlite-rollback-journal",
+        "sqlite-rollback-journal", "temporary-files", "unexpected-files",
       ],
     );
+    assert.equal(result.cleanup.complete, true);
+    for (const resource of result.cleanup.resources) {
+      assert.equal(typeof resource.expectedDisposition, "string");
+      assert.equal(typeof resource.absenceChecked, "boolean");
+      if (resource.expectedDisposition === "absent-after-close") {
+        assert.equal(resource.present, false);
+        assert.equal(resource.absenceChecked, true);
+      }
+    }
   } finally {
     fs.rmSync(artifactsDirectory, { recursive: true, force: true });
   }

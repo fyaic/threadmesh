@@ -98,10 +98,17 @@ test("dry-run proves the A-R-same-A-V runner contract without claiming product e
     assert.equal(result.recovery.journal.containsSignedVerifierBundle, true);
     assert.equal(result.recovery.journal.projectedIntoTrace, false);
     for (const resource of result.cleanup.resources) {
-      assert.equal(
-        resource.present,
-        fs.existsSync(path.join(artifacts, resource.path)),
-      );
+      if (resource.path) {
+        assert.equal(
+          resource.present,
+          fs.existsSync(path.join(artifacts, resource.path)),
+        );
+      } else {
+        assert.equal(resource.present, false);
+        assert.deepEqual(resource.paths, []);
+      }
+      assert.equal(typeof resource.expectedDisposition, "string");
+      assert.equal(typeof resource.absenceChecked, "boolean");
     }
     assert.deepEqual(
       fs.readdirSync(artifacts).filter((name) => name.endsWith(".tmp")),

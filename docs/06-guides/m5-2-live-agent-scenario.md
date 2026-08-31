@@ -33,9 +33,10 @@ model initiative or an independent verifier service.
 The deterministic runner now closes and reopens the coordinator at five fixed
 checkpoints: operation-bound native start, event creation, adapter receipt,
 final verification, and satisfaction. Each reopen compares one state vector
-covering messages, audit, executions, actions, evidence, finalization,
-satisfaction, dependent revision, and cursor commits; an exact replay must add
-nothing. The native-start checkpoint occurs only after the native turn ID is
+covering messages/dispositions, admissions, adapter submissions, audit,
+executions/actions, attention claims and commits, evidence, finalization,
+satisfaction, task metadata, dependent revision, and fixture native-turn count;
+an exact replay must add nothing. The native-start checkpoint occurs only after the native turn ID is
 durably bound. It is not a process crash between native `turn/start` and that
 binding, because the adapter still has no query/reconcile surface for that
 unknown outcome. Codex `0.145.0` exposes persisted turn sets through
@@ -77,7 +78,8 @@ temporary directory:
   digest-protected signed verifier bundle and exact finalization arguments. Its
   contents never enter the trace, result projection, or cleanup projection.
 - `cleanup-manifest.json`: exact retained-evidence manifest, including the
-  journal and present/absent SQLite WAL, SHM, and rollback-journal sidecars.
+  journal and machine-checked absence of SQLite WAL, SHM, rollback-journal,
+  temporary, and unexpected files. `complete` is derived from those checks.
 
 A fixture `passed` result proves the integrated coordinator happy path, strict
 ordering, same-A adapter identity, dependency locked-before/satisfied-after,

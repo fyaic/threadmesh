@@ -43,23 +43,33 @@ const DEFAULT_RECOVERY_CHECKPOINTS = Object.freeze([
 ]);
 const RECOVERY_STATE_TABLES = Object.freeze([
   ["messages", "sequence"],
+  ["dispositions", "sender_incarnation_id, message_id"],
+  ["admissions", "sender_incarnation_id, message_id"],
+  ["adapterSubmissions", "sender_incarnation_id, message_id, submission_id"],
   ["audit", "sequence"],
   ["executions", "created_at, execution_id"],
   ["actions", "execution_id, ordinal"],
+  ["attentionClaims", "claim_epoch"],
   ["evidence", "chain_id, sequence"],
   ["finalizations", "dependency_id"],
   ["satisfactions", "dependency_id"],
   ["cursorCommits", "receiver_task_id, receiver_incarnation_id, sequence"],
+  ["taskMetadata", "task_id, incarnation_id"],
 ]);
 const RECOVERY_TABLE_NAMES = Object.freeze({
   messages: "messages",
+  dispositions: "dispositions",
+  admissions: "admission_claims",
+  adapterSubmissions: "adapter_submissions",
   audit: "audit_events",
   executions: "turn_execution_intents",
   actions: "turn_tool_actions",
+  attentionClaims: "attention_handler_claims",
   evidence: "git_evidence_records",
   finalizations: "git_evidence_dependency_finalizations",
   satisfactions: "dependency_satisfactions",
   cursorCommits: "attention_cursor_commits",
+  taskMetadata: "task_metadata",
 });
 
 function coded(code, detail) {
@@ -76,7 +86,7 @@ function taskRef(actor) {
   return { taskId: actor.taskId, incarnationId: actor.incarnationId };
 }
 
-function recoveryStateVector(coordinator, dependent) {
+function recoveryStateVector(coordinator, dependent, runtime) {
   const stores = {};
   for (const [label, orderBy] of RECOVERY_STATE_TABLES) {
     const table = RECOVERY_TABLE_NAMES[label];
@@ -102,25 +112,78 @@ function recoveryStateVector(coordinator, dependent) {
         revision: cursor.revision,
       },
     },
+    runtime: {
+      nativeTurnCount: Array.isArray(runtime?.turns) ? runtime.turns.length : null,
+    },
   };
 }
 
 function exactArtifactManifest(artifactsDirectory, databasePath, journalPath, journalRecord) {
-  const resources = [
+  const retained = [
     { kind: "sqlite", path: path.basename(databasePath) },
     { kind: "recovery-journal", path: path.basename(journalPath) },
+  ];
+  const absent = [
     { kind: "sqlite-wal", path: path.basename(`${databasePath}-wal`) },
     { kind: "sqlite-shm", path: path.basename(`${databasePath}-shm`) },
     { kind: "sqlite-rollback-journal", path: path.basename(`${databasePath}-journal`) },
-  ].map((resource) => ({
-    ...resource,
-    present: fs.existsSync(path.join(artifactsDirectory, resource.path)),
-  }));
+  ];
+  const resources = [
+    ...retained.map((resource) => ({
+      ...resource,
+      expectedDisposition: "retained-private-evidence",
+      present: fs.existsSync(path.join(artifactsDirectory, resource.path)),
+      absenceChecked: false,
+    })),
+    ...absent.map((resource) => ({
+      ...resource,
+      expectedDisposition: "absent-after-close",
+      present: fs.existsSync(path.join(artifactsDirectory, resource.path)),
+      absenceChecked: true,
+    })),
+  ];
+  const names = fs.readdirSync(artifactsDirectory);
+  const managedOutputs = new Set([
+    "private-trace.jsonl", "result.json", "cleanup-manifest.json",
+  ]);
+  const recognized = new Set([
+    ...resources.map((entry) => entry.path), ...managedOutputs,
+  ]);
+  const temporaryPaths = names.filter((name) => name.endsWith(".tmp"));
+  const unexpectedPaths = names.filter(
+    (name) => !recognized.has(name) && !temporaryPaths.includes(name),
+  );
+  resources.push(
+    {
+      kind: "temporary-files",
+      path: null,
+      expectedDisposition: "absent-after-close",
+      present: temporaryPaths.length > 0,
+      absenceChecked: true,
+      paths: temporaryPaths,
+    },
+    {
+      kind: "unexpected-files",
+      path: null,
+      expectedDisposition: "absent-after-close",
+      present: unexpectedPaths.length > 0,
+      absenceChecked: true,
+      paths: unexpectedPaths,
+    },
+  );
+  const retainedComplete = resources
+    .filter((entry) => entry.expectedDisposition === "retained-private-evidence")
+    .every((entry) => entry.present);
+  const absenceComplete = resources
+    .filter((entry) => entry.expectedDisposition === "absent-after-close")
+    .every((entry) => entry.absenceChecked && !entry.present);
   return {
     attempted: true,
-    complete: true,
+    complete: retainedComplete && absenceComplete,
     resources,
-    retainedEvidence: resources.filter((entry) => entry.present).map((entry) => entry.path),
+    retainedEvidence: resources
+      .filter((entry) => entry.expectedDisposition === "retained-private-evidence" && entry.present)
+      .map((entry) => entry.path),
     recoveryJournal: {
       path: path.basename(journalPath),
       present: fs.existsSync(journalPath),
@@ -142,20 +205,24 @@ function assertRecoveryExpectedDeltas(proofs) {
   if (
     !native || !created || !receipt || !verified || !satisfied ||
     native.stores.executions.count !== 1 || native.stores.actions.count !== 0 ||
+    native.runtime.nativeTurnCount !== 0 || created.runtime.nativeTurnCount !== 1 ||
     created.stores.messages.count !== native.stores.messages.count + 1 ||
     created.stores.actions.count !== native.stores.actions.count + 1 ||
     created.stores.evidence.count !== native.stores.evidence.count + 1 ||
     receipt.stores.messages.count <= created.stores.messages.count ||
     receipt.stores.actions.count <= created.stores.actions.count ||
     canonicalJson(receipt) !== canonicalJson(verified) ||
-    satisfied.stores.finalizations.count !== verified.stores.finalizations.count + 1 ||
-    satisfied.stores.satisfactions.count !== verified.stores.satisfactions.count + 1 ||
+    verified.stores.finalizations.count !== 0 ||
+    verified.stores.satisfactions.count !== 0 ||
+    satisfied.stores.finalizations.count !== 1 ||
+    satisfied.stores.satisfactions.count !== 1 ||
     satisfied.stores.evidence.count !== verified.stores.evidence.count + 1 ||
     satisfied.dependent.revision !== verified.dependent.revision + 1 ||
     satisfied.dependent.state !== "ready"
   ) throw coded("threadmesh_integrated_recovery_delta_mismatch");
   return {
     nativeStartedExecutionPersistedWithoutAction: true,
+    nativeRuntimeTurnCountAdvancesOnceAfterBoundReopen: true,
     eventCreatedAddsOneMessageActionAndEvidenceRecord: true,
     receiptCheckpointAdvancesDurableWork: true,
     journalCheckpointHasNoCoordinatorDelta: true,
@@ -737,14 +804,14 @@ export async function runIntegratedCoordinatorLoop({
     }
     const controlledCoordinatorReopen = (checkpoint) => {
       if (!remainingRestartCheckpoints.has(checkpoint)) return coordinator;
-      const before = recoveryStateVector(coordinator, actors.dependent);
+      const before = recoveryStateVector(coordinator, actors.dependent, runtime);
       coordinator.close();
       coordinator = new SqliteCoordinator({
         filename: databasePath,
         clock: () => NOW,
         verificationTrustAnchors: [trustAnchor],
       });
-      const after = recoveryStateVector(coordinator, actors.dependent);
+      const after = recoveryStateVector(coordinator, actors.dependent, runtime);
       if (canonicalJson(before) !== canonicalJson(after)) {
         throw coded("threadmesh_integrated_recovery_state_drift", checkpoint);
       }
@@ -767,9 +834,9 @@ export async function runIntegratedCoordinatorLoop({
       return coordinator;
     };
     const assertExactReplayNoDuplicate = (checkpoint, operation) => {
-      const before = recoveryStateVector(coordinator, actors.dependent);
+      const before = recoveryStateVector(coordinator, actors.dependent, runtime);
       const result = operation();
-      const after = recoveryStateVector(coordinator, actors.dependent);
+      const after = recoveryStateVector(coordinator, actors.dependent, runtime);
       if (canonicalJson(before) !== canonicalJson(after)) {
         throw coded("threadmesh_integrated_recovery_replay_duplicated", checkpoint);
       }
@@ -924,21 +991,68 @@ export async function runIntegratedCoordinatorLoop({
     const irrelevantCursorBefore = coordinator.getAttentionCursor(
       taskRef(actors.irrelevant), taskPrincipal(actors.irrelevant),
     ).cursor;
+    const irrelevantClassificationDigest = sha256Digest({
+      state: irrelevantRoute.state,
+      reasonCode: irrelevantRoute.reasonCode,
+      eventType: irrelevantRoute.eventType,
+      messageId: irrelevantRoute.messageId,
+    });
     const irrelevantSkip = coordinator.advanceAttentionCursor(
       taskRef(actors.irrelevant),
       {
         eventCursor: irrelevantObserved.cursor,
         eventId: irrelevantObserved.eventId,
-        classificationDigest: sha256Digest({
-          state: irrelevantRoute.state,
-          reasonCode: irrelevantRoute.reasonCode,
-          eventType: irrelevantRoute.eventType,
-          messageId: irrelevantRoute.messageId,
-        }),
+        classificationDigest: irrelevantClassificationDigest,
         expectedRevision: irrelevantCursorBefore.revision,
       },
       taskPrincipal(actors.irrelevant),
     );
+    const irrelevantReplayBefore = recoveryStateVector(
+      coordinator, actors.dependent, runtime,
+    );
+    const irrelevantReplay = coordinator.advanceAttentionCursor(
+      taskRef(actors.irrelevant),
+      {
+        eventCursor: irrelevantObserved.cursor,
+        eventId: irrelevantObserved.eventId,
+        classificationDigest: irrelevantClassificationDigest,
+        expectedRevision: irrelevantSkip.cursor.revision,
+      },
+      taskPrincipal(actors.irrelevant),
+    );
+    const irrelevantReplayAfter = recoveryStateVector(
+      coordinator, actors.dependent, runtime,
+    );
+    if (
+      irrelevantReplay.replay !== true ||
+      canonicalJson(irrelevantReplayBefore) !== canonicalJson(irrelevantReplayAfter)
+    ) throw coded("threadmesh_integrated_irrelevant_replay_failed");
+    const irrelevantConflictBefore = recoveryStateVector(
+      coordinator, actors.dependent, runtime,
+    );
+    let irrelevantConflictRejected = false;
+    try {
+      coordinator.advanceAttentionCursor(
+        taskRef(actors.irrelevant),
+        {
+          eventCursor: irrelevantObserved.cursor,
+          eventId: irrelevantObserved.eventId,
+          classificationDigest: digest("conflicting-irrelevant-classification"),
+          expectedRevision: irrelevantSkip.cursor.revision,
+        },
+        taskPrincipal(actors.irrelevant),
+      );
+    } catch (error) {
+      irrelevantConflictRejected =
+        error?.code === "threadmesh_attention_cursor_commit_conflict";
+    }
+    const irrelevantConflictAfter = recoveryStateVector(
+      coordinator, actors.dependent, runtime,
+    );
+    if (
+      !irrelevantConflictRejected ||
+      canonicalJson(irrelevantConflictBefore) !== canonicalJson(irrelevantConflictAfter)
+    ) throw coded("threadmesh_integrated_irrelevant_conflict_not_closed");
     record("coordinator.attention.irrelevant-skipped", {
       reasonCode: irrelevantRoute.reasonCode,
       commitDigest: irrelevantSkip.commit.commitDigest,
@@ -1090,7 +1204,7 @@ export async function runIntegratedCoordinatorLoop({
     );
     strictOrder.push("dependent-adapter-receipt-recorded");
     controlledCoordinatorReopen("receipt-recorded");
-    assertExactReplayNoDuplicate(
+    const receiptReplay = assertExactReplayNoDuplicate(
       "receipt-recorded",
       () => coordinator.recordAdapterReceipt(
         dependentReceipt.submission.submissionId,
@@ -1099,6 +1213,25 @@ export async function runIntegratedCoordinatorLoop({
         taskPrincipal(actors.dependent),
       ),
     );
+    const persistedReceipt = coordinator.db.prepare(
+      `SELECT state, receipt_json FROM adapter_submissions
+       WHERE submission_id = ?`,
+    ).get(dependentReceipt.submission.submissionId);
+    const receiptProof = recoveryProofs.find(
+      (entry) => entry.checkpoint === "receipt-recorded",
+    );
+    if (
+      receiptReplay.replay !== true ||
+      persistedReceipt?.state !== "receipt-recorded" ||
+      canonicalJson(JSON.parse(persistedReceipt.receipt_json)) !==
+        canonicalJson(DEPENDENT_ADAPTER_RECEIPT)
+    ) throw coded("threadmesh_integrated_recovery_receipt_replay_failed");
+    receiptProof.receipt = {
+      state: persistedReceipt.state,
+      receiptDigest: sha256Digest(JSON.parse(persistedReceipt.receipt_json)),
+      replay: true,
+      duplicateRows: 0,
+    };
     const finalDisposition = finalDispositionAfterDecision(
       coordinator, actors.v, actors.dependent, verifiedEvent, verification.response.attestation,
     );
@@ -1295,6 +1428,9 @@ export async function runIntegratedCoordinatorLoop({
     const cleanup = exactArtifactManifest(
       artifactsDirectory, databasePath, journalPath, journalRecord,
     );
+    if (!cleanup.complete) {
+      throw coded("threadmesh_integrated_recovery_cleanup_incomplete");
+    }
     return {
       state: "passed",
       evidenceClass: "deterministic-integrated-coordinator-fixture",
@@ -1318,6 +1454,8 @@ export async function runIntegratedCoordinatorLoop({
         irrelevantAuthorizedTaskClaimCount: irrelevantClaimsAfter - irrelevantClaimsBefore,
         irrelevantPersistedSkip: true,
         irrelevantCursorCommitKind: irrelevantSkip.commit.kind,
+        irrelevantExactReplayNoDuplicate: true,
+        irrelevantConflictingClassificationRejected: true,
         lifecycleSubmitAuthority: "observed-bound-action-only",
         finalizedAttentionExpiryReplayStable: true,
         finalizedAttentionTimestampTamperRejected: true,

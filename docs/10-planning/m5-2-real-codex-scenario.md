@@ -199,8 +199,11 @@ complete signed verifier bundle and exact finalization arguments, binds them to
 the persisted verifier action result, and reconstructs finalization after
 reopen. Event-created, operation-bound native-started, receipt-recorded,
 final-verification, and satisfaction checkpoints compare one durable state
-vector and require exact replay with no duplicate rows. The satisfaction replay
-also proves a single dependent revision transition. Journal tamper, truncation,
+vector, including dispositions, admissions, adapter receipts, attention
+claims, task metadata, and fixture native-turn count, and require exact replay
+with no duplicate rows. The irrelevant skip also replays without a second
+commit and rejects a conflicting classification. The satisfaction replay also
+proves a single dependent revision transition. Journal tamper, truncation,
 wrong scenario/checkpoint/replay binding, unsafe link/parent, oversized write,
 and conflicting overwrite fail closed; signed contents never enter the public
 result or trace.
