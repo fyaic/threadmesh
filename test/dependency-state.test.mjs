@@ -347,7 +347,7 @@ test("upgrades a v3 coordinator database without rewriting existing state", () =
     verificationTrustAnchors: trustedVerifier.trustAnchors,
   });
   try {
-    assert.equal(coordinator.storageInfo().schemaVersion, 6);
+    assert.equal(coordinator.storageInfo().schemaVersion, 7);
     assert.equal(
       coordinator.getTask(prerequisite, owner).incarnationId,
       prerequisite.incarnationId,
