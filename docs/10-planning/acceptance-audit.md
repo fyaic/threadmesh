@@ -119,7 +119,7 @@ its deterministic tests, while #7 continues to govern normative M0 acceptance.
 
 | Criterion | Current evidence | Audit status |
 |---|---|---|
-| One public package entry | `@fyaic/threadmesh` exports `src/sdk/index.mjs` only | Satisfied on merged main |
+| One public package entry | M4 shipped the root SDK export; M5 adds explicit runtime subpaths and an installed CLI | Satisfied on merged main |
 | Small harness API | Register, publish/discover summary, suggest, poll, and decide | Satisfied on merged main |
 | Bounded behavior | 30-minute maximum TTL, bounded content/reason, no global task enumeration | Satisfied on merged main |
 | End-to-end lifecycle | Async SDK test traverses authenticated JSON-RPC and SQLite through acceptance plus defer/reconsider | Satisfied on merged main |

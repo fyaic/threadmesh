@@ -141,14 +141,17 @@ test("upgrades version two without rewriting its migration checksum", () => {
   coordinator.close();
   database = new Database(temporary.filename, { readonly: true });
   try {
-    assert.equal(database.pragma("user_version", { simple: true }), 3);
+    assert.equal(
+      database.pragma("user_version", { simple: true }),
+      SQLITE_SCHEMA_VERSION,
+    );
     assert.equal(
       database.prepare("SELECT checksum FROM schema_migrations WHERE version = 2").pluck().get(),
       v2Checksum,
     );
     assert.equal(
       database.prepare("SELECT COUNT(*) FROM schema_migrations").pluck().get(),
-      3,
+      SQLITE_SCHEMA_VERSION,
     );
     assert.equal(
       database.prepare("SELECT name FROM pragma_table_info('messages') WHERE name = 'content_purged_at'").pluck().get(),

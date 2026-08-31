@@ -8,7 +8,13 @@ import {
   assertProtocolObject,
   codedError,
   grantAuthorizationDigest,
+  verifyExternallyVerifiedDisposition,
 } from "../protocol-validator.mjs";
+import {
+  assertLifecycleEvent,
+  evaluateDependencyEffect,
+  projectLifecycleEventToEnvelope,
+} from "../routing/lifecycle-events.mjs";
 import {
   evaluateRelationshipPolicy,
   isStateChangingIntent,
@@ -28,8 +34,8 @@ const DEFAULT_DECISION_REASONS = Object.freeze({
   revoked: "revoked",
 });
 const PURGED_TEXT = "Content purged by the ThreadMesh retention policy.";
-export const SQLITE_SCHEMA_VERSION = 3;
-export const SQLITE_SCHEMA_NAME = "threadmesh-retention-state";
+export const SQLITE_SCHEMA_VERSION = 4;
+export const SQLITE_SCHEMA_NAME = "threadmesh-durable-dependency-state";
 const SQLITE_SCHEMA_V2_MANIFEST = Object.freeze({
   tables: {
     tasks: [
@@ -108,7 +114,7 @@ const SQLITE_SCHEMA_V1_MANIFEST = Object.freeze({
     ]),
   }),
 });
-export const SQLITE_SCHEMA_MANIFEST = Object.freeze({
+const SQLITE_SCHEMA_V3_MANIFEST = Object.freeze({
   ...SQLITE_SCHEMA_V2_MANIFEST,
   tables: Object.freeze({
     ...SQLITE_SCHEMA_V2_MANIFEST.tables,
@@ -139,6 +145,29 @@ export const SQLITE_SCHEMA_MANIFEST = Object.freeze({
     ]),
   }),
 });
+export const SQLITE_SCHEMA_MANIFEST = Object.freeze({
+  ...SQLITE_SCHEMA_V3_MANIFEST,
+  tables: Object.freeze({
+    ...SQLITE_SCHEMA_V3_MANIFEST.tables,
+    dependency_edges: Object.freeze([
+      "dependency_id", "version", "prerequisite_task_id",
+      "prerequisite_incarnation_id", "dependent_task_id",
+      "dependent_incarnation_id", "relationship_id",
+      "expected_event_type", "authority_kind", "authority_principal_id",
+      "freshness_json", "edge_json", "status", "created_at",
+      "expires_at", "revoked_at",
+    ]),
+    dependency_satisfactions: Object.freeze([
+      "dependency_id", "edge_version", "sender_incarnation_id",
+      "message_id", "event_json", "disposition_json",
+      "disposition_digest", "satisfied_at",
+    ]),
+  }),
+  indexes: Object.freeze([
+    ...SQLITE_SCHEMA_V3_MANIFEST.indexes,
+    "dependency_edges_current_version",
+  ]),
+});
 export const SQLITE_SCHEMA_MIGRATIONS = Object.freeze([
   Object.freeze({
     version: 1,
@@ -152,6 +181,11 @@ export const SQLITE_SCHEMA_MIGRATIONS = Object.freeze([
   }),
   Object.freeze({
     version: 3,
+    name: "threadmesh-retention-state",
+    manifest: SQLITE_SCHEMA_V3_MANIFEST,
+  }),
+  Object.freeze({
+    version: 4,
     name: SQLITE_SCHEMA_NAME,
     manifest: SQLITE_SCHEMA_MANIFEST,
   }),
@@ -279,6 +313,154 @@ function assertTaskPrincipal(principal, taskId, incarnationId) {
   }
 }
 
+const DEPENDENCY_EDGE_KEYS = new Set([
+  "dependencyId",
+  "version",
+  "edgeType",
+  "prerequisite",
+  "dependent",
+  "relationshipId",
+  "expectedEventType",
+  "freshness",
+  "createdAt",
+  "expiresAt",
+]);
+
+function assertDependencyTaskRef(value, field) {
+  if (
+    !value ||
+    typeof value !== "object" ||
+    Array.isArray(value) ||
+    Object.keys(value).some((key) => !["taskId", "incarnationId"].includes(key)) ||
+    typeof value.taskId !== "string" ||
+    value.taskId.length === 0 ||
+    value.taskId.length > 200 ||
+    typeof value.incarnationId !== "string" ||
+    value.incarnationId.length === 0 ||
+    value.incarnationId.length > 200
+  ) {
+    throw codedError("threadmesh_dependency_edge_invalid", field);
+  }
+}
+
+function assertDependencyFreshness(value) {
+  if (
+    !value ||
+    typeof value !== "object" ||
+    Array.isArray(value) ||
+    Object.keys(value).some(
+      (key) => !["expectedRunId", "expectedObjectiveVersion", "expectedCheckpoint"].includes(key),
+    ) ||
+    (value.expectedRunId !== undefined &&
+      (typeof value.expectedRunId !== "string" || value.expectedRunId.length === 0)) ||
+    (value.expectedObjectiveVersion !== undefined &&
+      (!Number.isInteger(value.expectedObjectiveVersion) ||
+        value.expectedObjectiveVersion < 0)) ||
+    (value.expectedCheckpoint !== undefined &&
+      (typeof value.expectedCheckpoint !== "string" ||
+        value.expectedCheckpoint.length === 0))
+  ) {
+    throw codedError("threadmesh_dependency_edge_invalid", "freshness");
+  }
+}
+
+function normalizeDependencyEdge(edge, clock) {
+  if (
+    !edge ||
+    typeof edge !== "object" ||
+    Array.isArray(edge) ||
+    Object.keys(edge).some((key) => !DEPENDENCY_EDGE_KEYS.has(key)) ||
+    typeof edge.dependencyId !== "string" ||
+    edge.dependencyId.length === 0 ||
+    edge.dependencyId.length > 200 ||
+    !Number.isInteger(edge.version) ||
+    edge.version < 1 ||
+    edge.edgeType !== "dependency" ||
+    edge.expectedEventType !== "dependency-satisfied" ||
+    (edge.relationshipId !== undefined &&
+      (typeof edge.relationshipId !== "string" || edge.relationshipId.length === 0))
+  ) {
+    throw codedError("threadmesh_dependency_edge_invalid");
+  }
+  assertDependencyTaskRef(edge.prerequisite, "prerequisite");
+  assertDependencyTaskRef(edge.dependent, "dependent");
+  if (
+    edge.prerequisite.taskId === edge.dependent.taskId &&
+    edge.prerequisite.incarnationId === edge.dependent.incarnationId
+  ) {
+    throw codedError("threadmesh_dependency_edge_invalid", "self dependency");
+  }
+  const createdAt = edge.createdAt ?? new Date(clock()).toISOString();
+  if (!Number.isFinite(Date.parse(createdAt))) {
+    throw codedError("threadmesh_dependency_edge_invalid", "createdAt");
+  }
+  if (
+    edge.expiresAt !== undefined &&
+    (!Number.isFinite(Date.parse(edge.expiresAt)) ||
+      Date.parse(edge.expiresAt) <= Date.parse(createdAt))
+  ) {
+    throw codedError("threadmesh_dependency_edge_invalid", "expiresAt");
+  }
+  const freshness = edge.freshness ?? {};
+  assertDependencyFreshness(freshness);
+  return Object.freeze({
+    dependencyId: edge.dependencyId,
+    version: edge.version,
+    edgeType: "dependency",
+    prerequisite: { ...edge.prerequisite },
+    dependent: { ...edge.dependent },
+    ...(edge.relationshipId ? { relationshipId: edge.relationshipId } : {}),
+    expectedEventType: edge.expectedEventType,
+    freshness: { ...freshness },
+    createdAt,
+    ...(edge.expiresAt ? { expiresAt: edge.expiresAt } : {}),
+  });
+}
+
+function sameTaskRef(left, right) {
+  return (
+    left?.taskId === right?.taskId &&
+    left?.incarnationId === right?.incarnationId
+  );
+}
+
+function freezeVerificationTrustAnchors(trustAnchors) {
+  if (
+    !Array.isArray(trustAnchors) ||
+    trustAnchors.length > 64 ||
+    trustAnchors.some(
+      (anchor) =>
+        !anchor ||
+        typeof anchor !== "object" ||
+        Array.isArray(anchor) ||
+        Object.keys(anchor).some(
+          (key) =>
+            ![
+              "keyId",
+              "algorithm",
+              "actorId",
+              "trustDomain",
+              "policyId",
+              "publicKeyPem",
+            ].includes(key),
+        ) ||
+        typeof anchor.keyId !== "string" ||
+        anchor.algorithm !== "ed25519" ||
+        typeof anchor.actorId !== "string" ||
+        typeof anchor.trustDomain !== "string" ||
+        typeof anchor.policyId !== "string" ||
+        typeof anchor.publicKeyPem !== "string" ||
+        anchor.publicKeyPem.includes("PRIVATE KEY"),
+    ) ||
+    new Set(trustAnchors.map((anchor) => anchor.keyId)).size !== trustAnchors.length
+  ) {
+    throw codedError("threadmesh_verification_trust_anchor_invalid");
+  }
+  return Object.freeze(
+    trustAnchors.map((anchor) => Object.freeze(structuredClone(anchor))),
+  );
+}
+
 function isTaskPrincipal(principal, taskId, incarnationId) {
   return (
     principal?.kind === "task" &&
@@ -379,8 +561,17 @@ export function createEffectiveGrant(draft, decision, principal) {
 }
 
 export class SqliteCoordinator {
-  constructor({ filename = ":memory:", clock = Date.now } = {}) {
+  #verificationTrustAnchors;
+
+  constructor({
+    filename = ":memory:",
+    clock = Date.now,
+    verificationTrustAnchors = [],
+  } = {}) {
     this.clock = clock;
+    this.#verificationTrustAnchors = freezeVerificationTrustAnchors(
+      verificationTrustAnchors,
+    );
     this.db = new Database(filename);
     if (filename !== ":memory:") fs.chmodSync(filename, 0o600);
     this.db.pragma("journal_mode = WAL");
@@ -454,6 +645,9 @@ export class SqliteCoordinator {
           "TEXT",
         );
         this.#addColumnIfMissing("audit_events", "detail_purged_at", "TEXT");
+      }
+      if (version < 4) {
+        this.#initializeDependencySchema();
       }
       this.#assertSchemaCompatible();
       for (const migration of SQLITE_SCHEMA_MIGRATIONS) {
@@ -672,6 +866,53 @@ export class SqliteCoordinator {
     `);
   }
 
+  #initializeDependencySchema() {
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS dependency_edges (
+        dependency_id TEXT NOT NULL,
+        version INTEGER NOT NULL,
+        prerequisite_task_id TEXT NOT NULL,
+        prerequisite_incarnation_id TEXT NOT NULL,
+        dependent_task_id TEXT NOT NULL,
+        dependent_incarnation_id TEXT NOT NULL,
+        relationship_id TEXT,
+        expected_event_type TEXT NOT NULL,
+        authority_kind TEXT NOT NULL,
+        authority_principal_id TEXT NOT NULL,
+        freshness_json TEXT NOT NULL,
+        edge_json TEXT NOT NULL,
+        status TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        expires_at TEXT,
+        revoked_at TEXT,
+        PRIMARY KEY (dependency_id, version),
+        FOREIGN KEY (prerequisite_task_id, prerequisite_incarnation_id)
+          REFERENCES tasks (task_id, incarnation_id),
+        FOREIGN KEY (dependent_task_id, dependent_incarnation_id)
+          REFERENCES tasks (task_id, incarnation_id)
+      );
+
+      CREATE INDEX IF NOT EXISTS dependency_edges_current_version
+        ON dependency_edges (dependency_id, version DESC);
+
+      CREATE TABLE IF NOT EXISTS dependency_satisfactions (
+        dependency_id TEXT PRIMARY KEY,
+        edge_version INTEGER NOT NULL,
+        sender_incarnation_id TEXT NOT NULL,
+        message_id TEXT NOT NULL,
+        event_json TEXT NOT NULL,
+        disposition_json TEXT NOT NULL,
+        disposition_digest TEXT NOT NULL,
+        satisfied_at TEXT NOT NULL,
+        UNIQUE (sender_incarnation_id, message_id),
+        FOREIGN KEY (dependency_id, edge_version)
+          REFERENCES dependency_edges (dependency_id, version),
+        FOREIGN KEY (sender_incarnation_id, message_id)
+          REFERENCES messages (sender_incarnation_id, message_id)
+      );
+    `);
+  }
+
   #assertSchemaCompatible() {
     for (const [table, expectedColumns] of Object.entries(SQLITE_SCHEMA_MANIFEST.tables)) {
       const actualColumns = new Set(
@@ -788,6 +1029,386 @@ export class SqliteCoordinator {
     return { ...task, revision: 0, replay: false };
   }
 
+  createDependencyEdge(edge, principal) {
+    assertControlPlanePrincipal(principal);
+    const normalized = normalizeDependencyEdge(edge, this.clock);
+    return this.db.transaction(() => {
+      for (const ref of [normalized.prerequisite, normalized.dependent]) {
+        const task = this.#assertTaskActive(ref);
+        if (
+          principal.kind !== "policy" &&
+          (task.owner_kind !== principal.kind ||
+            task.owner_principal_id !== principal.principalId)
+        ) {
+          throw codedError(
+            "threadmesh_dependency_edge_scope_not_authorized",
+            ref.taskId,
+          );
+        }
+      }
+      if (normalized.expiresAt && Date.parse(normalized.expiresAt) <= this.clock()) {
+        throw codedError("threadmesh_dependency_edge_expired");
+      }
+      const current = this.#currentDependencyEdgeRow(normalized.dependencyId, false);
+      if (current) {
+        const replayCandidate = edge.createdAt === undefined
+          ? { ...normalized, createdAt: JSON.parse(current.edge_json).createdAt }
+          : normalized;
+        const same =
+          current.version === normalized.version &&
+          current.authority_kind === principal.kind &&
+          current.authority_principal_id === principal.principalId &&
+          canonicalJson(JSON.parse(current.edge_json)) ===
+            canonicalJson(replayCandidate);
+        if (same) {
+          return { ...this.#dependencyEdge(current), replay: true };
+        }
+        if (
+          principal.kind !== "policy" &&
+          (current.authority_kind !== principal.kind ||
+            current.authority_principal_id !== principal.principalId)
+        ) {
+          throw codedError("threadmesh_dependency_edge_not_authorized");
+        }
+        if (normalized.version !== current.version + 1) {
+          throw codedError("threadmesh_dependency_edge_version_conflict");
+        }
+        const satisfied = this.db
+          .prepare("SELECT 1 FROM dependency_satisfactions WHERE dependency_id = ?")
+          .get(normalized.dependencyId);
+        if (satisfied) {
+          throw codedError("threadmesh_dependency_already_satisfied");
+        }
+      } else if (normalized.version !== 1) {
+        throw codedError("threadmesh_dependency_edge_version_conflict");
+      }
+      this.db
+        .prepare(
+          `INSERT INTO dependency_edges (
+             dependency_id, version, prerequisite_task_id,
+             prerequisite_incarnation_id, dependent_task_id,
+             dependent_incarnation_id, relationship_id,
+             expected_event_type, authority_kind, authority_principal_id,
+             freshness_json, edge_json, status, created_at, expires_at
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'waiting', ?, ?)`,
+        )
+        .run(
+          normalized.dependencyId,
+          normalized.version,
+          normalized.prerequisite.taskId,
+          normalized.prerequisite.incarnationId,
+          normalized.dependent.taskId,
+          normalized.dependent.incarnationId,
+          normalized.relationshipId ?? null,
+          normalized.expectedEventType,
+          principal.kind,
+          principal.principalId,
+          canonicalJson(normalized.freshness),
+          canonicalJson(normalized),
+          normalized.createdAt,
+          normalized.expiresAt ?? null,
+        );
+      return {
+        ...this.#dependencyEdge(
+          this.#currentDependencyEdgeRow(normalized.dependencyId),
+        ),
+        replay: false,
+      };
+    }).immediate();
+  }
+
+  getDependencyEdge(dependencyId, principal, version = null) {
+    const row = version === null
+      ? this.#currentDependencyEdgeRow(dependencyId)
+      : this.db
+          .prepare(
+            `SELECT * FROM dependency_edges
+             WHERE dependency_id = ? AND version = ?`,
+          )
+          .get(dependencyId, version);
+    if (!row) throw codedError("threadmesh_dependency_edge_not_found", dependencyId);
+    this.#assertDependencyReadAuthority(row, principal);
+    return this.#dependencyEdge(row);
+  }
+
+  revokeDependencyEdge(dependencyId, expectedVersion, principal) {
+    assertControlPlanePrincipal(principal);
+    return this.db.transaction(() => {
+      const current = this.#currentDependencyEdgeRow(dependencyId);
+      this.#assertDependencyControlAuthority(current, principal);
+      if (
+        current.status === "revoked" &&
+        [current.version, current.version - 1].includes(expectedVersion)
+      ) {
+        return { ...this.#dependencyEdge(current), replay: true };
+      }
+      if (current.version !== expectedVersion) {
+        throw codedError("threadmesh_dependency_edge_version_conflict");
+      }
+      if (
+        this.db
+          .prepare("SELECT 1 FROM dependency_satisfactions WHERE dependency_id = ?")
+          .get(dependencyId)
+      ) {
+        throw codedError("threadmesh_dependency_already_satisfied");
+      }
+      const at = nowIso(this.clock);
+      const previous = JSON.parse(current.edge_json);
+      const revoked = {
+        ...previous,
+        version: current.version + 1,
+        createdAt: at,
+        revokedAt: at,
+      };
+      this.db
+        .prepare(
+          `INSERT INTO dependency_edges (
+             dependency_id, version, prerequisite_task_id,
+             prerequisite_incarnation_id, dependent_task_id,
+             dependent_incarnation_id, relationship_id,
+             expected_event_type, authority_kind, authority_principal_id,
+             freshness_json, edge_json, status, created_at, expires_at,
+             revoked_at
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'revoked', ?, ?, ?)`,
+        )
+        .run(
+          dependencyId,
+          revoked.version,
+          current.prerequisite_task_id,
+          current.prerequisite_incarnation_id,
+          current.dependent_task_id,
+          current.dependent_incarnation_id,
+          current.relationship_id,
+          current.expected_event_type,
+          principal.kind,
+          principal.principalId,
+          current.freshness_json,
+          canonicalJson(revoked),
+          at,
+          current.expires_at,
+          at,
+        );
+      return {
+        ...this.#dependencyEdge(this.#currentDependencyEdgeRow(dependencyId)),
+        replay: false,
+      };
+    }).immediate();
+  }
+
+  satisfyDependencyEdge(
+    { dependencyId, expectedVersion, event, disposition },
+    principal,
+  ) {
+    assertLifecycleEvent(event);
+    assertProtocolObject("disposition", disposition);
+    const projectedEnvelope = projectLifecycleEventToEnvelope(event);
+    const dispositionDigest = sha256Digest(disposition);
+    return this.db.transaction(() => {
+      const current = this.#currentDependencyEdgeRow(dependencyId);
+      this.#assertDependencySatisfactionAuthority(current, principal);
+      const existing = this.db
+        .prepare("SELECT * FROM dependency_satisfactions WHERE dependency_id = ?")
+        .get(dependencyId);
+      if (existing) {
+        const same =
+          existing.edge_version === expectedVersion &&
+          existing.sender_incarnation_id === event.sender.incarnationId &&
+          existing.message_id === event.messageId &&
+          existing.disposition_digest === dispositionDigest &&
+          canonicalJson(JSON.parse(existing.event_json)) === canonicalJson(event);
+        if (!same) throw codedError("threadmesh_dependency_satisfaction_conflict");
+        return {
+          ...this.#dependencyEdge(current),
+          replay: true,
+          unlock: false,
+        };
+      }
+      const messageBinding = this.db
+        .prepare(
+          `SELECT dependency_id FROM dependency_satisfactions
+           WHERE sender_incarnation_id = ? AND message_id = ?`,
+        )
+        .get(event.sender.incarnationId, event.messageId);
+      if (messageBinding) {
+        throw codedError(
+          "threadmesh_dependency_satisfaction_conflict",
+          messageBinding.dependency_id,
+        );
+      }
+      if (current.version !== expectedVersion) {
+        throw codedError("threadmesh_dependency_edge_version_conflict");
+      }
+      if (current.status !== "waiting" || current.revoked_at) {
+        throw codedError("threadmesh_dependency_edge_inactive");
+      }
+      if (current.expires_at && Date.parse(current.expires_at) <= this.clock()) {
+        throw codedError("threadmesh_dependency_edge_expired");
+      }
+      if (Date.parse(event.expiresAt) <= this.clock()) {
+        throw codedError("threadmesh_message_expired");
+      }
+      this.#assertTaskActive({
+        taskId: current.prerequisite_task_id,
+        incarnationId: current.prerequisite_incarnation_id,
+      });
+      this.#assertTaskActive({
+        taskId: current.dependent_task_id,
+        incarnationId: current.dependent_incarnation_id,
+      });
+
+      const row = this.#message(event.sender.incarnationId, event.messageId);
+      this.#assertCurrentAuthorization(row);
+      if (canonicalJson(JSON.parse(row.envelope_json)) !== canonicalJson(projectedEnvelope)) {
+        throw codedError("threadmesh_dependency_event_binding_mismatch");
+      }
+      const receiver = {
+        taskId: row.target_task_id,
+        incarnationId: row.target_incarnation_id,
+      };
+      if (
+        row.decision_state !== "accepted" ||
+        disposition.messageId !== row.message_id ||
+        !sameTaskRef(disposition.receiver, receiver) ||
+        disposition.revision !== row.revision + 1 ||
+        disposition.delivery.state !== row.delivery_state ||
+        disposition.decision.state !== row.decision_state ||
+        !sameTaskRef(disposition.decision.decidedBy?.task, receiver)
+      ) {
+        throw codedError("threadmesh_dependency_disposition_binding_mismatch");
+      }
+      this.#assertDependencyFreshness(current, event);
+      verifyExternallyVerifiedDisposition(
+        disposition,
+        this.#verificationTrustAnchors,
+      );
+
+      const edge = JSON.parse(current.edge_json);
+      const effect = evaluateDependencyEffect({
+        event,
+        disposition,
+        trustAnchors: this.#verificationTrustAnchors,
+        dependencyEdge: edge,
+        currentDependencyEdge: edge,
+        now: this.clock(),
+      });
+      if (!effect.unlock) {
+        throw codedError("threadmesh_dependency_not_satisfied", effect.reasonCode);
+      }
+
+      const updated = this.db
+        .prepare(
+          `UPDATE dispositions SET revision = revision + 1,
+             outcome_state = 'externally-verified', updated_at = ?
+           WHERE sender_incarnation_id = ? AND message_id = ?
+             AND revision = ? AND decision_state = 'accepted'
+             AND outcome_state <> 'externally-verified'`,
+        )
+        .run(
+          disposition.updatedAt,
+          event.sender.incarnationId,
+          event.messageId,
+          row.revision,
+        );
+      if (updated.changes !== 1) {
+        throw codedError("threadmesh_revision_or_state_conflict");
+      }
+      this.db
+        .prepare(
+          `INSERT INTO dependency_satisfactions (
+             dependency_id, edge_version, sender_incarnation_id, message_id,
+             event_json, disposition_json, disposition_digest, satisfied_at
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        )
+        .run(
+          dependencyId,
+          expectedVersion,
+          event.sender.incarnationId,
+          event.messageId,
+          canonicalJson(event),
+          canonicalJson(disposition),
+          dispositionDigest,
+          disposition.updatedAt,
+        );
+      const remainingDependency = this.db
+        .prepare(
+          `SELECT edge.dependency_id
+           FROM dependency_edges AS edge
+           JOIN (
+             SELECT dependency_id, MAX(version) AS version
+             FROM dependency_edges
+             GROUP BY dependency_id
+           ) AS current_edge
+             ON current_edge.dependency_id = edge.dependency_id
+            AND current_edge.version = edge.version
+           LEFT JOIN dependency_satisfactions AS satisfaction
+             ON satisfaction.dependency_id = edge.dependency_id
+            AND satisfaction.edge_version = edge.version
+           WHERE edge.dependent_task_id = ?
+             AND edge.dependent_incarnation_id = ?
+             AND edge.status = 'waiting'
+             AND edge.revoked_at IS NULL
+             AND satisfaction.dependency_id IS NULL
+           LIMIT 1`,
+        )
+        .get(current.dependent_task_id, current.dependent_incarnation_id);
+      let unlock = false;
+      if (!remainingDependency) {
+        const dependentMetadata = this.#taskMetadata({
+          taskId: current.dependent_task_id,
+          incarnationId: current.dependent_incarnation_id,
+        });
+        const taskState = this.db
+          .prepare(
+            `UPDATE tasks SET state = 'ready'
+             WHERE task_id = ? AND incarnation_id = ?
+               AND state IN ('waiting', 'idle')`,
+          )
+          .run(current.dependent_task_id, current.dependent_incarnation_id);
+        if (taskState.changes === 1) {
+          const taskRevision = this.db
+            .prepare(
+              `UPDATE task_metadata SET revision = revision + 1
+               WHERE task_id = ? AND incarnation_id = ? AND revision = ?`,
+            )
+            .run(
+              current.dependent_task_id,
+              current.dependent_incarnation_id,
+              dependentMetadata.revision,
+            );
+          if (taskRevision.changes !== 1) {
+            throw codedError("threadmesh_revision_conflict");
+          }
+          unlock = true;
+        }
+      }
+      this.#audit(
+        event.sender.incarnationId,
+        event.messageId,
+        "dependency-satisfied",
+        disposition.revision,
+        {
+          dependencyId,
+          edgeVersion: expectedVersion,
+          dispositionDigest,
+          unlock,
+          remainingDependencyId: remainingDependency?.dependency_id ?? null,
+        },
+      );
+      return {
+        ...this.#dependencyEdge(current),
+        status: "satisfied",
+        satisfiedAt: disposition.updatedAt,
+        satisfaction: {
+          senderIncarnationId: event.sender.incarnationId,
+          messageId: event.messageId,
+          dispositionDigest,
+        },
+        replay: false,
+        unlock,
+      };
+    }).immediate();
+  }
+
   executeIdempotent(authenticationId, method, idempotencyKey, params, operation) {
     if (!authenticationId || !method || !idempotencyKey) {
       throw codedError("threadmesh_idempotency_scope_invalid");
@@ -855,6 +1476,35 @@ export class SqliteCoordinator {
       runtime: runtimeSnapshot(metadata),
       revision: metadata.revision,
     };
+  }
+
+  updateTaskState(taskRef, state, expectedRevision, principal) {
+    if (typeof state !== "string" || state.length === 0 || state.length > 64) {
+      throw codedError("threadmesh_task_state_invalid");
+    }
+    return this.db.transaction(() => {
+      const task = this.#taskRecord(taskRef);
+      this.#assertTaskOwnerOrSelf(task, principal);
+      const metadata = this.#taskMetadata(taskRef);
+      if (metadata.retired_at) throw codedError("threadmesh_task_retired");
+      if (metadata.revision !== expectedRevision) {
+        throw codedError("threadmesh_revision_conflict");
+      }
+      this.db
+        .prepare(
+          `UPDATE tasks SET state = ?
+           WHERE task_id = ? AND incarnation_id = ?`,
+        )
+        .run(state, taskRef.taskId, taskRef.incarnationId);
+      const revision = this.db
+        .prepare(
+          `UPDATE task_metadata SET revision = revision + 1
+           WHERE task_id = ? AND incarnation_id = ? AND revision = ?`,
+        )
+        .run(taskRef.taskId, taskRef.incarnationId, expectedRevision);
+      if (revision.changes !== 1) throw codedError("threadmesh_revision_conflict");
+      return this.getTask(taskRef, principal);
+    }).immediate();
   }
 
   updateTaskRuntime(taskRef, runtime, expectedRevision, principal) {
@@ -2767,6 +3417,119 @@ export class SqliteCoordinator {
       nextCursor: rows.at(-1)?.cursor ?? afterCursor,
       timedOut: rows.length === 0,
     };
+  }
+
+  #currentDependencyEdgeRow(dependencyId, required = true) {
+    if (typeof dependencyId !== "string" || dependencyId.length === 0) {
+      throw codedError("threadmesh_dependency_edge_invalid", "dependencyId");
+    }
+    const row = this.db
+      .prepare(
+        `SELECT * FROM dependency_edges
+         WHERE dependency_id = ? ORDER BY version DESC LIMIT 1`,
+      )
+      .get(dependencyId);
+    if (!row && required) {
+      throw codedError("threadmesh_dependency_edge_not_found", dependencyId);
+    }
+    return row ?? null;
+  }
+
+  #dependencyEdge(row) {
+    const edge = JSON.parse(row.edge_json);
+    const satisfaction = this.db
+      .prepare(
+        `SELECT edge_version, sender_incarnation_id, message_id,
+                disposition_digest, satisfied_at
+         FROM dependency_satisfactions WHERE dependency_id = ?`,
+      )
+      .get(row.dependency_id);
+    const isSatisfied = satisfaction?.edge_version === row.version;
+    return {
+      ...edge,
+      authority: {
+        kind: row.authority_kind,
+        principalId: row.authority_principal_id,
+      },
+      status: isSatisfied ? "satisfied" : row.status,
+      ...(isSatisfied
+        ? {
+            satisfiedAt: satisfaction.satisfied_at,
+            satisfaction: {
+              senderIncarnationId: satisfaction.sender_incarnation_id,
+              messageId: satisfaction.message_id,
+              dispositionDigest: satisfaction.disposition_digest,
+            },
+          }
+        : {}),
+    };
+  }
+
+  #assertDependencyControlAuthority(row, principal) {
+    assertControlPlanePrincipal(principal);
+    if (
+      principal.kind !== "policy" &&
+      (row.authority_kind !== principal.kind ||
+        row.authority_principal_id !== principal.principalId)
+    ) {
+      throw codedError("threadmesh_dependency_edge_not_authorized");
+    }
+  }
+
+  #assertDependencyReadAuthority(row, principal) {
+    const participatingTask =
+      isTaskPrincipal(
+        principal,
+        row.prerequisite_task_id,
+        row.prerequisite_incarnation_id,
+      ) ||
+      isTaskPrincipal(
+        principal,
+        row.dependent_task_id,
+        row.dependent_incarnation_id,
+      );
+    const controlAuthority =
+      principal?.kind === "policy" ||
+      (principal?.kind === row.authority_kind &&
+        principal?.principalId === row.authority_principal_id);
+    if (!participatingTask && !controlAuthority) {
+      throw codedError("threadmesh_dependency_edge_not_authorized");
+    }
+  }
+
+  #assertDependencySatisfactionAuthority(row, principal) {
+    if (
+      principal?.kind !== "policy" &&
+      !isTaskPrincipal(
+        principal,
+        row.dependent_task_id,
+        row.dependent_incarnation_id,
+      )
+    ) {
+      throw codedError("threadmesh_dependency_satisfaction_not_authorized");
+    }
+  }
+
+  #assertDependencyFreshness(row, event) {
+    const expected = JSON.parse(row.freshness_json);
+    const dependent = this.#taskMetadata({
+      taskId: row.dependent_task_id,
+      incarnationId: row.dependent_incarnation_id,
+    });
+    const checks = [
+      ["expectedRunId", "run_id"],
+      ["expectedObjectiveVersion", "objective_version"],
+      ["expectedCheckpoint", "checkpoint"],
+    ];
+    for (const [eventKey, metadataKey] of checks) {
+      if (
+        expected[eventKey] !== undefined &&
+        (event.freshness[eventKey] !== expected[eventKey] ||
+          dependent[metadataKey] !== expected[eventKey])
+      ) {
+        throw codedError("threadmesh_dependency_edge_stale", eventKey);
+      }
+    }
   }
 
   #taskRecord(taskRef) {

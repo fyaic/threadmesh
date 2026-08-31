@@ -111,13 +111,20 @@ importing coordinator, adapter, or validation internals.
 
 ## M5 — Attention and handoff router MVP
 
-- [ ] Ship a one-command local demo with generated identities, grants, example
+The first deterministic vertical slice now passes locally and from a packed
+consumer: the six lifecycle events project onto the existing protocol,
+attention offers remain separate from verified dependency effects, durable
+edge/event state survives restart, dropped wake hints reconcile from a cursor,
+and a bounded inspector explains the final state. Real-agent evidence remains
+the next milestone gate.
+
+- [x] Ship a one-command local demo with generated identities, grants, example
   sessions, and an inspector
   ([#89](https://github.com/fyaic/threadmesh/issues/89)).
-- [ ] Make `completed`, `blocked`, `needs-input`, `review-failed`,
+- [x] Make `completed`, `blocked`, `needs-input`, `review-failed`,
   `artifact-ready`, and `dependency-satisfied` the primary product events
   ([#90](https://github.com/fyaic/threadmesh/issues/90)).
-- [ ] Route accepted and sufficiently verified events to eligible dependent
+- [x] Route accepted and sufficiently verified events to eligible dependent
   sessions without treating receipt as verification or authority
   ([#90](https://github.com/fyaic/threadmesh/issues/90)).
 - [ ] Demonstrate a real Codex-first implementation/review/fix loop with zero
