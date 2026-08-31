@@ -240,6 +240,33 @@ blocked on integrated fault injection and a live correlated gate run. Kimi
 remains a capability-only compatibility preflight until it exposes bounded
 dynamic-tool and receipt evidence.
 
+The first live-runner recovery slice is wired but remains non-product evidence.
+Before native `turn/start`, the runner obtains the bounded read/list baseline
+and atomically fsyncs a private 0600 journal under a 0700 parent. That journal
+binds the exact execution, adapter snapshot, `clientUserMessageId`, baseline,
+and one exact Codex-thread cleanup resource; its public projection contains
+only digests and counts. Runtime `beforeTurnStart` and `onTurnStarted`
+callbacks reach the coordinator, and a post-start transport failure is marked
+outcome-unknown before observation. Only an exact `interrupted` or `failed`
+terminal correlation may abandon the intent; completed, missing, or multiple
+candidates remain ambiguous and are never retried. A deterministic post-start
+failure injection proves one native start, zero tool effects, and no
+replacement turn. It is not a killed-process canary.
+
+Phase-specific dynamic-tool allowlists are exact. Codex `0.145.0` registers
+the bounded union at `thread/start`; each resumed phase accepts callbacks only
+for its exact subset, so a wrong-phase call fails closed. The model-visible
+union is a known limitation and the current five-tool A surface must be reduced
+to the App Server four-tool budget before the real gate. Context-admission
+turns do not yet have the same private baseline/journal/reconciliation path;
+the live runtime rejects that boundary explicitly. Therefore this slice cannot
+set `liveProductEvidence=true`, and a real SIGKILL supervisor plus durable
+admission recovery remain required before the full A -> R -> same-A -> V gate.
+Role cleanup is absence-first and replay-safe: an already-absent thread is an
+exact success; an existing thread is deleted and then must produce a
+`thread/read` not-found observation. Delete acknowledgement alone is not
+reported as complete.
+
 The [persistent-agent scenario runner](../06-guides/m5-2-live-agent-scenario.md)
 provides a one-command deterministic integrated rehearsal, hash-linked private
 trace, bounded public projection, exact cleanup manifest, retained SQLite

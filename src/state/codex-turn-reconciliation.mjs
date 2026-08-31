@@ -323,6 +323,21 @@ function assertBaseline(value) {
   return value;
 }
 
+/**
+ * Validate a baseline restored from runner-private durable storage.
+ * This deliberately exposes validation, not baseline construction or trust.
+ */
+export function validateCodexNativeTurnBaseline(value) {
+  assertBaseline(value);
+  return Object.freeze({
+    ...value,
+    turns: Object.freeze(value.turns.map((turn) => Object.freeze({
+      ...turn,
+      clientUserMessageIds: Object.freeze([...turn.clientUserMessageIds]),
+    }))),
+  });
+}
+
 function result(state, reasonCode, fields = {}) {
   return Object.freeze({ state, reasonCode, ...fields });
 }

@@ -6,8 +6,13 @@ import path from "node:path";
 import { AcpStdioAdapter } from "../adapters/acp-stdio.mjs";
 import { CodexAppServerAdapter } from "../adapters/codex-app-server.mjs";
 import { canonicalJson, sha256Digest } from "../canonical-json.mjs";
+import {
+  classifyCodexNativeTurnReconciliation,
+  freezeCodexNativeTurnBaseline,
+} from "../state/codex-turn-reconciliation.mjs";
 import { createBoundedGitLoopFixture } from "./bounded-git-loop-fixture.mjs";
 import { runIntegratedCoordinatorLoop } from "./integrated-coordinator-loop.mjs";
+import { writeM52LiveTurnJournal } from "./m5-2-live-turn-journal.mjs";
 
 export const LIVE_AGENT_SCENARIO_ACK =
   "maintainer-approved-threadmesh-live-agent-scenario";
@@ -32,6 +37,9 @@ const CONTRACT = [
   "Every other value, including `VERIFIED`, returns BLOCKED.",
   "",
 ].join("\n");
+const LIVE_JOURNAL_SAFE_ENV_KEYS = new Set([
+  "HOME", "PATH", "LANG", "LC_ALL", "TMPDIR", "TERM", "USER", "SHELL",
+]);
 
 const A_TOOLS = Object.freeze([
   {
@@ -340,12 +348,18 @@ export class DeterministicLiveAgentRuntime {
 }
 
 export class CodexLiveAgentRuntime {
-  constructor({ command, args = ["app-server", "--listen", "stdio://"], env = {}, model = null }) {
+  constructor({
+    command,
+    args = ["app-server", "--listen", "stdio://"],
+    env = {},
+    model = null,
+    adapter = new CodexAppServerAdapter(),
+  }) {
     this.command = command;
     this.args = args;
     this.env = env;
     this.model = model;
-    this.adapter = new CodexAppServerAdapter();
+    this.adapter = adapter;
     this.roles = new Map();
   }
 
@@ -353,53 +367,272 @@ export class CodexLiveAgentRuntime {
     return this.adapter.probe({ command: this.command, args: this.args, cwd, env: this.env });
   }
 
-  async createRole({ role, cwd, tools, instructions, scenarioId }) {
+  async createRole({ role, cwd, tools, phaseTools = null, instructions, scenarioId }) {
+    if (
+      !Array.isArray(tools) || tools.length < 1 ||
+      (phaseTools !== null && (
+        !phaseTools || typeof phaseTools !== "object" || Array.isArray(phaseTools) ||
+        Object.values(phaseTools).some((entry) => !Array.isArray(entry) || entry.length < 1)
+      ))
+    ) throw scenarioError("threadmesh_live_role_tools_invalid", role);
+    const allTools = new Map();
+    for (const tool of [tools, ...Object.values(phaseTools ?? {})].flat()) {
+      const existing = allTools.get(tool?.name);
+      if (existing && canonicalJson(existing) !== canonicalJson(tool)) {
+        throw scenarioError("threadmesh_live_role_tools_invalid", role);
+      }
+      allTools.set(tool?.name, tool);
+    }
+    const registeredTools = [...allTools.values()];
+    if (
+      registeredTools.length < 1 || registeredTools.length > 4 ||
+      Buffer.byteLength(canonicalJson(registeredTools)) > 32 * 1024
+    ) throw scenarioError("threadmesh_live_role_tool_budget_exceeded", role);
     const marker = `THREADMESH_${role.toUpperCase()}_WAITING`;
     const ref = await this.adapter.createDynamicToolThread({
       command: this.command,
       args: this.args,
       cwd,
       env: this.env,
-      dynamicTools: tools,
+      dynamicTools: registeredTools,
       developerInstructions: instructions,
       bootstrapMarker: marker,
       adapterIdempotencyKey: `idem_${scenarioId}_${role}_bootstrap`,
       model: this.model,
       timeoutMs: 180_000,
     });
-    this.roles.set(role, { ref, tools, instructions });
+    this.roles.set(role, {
+      ref, tools, phaseTools, allTools, registeredTools, instructions,
+    });
     return ref;
   }
 
-  async runTurn({ role, phase, cwd, ref, prompt, onToolCall, beforeToolCall, afterToolCall, scenarioId }) {
+  async runTurn({
+    role,
+    phase,
+    cwd,
+    ref,
+    prompt,
+    onToolCall,
+    beforeToolCall = null,
+    afterToolCall = null,
+    beforeTurnStart = async () => {},
+    onTurnStarted = async () => {},
+    scenarioId,
+    turnRecovery = null,
+    allowedToolNames = null,
+  }) {
     const configured = this.roles.get(role);
-    if (!configured || configured.ref.threadId !== ref.threadId) {
+    if (
+      !configured || configured.ref.kind !== ref.kind ||
+      configured.ref.threadId !== ref.threadId ||
+      configured.ref.snapshotDigest !== ref.snapshotDigest
+    ) {
       throw scenarioError("threadmesh_live_scenario_role_ref_mismatch", role);
     }
-    return this.adapter.runAutonomousToolTurn({
-      command: this.command,
-      args: this.args,
-      cwd,
-      env: this.env,
-      adapterRef: ref,
-      prompt,
-      dynamicTools: configured.tools,
-      onToolCall,
-      beforeToolCall,
-      afterToolCall,
-      adapterIdempotencyKey: `idem_${scenarioId}_${role}_${phase}`,
-      timeoutMs: 180_000,
-    });
+    let turnTools = configured.tools;
+    if (configured.phaseTools !== null) {
+      if (!Array.isArray(allowedToolNames) || allowedToolNames.length < 1) {
+        throw scenarioError("threadmesh_live_phase_tool_allowlist_required", phase);
+      }
+      if (new Set(allowedToolNames).size !== allowedToolNames.length) {
+        throw scenarioError("threadmesh_live_phase_tool_allowlist_invalid", phase);
+      }
+      const phaseDefinition = configured.phaseTools[phase];
+      if (
+        !phaseDefinition || canonicalJson(phaseDefinition.map(({ name }) => name)) !==
+          canonicalJson(allowedToolNames)
+      ) throw scenarioError("threadmesh_live_phase_tool_allowlist_invalid", phase);
+      turnTools = allowedToolNames.map((name) => configured.allTools.get(name));
+      if (turnTools.some((tool) => !tool)) {
+        throw scenarioError("threadmesh_live_phase_tool_allowlist_invalid", phase);
+      }
+    } else if (
+      allowedToolNames !== null &&
+      canonicalJson(configured.tools.map(({ name }) => name)) !== canonicalJson(allowedToolNames)
+    ) throw scenarioError("threadmesh_live_phase_tool_allowlist_invalid", phase);
+    const adapterIdempotencyKey = `idem_${scenarioId}_${role}_${phase}`;
+    let baseline = null;
+    let journalProjection = null;
+    if (turnRecovery === null) {
+      throw scenarioError("threadmesh_live_turn_recovery_required", phase);
+    }
+    if (turnRecovery !== null) {
+      if (
+        !turnRecovery || typeof turnRecovery !== "object" ||
+        typeof turnRecovery.filename !== "string" ||
+        typeof turnRecovery.executionId !== "string" ||
+        typeof turnRecovery.onOutcomeUnknown !== "function" ||
+        typeof turnRecovery.onTerminalReconciliation !== "function"
+      ) throw scenarioError("threadmesh_live_turn_recovery_invalid");
+      const observation = await this.adapter.observePersistedTurns({
+        command: this.command,
+        args: this.args,
+        cwd,
+        env: this.env,
+        threadId: ref.threadId,
+        expectedSnapshotDigest: ref.snapshotDigest,
+        includeItemsList: false,
+        timeoutMs: 30_000,
+      });
+      baseline = freezeCodexNativeTurnBaseline(observation, {
+        clientUserMessageId: adapterIdempotencyKey,
+      });
+      journalProjection = writeM52LiveTurnJournal({
+        filename: turnRecovery.filename,
+        scenarioId,
+        executionId: turnRecovery.executionId,
+        role,
+        phase,
+        adapterRef: ref,
+        adapterIdempotencyKey,
+        baseline,
+        resourceManifest: {
+          resources: [{
+            kind: "codex-thread",
+            exactId: ref.threadId,
+            identifierDigest: sha256Digest(ref.threadId),
+            cleanupContext: {
+              method: "codex-thread-delete",
+              parameters: {
+                command: this.command,
+                args: [...this.args],
+                cwd,
+                env: Object.fromEntries(Object.entries(this.env).filter(
+                  ([key]) => LIVE_JOURNAL_SAFE_ENV_KEYS.has(key),
+                )),
+              },
+              parametersDigest: sha256Digest({
+                command: this.command,
+                args: [...this.args],
+                cwd,
+                env: Object.fromEntries(Object.entries(this.env).filter(
+                  ([key]) => LIVE_JOURNAL_SAFE_ENV_KEYS.has(key),
+                )),
+              }),
+            },
+          }],
+        },
+      });
+    }
+    let nativeStartRequested = false;
+    try {
+      const turn = await this.adapter.runAutonomousToolTurn({
+        command: this.command,
+        args: this.args,
+        cwd,
+        env: this.env,
+        adapterRef: ref,
+        prompt,
+        dynamicTools: turnTools,
+        onToolCall,
+        beforeToolCall,
+        afterToolCall,
+        beforeTurnStart: async (metadata) => {
+          await beforeTurnStart(metadata);
+          nativeStartRequested = true;
+        },
+        onTurnStarted,
+        adapterIdempotencyKey,
+        timeoutMs: 180_000,
+      });
+      return journalProjection ? { ...turn, recoveryJournal: journalProjection } : turn;
+    } catch (error) {
+      if (turnRecovery === null || !nativeStartRequested) throw error;
+      await turnRecovery.onOutcomeUnknown({
+        reasonCode: "threadmesh_codex_native_turn_outcome_unknown",
+        baseline,
+      });
+      const observation = await this.adapter.observePersistedTurns({
+        command: this.command,
+        args: this.args,
+        cwd,
+        env: this.env,
+        threadId: ref.threadId,
+        expectedSnapshotDigest: ref.snapshotDigest,
+        includeItemsList: false,
+        timeoutMs: 30_000,
+      });
+      const classified = classifyCodexNativeTurnReconciliation({ baseline, observation });
+      if (classified.state !== "found-terminal") {
+        const ambiguous = scenarioError(
+          "threadmesh_codex_live_turn_reconciliation_ambiguous",
+          classified.reasonCode,
+        );
+        ambiguous.recovery = {
+          state: "ambiguous",
+          reasonCode: classified.reasonCode,
+          journal: journalProjection,
+        };
+        throw ambiguous;
+      }
+      await turnRecovery.onTerminalReconciliation({ baseline, observation });
+      const terminal = scenarioError(
+        "threadmesh_codex_live_turn_terminal_reconciled",
+        classified.turnStatus,
+      );
+      terminal.recovery = {
+        state: "found-terminal",
+        turnStatus: classified.turnStatus,
+        journal: journalProjection,
+      };
+      throw terminal;
+    }
   }
 
-  async deleteRole({ ref, cwd }) {
-    return this.adapter.deleteThread({
+  async deliverContext({ role, ref, prepared, cwd, scenarioId, turnRecovery = null }) {
+    const configured = this.roles.get(role);
+    if (
+      !configured || configured.ref.kind !== ref.kind ||
+      configured.ref.threadId !== ref.threadId ||
+      configured.ref.snapshotDigest !== ref.snapshotDigest ||
+      prepared?.adapterRef?.kind !== ref.kind ||
+      prepared?.adapterRef?.threadId !== ref.threadId ||
+      prepared?.adapterRef?.snapshotDigest !== ref.snapshotDigest
+    ) throw scenarioError("threadmesh_live_scenario_role_ref_mismatch", role);
+    if (turnRecovery === null) {
+      throw scenarioError("threadmesh_live_context_recovery_required", role);
+    }
+    throw scenarioError("threadmesh_live_context_recovery_not_implemented", role);
+  }
+
+  async deleteRole({ role, ref, cwd }) {
+    const configured = this.roles.get(role);
+    if (
+      !configured || configured.ref.kind !== ref?.kind ||
+      configured.ref.threadId !== ref?.threadId ||
+      configured.ref.snapshotDigest !== ref?.snapshotDigest
+    ) throw scenarioError("threadmesh_live_scenario_role_ref_mismatch", role);
+    const cleanupArgs = {
       command: this.command,
       args: this.args,
       cwd,
       env: this.env,
       threadId: ref.threadId,
-    });
+    };
+    const before = await this.adapter.confirmThreadAbsent(cleanupArgs);
+    if (before.absent === true) {
+      return {
+        deleted: true,
+        absenceVerified: true,
+        checkedBy: before.checkedBy,
+        snapshotDigest: before.snapshotDigest,
+        identifierDigest: sha256Digest(ref.threadId),
+        replay: true,
+      };
+    }
+    const deleted = await this.adapter.deleteThread(cleanupArgs);
+    const absence = await this.adapter.confirmThreadAbsent(cleanupArgs);
+    if (deleted.deleted !== true || absence.absent !== true) {
+      throw scenarioError("threadmesh_live_role_cleanup_unconfirmed");
+    }
+    return {
+      deleted: true,
+      absenceVerified: true,
+      checkedBy: absence.checkedBy,
+      snapshotDigest: absence.snapshotDigest,
+      identifierDigest: sha256Digest(ref.threadId),
+    };
   }
 }
 
