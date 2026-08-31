@@ -121,7 +121,53 @@ function promotion(value) {
   if (!Number.isInteger(value.expectedEvidenceChainRevision) || value.expectedEvidenceChainRevision < 0 || value.expectedEvidenceChainRevision > 1_000_000) fail("threadmesh_durable_turn_intent_promotion_invalid");
   if (value.expectedEvidenceChainRevision === 0) { if (value.expectedEvidenceChainHead !== null) fail("threadmesh_durable_turn_intent_promotion_invalid"); } else digest(value.expectedEvidenceChainHead, "threadmesh_durable_turn_intent_promotion_invalid");
 }
-function abandonment(value) { exact(value, ["reasonCode"], "threadmesh_durable_turn_intent_abandonment_invalid"); if (typeof value.reasonCode !== "string" || !REASON.test(value.reasonCode)) fail("threadmesh_durable_turn_intent_abandonment_invalid"); }
+function abandonment(value) {
+  const terminal = value && Object.hasOwn(value, "turnStatus");
+  exact(
+    value,
+    terminal
+      ? [
+          "reasonCode", "turnStatus", "evidenceRefs", "baselineDigest",
+          "observationDigest", "clientUserMessageIdDigest", "correlationDigest",
+        ]
+      : ["reasonCode"],
+    "threadmesh_durable_turn_intent_abandonment_invalid",
+  );
+  if (typeof value.reasonCode !== "string" || !REASON.test(value.reasonCode)) {
+    fail("threadmesh_durable_turn_intent_abandonment_invalid");
+  }
+  if (!terminal) return;
+  if (!["interrupted", "failed"].includes(value.turnStatus)) {
+    fail("threadmesh_durable_turn_intent_abandonment_invalid");
+  }
+  if (
+    !Array.isArray(value.evidenceRefs) || value.evidenceRefs.length < 1 ||
+    value.evidenceRefs.length > 8 || value.evidenceRefs.some((ref) =>
+      typeof ref !== "string" || ref.length < 1 || ref.length > 512 || /[\r\n\0]/u.test(ref))
+  ) fail("threadmesh_durable_turn_intent_abandonment_invalid");
+  for (const key of [
+    "baselineDigest", "observationDigest", "clientUserMessageIdDigest",
+    "correlationDigest",
+  ]) digest(value[key], "threadmesh_durable_turn_intent_abandonment_invalid");
+}
+function terminalCorrelation(value, actorValue, turnIdValue, adapterIdempotencyKey, code) {
+  if (!Object.hasOwn(value, "turnStatus")) return;
+  const expected = sha256Digest({
+    threadId: actorValue.threadId,
+    turnId: turnIdValue,
+    snapshotDigest: actorValue.snapshotDigest,
+    baselineDigest: value.baselineDigest,
+    observationDigest: value.observationDigest,
+    clientUserMessageIdDigest: value.clientUserMessageIdDigest,
+  });
+  if (
+    value.clientUserMessageIdDigest !== sha256Digest(adapterIdempotencyKey) ||
+    value.correlationDigest !== expected ||
+    value.evidenceRefs[0] !== value.baselineDigest ||
+    value.evidenceRefs[1] !== value.observationDigest ||
+    value.evidenceRefs.length !== 2
+  ) fail(code);
+}
 
 function validate(intent) {
   exact(intent, ["intentId", "scenarioId", "chainId", "messageId", "eventId", "actor", "adapterIdempotencyKey", "promptDigest", "allowedTools", "state", "turnStart", "toolActions", "completedTurn", "promotion", "abandonment"], "threadmesh_durable_turn_intent_invalid");
@@ -131,6 +177,7 @@ function validate(intent) {
   if (intent.state === "abandoned" && intent.turnStart === null) {
     if (intent.toolActions.length || intent.completedTurn !== null || intent.promotion !== null) fail("threadmesh_durable_turn_intent_invalid");
     abandonment(intent.abandonment);
+    if (Object.hasOwn(intent.abandonment, "turnStatus")) fail("threadmesh_durable_turn_intent_invalid");
     return;
   }
   start(intent.turnStart);
@@ -141,7 +188,7 @@ function validate(intent) {
   if (intent.completedTurn !== null) { exact(intent.completedTurn, ["evidence", "adapterReceiptDigest", "toolCalls"], "threadmesh_durable_turn_intent_invalid"); evidence(intent.completedTurn.evidence); digest(intent.completedTurn.adapterReceiptDigest, "threadmesh_durable_turn_intent_invalid"); if (intent.turnStart.turnId === null || intent.completedTurn.evidence.threadId !== intent.actor.threadId || intent.completedTurn.evidence.snapshotDigest !== intent.actor.snapshotDigest || intent.completedTurn.evidence.turnId !== intent.turnStart.turnId) fail("threadmesh_durable_turn_intent_invalid"); calls(intent.completedTurn.toolCalls, intent); }
   if (intent.state === "completed-turn-bound") { if (intent.completedTurn === null || intent.promotion !== null || intent.abandonment !== null) fail("threadmesh_durable_turn_intent_invalid"); return; }
   if (intent.state === "promoted") { if (intent.completedTurn === null || intent.abandonment !== null) fail("threadmesh_durable_turn_intent_invalid"); promotion(intent.promotion); return; }
-  if (intent.state === "abandoned") { if (intent.promotion !== null) fail("threadmesh_durable_turn_intent_invalid"); abandonment(intent.abandonment); return; }
+  if (intent.state === "abandoned") { if (intent.promotion !== null) fail("threadmesh_durable_turn_intent_invalid"); abandonment(intent.abandonment); terminalCorrelation(intent.abandonment, intent.actor, intent.turnStart.turnId, intent.adapterIdempotencyKey, "threadmesh_durable_turn_intent_invalid"); return; }
   fail("threadmesh_durable_turn_intent_invalid");
 }
 function replace(intent, fields) { return freeze({ intentId: intent.intentId, scenarioId: intent.scenarioId, chainId: intent.chainId, messageId: intent.messageId, eventId: intent.eventId, actor: clone(intent.actor), adapterIdempotencyKey: intent.adapterIdempotencyKey, promptDigest: intent.promptDigest, allowedTools: clone(intent.allowedTools), ...fields }); }
@@ -234,6 +281,46 @@ export function reconcileUnknownDurableTurnIntent(intent, result) {
     const recovered = replace(current, { state: "started", turnStart: { turnId: inferredTurn }, toolActions: actions, completedTurn: null, promotion: null, abandonment: null });
     const bound = binding(result.binding, recovered);
     return replace(recovered, { state: "completed-turn-bound", turnStart: { turnId: bound.evidence.turnId }, toolActions: clone(recovered.toolActions), completedTurn: bound, promotion: null, abandonment: null });
+  }
+  if (result.state === "found-terminal") {
+    exact(result, [
+      "state", "turnId", "turnStatus", "reasonCode", "evidenceRefs",
+      "baselineDigest", "observationDigest", "clientUserMessageIdDigest",
+      "correlationDigest",
+    ], "threadmesh_durable_turn_intent_reconcile_invalid");
+    id(result.turnId, "threadmesh_durable_turn_intent_reconcile_invalid");
+    if (!["interrupted", "failed"].includes(result.turnStatus)) fail("threadmesh_durable_turn_intent_reconcile_invalid");
+    if (
+      !Array.isArray(result.evidenceRefs) || result.evidenceRefs.length < 1 ||
+      result.evidenceRefs.length > 8 || result.evidenceRefs.some((ref) =>
+        typeof ref !== "string" || ref.length < 1 || ref.length > 512 || /[\r\n\0]/u.test(ref))
+    ) fail("threadmesh_durable_turn_intent_reconcile_invalid");
+    const marker = {
+      reasonCode: result.reasonCode,
+      turnStatus: result.turnStatus,
+      evidenceRefs: clone(result.evidenceRefs),
+      baselineDigest: result.baselineDigest,
+      observationDigest: result.observationDigest,
+      clientUserMessageIdDigest: result.clientUserMessageIdDigest,
+      correlationDigest: result.correlationDigest,
+    };
+    abandonment(marker);
+    terminalCorrelation(
+      marker, current.actor, result.turnId, current.adapterIdempotencyKey,
+      "threadmesh_durable_turn_intent_reconcile_invalid",
+    );
+    if (current.toolActions.length !== 0) fail("threadmesh_turn_execution_reconciliation_conflict");
+    if (current.turnStart.turnId !== null && current.turnStart.turnId !== result.turnId) {
+      fail("threadmesh_durable_turn_intent_start_conflict");
+    }
+    return replace(current, {
+      state: "abandoned",
+      turnStart: { turnId: result.turnId },
+      toolActions: [],
+      completedTurn: null,
+      promotion: null,
+      abandonment: marker,
+    });
   }
   if (result.state === "not-found") { exact(result, ["state", "reasonCode"], "threadmesh_durable_turn_intent_reconcile_invalid"); const marker = { reasonCode: result.reasonCode }; abandonment(marker); return replace(current, { state: "abandoned", turnStart: clone(current.turnStart), toolActions: clone(current.toolActions), completedTurn: null, promotion: null, abandonment: marker }); }
   fail("threadmesh_durable_turn_intent_reconcile_invalid");

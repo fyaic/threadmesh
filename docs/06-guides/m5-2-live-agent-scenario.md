@@ -36,14 +36,21 @@ final verification, and satisfaction. Each reopen compares one state vector
 covering messages/dispositions, admissions, adapter submissions, audit,
 executions/actions, attention claims and commits, evidence, finalization,
 satisfaction, task metadata, dependent revision, and fixture native-turn count;
-an exact replay must add nothing. The native-start checkpoint occurs only after the native turn ID is
-durably bound. It is not a process crash between native `turn/start` and that
-binding, because the adapter still has no query/reconcile surface for that
-unknown outcome. Codex `0.145.0` exposes persisted turn sets through
-`thread/read` plus `turns/list`, but not readable client IDs or
-`thread/items/list`; a unique-delta recovery is trustworthy only with a proven
-single writer, otherwise it is ambiguous. Process-level crash injection
-therefore remains open.
+an exact replay must add nothing. The native-start checkpoint occurs only after
+the native turn ID is durably bound. It is not a process crash between native
+`turn/start` and that binding.
+
+The adapter now provides a bounded reconciliation observer using
+`thread/read(includeTurns:true)` plus a fully paged experimental
+`thread/turns/list`, with optional `thread/items/list`. It freezes the complete
+pre-start turn projection and client request key. Only one exact-key terminal
+delta (`interrupted` or `failed`) can be bound to an abandoned durable intent;
+completed, in-progress, zero-delta, missing-key, multi-delta, or inconsistent
+observations remain ambiguous and create no receipt, tool action, or retry.
+Local Codex `0.145.0` can omit the client key on interrupted turns and does not
+support `thread/items/list`, so process-level fault injection and the full live
+recovery gate remain open. See the official [Codex App Server
+reference](https://developers.openai.com/codex/app-server).
 
 ## One-command deterministic rehearsal
 

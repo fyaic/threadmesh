@@ -20,9 +20,20 @@ function send(message) {
   process.stdout.write(`${JSON.stringify(message)}\n`);
 }
 
-function threadResponse(threadId) {
+function storedTurns(threadId) {
+  return readState().threads[threadId]?.turns ?? [];
+}
+
+function threadResponse(threadId, { includeTurns = false } = {}) {
   return {
-    thread: { id: threadId, preview: "", ephemeral: true, modelProvider: "fake" },
+    thread: {
+      id: threadId,
+      preview: "",
+      ephemeral: true,
+      modelProvider: "fake",
+      status: { type: "notLoaded" },
+      turns: includeTurns ? storedTurns(threadId) : [],
+    },
     model: "fake-model",
     modelProvider: "fake",
     cwd: process.cwd(),
@@ -32,7 +43,30 @@ function threadResponse(threadId) {
   };
 }
 
+function persistTurn(turn, status = "inProgress") {
+  const state = readState();
+  const thread = state.threads[turn.threadId];
+  if (!thread) return;
+  thread.turns ??= [];
+  const existing = thread.turns.find((entry) => entry.id === turn.turnId);
+  const stored = {
+    id: turn.turnId,
+    status,
+    items: [{
+      id: `user-${turn.turnId}`,
+      type: "userMessage",
+      content: [{ type: "text", text: turn.prompt }],
+      clientId: turn.clientUserMessageId ?? null,
+    }],
+    error: null,
+  };
+  if (existing) Object.assign(existing, stored);
+  else thread.turns.push(stored);
+  writeState(state);
+}
+
 function completeTurn(turn) {
+  persistTurn(turn, "completed");
   send({
     method: "item/agentMessage/delta",
     params: {
@@ -96,6 +130,7 @@ lines.on("line", async (line) => {
     state.threads[threadId] = {
       created: true,
       dynamicTools: message.params.dynamicTools ?? [],
+      turns: [],
     };
     writeState(state);
     send({ id: message.id, result: threadResponse(threadId) });
@@ -108,6 +143,63 @@ lines.on("line", async (line) => {
       return;
     }
     send({ id: message.id, result: threadResponse(message.params.threadId) });
+    return;
+  }
+
+  if (message.method === "thread/read") {
+    if (!readState().threads[message.params.threadId]) {
+      send({ id: message.id, error: { code: -32004, message: "unknown thread" } });
+      return;
+    }
+    send({
+      id: message.id,
+      result: threadResponse(message.params.threadId, {
+        includeTurns: message.params.includeTurns === true,
+      }),
+    });
+    return;
+  }
+
+  if (message.method === "thread/turns/list") {
+    if (!readState().threads[message.params.threadId]) {
+      send({ id: message.id, error: { code: -32004, message: "unknown thread" } });
+      return;
+    }
+    let turns = [...storedTurns(message.params.threadId)].reverse();
+    if (process.env.FAKE_CODEX_TURN_LIST_MISMATCH === "1") turns = turns.slice(1);
+    const offset = message.params.cursor ? Number(message.params.cursor) : 0;
+    const requested = Number.isInteger(message.params.limit) ? message.params.limit : 50;
+    const forced = Number(process.env.FAKE_CODEX_TURN_PAGE_SIZE ?? requested);
+    const limit = Math.max(1, Math.min(requested, Number.isFinite(forced) ? forced : requested));
+    const data = turns.slice(offset, offset + limit);
+    const nextOffset = offset + data.length;
+    send({
+      id: message.id,
+      result: {
+        data,
+        nextCursor: nextOffset < turns.length ? String(nextOffset) : null,
+        backwardsCursor: null,
+      },
+    });
+    return;
+  }
+
+  if (message.method === "thread/items/list") {
+    if (process.env.FAKE_CODEX_ITEMS_UNSUPPORTED === "1") {
+      send({ id: message.id, error: { code: -32601, message: "thread/items/list is not supported yet" } });
+      return;
+    }
+    const turn = storedTurns(message.params.threadId).find(
+      (entry) => entry.id === message.params.turnId,
+    );
+    if (!turn) {
+      send({ id: message.id, error: { code: -32004, message: "unknown turn" } });
+      return;
+    }
+    send({
+      id: message.id,
+      result: { data: turn.items ?? [], nextCursor: null },
+    });
     return;
   }
 
@@ -137,7 +229,9 @@ lines.on("line", async (line) => {
       threadId: message.params.threadId,
       turnId,
       prompt: message.params.input[0]?.text ?? "",
+      clientUserMessageId: message.params.clientUserMessageId ?? null,
     };
+    persistTurn(pendingTurn);
     send({
       id: message.id,
       result: { turn: { id: turnId, items: [], status: "inProgress" } },

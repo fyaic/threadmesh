@@ -7,6 +7,11 @@ import test from "node:test";
 
 import Database from "better-sqlite3";
 
+import {
+  createCodexPersistedTurnObservation,
+  freezeCodexNativeTurnBaseline,
+  projectCodexTerminalTurnReconciliation,
+} from "../src/state/codex-turn-reconciliation.mjs";
 import { sha256Digest } from "../src/canonical-json.mjs";
 import {
   SQLITE_SCHEMA_MIGRATIONS,
@@ -481,6 +486,175 @@ test("unknown outcome is reconcile-only and two coordinators cannot claim the sa
   } finally {
     second?.close();
     first?.close();
+    temporary.cleanup();
+  }
+});
+
+test("terminal reconciliation survives restart, replays exactly, and rejects conflicting evidence", () => {
+  const temporary = temporaryDatabase();
+  let coordinator;
+  try {
+    const context = setup(temporary.filename);
+    coordinator = context.coordinator;
+    const current = context.actors.implementer;
+    const actorPrincipal = principal(current);
+    const proposed = proposal(current, "terminal-recovery");
+    let execution = coordinator.createTurnExecutionIntent(proposed, 0, actorPrincipal);
+    execution = coordinator.markTurnExecutionStarted(
+      execution.executionId, { expectedRevision: 0 }, actorPrincipal,
+    );
+    execution = coordinator.markTurnExecutionOutcomeUnknown(
+      execution.executionId,
+      { reasonCode: "threadmesh_start_response_lost", expectedRevision: 1 },
+      actorPrincipal,
+    );
+    const baselineObservation = createCodexPersistedTurnObservation({
+      threadId: current.threadId,
+      snapshotDigest: current.snapshotDigest,
+      threadStatus: "idle",
+      readTurns: [],
+      listedTurns: [],
+    });
+    const baseline = freezeCodexNativeTurnBaseline(baselineObservation, {
+      clientUserMessageId: proposed.adapterIdempotencyKey,
+    });
+    const terminalTurn = {
+      id: "turn-terminal-recovery",
+      status: "interrupted",
+      items: [{ type: "userMessage", clientId: proposed.adapterIdempotencyKey }],
+    };
+    const terminalObservation = createCodexPersistedTurnObservation({
+      threadId: current.threadId,
+      snapshotDigest: current.snapshotDigest,
+      threadStatus: "notLoaded",
+      readTurns: [terminalTurn],
+      listedTurns: [terminalTurn],
+    });
+    const result = projectCodexTerminalTurnReconciliation({
+      baseline,
+      observation: terminalObservation,
+    });
+    for (const untrustedTurn of [
+      { ...terminalTurn, status: "completed" },
+      { ...terminalTurn, items: [] },
+    ]) {
+      const untrustedObservation = createCodexPersistedTurnObservation({
+        threadId: current.threadId,
+        snapshotDigest: current.snapshotDigest,
+        threadStatus: "notLoaded",
+        readTurns: [untrustedTurn],
+        listedTurns: [untrustedTurn],
+      });
+      expectCode(
+        () => projectCodexTerminalTurnReconciliation({
+          baseline,
+          observation: untrustedObservation,
+        }),
+        "codex_app_server_native_turn_reconciliation_ambiguous",
+      );
+    }
+    expectCode(
+      () => coordinator.reconcileTurnExecution(
+        execution.executionId,
+        {
+          result: {
+            ...result,
+            clientUserMessageIdDigest: sha256Digest("another-client-key"),
+          },
+          expectedRevision: 2,
+        },
+        actorPrincipal,
+      ),
+      "threadmesh_turn_execution_terminal_projection_required",
+    );
+    const otherKey = "adapter_turn_other-key";
+    const otherBaseline = freezeCodexNativeTurnBaseline(baselineObservation, {
+      clientUserMessageId: otherKey,
+    });
+    const otherTerminalTurn = {
+      ...terminalTurn,
+      items: [{ type: "userMessage", clientId: otherKey }],
+    };
+    const otherObservation = createCodexPersistedTurnObservation({
+      threadId: current.threadId,
+      snapshotDigest: current.snapshotDigest,
+      threadStatus: "notLoaded",
+      readTurns: [otherTerminalTurn],
+      listedTurns: [otherTerminalTurn],
+    });
+    expectCode(
+      () => coordinator.reconcileCodexTerminalTurnExecution(
+        execution.executionId,
+        { baseline: otherBaseline, observation: otherObservation, expectedRevision: 2 },
+        actorPrincipal,
+      ),
+      "threadmesh_durable_turn_intent_reconcile_invalid",
+    );
+    assert.equal(
+      coordinator.getTurnExecution(execution.executionId, owner).revision,
+      2,
+    );
+    execution = coordinator.reconcileCodexTerminalTurnExecution(
+      execution.executionId,
+      { baseline, observation: terminalObservation, expectedRevision: 2 },
+      actorPrincipal,
+    );
+    assert.equal(execution.intent.state, "abandoned");
+    assert.equal(execution.intent.turnStart.turnId, result.turnId);
+    assert.deepEqual(execution.intent.abandonment.evidenceRefs, result.evidenceRefs);
+    assert.equal(execution.actions.length, 0);
+    assert.equal(execution.row.receipt_json, null);
+
+    coordinator.close();
+    coordinator = new SqliteCoordinator({
+      filename: temporary.filename,
+      clock: () => NOW,
+      verificationTrustAnchors: [context.trustAnchor],
+    });
+    const replay = coordinator.reconcileCodexTerminalTurnExecution(
+      execution.executionId,
+      { baseline, observation: terminalObservation, expectedRevision: 2 },
+      actorPrincipal,
+    );
+    assert.equal(replay.replay, true);
+    assert.equal(replay.revision, 3);
+    expectCode(
+      () => coordinator.reconcileCodexTerminalTurnExecution(
+        execution.executionId,
+        {
+          baseline,
+          observation: createCodexPersistedTurnObservation({
+            threadId: current.threadId,
+            snapshotDigest: current.snapshotDigest,
+            threadStatus: "notLoaded",
+            readTurns: [{ ...terminalTurn, status: "failed" }],
+            listedTurns: [{ ...terminalTurn, status: "failed" }],
+          }),
+          expectedRevision: 3,
+        },
+        actorPrincipal,
+      ),
+      "threadmesh_turn_execution_reconciliation_conflict",
+    );
+
+    const tampered = { ...result, evidenceRefs: ["sha256:tampered"] };
+    coordinator.db.prepare(
+      `UPDATE turn_execution_intents
+       SET reconciliation_json = ?, reconciliation_digest = ?
+       WHERE execution_id = ?`,
+    ).run(JSON.stringify(tampered), sha256Digest(tampered), execution.executionId);
+    coordinator.close();
+    coordinator = null;
+    expectCode(
+      () => new SqliteCoordinator({
+        filename: temporary.filename,
+        clock: () => NOW,
+        verificationTrustAnchors: [context.trustAnchor],
+      }),
+      "threadmesh_turn_execution_storage_tampered",
+    );
+  } finally {
+    coordinator?.close();
     temporary.cleanup();
   }
 });

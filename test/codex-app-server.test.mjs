@@ -164,6 +164,92 @@ test("runs only an accepted suggestion and captures exact turn evidence", async 
   }
 });
 
+test("observes persisted turns through full read/list pagination when items/list is unsupported", async () => {
+  const state = temporaryState();
+  try {
+    const created = await adapter.createThread({
+      command: process.execPath,
+      args: [fixture],
+      cwd: root,
+      env: state.env,
+    });
+    for (const key of ["idem_observe_01", "idem_observe_02"]) {
+      await adapter.runAcceptedSuggestion({
+        command: process.execPath,
+        args: [fixture],
+        cwd: root,
+        env: state.env,
+        adapterRef: created,
+        envelope: envelope(),
+        admission: admission(),
+        adapterIdempotencyKey: key,
+      });
+    }
+    const observed = await adapter.observePersistedTurns({
+      command: process.execPath,
+      args: [fixture],
+      cwd: root,
+      env: {
+        ...state.env,
+        FAKE_CODEX_TURN_PAGE_SIZE: "1",
+        FAKE_CODEX_ITEMS_UNSUPPORTED: "1",
+      },
+      threadId: created.threadId,
+      expectedSnapshotDigest: created.snapshotDigest,
+    });
+    assert.equal(observed.threadId, created.threadId);
+    assert.equal(observed.threadStatus, "notLoaded");
+    assert.equal(observed.turns.length, 2);
+    assert.deepEqual(
+      observed.turns.map((turn) => turn.clientUserMessageIds[0]),
+      ["idem_observe_01", "idem_observe_02"],
+    );
+    assert.equal(observed.itemsListSupported, false);
+    assert.match(observed.observationDigest, /^sha256:[a-f0-9]{64}$/u);
+  } finally {
+    fs.rmSync(state.directory, { recursive: true, force: true });
+  }
+});
+
+test("persisted-turn observation rejects snapshot and read/list disagreements", async () => {
+  const state = temporaryState();
+  try {
+    const created = await adapter.startThreadWithAcceptedSuggestion({
+      command: process.execPath,
+      args: [fixture],
+      cwd: root,
+      env: state.env,
+      envelope: envelope(),
+      admission: admission(),
+      adapterIdempotencyKey: "idem_observe_conflict",
+    });
+    await assert.rejects(
+      adapter.observePersistedTurns({
+        command: process.execPath,
+        args: [fixture],
+        cwd: root,
+        env: state.env,
+        threadId: created.adapterRef.threadId,
+        expectedSnapshotDigest: `sha256:${"0".repeat(64)}`,
+      }),
+      { code: "codex_app_server_snapshot_mismatch" },
+    );
+    await assert.rejects(
+      adapter.observePersistedTurns({
+        command: process.execPath,
+        args: [fixture],
+        cwd: root,
+        env: { ...state.env, FAKE_CODEX_TURN_LIST_MISMATCH: "1" },
+        threadId: created.adapterRef.threadId,
+        expectedSnapshotDigest: created.adapterRef.snapshotDigest,
+      }),
+      { code: "codex_app_server_persisted_turn_observation_conflict" },
+    );
+  } finally {
+    fs.rmSync(state.directory, { recursive: true, force: true });
+  }
+});
+
 test("starts a new thread and its first accepted turn on one connection", async () => {
   const state = temporaryState();
   try {
