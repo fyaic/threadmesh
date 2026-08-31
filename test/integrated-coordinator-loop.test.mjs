@@ -27,6 +27,9 @@ test("integrated fixture traverses coordinator A-R-same-A-V and v7 finalize in s
     assert.equal(result.coordinator.dependentStateAfter, "ready");
     assert.equal(result.coordinator.irrelevantAuthorizedTaskWakeCount, 0);
     assert.equal(result.coordinator.irrelevantAuthorizedTaskTurnCount, 0);
+    assert.equal(result.coordinator.irrelevantAuthorizedTaskClaimCount, 0);
+    assert.equal(result.coordinator.irrelevantPersistedSkip, true);
+    assert.equal(result.coordinator.irrelevantCursorCommitKind, "irrelevant-skip");
     assert.equal(result.coordinator.finalizedAttentionExpiryReplayStable, true);
     assert.equal(result.coordinator.finalizedAttentionTimestampTamperRejected, true);
     assert.equal(result.chain.recordCount, 4);
@@ -62,7 +65,62 @@ test("integrated fixture traverses coordinator A-R-same-A-V and v7 finalize in s
     assert.equal(runtime.turns.some(({ role }) => role === "irrelevant"), false);
     assert.equal(result.liveClosureGates.satisfied, false);
     assert.match(result.liveClosureGates.pending.join("\n"), /native start before operation binding/u);
-    assert.match(result.liveClosureGates.pending.join("\n"), /signed verifier result journal/u);
+    assert.match(result.liveClosureGates.pending.join("\n"), /process-crash fault injection/u);
+    assert.doesNotMatch(result.liveClosureGates.pending.join("\n"), /signed verifier result journal/u);
+    assert.equal(result.recovery.controlledCoordinatorReopen, true);
+    assert.equal(result.recovery.finalVerificationRecoveredFromJournal, true);
+    assert.equal(result.recovery.satisfactionReplay, true);
+    assert.match(result.recovery.nativeStartedBoundary, /not process-crash-before-bind/u);
+    assert.deepEqual(
+      result.recovery.checkpoints.map(({ checkpoint }) => checkpoint),
+      [
+        "native-started-operation-bound",
+        "event-created",
+        "receipt-recorded",
+        "final-verification",
+        "satisfaction",
+      ],
+    );
+    for (const proof of result.recovery.checkpoints) {
+      assert.equal(proof.beforeDigest, proof.afterDigest);
+      assert.equal(proof.exactReplayNoDuplicate, true);
+      assert.equal(proof.replayStateDigest, proof.afterDigest);
+    }
+    assert.ok(Object.values(result.recovery.expectedDeltas).every(Boolean));
+    assert.equal(result.recovery.journal.projectedIntoTrace, false);
+    assert.deepEqual(
+      result.cleanup.resources.map(({ kind }) => kind),
+      [
+        "sqlite", "recovery-journal", "sqlite-wal", "sqlite-shm",
+        "sqlite-rollback-journal",
+      ],
+    );
+  } finally {
+    fs.rmSync(artifactsDirectory, { recursive: true, force: true });
+  }
+});
+
+test("integrated recovery requires fresh artifacts and a fixed checkpoint set", async () => {
+  const artifactsDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "threadmesh-integrated-fresh-"));
+  try {
+    const reserved = path.join(artifactsDirectory, "m5-2-recovery-journal.json");
+    fs.writeFileSync(reserved, "do-not-delete");
+    await assert.rejects(
+      () => runIntegratedCoordinatorLoop({
+        runtime: new DeterministicLiveAgentRuntime(), artifactsDirectory,
+      }),
+      { code: "threadmesh_integrated_recovery_artifacts_not_fresh" },
+    );
+    assert.equal(fs.readFileSync(reserved, "utf8"), "do-not-delete");
+    fs.rmSync(reserved);
+    await assert.rejects(
+      () => runIntegratedCoordinatorLoop({
+        runtime: new DeterministicLiveAgentRuntime(),
+        artifactsDirectory,
+        restartCheckpoints: ["unknown"],
+      }),
+      { code: "threadmesh_integrated_recovery_checkpoint_invalid" },
+    );
   } finally {
     fs.rmSync(artifactsDirectory, { recursive: true, force: true });
   }

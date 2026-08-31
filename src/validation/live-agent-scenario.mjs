@@ -580,6 +580,7 @@ export async function runLiveAgentScenario({
     const integrated = await runIntegratedCoordinatorLoop({
       runtime: activeRuntime,
       artifactsDirectory,
+      scenarioId,
       record: (type, detail) => recorder.append(type, detail),
     });
     recorder.append("scenario.completed", {

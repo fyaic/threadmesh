@@ -74,7 +74,10 @@ test("dry-run proves the A-R-same-A-V runner contract without claiming product e
     assert.ok(aTurns.every(({ ref }) => ref.threadId === aTurns[0].ref.threadId));
     assert.equal(runtime.turns.some(({ role }) => role === "irrelevant"), false);
     assert.equal(result.liveClosureGates.satisfied, false);
-    assert.ok(result.liveClosureGates.pending.length >= 5);
+    assert.ok(result.liveClosureGates.pending.length >= 4);
+    assert.doesNotMatch(
+      result.liveClosureGates.pending.join("\n"), /signed verifier result journal/u,
+    );
     const records = fs.readFileSync(path.join(artifacts, "private-trace.jsonl"), "utf8")
       .trim().split("\n").map(JSON.parse);
     assert.equal(verifyLiveAgentEvidence(records).valid, true);
@@ -83,6 +86,27 @@ test("dry-run proves the A-R-same-A-V runner contract without claiming product e
     assert.equal(records.some((record) => record.type === "coordinator.attention.cursor-committed"), true);
     assert.equal(records.some((record) => record.type === "attention.dispatched"), false);
     assert.equal(fs.existsSync(path.join(artifacts, "cleanup-manifest.json")), true);
+    const journalPath = path.join(artifacts, "m5-2-recovery-journal.json");
+    const journal = JSON.parse(fs.readFileSync(journalPath, "utf8"));
+    const signature = journal.bundle.verification.response.attestation.proof.signature;
+    const traceText = fs.readFileSync(path.join(artifacts, "private-trace.jsonl"), "utf8");
+    const resultText = fs.readFileSync(path.join(artifacts, "result.json"), "utf8");
+    const cleanupText = fs.readFileSync(path.join(artifacts, "cleanup-manifest.json"), "utf8");
+    assert.equal(traceText.includes(signature), false);
+    assert.equal(resultText.includes(signature), false);
+    assert.equal(cleanupText.includes(signature), false);
+    assert.equal(result.recovery.journal.containsSignedVerifierBundle, true);
+    assert.equal(result.recovery.journal.projectedIntoTrace, false);
+    for (const resource of result.cleanup.resources) {
+      assert.equal(
+        resource.present,
+        fs.existsSync(path.join(artifacts, resource.path)),
+      );
+    }
+    assert.deepEqual(
+      fs.readdirSync(artifacts).filter((name) => name.endsWith(".tmp")),
+      [],
+    );
     assert.deepEqual(fs.readdirSync(temporaryParent), []);
   } finally {
     fs.rmSync(source.root, { recursive: true, force: true });
