@@ -151,6 +151,9 @@ function classify(error, productId) {
     state: blockedCodes.has(code) ? "blocked" : "failed",
     productId,
     code,
+    ...(typeof error?.attention?.stage === "string"
+      ? { stage: error.attention.stage }
+      : {}),
     ...(error?.cleanup ? { cleanup: error.cleanup } : {}),
   };
 }

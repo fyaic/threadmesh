@@ -263,6 +263,20 @@ function projectLiveChildResult(result, {
   if (result.state !== "passed") {
     if (typeof result.code !== "string" || !/^[a-z0-9_]{1,128}$/.test(result.code)) return null;
     projected.code = result.code;
+    if (result.stage !== undefined) {
+      const stages = new Set([
+        "setup",
+        "b-bootstrap",
+        "a-decision",
+        "durable-wake",
+        "b-receiver",
+        "verification",
+        "restart-recovery",
+        "cleanup",
+      ]);
+      if (!stages.has(result.stage)) return null;
+      projected.stage = result.stage;
+    }
     if (result.cleanup !== undefined) {
       const cleanup = projectCleanup(productId, result.cleanup, { requireComplete: false });
       if (!cleanup) return null;

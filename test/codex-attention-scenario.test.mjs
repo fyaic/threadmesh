@@ -207,6 +207,7 @@ test("a receiver failure still deletes both threads and the SQLite directory", a
       }),
       (error) => {
         assert.equal(error.code, "threadmesh_codex_attention_b_marker_mismatch");
+        assert.equal(error.attention.stage, "b-receiver");
         assert.deepEqual(error.attention.cleanup, {
           attempted: true,
           complete: true,

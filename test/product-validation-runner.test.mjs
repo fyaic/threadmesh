@@ -500,6 +500,29 @@ test("live bootstrap accepts maintainer experiment only when the parent authoriz
   assert.equal(accepted.result.reviewGate.satisfied, false);
 });
 
+test("live bootstrap preserves only a bounded Codex attention failure stage", () => {
+  const sha = "a".repeat(40);
+  const result = validAttentionChildResult(sha);
+  result.state = "failed";
+  result.code = "codex_app_server_operation_timeout";
+  result.stage = "a-decision";
+  const child = {
+    stdout: JSON.stringify(result), status: 1, signal: null, error: undefined,
+  };
+  const accepted = validateIsolatedLiveChild(child, {
+    productId: "codex-attention", executionSha: sha,
+  });
+  assert.equal(accepted.accepted, true);
+  assert.equal(accepted.result.stage, "a-decision");
+  result.stage = "raw/private/path";
+  assert.equal(validateIsolatedLiveChild({
+    ...child,
+    stdout: JSON.stringify(result),
+  }, {
+    productId: "codex-attention", executionSha: sha,
+  }).accepted, false);
+});
+
 test("live bootstrap rejects passed stdout when the child times out", () => {
   const sha = "a".repeat(40);
   const forgedPass = JSON.stringify(validCodexChildResult(sha));
