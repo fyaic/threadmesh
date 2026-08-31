@@ -120,9 +120,10 @@ runner state.
 5. **M5.3 repetitions:** relevant 3/3, manual baseline, irrelevant, unverified,
    stale, restart, and injected-cleanup cases.
 
-Slices 1 and 2 are implemented as deterministic foundations. Dependency unlock
-integration remains deliberately separate; record count, final-stage presence,
-or a cached `trusted` flag can never authorize unlock.
+Slices 1 and 2 and the authority-bearing dependency-unlock seam are implemented
+as deterministic foundations. The live A/R/A/V role runner and correlated gate
+evidence remain separate; record count, final-stage presence, or a cached
+`trusted` flag can never authorize unlock.
 
 ## Delivered slice-2 seams and remaining closure
 
@@ -144,17 +145,30 @@ implementation details, not protocol commitments):
   event, and advance only after a completed durable handler effect. Retrying a
   completed-bound handler preserves the original turn.
 
-The next seam is the only authority-bearing one:
-`finalizeGitEvidenceDependency` must replay the exact signed final chain and, in
-one authorized transaction, bind its final record to the current event,
-disposition, dependency edge/version, and verified satisfaction effect. Until
-that exists, durable model-action evidence is not authority to unlock a task.
+SQLite v7 now supplies the authority-bearing seam:
+
+- `bindGitEvidenceDependency` freezes a one-to-one chain-to-edge/version binding
+  before finalization. A bound edge rejects the generic satisfaction API, so a
+  policy or dependent task cannot bypass the verifier path.
+- `finalizeGitEvidenceDependency` is callable only as the frozen verifier task.
+  It requires the first three records to reference completed, promoted,
+  stage-specific model actions and the final action to be a completed-turn-bound
+  `threadmesh_verify_exact_chain` selection with an exact result digest.
+- One immediate transaction replays the signed chain, appends the final record,
+  promotes the verifier intent, verifies the accepted lifecycle disposition,
+  satisfies the bound edge, and persists a unified record/action/event/
+  disposition/effect binding. Exact replay is idempotent; alteration fails
+  closed, including after restart.
+
+This closes the deterministic authority seam, not M5.2. The next mainline work
+is the real persistent Codex A implementation, R review, same-A fix, and V
+verification run, followed by restart, negative variants, and cleanup evidence.
 
 The [persistent-agent scenario runner](../06-guides/m5-2-live-agent-scenario.md)
-now provides a one-command deterministic rehearsal, hash-linked private trace,
+provides a one-command deterministic rehearsal, hash-linked private trace,
 bounded public projection, cleanup manifest, and real Codex/Kimi capability
-preflights. Product modes remain fail-closed `blocked`: the deterministic
-fixture is not live evidence, and real turns stay disabled until the event,
-next-only cursor claim, receiver decision, admission receipt, exact-task
-resume, promotion, cursor commit, restart, and trusted-finalization gates are
-all machine-verified.
+preflights. Product modes remain fail-closed `blocked`: the scripted fixture is
+not live evidence, and real turns stay disabled until the event, next-only
+cursor claim, receiver decision, admission receipt, exact-task resume,
+promotion, cursor commit, and restart gates are all machine-verified against
+the v7 finalization path.

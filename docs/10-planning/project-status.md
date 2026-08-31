@@ -38,7 +38,7 @@ orchestration are paused until this outcome is demonstrated.
 | Research and problem framing | Codex deep dive, community signals, ecosystem comparison, ADRs | Established |
 | Community adoption | No external stars, forks, watchers, issue comments, or independent setup result as of 2026-08-28 | Unvalidated |
 | Active product outcome | One-command lifecycle-event and dependency-handoff loop with an inspector | Deterministic slice merged; real Codex M5.1 seam passed; full multi-role loop pending |
-| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 233 unit/subtests | Executable draft |
+| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 239 unit/subtests | Executable draft |
 | Minimal adapter SDK | `@fyaic/threadmesh` `0.1.0-alpha.0`; six bounded client methods, per-turn proactive bridge, about 20 kB tarball, packed-consumer execution | Real Pi clean-consumer pass; not published to npm |
 | Local binding | Schema-validated JSON-RPC, transport-derived principals, typed errors | Executable local reference |
 | Local persistence | SQLite registry, proposals, grants, summaries, mailbox, claims, receipts, reconciliation, replay, audit, retention tombstones, and append-only Git evidence chains | Experimental |
@@ -55,7 +55,7 @@ orchestration are paused until this outcome is demonstrated.
 | Codex-to-Kimi proactive flow | Codex A selected discovery and one send; persistent Kimi ACP B completed; exact A deletion and B delete/absence passed at `e0adb0e` | First real cross-harness proactive case passed |
 | Pi integration-kit flow | Fresh packed consumer exposed exactly two native tools; real Pi passed relevant/irrelevant/control behavior and supplied one admitted input to Kimi at `02d8d24` | Maintainer integration passed; independent human feedback pending |
 | Codex M5 attention seam | Real persistent A model-selected discovery/publication; durable cursor resumed the pre-created persistent B exactly once; local verification unlocked the dependency and restart recovered B as ready at `3d5caee` | M5.1 passed; logical wake only, local verifier simulation; M5.2/M5.3 pending |
-| M5.2 Git evidence foundation | Independent temporary bare repo and role worktrees, same-worktree implementer fix, SQLite v5 evidence chains, SQLite v6 turn/cursor recovery, and preconfigured-key child verifier bound to exact commits/finding/test | Deterministic safety, persistence, and model-action receipt foundation passed; final trusted unlock and real Codex multi-role loop pending |
+| M5.2 Git evidence foundation | Independent temporary bare repo and role worktrees, same-worktree implementer fix, SQLite v5 evidence chains, SQLite v6 turn/cursor recovery, SQLite v7 bound verifier-only atomic unlock, and a preconfigured-key child verifier bound to exact commits/finding/test | Deterministic safety, persistence, model-action receipt, and authority seams passed; real Codex multi-role loop pending |
 | Gemini CLI headless | Official package 0.56.0 integrity, required flags, isolated-home cleanup | Real no-model preflight passed |
 | Gemini live model behavior | Exact marker script requires explicit provider key | Not authorized, not run |
 | Multi-product admission | One mailbox/acceptance/claim/evidence path across ACP, Codex, and Gemini fakes | Merged experimental implementation |
@@ -209,9 +209,14 @@ pre-effect model tool selection, post-effect result, completed adapter receipt,
 unknown-outcome reconciliation, exact stage publication, and exclusive receiver
 cursor claim/commit. A crash cannot invent a tool call or blindly repeat a
 known-started turn, and a completed handler effect can retry without starting a
-second model turn. Evidence completion deliberately does not unlock a
-dependency. Trusted-chain unlock consumption and the real Codex
-implementation/review/fix loop remain pending.
+second model turn. SQLite schema v7 adds an immutable one-to-one chain-to-edge
+binding and rejects generic satisfaction for a bound edge. Its verifier-only
+finalizer requires completed promoted publication actions for the first three
+stages and a completed-turn-bound exact-chain tool result for the fourth, then
+atomically appends final evidence, promotes the turn, verifies the accepted
+disposition, satisfies the edge, and persists their unified replay identity.
+This closes the deterministic trusted-chain consumption seam. The real Codex
+implementation/review/same-session-fix/verification loop remains pending.
 
 ## What the prototype proves
 

@@ -58,8 +58,19 @@ const GIT_EVIDENCE_STAGE_TOOL = Object.freeze({
   "review-failed": "threadmesh_report_review_finding",
   fix: "threadmesh_publish_dependency",
 });
-export const SQLITE_SCHEMA_VERSION = 6;
-export const SQLITE_SCHEMA_NAME = "threadmesh-durable-turn-intents";
+const FINAL_GIT_EVIDENCE_TOOL = "threadmesh_verify_exact_chain";
+
+export function gitEvidenceVerificationResultDigest({
+  request,
+  response,
+  expectedTrustAnchor,
+}) {
+  return sha256Digest({ request, response, expectedTrustAnchor });
+}
+
+export const SQLITE_SCHEMA_VERSION = 7;
+export const SQLITE_SCHEMA_NAME = "threadmesh-trusted-evidence-unlock";
+const SQLITE_SCHEMA_V6_NAME = "threadmesh-durable-turn-intents";
 const SQLITE_SCHEMA_V4_NAME = "threadmesh-durable-dependency-state";
 const SQLITE_SCHEMA_V5_NAME = "threadmesh-git-evidence-state";
 const SQLITE_SCHEMA_V2_MANIFEST = Object.freeze({
@@ -454,7 +465,7 @@ const SQLITE_SCHEMA_V6_CONSTRAINTS = Object.freeze({
     }),
   }),
 });
-export const SQLITE_SCHEMA_MANIFEST = Object.freeze({
+const SQLITE_SCHEMA_V6_MANIFEST = Object.freeze({
   ...SQLITE_SCHEMA_V5_MANIFEST,
   tables: Object.freeze({
     ...SQLITE_SCHEMA_V5_MANIFEST.tables,
@@ -503,6 +514,85 @@ export const SQLITE_SCHEMA_MANIFEST = Object.freeze({
   ]),
   constraints: SQLITE_SCHEMA_V6_CONSTRAINTS,
 });
+const SQLITE_SCHEMA_V7_CONSTRAINTS = Object.freeze({
+  tables: Object.freeze({
+    ...SQLITE_SCHEMA_V6_CONSTRAINTS.tables,
+    git_evidence_dependency_bindings: Object.freeze({
+      columns: Object.freeze([
+        "chain_id|TEXT|1||1",
+        "dependency_id|TEXT|1||0",
+        "edge_version|INTEGER|1||0",
+        "requirement_digest|TEXT|1||0",
+        "verifier_task_id|TEXT|1||0",
+        "verifier_incarnation_id|TEXT|1||0",
+        "dependent_task_id|TEXT|1||0",
+        "dependent_incarnation_id|TEXT|1||0",
+        "binding_digest|TEXT|1||0",
+        "created_at|TEXT|1||0",
+      ]),
+      unique: Object.freeze([
+        "binding_digest", "chain_id", "dependency_id",
+      ]),
+      foreignKeys: Object.freeze([
+        "chain_id->git_evidence_requirements.chain_id",
+        "dependency_id->dependency_edges.dependency_id,edge_version->dependency_edges.version",
+        "dependent_task_id->tasks.task_id,dependent_incarnation_id->tasks.incarnation_id",
+        "verifier_task_id->tasks.task_id,verifier_incarnation_id->tasks.incarnation_id",
+      ]),
+    }),
+    git_evidence_dependency_finalizations: Object.freeze({
+      columns: Object.freeze([
+        "chain_id|TEXT|1||1",
+        "execution_id|TEXT|1||0",
+        "action_ordinal|INTEGER|1||0",
+        "action_digest|TEXT|1||0",
+        "result_digest|TEXT|1||0",
+        "final_record_digest|TEXT|1||0",
+        "dependency_id|TEXT|1||0",
+        "edge_version|INTEGER|1||0",
+        "sender_incarnation_id|TEXT|1||0",
+        "message_id|TEXT|1||0",
+        "event_digest|TEXT|1||0",
+        "disposition_digest|TEXT|1||0",
+        "effect_digest|TEXT|1||0",
+        "binding_digest|TEXT|1||0",
+        "finalized_at|TEXT|1||0",
+      ]),
+      unique: Object.freeze([
+        "binding_digest", "chain_id", "dependency_id", "execution_id",
+        "sender_incarnation_id,message_id",
+      ]),
+      foreignKeys: Object.freeze([
+        "chain_id->git_evidence_dependency_bindings.chain_id",
+        "chain_id->git_evidence_records.chain_id,final_record_digest->git_evidence_records.record_digest",
+        "dependency_id->dependency_satisfactions.dependency_id",
+        "execution_id->turn_execution_intents.execution_id",
+        "execution_id->turn_tool_actions.execution_id,action_ordinal->turn_tool_actions.ordinal",
+        "sender_incarnation_id->messages.sender_incarnation_id,message_id->messages.message_id",
+      ]),
+    }),
+  }),
+  indexes: SQLITE_SCHEMA_V6_CONSTRAINTS.indexes,
+});
+export const SQLITE_SCHEMA_MANIFEST = Object.freeze({
+  ...SQLITE_SCHEMA_V6_MANIFEST,
+  tables: Object.freeze({
+    ...SQLITE_SCHEMA_V6_MANIFEST.tables,
+    git_evidence_dependency_bindings: Object.freeze([
+      "chain_id", "dependency_id", "edge_version", "requirement_digest",
+      "verifier_task_id", "verifier_incarnation_id", "dependent_task_id",
+      "dependent_incarnation_id", "binding_digest", "created_at",
+    ]),
+    git_evidence_dependency_finalizations: Object.freeze([
+      "chain_id", "execution_id", "action_ordinal", "action_digest",
+      "result_digest", "final_record_digest", "dependency_id",
+      "edge_version", "sender_incarnation_id", "message_id",
+      "event_digest", "disposition_digest", "effect_digest",
+      "binding_digest", "finalized_at",
+    ]),
+  }),
+  constraints: SQLITE_SCHEMA_V7_CONSTRAINTS,
+});
 export const SQLITE_SCHEMA_MIGRATIONS = Object.freeze([
   Object.freeze({
     version: 1,
@@ -531,6 +621,11 @@ export const SQLITE_SCHEMA_MIGRATIONS = Object.freeze([
   }),
   Object.freeze({
     version: 6,
+    name: SQLITE_SCHEMA_V6_NAME,
+    manifest: SQLITE_SCHEMA_V6_MANIFEST,
+  }),
+  Object.freeze({
+    version: 7,
     name: SQLITE_SCHEMA_NAME,
     manifest: SQLITE_SCHEMA_MANIFEST,
   }),
@@ -929,6 +1024,7 @@ export class SqliteCoordinator {
       this.#validatePersistedGitEvidenceChains();
       this.#validatePersistedTurnExecutions();
       this.#validatePersistedAttentionState();
+      this.#validatePersistedGitEvidenceDependencyFinalizations();
     } catch (error) {
       this.db.close();
       throw error;
@@ -1002,6 +1098,9 @@ export class SqliteCoordinator {
       }
       if (version < 6) {
         this.#initializeDurableTurnIntentSchema();
+      }
+      if (version < 7) {
+        this.#initializeTrustedEvidenceUnlockSchema();
       }
       this.#assertSchemaCompatible();
       for (const migration of SQLITE_SCHEMA_MIGRATIONS) {
@@ -1456,6 +1555,62 @@ export class SqliteCoordinator {
     `);
   }
 
+  #initializeTrustedEvidenceUnlockSchema() {
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS git_evidence_dependency_bindings (
+        chain_id TEXT NOT NULL PRIMARY KEY,
+        dependency_id TEXT NOT NULL UNIQUE,
+        edge_version INTEGER NOT NULL,
+        requirement_digest TEXT NOT NULL,
+        verifier_task_id TEXT NOT NULL,
+        verifier_incarnation_id TEXT NOT NULL,
+        dependent_task_id TEXT NOT NULL,
+        dependent_incarnation_id TEXT NOT NULL,
+        binding_digest TEXT NOT NULL UNIQUE,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (chain_id)
+          REFERENCES git_evidence_requirements (chain_id),
+        FOREIGN KEY (dependency_id, edge_version)
+          REFERENCES dependency_edges (dependency_id, version),
+        FOREIGN KEY (verifier_task_id, verifier_incarnation_id)
+          REFERENCES tasks (task_id, incarnation_id),
+        FOREIGN KEY (dependent_task_id, dependent_incarnation_id)
+          REFERENCES tasks (task_id, incarnation_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS git_evidence_dependency_finalizations (
+        chain_id TEXT NOT NULL PRIMARY KEY,
+        execution_id TEXT NOT NULL UNIQUE,
+        action_ordinal INTEGER NOT NULL,
+        action_digest TEXT NOT NULL,
+        result_digest TEXT NOT NULL,
+        final_record_digest TEXT NOT NULL,
+        dependency_id TEXT NOT NULL UNIQUE,
+        edge_version INTEGER NOT NULL,
+        sender_incarnation_id TEXT NOT NULL,
+        message_id TEXT NOT NULL,
+        event_digest TEXT NOT NULL,
+        disposition_digest TEXT NOT NULL,
+        effect_digest TEXT NOT NULL,
+        binding_digest TEXT NOT NULL UNIQUE,
+        finalized_at TEXT NOT NULL,
+        UNIQUE (sender_incarnation_id, message_id),
+        FOREIGN KEY (chain_id)
+          REFERENCES git_evidence_dependency_bindings (chain_id),
+        FOREIGN KEY (chain_id, final_record_digest)
+          REFERENCES git_evidence_records (chain_id, record_digest),
+        FOREIGN KEY (execution_id)
+          REFERENCES turn_execution_intents (execution_id),
+        FOREIGN KEY (execution_id, action_ordinal)
+          REFERENCES turn_tool_actions (execution_id, ordinal),
+        FOREIGN KEY (dependency_id)
+          REFERENCES dependency_satisfactions (dependency_id),
+        FOREIGN KEY (sender_incarnation_id, message_id)
+          REFERENCES messages (sender_incarnation_id, message_id)
+      );
+    `);
+  }
+
   #assertSchemaCompatible() {
     for (const [table, expectedColumns] of Object.entries(SQLITE_SCHEMA_MANIFEST.tables)) {
       const actualColumns = new Set(
@@ -1831,6 +1986,97 @@ export class SqliteCoordinator {
         },
       })),
     };
+  }
+
+  bindGitEvidenceDependency(
+    chainId,
+    { dependencyId, expectedVersion } = {},
+    principal,
+  ) {
+    assertControlPlanePrincipal(principal);
+    return this.db.transaction(() => {
+      const requirementRow = this.#gitEvidenceRequirementRow(chainId);
+      const chain = this.#gitEvidenceSnapshot(chainId, requirementRow);
+      const edge = this.#currentDependencyEdgeRow(dependencyId);
+      if (
+        requirementRow.authority_kind !== principal.kind ||
+        requirementRow.authority_principal_id !== principal.principalId ||
+        edge.authority_kind !== principal.kind ||
+        edge.authority_principal_id !== principal.principalId
+      ) {
+        throw codedError("threadmesh_git_evidence_dependency_binding_not_authorized");
+      }
+      const existing = this.db.prepare(
+        `SELECT * FROM git_evidence_dependency_bindings
+         WHERE chain_id = ? OR dependency_id = ?`,
+      ).get(chainId, dependencyId);
+      const binding = {
+        chainId,
+        requirementDigest: chain.requirement.requirementDigest,
+        dependencyId,
+        edgeVersion: expectedVersion,
+        verifier: {
+          taskId: chain.requirement.verifier.taskId,
+          incarnationId: chain.requirement.verifier.incarnationId,
+        },
+        dependent: {
+          taskId: edge.dependent_task_id,
+          incarnationId: edge.dependent_incarnation_id,
+        },
+      };
+      const bindingDigest = sha256Digest(binding);
+      if (existing) {
+        if (
+          existing.chain_id === chainId &&
+          existing.dependency_id === dependencyId &&
+          existing.edge_version === expectedVersion &&
+          existing.binding_digest === bindingDigest
+        ) return { binding: { ...binding, bindingDigest }, replay: true };
+        throw codedError("threadmesh_git_evidence_dependency_binding_conflict");
+      }
+      if (edge.version !== expectedVersion) {
+        throw codedError("threadmesh_dependency_edge_version_conflict");
+      }
+      if (edge.status !== "waiting" || edge.revoked_at) {
+        throw codedError("threadmesh_dependency_edge_inactive");
+      }
+      if (edge.expires_at && Date.parse(edge.expires_at) <= this.clock()) {
+        throw codedError("threadmesh_dependency_edge_expired");
+      }
+      if (
+        edge.prerequisite_task_id !== chain.requirement.verifier.taskId ||
+        edge.prerequisite_incarnation_id !== chain.requirement.verifier.incarnationId
+      ) {
+        throw codedError("threadmesh_git_evidence_dependency_binding_mismatch");
+      }
+      if (this.db.prepare(
+        "SELECT 1 FROM dependency_satisfactions WHERE dependency_id = ?",
+      ).get(dependencyId)) {
+        throw codedError("threadmesh_dependency_already_satisfied");
+      }
+      for (const role of ["implementer", "reviewer", "verifier"]) {
+        this.#assertGitEvidenceActorCurrent(
+          chain.requirement[role],
+          chain.adapterRefDigests[role],
+          chain.taskRevisions[role],
+        );
+      }
+      this.db.prepare(
+        `INSERT INTO git_evidence_dependency_bindings (
+           chain_id, dependency_id, edge_version, requirement_digest,
+           verifier_task_id, verifier_incarnation_id, dependent_task_id,
+           dependent_incarnation_id, binding_digest, created_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).run(
+        chainId, dependencyId, expectedVersion,
+        chain.requirement.requirementDigest,
+        chain.requirement.verifier.taskId,
+        chain.requirement.verifier.incarnationId,
+        edge.dependent_task_id, edge.dependent_incarnation_id,
+        bindingDigest, nowIso(this.clock),
+      );
+      return { binding: { ...binding, bindingDigest }, replay: false };
+    }).immediate();
   }
 
   createTurnExecutionIntent(input, expectedTaskRevision, principal) {
@@ -2220,6 +2466,276 @@ export class SqliteCoordinator {
         ...this.#writeTurnTransition(snapshot, next),
         evidenceRecord: record,
         evidenceState,
+      };
+    }).immediate();
+  }
+
+  finalizeGitEvidenceDependency(
+    executionId,
+    {
+      actionOrdinal,
+      verificationToolArguments,
+      request,
+      response,
+      expectedTrustAnchor,
+      dependencyId,
+      expectedDependencyVersion,
+      event,
+      disposition,
+      expectedEvidenceChainRevision,
+      expectedEvidenceChainHead,
+      expectedRevision,
+    } = {},
+    principal,
+  ) {
+    assertLifecycleEvent(event);
+    assertProtocolObject("disposition", disposition);
+    return this.db.transaction(() => {
+      const execution = this.#turnExecutionSnapshot(executionId);
+      this.#assertTurnExecutionPrincipalAndBinding(execution, principal);
+      const chain = this.#gitEvidenceSnapshot(execution.intent.chainId);
+      assertTaskPrincipal(
+        principal,
+        chain.requirement.verifier.taskId,
+        chain.requirement.verifier.incarnationId,
+      );
+      if (
+        execution.intent.actor.taskId !== chain.requirement.verifier.taskId ||
+        execution.intent.actor.incarnationId !== chain.requirement.verifier.incarnationId ||
+        execution.intent.actor.threadId !== chain.requirement.verifier.threadId ||
+        execution.intent.actor.snapshotDigest !== chain.requirement.verifier.snapshotDigest ||
+        execution.intent.messageId !== event.messageId
+      ) {
+        throw codedError("threadmesh_git_evidence_finalization_actor_mismatch");
+      }
+      for (const role of ["implementer", "reviewer", "verifier"]) {
+        this.#assertGitEvidenceActorCurrent(
+          chain.requirement[role],
+          chain.adapterRefDigests[role],
+          chain.taskRevisions[role],
+        );
+      }
+      for (const record of chain.records.slice(0, 3)) {
+        this.#assertPromotedGitEvidenceRecordAction(record);
+      }
+      const binding = this.db.prepare(
+        "SELECT * FROM git_evidence_dependency_bindings WHERE chain_id = ?",
+      ).get(chain.requirement.chainId);
+      if (!binding) {
+        throw codedError("threadmesh_git_evidence_dependency_not_bound");
+      }
+      const edge = this.#currentDependencyEdgeRow(dependencyId);
+      const expectedBindingDigest = sha256Digest({
+        chainId: chain.requirement.chainId,
+        requirementDigest: chain.requirement.requirementDigest,
+        dependencyId,
+        edgeVersion: expectedDependencyVersion,
+        verifier: {
+          taskId: chain.requirement.verifier.taskId,
+          incarnationId: chain.requirement.verifier.incarnationId,
+        },
+        dependent: {
+          taskId: edge.dependent_task_id,
+          incarnationId: edge.dependent_incarnation_id,
+        },
+      });
+      if (
+        binding.dependency_id !== dependencyId ||
+        binding.edge_version !== expectedDependencyVersion ||
+        binding.requirement_digest !== chain.requirement.requirementDigest ||
+        binding.verifier_task_id !== chain.requirement.verifier.taskId ||
+        binding.verifier_incarnation_id !== chain.requirement.verifier.incarnationId ||
+        binding.dependent_task_id !== edge.dependent_task_id ||
+        binding.dependent_incarnation_id !== edge.dependent_incarnation_id ||
+        binding.binding_digest !== expectedBindingDigest
+      ) {
+        throw codedError("threadmesh_git_evidence_dependency_binding_mismatch");
+      }
+      if (
+        edge.version !== expectedDependencyVersion ||
+        edge.prerequisite_task_id !== chain.requirement.verifier.taskId ||
+        edge.prerequisite_incarnation_id !== chain.requirement.verifier.incarnationId
+      ) {
+        throw codedError("threadmesh_git_evidence_dependency_binding_mismatch");
+      }
+      if (edge.status !== "waiting" || edge.revoked_at) {
+        throw codedError("threadmesh_dependency_edge_inactive");
+      }
+      if (edge.expires_at && Date.parse(edge.expires_at) <= this.clock()) {
+        throw codedError("threadmesh_dependency_edge_expired");
+      }
+      if (
+        event.sender.taskId !== chain.requirement.verifier.taskId ||
+        event.sender.incarnationId !== chain.requirement.verifier.incarnationId ||
+        event.target.taskId !== edge.dependent_task_id ||
+        event.target.incarnationId !== edge.dependent_incarnation_id ||
+        request?.subject?.messageId !== event.messageId ||
+        request?.subject?.senderIncarnationId !== event.sender.incarnationId ||
+        !sameTaskRef(request?.subject?.receiver, event.target)
+      ) {
+        throw codedError("threadmesh_git_evidence_dependency_event_mismatch");
+      }
+      const action = execution.actions[actionOrdinal];
+      const toolArgs = action ? JSON.parse(action.argsJson) : null;
+      if (
+        !action || action.ordinal !== actionOrdinal ||
+        action.name !== FINAL_GIT_EVIDENCE_TOOL ||
+        action.resultStatus !== "completed" ||
+        !action.actionDigest ||
+        canonicalJson(toolArgs) !== canonicalJson(verificationToolArguments) ||
+        canonicalJson(Object.keys(toolArgs ?? {}).sort()) !== canonicalJson([
+          "chainId", "expectedEvidenceChainHead", "expectedEvidenceChainRevision",
+        ]) ||
+        toolArgs.chainId !== chain.requirement.chainId ||
+        toolArgs.expectedEvidenceChainRevision !== 3 ||
+        toolArgs.expectedEvidenceChainHead !== expectedEvidenceChainHead ||
+        action.resultDigest !== gitEvidenceVerificationResultDigest({
+          request, response, expectedTrustAnchor,
+        })
+      ) {
+        throw codedError("threadmesh_git_evidence_finalization_tool_mismatch");
+      }
+      if (
+        !["completed-turn-bound", "promoted"].includes(execution.intent.state) ||
+        execution.intent.turnStart?.turnId !== action.turnId
+      ) {
+        throw codedError("threadmesh_git_evidence_finalization_turn_not_bound");
+      }
+      const prefix = chain.records.slice(0, 3);
+      const prefixState = validateGitEvidenceChain(chain.requirement, prefix);
+      this.#assertGitEvidenceCas(
+        prefixState,
+        expectedEvidenceChainRevision,
+        expectedEvidenceChainHead,
+      );
+      const finalRecord = appendPureIndependentVerificationRecord(
+        chain.requirement,
+        prefix,
+        {
+          actor: execution.intent.actor,
+          turnId: action.turnId,
+          toolCallDigest: action.actionDigest,
+          request,
+          response,
+          expectedTrustAnchor,
+        },
+      );
+      const eventDigest = sha256Digest(event);
+      const dispositionDigest = sha256Digest(disposition);
+      if (
+        disposition.outcome?.verificationAttestations?.length !== 1 ||
+        canonicalJson(disposition.outcome.verificationAttestations[0]) !==
+          canonicalJson(response?.attestation)
+      ) {
+        throw codedError("threadmesh_git_evidence_dependency_attestation_mismatch");
+      }
+      this.#assertDependencyFreshness(edge, event);
+      const effect = evaluateDependencyEffect({
+        event,
+        disposition,
+        trustAnchors: this.#verificationTrustAnchors,
+        dependencyEdge: JSON.parse(edge.edge_json),
+        currentDependencyEdge: JSON.parse(edge.edge_json),
+        now: this.clock(),
+      });
+      if (!effect.unlock) {
+        throw codedError("threadmesh_dependency_not_satisfied", effect.reasonCode);
+      }
+      const effectDigest = sha256Digest(effect);
+      const finalizationBinding = {
+        chainId: chain.requirement.chainId,
+        requirementDigest: chain.requirement.requirementDigest,
+        executionId,
+        actionOrdinal,
+        actionDigest: action.actionDigest,
+        resultDigest: action.resultDigest,
+        finalRecordDigest: finalRecord.recordDigest,
+        dependencyId,
+        edgeVersion: expectedDependencyVersion,
+        senderIncarnationId: event.sender.incarnationId,
+        messageId: event.messageId,
+        eventDigest,
+        dispositionDigest,
+        effectDigest,
+      };
+      const finalizationBindingDigest = sha256Digest(finalizationBinding);
+      const persisted = this.db.prepare(
+        `SELECT * FROM git_evidence_dependency_finalizations
+         WHERE chain_id = ? OR execution_id = ? OR dependency_id = ? OR
+           (sender_incarnation_id = ? AND message_id = ?)`,
+      ).get(
+        chain.requirement.chainId, executionId, dependencyId,
+        event.sender.incarnationId, event.messageId,
+      );
+      if (persisted) {
+        const exact =
+          persisted.binding_digest === finalizationBindingDigest &&
+          chain.records[3]?.recordDigest === finalRecord.recordDigest &&
+          chain.state.trustedComplete && execution.intent.state === "promoted" &&
+          expectedRevision === execution.revision - 1;
+        if (!exact) {
+          throw codedError("threadmesh_git_evidence_dependency_finalization_conflict");
+        }
+        return {
+          execution,
+          evidenceRecord: chain.records[3],
+          evidenceState: chain.state,
+          dependency: this.#dependencyEdge(edge),
+          effect,
+          finalizationBindingDigest,
+          replay: true,
+          unlock: false,
+        };
+      }
+      if (execution.intent.state !== "completed-turn-bound") {
+        throw codedError("threadmesh_git_evidence_finalization_turn_not_bound");
+      }
+      this.#assertTurnExecutionCas(execution, expectedRevision);
+      if (chain.records.length !== 3) {
+        throw codedError("threadmesh_git_evidence_dependency_finalization_conflict");
+      }
+      this.#insertGitEvidenceRecord(
+        finalRecord,
+        expectedEvidenceChainRevision,
+        expectedEvidenceChainHead,
+      );
+      const evidenceState = validateGitEvidenceChain(
+        chain.requirement,
+        [...chain.records, finalRecord],
+      );
+      const promotedIntent = promoteDurableTurnIntent(execution.intent, {
+        expectedEvidenceChainRevision: evidenceState.recordCount,
+        expectedEvidenceChainHead: evidenceState.headDigest,
+      });
+      const promotedExecution = this.#writeTurnTransition(execution, promotedIntent);
+      const dependency = this.#satisfyDependencyEdge(
+        { dependencyId, expectedVersion: expectedDependencyVersion, event, disposition },
+        principal,
+        chain.requirement.verifier,
+      );
+      this.db.prepare(
+        `INSERT INTO git_evidence_dependency_finalizations (
+           chain_id, execution_id, action_ordinal, action_digest,
+           result_digest, final_record_digest, dependency_id, edge_version,
+           sender_incarnation_id, message_id, event_digest,
+           disposition_digest, effect_digest, binding_digest, finalized_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).run(
+        chain.requirement.chainId, executionId, actionOrdinal,
+        action.actionDigest, action.resultDigest, finalRecord.recordDigest,
+        dependencyId, expectedDependencyVersion, event.sender.incarnationId,
+        event.messageId, eventDigest, dispositionDigest, effectDigest,
+        finalizationBindingDigest, nowIso(this.clock),
+      );
+      return {
+        ...promotedExecution,
+        evidenceRecord: finalRecord,
+        evidenceState,
+        dependency,
+        effect,
+        finalizationBindingDigest,
+        replay: false,
+        unlock: dependency.unlock,
       };
     }).immediate();
   }
@@ -2715,8 +3231,16 @@ export class SqliteCoordinator {
   }
 
   satisfyDependencyEdge(
+    input,
+    principal,
+  ) {
+    return this.#satisfyDependencyEdge(input, principal);
+  }
+
+  #satisfyDependencyEdge(
     { dependencyId, expectedVersion, event, disposition },
     principal,
+    frozenVerifier = null,
   ) {
     assertLifecycleEvent(event);
     assertProtocolObject("disposition", disposition);
@@ -2724,7 +3248,24 @@ export class SqliteCoordinator {
     const dispositionDigest = sha256Digest(disposition);
     return this.db.transaction(() => {
       const current = this.#currentDependencyEdgeRow(dependencyId);
-      this.#assertDependencySatisfactionAuthority(current, principal);
+      if (frozenVerifier === null) {
+        this.#assertDependencySatisfactionAuthority(current, principal);
+        if (this.db.prepare(
+          "SELECT 1 FROM git_evidence_dependency_bindings WHERE dependency_id = ?",
+        ).get(dependencyId)) {
+          throw codedError("threadmesh_dependency_git_evidence_finalize_required");
+        }
+      } else {
+        assertTaskPrincipal(
+          principal, frozenVerifier.taskId, frozenVerifier.incarnationId,
+        );
+        if (
+          current.prerequisite_task_id !== frozenVerifier.taskId ||
+          current.prerequisite_incarnation_id !== frozenVerifier.incarnationId
+        ) {
+          throw codedError("threadmesh_git_evidence_dependency_binding_mismatch");
+        }
+      }
       const existing = this.db
         .prepare("SELECT * FROM dependency_satisfactions WHERE dependency_id = ?")
         .get(dependencyId);
@@ -5822,6 +6363,156 @@ export class SqliteCoordinator {
       .prepare("SELECT * FROM git_evidence_requirements ORDER BY chain_id")
       .all();
     for (const row of rows) this.#gitEvidenceSnapshot(row.chain_id, row);
+  }
+
+  #assertPromotedGitEvidenceRecordAction(record) {
+    const expectedToolName = GIT_EVIDENCE_STAGE_TOOL[record.stage];
+    const rows = this.db.prepare(
+      `SELECT execution.execution_id, execution.intent_json,
+              execution.state, execution.chain_id,
+              execution.task_id, execution.incarnation_id,
+              action.turn_id, action.tool_name, action.result_status,
+              action.action_digest
+       FROM turn_tool_actions AS action
+       JOIN turn_execution_intents AS execution
+         ON execution.execution_id = action.execution_id
+       WHERE action.action_digest = ?`,
+    ).all(record.payload.toolCallDigest);
+    if (rows.length !== 1 || !expectedToolName) {
+      throw codedError("threadmesh_git_evidence_record_action_not_promoted");
+    }
+    const row = rows[0];
+    let intent;
+    try {
+      intent = validateDurableTurnIntent(JSON.parse(row.intent_json));
+    } catch {
+      throw codedError("threadmesh_git_evidence_record_action_not_promoted");
+    }
+    if (
+      row.state !== "promoted" || intent.state !== "promoted" ||
+      row.chain_id !== record.chainId ||
+      row.task_id !== record.payload.actor.taskId ||
+      row.incarnation_id !== record.payload.actor.incarnationId ||
+      row.turn_id !== record.payload.turnId ||
+      row.tool_name !== expectedToolName ||
+      row.result_status !== "completed" ||
+      row.action_digest !== record.payload.toolCallDigest ||
+      intent.promotion?.expectedEvidenceChainRevision !== record.sequence ||
+      intent.promotion?.expectedEvidenceChainHead !== record.recordDigest
+    ) {
+      throw codedError("threadmesh_git_evidence_record_action_not_promoted");
+    }
+  }
+
+  #validatePersistedGitEvidenceDependencyFinalizations() {
+    const bindings = this.db.prepare(
+      "SELECT * FROM git_evidence_dependency_bindings ORDER BY chain_id",
+    ).all();
+    for (const binding of bindings) {
+      const chain = this.#gitEvidenceSnapshot(binding.chain_id);
+      const edge = this.db.prepare(
+        `SELECT * FROM dependency_edges
+         WHERE dependency_id = ? AND version = ?`,
+      ).get(binding.dependency_id, binding.edge_version);
+      const body = edge && {
+        chainId: binding.chain_id,
+        requirementDigest: chain.requirement.requirementDigest,
+        dependencyId: binding.dependency_id,
+        edgeVersion: binding.edge_version,
+        verifier: {
+          taskId: chain.requirement.verifier.taskId,
+          incarnationId: chain.requirement.verifier.incarnationId,
+        },
+        dependent: {
+          taskId: edge.dependent_task_id,
+          incarnationId: edge.dependent_incarnation_id,
+        },
+      };
+      if (
+        !edge || binding.requirement_digest !== body.requirementDigest ||
+        binding.verifier_task_id !== body.verifier.taskId ||
+        binding.verifier_incarnation_id !== body.verifier.incarnationId ||
+        binding.dependent_task_id !== body.dependent.taskId ||
+        binding.dependent_incarnation_id !== body.dependent.incarnationId ||
+        binding.binding_digest !== sha256Digest(body) ||
+        edge.prerequisite_task_id !== body.verifier.taskId ||
+        edge.prerequisite_incarnation_id !== body.verifier.incarnationId
+      ) {
+        throw codedError("threadmesh_git_evidence_dependency_storage_tampered");
+      }
+    }
+    const rows = this.db.prepare(
+      "SELECT * FROM git_evidence_dependency_finalizations ORDER BY chain_id",
+    ).all();
+    for (const row of rows) {
+      const chain = this.#gitEvidenceSnapshot(row.chain_id);
+      const execution = this.#turnExecutionSnapshot(row.execution_id);
+      const action = execution.actions[row.action_ordinal];
+      const satisfaction = this.db.prepare(
+        "SELECT * FROM dependency_satisfactions WHERE dependency_id = ?",
+      ).get(row.dependency_id);
+      const edge = this.db.prepare(
+        `SELECT * FROM dependency_edges
+         WHERE dependency_id = ? AND version = ?`,
+      ).get(row.dependency_id, row.edge_version);
+      let event;
+      let disposition;
+      try {
+        event = JSON.parse(satisfaction?.event_json ?? "null");
+        disposition = JSON.parse(satisfaction?.disposition_json ?? "null");
+      } catch {
+        throw codedError("threadmesh_git_evidence_dependency_storage_tampered");
+      }
+      const finalRecord = chain.records[3];
+      const effect = edge && evaluateDependencyEffect({
+        event,
+        disposition,
+        trustAnchors: this.#verificationTrustAnchors,
+        dependencyEdge: JSON.parse(edge.edge_json),
+        currentDependencyEdge: JSON.parse(edge.edge_json),
+        now: this.clock(),
+      });
+      const body = {
+        chainId: row.chain_id,
+        requirementDigest: chain.requirement.requirementDigest,
+        executionId: row.execution_id,
+        actionOrdinal: row.action_ordinal,
+        actionDigest: row.action_digest,
+        resultDigest: row.result_digest,
+        finalRecordDigest: row.final_record_digest,
+        dependencyId: row.dependency_id,
+        edgeVersion: row.edge_version,
+        senderIncarnationId: row.sender_incarnation_id,
+        messageId: row.message_id,
+        eventDigest: row.event_digest,
+        dispositionDigest: row.disposition_digest,
+        effectDigest: row.effect_digest,
+      };
+      for (const record of chain.records.slice(0, 3)) {
+        this.#assertPromotedGitEvidenceRecordAction(record);
+      }
+      if (
+        !chain.state.trustedComplete || !finalRecord || !satisfaction || !edge ||
+        execution.intent.state !== "promoted" || !action ||
+        action.name !== FINAL_GIT_EVIDENCE_TOOL ||
+        action.resultStatus !== "completed" ||
+        action.actionDigest !== row.action_digest ||
+        action.resultDigest !== row.result_digest ||
+        finalRecord.recordDigest !== row.final_record_digest ||
+        finalRecord.payload.turnId !== action.turnId ||
+        finalRecord.payload.toolCallDigest !== action.actionDigest ||
+        satisfaction.edge_version !== row.edge_version ||
+        satisfaction.sender_incarnation_id !== row.sender_incarnation_id ||
+        satisfaction.message_id !== row.message_id ||
+        sha256Digest(event) !== row.event_digest ||
+        sha256Digest(disposition) !== row.disposition_digest ||
+        satisfaction.disposition_digest !== row.disposition_digest ||
+        !effect?.unlock || sha256Digest(effect) !== row.effect_digest ||
+        row.binding_digest !== sha256Digest(body)
+      ) {
+        throw codedError("threadmesh_git_evidence_dependency_storage_tampered");
+      }
+    }
   }
 
   #assertGitEvidenceCas(state, expectedRevision, expectedHeadDigest) {

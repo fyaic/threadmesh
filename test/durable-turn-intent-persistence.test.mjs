@@ -633,9 +633,13 @@ test("v5 migrates append-only to exact v6 and header/action tampering fails rest
       "threadmesh_turn_execution_storage_tampered",
     );
     const v5 = SQLITE_SCHEMA_MIGRATIONS.find(({ version }) => version === 5);
-    assert.equal(SQLITE_SCHEMA_VERSION, 6);
+    assert.equal(SQLITE_SCHEMA_VERSION, 7);
     assert.equal(v5.checksum, "sha256:ec846132a72bb7001029548400bff8c5781fadcdec7b8eedc5aec43b2422ec8e");
     assert.ok(SQLITE_SCHEMA_MIGRATIONS.find(({ version }) => version === 6).manifest.constraints);
+    assert.equal(
+      SQLITE_SCHEMA_MIGRATIONS.find(({ version }) => version === 6).checksum,
+      "sha256:66bdfb81983288ea288970214c831731ecd8227907867958339454a2015f4563",
+    );
   } finally {
     coordinator?.close();
     temporary.cleanup();
@@ -670,7 +674,7 @@ test("upgrades a real v5 fixture without changing its checksum or task data", ()
       clock: () => NOW,
       verificationTrustAnchors: [context.trustAnchor],
     });
-    assert.equal(coordinator.storageInfo().schemaVersion, 6);
+    assert.equal(coordinator.storageInfo().schemaVersion, 7);
     assert.equal(coordinator.db.prepare(
       "SELECT checksum FROM schema_migrations WHERE version = 5",
     ).pluck().get(), v5Checksum);
