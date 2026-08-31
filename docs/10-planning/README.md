@@ -14,6 +14,9 @@ where the repository is now and what work should happen next.
   strict closure evidence for initiative, controls, persistence, and cleanup.
 - [M5.2 implementation contract](m5-2-implementation-contract.md) — exact
   session, Git evidence, independent-verifier, unlock, and no-go boundaries.
+- [M5.2 real Codex scenario](m5-2-real-codex-scenario.md) — concrete persistent
+  role topology, model-owned tool turns, durable promotion sequence, recovery
+  boundaries, and delivery slices for the live run.
 - [Mainline plan](mainline-plan.md) — completed protocol/runtime workstreams and
   the transition from technical gates to the active product mainline.
 - [Milestone acceptance audit](acceptance-audit.md) — criterion-by-criterion

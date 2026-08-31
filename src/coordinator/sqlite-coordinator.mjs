@@ -23,6 +23,12 @@ import {
   isDecisionReasonAllowed,
   isDispositionTransitionAllowed,
 } from "../state/disposition-transitions.mjs";
+import {
+  appendGitEvidenceRecord as appendPureGitEvidenceRecord,
+  appendIndependentVerificationRecord as appendPureIndependentVerificationRecord,
+  createGitEvidenceRequirement as createPureGitEvidenceRequirement,
+  validateGitEvidenceChain,
+} from "../state/git-evidence-chain.mjs";
 
 const DEFAULT_DECISION_REASONS = Object.freeze({
   accepted: "accepted",
@@ -34,8 +40,9 @@ const DEFAULT_DECISION_REASONS = Object.freeze({
   revoked: "revoked",
 });
 const PURGED_TEXT = "Content purged by the ThreadMesh retention policy.";
-export const SQLITE_SCHEMA_VERSION = 4;
-export const SQLITE_SCHEMA_NAME = "threadmesh-durable-dependency-state";
+export const SQLITE_SCHEMA_VERSION = 5;
+export const SQLITE_SCHEMA_NAME = "threadmesh-git-evidence-state";
+const SQLITE_SCHEMA_V4_NAME = "threadmesh-durable-dependency-state";
 const SQLITE_SCHEMA_V2_MANIFEST = Object.freeze({
   tables: {
     tasks: [
@@ -145,7 +152,7 @@ const SQLITE_SCHEMA_V3_MANIFEST = Object.freeze({
     ]),
   }),
 });
-export const SQLITE_SCHEMA_MANIFEST = Object.freeze({
+const SQLITE_SCHEMA_V4_MANIFEST = Object.freeze({
   ...SQLITE_SCHEMA_V3_MANIFEST,
   tables: Object.freeze({
     ...SQLITE_SCHEMA_V3_MANIFEST.tables,
@@ -168,6 +175,96 @@ export const SQLITE_SCHEMA_MANIFEST = Object.freeze({
     "dependency_edges_current_version",
   ]),
 });
+const SQLITE_SCHEMA_V5_EVIDENCE_CONSTRAINTS = Object.freeze({
+  tables: Object.freeze({
+    git_evidence_requirements: Object.freeze({
+      columns: Object.freeze([
+        "chain_id|TEXT|1||1",
+        "requirement_digest|TEXT|1||0",
+        "requirement_json|TEXT|1||0",
+        "authority_kind|TEXT|1||0",
+        "authority_principal_id|TEXT|1||0",
+        "implementer_task_id|TEXT|1||0",
+        "implementer_incarnation_id|TEXT|1||0",
+        "implementer_adapter_ref_digest|TEXT|1||0",
+        "implementer_task_revision|INTEGER|1||0",
+        "reviewer_task_id|TEXT|1||0",
+        "reviewer_incarnation_id|TEXT|1||0",
+        "reviewer_adapter_ref_digest|TEXT|1||0",
+        "reviewer_task_revision|INTEGER|1||0",
+        "verifier_task_id|TEXT|1||0",
+        "verifier_incarnation_id|TEXT|1||0",
+        "verifier_adapter_ref_digest|TEXT|1||0",
+        "verifier_task_revision|INTEGER|1||0",
+        "record_count|INTEGER|1|0|0",
+        "head_record_digest|TEXT|0||0",
+        "revision|INTEGER|1|0|0",
+        "binding_digest|TEXT|1||0",
+        "created_at|TEXT|1||0",
+      ]),
+      unique: Object.freeze(["chain_id", "requirement_digest"]),
+      foreignKeys: Object.freeze([
+        "implementer_task_id->tasks.task_id,implementer_incarnation_id->tasks.incarnation_id",
+        "reviewer_task_id->tasks.task_id,reviewer_incarnation_id->tasks.incarnation_id",
+        "verifier_task_id->tasks.task_id,verifier_incarnation_id->tasks.incarnation_id",
+      ]),
+    }),
+    git_evidence_records: Object.freeze({
+      columns: Object.freeze([
+        "chain_id|TEXT|1||1",
+        "sequence|INTEGER|1||2",
+        "stage|TEXT|1||0",
+        "actor_task_id|TEXT|1||0",
+        "actor_incarnation_id|TEXT|1||0",
+        "previous_record_digest|TEXT|0||0",
+        "record_digest|TEXT|1||0",
+        "record_json|TEXT|1||0",
+        "created_at|TEXT|1||0",
+      ]),
+      unique: Object.freeze(["chain_id,record_digest", "chain_id,sequence"]),
+      foreignKeys: Object.freeze([
+        "actor_task_id->tasks.task_id,actor_incarnation_id->tasks.incarnation_id",
+        "chain_id->git_evidence_requirements.chain_id",
+      ]),
+    }),
+  }),
+  indexes: Object.freeze({
+    git_evidence_records_chain_sequence: Object.freeze({
+      table: "git_evidence_records",
+      unique: 0,
+      partial: 0,
+      columns: Object.freeze(["chain_id", "sequence"]),
+    }),
+  }),
+});
+export const SQLITE_SCHEMA_MANIFEST = Object.freeze({
+  ...SQLITE_SCHEMA_V4_MANIFEST,
+  tables: Object.freeze({
+    ...SQLITE_SCHEMA_V4_MANIFEST.tables,
+    git_evidence_requirements: Object.freeze([
+      "chain_id", "requirement_digest", "requirement_json",
+      "authority_kind", "authority_principal_id",
+      "implementer_task_id", "implementer_incarnation_id",
+      "implementer_adapter_ref_digest", "implementer_task_revision",
+      "reviewer_task_id", "reviewer_incarnation_id",
+      "reviewer_adapter_ref_digest", "reviewer_task_revision",
+      "verifier_task_id", "verifier_incarnation_id",
+      "verifier_adapter_ref_digest", "verifier_task_revision",
+      "record_count", "head_record_digest", "revision",
+      "binding_digest", "created_at",
+    ]),
+    git_evidence_records: Object.freeze([
+      "chain_id", "sequence", "stage", "actor_task_id",
+      "actor_incarnation_id", "previous_record_digest", "record_digest",
+      "record_json", "created_at",
+    ]),
+  }),
+  indexes: Object.freeze([
+    ...SQLITE_SCHEMA_V4_MANIFEST.indexes,
+    "git_evidence_records_chain_sequence",
+  ]),
+  constraints: SQLITE_SCHEMA_V5_EVIDENCE_CONSTRAINTS,
+});
 export const SQLITE_SCHEMA_MIGRATIONS = Object.freeze([
   Object.freeze({
     version: 1,
@@ -186,6 +283,11 @@ export const SQLITE_SCHEMA_MIGRATIONS = Object.freeze([
   }),
   Object.freeze({
     version: 4,
+    name: SQLITE_SCHEMA_V4_NAME,
+    manifest: SQLITE_SCHEMA_V4_MANIFEST,
+  }),
+  Object.freeze({
+    version: 5,
     name: SQLITE_SCHEMA_NAME,
     manifest: SQLITE_SCHEMA_MANIFEST,
   }),
@@ -581,6 +683,7 @@ export class SqliteCoordinator {
     this.db.pragma("foreign_keys = ON");
     try {
       this.#migrate();
+      this.#validatePersistedGitEvidenceChains();
     } catch (error) {
       this.db.close();
       throw error;
@@ -648,6 +751,9 @@ export class SqliteCoordinator {
       }
       if (version < 4) {
         this.#initializeDependencySchema();
+      }
+      if (version < 5) {
+        this.#initializeGitEvidenceSchema();
       }
       this.#assertSchemaCompatible();
       for (const migration of SQLITE_SCHEMA_MIGRATIONS) {
@@ -913,6 +1019,61 @@ export class SqliteCoordinator {
     `);
   }
 
+  #initializeGitEvidenceSchema() {
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS git_evidence_requirements (
+        chain_id TEXT NOT NULL PRIMARY KEY,
+        requirement_digest TEXT NOT NULL UNIQUE,
+        requirement_json TEXT NOT NULL,
+        authority_kind TEXT NOT NULL,
+        authority_principal_id TEXT NOT NULL,
+        implementer_task_id TEXT NOT NULL,
+        implementer_incarnation_id TEXT NOT NULL,
+        implementer_adapter_ref_digest TEXT NOT NULL,
+        implementer_task_revision INTEGER NOT NULL,
+        reviewer_task_id TEXT NOT NULL,
+        reviewer_incarnation_id TEXT NOT NULL,
+        reviewer_adapter_ref_digest TEXT NOT NULL,
+        reviewer_task_revision INTEGER NOT NULL,
+        verifier_task_id TEXT NOT NULL,
+        verifier_incarnation_id TEXT NOT NULL,
+        verifier_adapter_ref_digest TEXT NOT NULL,
+        verifier_task_revision INTEGER NOT NULL,
+        record_count INTEGER NOT NULL DEFAULT 0,
+        head_record_digest TEXT,
+        revision INTEGER NOT NULL DEFAULT 0,
+        binding_digest TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (implementer_task_id, implementer_incarnation_id)
+          REFERENCES tasks (task_id, incarnation_id),
+        FOREIGN KEY (reviewer_task_id, reviewer_incarnation_id)
+          REFERENCES tasks (task_id, incarnation_id),
+        FOREIGN KEY (verifier_task_id, verifier_incarnation_id)
+          REFERENCES tasks (task_id, incarnation_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS git_evidence_records (
+        chain_id TEXT NOT NULL,
+        sequence INTEGER NOT NULL,
+        stage TEXT NOT NULL,
+        actor_task_id TEXT NOT NULL,
+        actor_incarnation_id TEXT NOT NULL,
+        previous_record_digest TEXT,
+        record_digest TEXT NOT NULL,
+        record_json TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        PRIMARY KEY (chain_id, sequence),
+        UNIQUE (chain_id, record_digest),
+        FOREIGN KEY (chain_id) REFERENCES git_evidence_requirements (chain_id),
+        FOREIGN KEY (actor_task_id, actor_incarnation_id)
+          REFERENCES tasks (task_id, incarnation_id)
+      );
+
+      CREATE INDEX IF NOT EXISTS git_evidence_records_chain_sequence
+        ON git_evidence_records (chain_id, sequence);
+    `);
+  }
+
   #assertSchemaCompatible() {
     for (const [table, expectedColumns] of Object.entries(SQLITE_SCHEMA_MANIFEST.tables)) {
       const actualColumns = new Set(
@@ -943,6 +1104,69 @@ export class SqliteCoordinator {
         "threadmesh_storage_schema_incompatible",
         `indexes missing ${missingIndexes.join(",")}`,
       );
+    }
+    this.#assertGitEvidenceSchemaConstraints();
+  }
+
+  #assertGitEvidenceSchemaConstraints() {
+    const fail = (detail) => {
+      throw codedError("threadmesh_storage_schema_incompatible", detail);
+    };
+    const constraints = SQLITE_SCHEMA_MANIFEST.constraints;
+    const uniqueSignatures = (table) => this.db
+      .prepare("SELECT name FROM pragma_index_list(?) WHERE \"unique\" = 1")
+      .all(table)
+      .map(({ name }) => this.db
+        .prepare("SELECT name FROM pragma_index_info(?) ORDER BY seqno")
+        .all(name)
+        .map((entry) => entry.name)
+        .join(","))
+      .sort();
+    const foreignKeySignatures = (table) => {
+      const groups = new Map();
+      for (const row of this.db
+        .prepare("SELECT * FROM pragma_foreign_key_list(?) ORDER BY id, seq")
+        .all(table)) {
+        if (!groups.has(row.id)) groups.set(row.id, []);
+        groups.get(row.id).push(`${row.from}->${row.table}.${row.to}`);
+      }
+      return [...groups.values()].map((parts) => parts.join(",")).sort();
+    };
+    for (const [table, expected] of Object.entries(constraints.tables)) {
+      const columns = this.db
+        .prepare("SELECT * FROM pragma_table_info(?) ORDER BY cid")
+        .all(table)
+        .map((entry) => [
+          entry.name,
+          entry.type,
+          entry.notnull,
+          entry.dflt_value ?? "",
+          entry.pk,
+        ].join("|"));
+      if (canonicalJson(columns) !== canonicalJson(expected.columns)) {
+        fail(`${table} column constraints`);
+      }
+      if (canonicalJson(uniqueSignatures(table)) !==
+          canonicalJson([...expected.unique].sort())) {
+        fail(`${table} unique constraints`);
+      }
+      if (canonicalJson(foreignKeySignatures(table)) !==
+          canonicalJson([...expected.foreignKeys].sort())) {
+        fail(`${table} foreign keys`);
+      }
+    }
+    for (const [name, expected] of Object.entries(constraints.indexes)) {
+      const index = this.db
+        .prepare("SELECT \"unique\", partial FROM pragma_index_list(?) WHERE name = ?")
+        .get(expected.table, name);
+      const columns = this.db
+        .prepare("SELECT name FROM pragma_index_info(?) ORDER BY seqno")
+        .all(name)
+        .map((entry) => entry.name);
+      if (
+        index?.unique !== expected.unique || index.partial !== expected.partial ||
+        canonicalJson(columns) !== canonicalJson(expected.columns)
+      ) fail(`${name} definition`);
     }
   }
 
@@ -1027,6 +1251,204 @@ export class SqliteCoordinator {
         );
     }).immediate();
     return { ...task, revision: 0, replay: false };
+  }
+
+  createGitEvidenceRequirement(input, principal) {
+    assertControlPlanePrincipal(principal);
+    const requirement = createPureGitEvidenceRequirement(input);
+    this.#assertConfiguredGitEvidenceTrustAnchor(
+      requirement.preconfiguredTrustAnchorDigest,
+    );
+    return this.db.transaction(() => {
+      if (
+        this.db
+          .prepare("SELECT 1 FROM git_evidence_requirements WHERE chain_id = ?")
+          .get(requirement.chainId)
+      ) {
+        throw codedError("threadmesh_git_evidence_requirement_conflict");
+      }
+      const adapterRefDigests = {};
+      const taskRevisions = {};
+      for (const role of ["implementer", "reviewer", "verifier"]) {
+        const current = this.#assertGitEvidenceActorCurrent(requirement[role]);
+        if (
+          principal.kind !== "policy" &&
+          (current.task.owner_kind !== principal.kind ||
+            current.task.owner_principal_id !== principal.principalId)
+        ) {
+          throw codedError("threadmesh_git_evidence_requirement_not_authorized");
+        }
+        adapterRefDigests[role] = current.adapterRefDigest;
+        taskRevisions[role] = current.taskRevision;
+      }
+      const authority = {
+        kind: principal.kind,
+        principalId: principal.principalId,
+      };
+      const bindingDigest = sha256Digest({
+        requirement,
+        adapterRefDigests,
+        taskRevisions,
+        authority,
+      });
+      this.db
+        .prepare(
+          `INSERT INTO git_evidence_requirements (
+             chain_id, requirement_digest, requirement_json,
+             authority_kind, authority_principal_id,
+             implementer_task_id, implementer_incarnation_id,
+             implementer_adapter_ref_digest, implementer_task_revision,
+             reviewer_task_id, reviewer_incarnation_id,
+             reviewer_adapter_ref_digest, reviewer_task_revision,
+             verifier_task_id, verifier_incarnation_id,
+             verifier_adapter_ref_digest, verifier_task_revision,
+             record_count, head_record_digest, revision,
+             binding_digest, created_at
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, 0, ?, ?)`,
+        )
+        .run(
+          requirement.chainId,
+          requirement.requirementDigest,
+          canonicalJson(requirement),
+          authority.kind,
+          authority.principalId,
+          requirement.implementer.taskId,
+          requirement.implementer.incarnationId,
+          adapterRefDigests.implementer,
+          taskRevisions.implementer,
+          requirement.reviewer.taskId,
+          requirement.reviewer.incarnationId,
+          adapterRefDigests.reviewer,
+          taskRevisions.reviewer,
+          requirement.verifier.taskId,
+          requirement.verifier.incarnationId,
+          adapterRefDigests.verifier,
+          taskRevisions.verifier,
+          bindingDigest,
+          nowIso(this.clock),
+        );
+      return {
+        requirement,
+        adapterRefDigests: { ...adapterRefDigests },
+        taskRevisions: { ...taskRevisions },
+        state: validateGitEvidenceChain(requirement, []),
+      };
+    }).immediate();
+  }
+
+  appendGitEvidenceRecord(
+    chainId,
+    { stage, payload, expectedRevision, expectedHeadDigest } = {},
+    principal,
+  ) {
+    return this.db.transaction(() => {
+      const snapshot = this.#gitEvidenceSnapshot(chainId);
+      this.#assertGitEvidenceCas(snapshot.state, expectedRevision, expectedHeadDigest);
+      const record = appendPureGitEvidenceRecord(
+        snapshot.requirement,
+        snapshot.records,
+        { stage, payload },
+      );
+      assertTaskPrincipal(
+        principal,
+        record.payload.actor.taskId,
+        record.payload.actor.incarnationId,
+      );
+      const role = stage === "review-failed" ? "reviewer" : "implementer";
+      this.#assertGitEvidenceActorCurrent(
+        record.payload.actor,
+        snapshot.adapterRefDigests[role],
+        snapshot.taskRevisions[role],
+      );
+      this.#insertGitEvidenceRecord(record, expectedRevision, expectedHeadDigest);
+      const state = validateGitEvidenceChain(
+        snapshot.requirement,
+        [...snapshot.records, record],
+      );
+      return { record, state };
+    }).immediate();
+  }
+
+  appendIndependentGitVerificationRecord(
+    chainId,
+    {
+      actor,
+      turnId,
+      toolCallDigest,
+      request,
+      response,
+      expectedTrustAnchor,
+      expectedRevision,
+      expectedHeadDigest,
+    } = {},
+    principal,
+  ) {
+    return this.db.transaction(() => {
+      const snapshot = this.#gitEvidenceSnapshot(chainId);
+      this.#assertGitEvidenceCas(snapshot.state, expectedRevision, expectedHeadDigest);
+      assertTaskPrincipal(principal, actor?.taskId, actor?.incarnationId);
+      this.#assertConfiguredGitEvidenceTrustAnchor(sha256Digest(expectedTrustAnchor));
+      const record = appendPureIndependentVerificationRecord(
+        snapshot.requirement,
+        snapshot.records,
+        {
+          actor,
+          turnId,
+          toolCallDigest,
+          request,
+          response,
+          expectedTrustAnchor,
+        },
+      );
+      this.#assertGitEvidenceActorCurrent(
+        record.payload.actor,
+        snapshot.adapterRefDigests.verifier,
+        snapshot.taskRevisions.verifier,
+      );
+      this.#insertGitEvidenceRecord(record, expectedRevision, expectedHeadDigest);
+      const state = validateGitEvidenceChain(
+        snapshot.requirement,
+        [...snapshot.records, record],
+      );
+      return { record, state };
+    }).immediate();
+  }
+
+  getGitEvidenceChain(chainId, principal) {
+    const row = this.#gitEvidenceRequirementRow(chainId);
+    this.#assertGitEvidenceReadAuthority(row, principal);
+    const snapshot = this.#gitEvidenceSnapshot(chainId, row);
+    return {
+      requirement: snapshot.requirement,
+      adapterRefDigests: { ...snapshot.adapterRefDigests },
+      taskRevisions: { ...snapshot.taskRevisions },
+      records: snapshot.records,
+      state: snapshot.state,
+    };
+  }
+
+  inspectGitEvidenceChain(chainId, principal) {
+    const row = this.#gitEvidenceRequirementRow(chainId);
+    this.#assertGitEvidenceReadAuthority(row, principal);
+    const snapshot = this.#gitEvidenceSnapshot(chainId, row);
+    return {
+      chainId: snapshot.requirement.chainId,
+      requirementDigest: snapshot.requirement.requirementDigest,
+      revision: snapshot.state.recordCount,
+      headDigest: snapshot.state.headDigest,
+      nextStage: snapshot.state.nextStage,
+      trustedComplete: snapshot.state.trustedComplete,
+      records: snapshot.records.map((record) => ({
+        sequence: record.sequence,
+        stage: record.stage,
+        recordDigest: record.recordDigest,
+        previousRecordDigest: record.previousRecordDigest,
+        actor: {
+          taskId: record.payload.actor.taskId,
+          incarnationId: record.payload.actor.incarnationId,
+        },
+      })),
+    };
   }
 
   createDependencyEdge(edge, principal) {
@@ -3529,6 +3951,249 @@ export class SqliteCoordinator {
       ) {
         throw codedError("threadmesh_dependency_edge_stale", eventKey);
       }
+    }
+  }
+
+  #assertConfiguredGitEvidenceTrustAnchor(expectedDigest) {
+    if (
+      typeof expectedDigest !== "string" ||
+      !this.#verificationTrustAnchors.some(
+        (anchor) => sha256Digest(anchor) === expectedDigest,
+      )
+    ) {
+      throw codedError("threadmesh_git_evidence_trust_anchor_not_configured");
+    }
+  }
+
+  #assertGitEvidenceActorCurrent(
+    actor,
+    expectedAdapterRefDigest = null,
+    expectedTaskRevision = null,
+  ) {
+    const task = this.#assertTaskActive(actor);
+    const taskRevision = this.#taskMetadata(actor).revision;
+    let adapterRef;
+    try {
+      adapterRef = task.adapter_ref_json ? JSON.parse(task.adapter_ref_json) : null;
+    } catch {
+      throw codedError("threadmesh_git_evidence_actor_snapshot_mismatch");
+    }
+    const adapterRefDigest = sha256Digest(adapterRef);
+    if (
+      adapterRef?.kind !== "codex-app-server" ||
+      adapterRef.threadId !== actor.threadId ||
+      adapterRef.snapshotDigest !== actor.snapshotDigest ||
+      (expectedAdapterRefDigest !== null &&
+        adapterRefDigest !== expectedAdapterRefDigest) ||
+      (expectedTaskRevision !== null && taskRevision !== expectedTaskRevision)
+    ) {
+      throw codedError("threadmesh_git_evidence_actor_snapshot_mismatch");
+    }
+    return { task, adapterRefDigest, taskRevision };
+  }
+
+  #gitEvidenceRequirementRow(chainId) {
+    const row = this.db
+      .prepare("SELECT * FROM git_evidence_requirements WHERE chain_id = ?")
+      .get(chainId);
+    if (!row) throw codedError("threadmesh_git_evidence_requirement_not_found", chainId);
+    return row;
+  }
+
+  #gitEvidenceRequirement(row) {
+    let requirement;
+    try {
+      requirement = JSON.parse(row.requirement_json);
+      validateGitEvidenceChain(requirement, []);
+    } catch (error) {
+      if (error?.code) throw error;
+      throw codedError("threadmesh_git_evidence_storage_tampered");
+    }
+    const adapterRefDigests = {
+      implementer: row.implementer_adapter_ref_digest,
+      reviewer: row.reviewer_adapter_ref_digest,
+      verifier: row.verifier_adapter_ref_digest,
+    };
+    const taskRevisions = {
+      implementer: row.implementer_task_revision,
+      reviewer: row.reviewer_task_revision,
+      verifier: row.verifier_task_revision,
+    };
+    const authority = {
+      kind: row.authority_kind,
+      principalId: row.authority_principal_id,
+    };
+    const projectionMatches =
+      row.chain_id === requirement.chainId &&
+      row.requirement_digest === requirement.requirementDigest &&
+      row.implementer_task_id === requirement.implementer.taskId &&
+      row.implementer_incarnation_id === requirement.implementer.incarnationId &&
+      row.reviewer_task_id === requirement.reviewer.taskId &&
+      row.reviewer_incarnation_id === requirement.reviewer.incarnationId &&
+      row.verifier_task_id === requirement.verifier.taskId &&
+      row.verifier_incarnation_id === requirement.verifier.incarnationId &&
+      ["user", "policy"].includes(authority.kind) &&
+      typeof authority.principalId === "string" &&
+      authority.principalId.length > 0 &&
+      Object.values(adapterRefDigests).every(
+        (digest) => /^sha256:[a-f0-9]{64}$/u.test(digest ?? ""),
+      ) &&
+      Object.values(taskRevisions).every(
+        (revision) => Number.isInteger(revision) && revision >= 0,
+      ) &&
+      Number.isInteger(row.record_count) && row.record_count >= 0 &&
+      Number.isInteger(row.revision) && row.revision >= 0 &&
+      (row.head_record_digest === null ||
+        /^sha256:[a-f0-9]{64}$/u.test(row.head_record_digest)) &&
+      row.binding_digest === sha256Digest({
+        requirement,
+        adapterRefDigests,
+        taskRevisions,
+        authority,
+      });
+    if (!projectionMatches) {
+      throw codedError("threadmesh_git_evidence_storage_tampered");
+    }
+    this.#assertConfiguredGitEvidenceTrustAnchor(
+      requirement.preconfiguredTrustAnchorDigest,
+    );
+    return { requirement, adapterRefDigests, taskRevisions };
+  }
+
+  #gitEvidenceSnapshot(chainId, knownRow = null) {
+    const row = knownRow ?? this.#gitEvidenceRequirementRow(chainId);
+    const { requirement, adapterRefDigests, taskRevisions } =
+      this.#gitEvidenceRequirement(row);
+    const recordRows = this.db
+      .prepare(
+        `SELECT * FROM git_evidence_records
+         WHERE chain_id = ? ORDER BY sequence`,
+      )
+      .all(chainId);
+    const records = recordRows.map((recordRow) => {
+      let record;
+      try {
+        record = JSON.parse(recordRow.record_json);
+      } catch {
+        throw codedError("threadmesh_git_evidence_storage_tampered");
+      }
+      if (
+        recordRow.chain_id !== record.chainId ||
+        recordRow.sequence !== record.sequence ||
+        recordRow.stage !== record.stage ||
+        recordRow.actor_task_id !== record.payload?.actor?.taskId ||
+        recordRow.actor_incarnation_id !== record.payload?.actor?.incarnationId ||
+        recordRow.previous_record_digest !== record.previousRecordDigest ||
+        recordRow.record_digest !== record.recordDigest
+      ) {
+        throw codedError("threadmesh_git_evidence_storage_tampered");
+      }
+      return record;
+    });
+    const state = validateGitEvidenceChain(requirement, records);
+    if (
+      row.record_count !== state.recordCount ||
+      row.revision !== state.recordCount ||
+      row.head_record_digest !== state.headDigest
+    ) {
+      throw codedError("threadmesh_git_evidence_storage_tampered");
+    }
+    return {
+      requirement,
+      adapterRefDigests,
+      taskRevisions,
+      records,
+      state,
+    };
+  }
+
+  #validatePersistedGitEvidenceChains() {
+    const rows = this.db
+      .prepare("SELECT * FROM git_evidence_requirements ORDER BY chain_id")
+      .all();
+    for (const row of rows) this.#gitEvidenceSnapshot(row.chain_id, row);
+  }
+
+  #assertGitEvidenceCas(state, expectedRevision, expectedHeadDigest) {
+    if (
+      !Number.isInteger(expectedRevision) ||
+      expectedRevision < 0 ||
+      expectedRevision !== state.recordCount
+    ) {
+      throw codedError("threadmesh_git_evidence_revision_conflict");
+    }
+    if (expectedHeadDigest !== state.headDigest) {
+      throw codedError("threadmesh_git_evidence_head_conflict");
+    }
+  }
+
+  #insertGitEvidenceRecord(record, expectedRevision, expectedHeadDigest) {
+    try {
+      this.db
+        .prepare(
+          `INSERT INTO git_evidence_records (
+             chain_id, sequence, stage, actor_task_id,
+             actor_incarnation_id, previous_record_digest, record_digest,
+             record_json, created_at
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        )
+        .run(
+          record.chainId,
+          record.sequence,
+          record.stage,
+          record.payload.actor.taskId,
+          record.payload.actor.incarnationId,
+          record.previousRecordDigest,
+          record.recordDigest,
+          canonicalJson(record),
+          nowIso(this.clock),
+        );
+      const header = this.db
+        .prepare(
+          `UPDATE git_evidence_requirements
+           SET record_count = record_count + 1,
+               head_record_digest = ?, revision = revision + 1
+           WHERE chain_id = ? AND record_count = ? AND revision = ?
+             AND ((head_record_digest IS NULL AND ? IS NULL)
+               OR head_record_digest = ?)`,
+        )
+        .run(
+          record.recordDigest,
+          record.chainId,
+          expectedRevision,
+          expectedRevision,
+          expectedHeadDigest,
+          expectedHeadDigest,
+        );
+      if (header.changes !== 1) {
+        throw codedError("threadmesh_git_evidence_append_conflict");
+      }
+    } catch (error) {
+      if (String(error?.code ?? "").startsWith("SQLITE_CONSTRAINT")) {
+        throw codedError("threadmesh_git_evidence_append_conflict");
+      }
+      throw error;
+    }
+  }
+
+  #assertGitEvidenceReadAuthority(row, principal) {
+    assertControlPlanePrincipal(principal);
+    if (principal.kind === "policy") return;
+    if (
+      row.authority_kind === principal.kind &&
+      row.authority_principal_id === principal.principalId
+    ) return;
+    const roles = ["implementer", "reviewer", "verifier"];
+    const ownsEveryRole = roles.every((role) => {
+      const task = this.#taskRecord({
+        taskId: row[`${role}_task_id`],
+        incarnationId: row[`${role}_incarnation_id`],
+      });
+      return task.owner_kind === principal.kind &&
+        task.owner_principal_id === principal.principalId;
+    });
+    if (!ownsEveryRole) {
+      throw codedError("threadmesh_git_evidence_not_authorized");
     }
   }
 

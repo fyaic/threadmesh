@@ -34,6 +34,7 @@
     "src/routing",
     "src/sdk",
     "src/state",
+    "src/validation/independent-git-verifier.mjs",
     "examples",
     "README.md",
     "LICENSE"

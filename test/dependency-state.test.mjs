@@ -325,9 +325,12 @@ test("upgrades a v3 coordinator database without rewriting existing state", () =
   coordinator.close();
   const database = new Database(temporary.filename);
   database.exec(`
+    DROP INDEX git_evidence_records_chain_sequence;
+    DROP TABLE git_evidence_records;
+    DROP TABLE git_evidence_requirements;
     DROP TABLE dependency_satisfactions;
     DROP TABLE dependency_edges;
-    DELETE FROM schema_migrations WHERE version = 4;
+    DELETE FROM schema_migrations WHERE version >= 4;
     PRAGMA user_version = 3;
   `);
   const priorTaskCount = database.prepare("SELECT COUNT(*) FROM tasks").pluck().get();
@@ -339,7 +342,7 @@ test("upgrades a v3 coordinator database without rewriting existing state", () =
     verificationTrustAnchors: trustedVerifier.trustAnchors,
   });
   try {
-    assert.equal(coordinator.storageInfo().schemaVersion, 4);
+    assert.equal(coordinator.storageInfo().schemaVersion, 5);
     assert.equal(
       coordinator.getTask(prerequisite, owner).incarnationId,
       prerequisite.incarnationId,
