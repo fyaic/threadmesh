@@ -171,18 +171,26 @@ unbound lifecycle-submit bypass is also covered. The plan remains explicitly
 scripted and cannot be reported as product initiative.
 
 Lifecycle publication is frozen to the completed model action: tool name,
-source event, outgoing message/type/target/relationship, and material commit,
-finding, or chain coordinates must match exactly, and one fixture action is
-consumed at most once. The final dependent no longer receives a
-harness-authored acceptance. It claims its next event, records a bounded
-`threadmesh_decide_offer`, admits the context into its exact adapter reference,
-and binds the completed decision before v7 finalization. After finalization,
-`commitFinalizedDependencyAttentionHandler` verifies that decision against the
-persisted disposition, satisfaction, edge, effect, and attestation and commits
+source event, complete bounded outgoing event body (including content, reason,
+evidence references, freshness, and causality), and material commit, finding,
+or chain coordinates must match exactly, and one fixture action is consumed at
+most once. Every decision callback first persists the acknowledgement and then
+returns only a stable projection of message, exact receiver, decision state,
+reason code, and decision revision; the completed action digest is therefore
+reconstructable without hashing a later-mutated final disposition. The final
+dependent no longer receives a harness-authored acceptance. It claims its next
+event, records a bounded `threadmesh_decide_offer`, admits the context into its
+exact adapter reference, and binds the completed decision before v7
+finalization. After finalization,
+`commitFinalizedDependencyAttentionHandler` reconstructs the ack-time decision
+projection from durable audit state, requires a completed admission with the
+same exact adapter-reference digest as the decision execution, verifies the
+persisted disposition, satisfaction, edge, effect, and attestation, and commits
 the cursor atomically. This specialized seam deliberately leaves the dependent
 decision execution `completed-turn-bound`; it does not invent a generic
 promotion or grant evidence authority. Exact replay remains stable after edge
-expiry, while satisfaction-time alteration fails closed.
+expiry, while decision-result, admission, adapter-reference, or
+satisfaction-time alteration fails closed.
 
 This closes the deterministic integrated happy path, not M5.2. Restart closure
 has two hard gaps: there is no adapter query/reconcile surface after native

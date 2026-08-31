@@ -6,6 +6,7 @@ import test from "node:test";
 
 import { DeterministicLiveAgentRuntime } from "../src/validation/live-agent-scenario.mjs";
 import {
+  lifecycleActionEventBody,
   runIntegratedCoordinatorLoop,
   submitLifecycleFromBoundAction,
 } from "../src/validation/integrated-coordinator-loop.mjs";
@@ -101,7 +102,7 @@ test("lifecycle submission fails before coordinator submit when action is not bo
 });
 
 function boundPublishCase({ eventOverrides = {}, argumentOverrides = {} } = {}) {
-  const lifecycleEvent = {
+  const boundEvent = {
     eventType: "artifact-ready",
     messageId: "msg_bound_publish",
     sender: {
@@ -121,15 +122,11 @@ function boundPublishCase({ eventOverrides = {}, argumentOverrides = {} } = {}) 
     freshness: { expectedObjectiveVersion: 1 },
     createdAt: "2026-08-31T11:59:00.000Z",
     expiresAt: "2026-08-31T13:00:00.000Z",
-    ...eventOverrides,
   };
+  const lifecycleEvent = { ...boundEvent, ...eventOverrides };
   const args = {
     sourceEventId: "event_source_01",
-    messageId: "msg_bound_publish",
-    eventType: "artifact-ready",
-    targetTaskId: "task_r",
-    targetIncarnationId: "inc_agent_r01",
-    relationshipId: "rel_a_r",
+    event: lifecycleActionEventBody(boundEvent),
     commitSha: "3".repeat(40),
     ...argumentOverrides,
   };
@@ -172,7 +169,7 @@ test("lifecycle submission accepts one exact promoted action binding", () => {
   assert.equal(current.submissions(), 1);
 });
 
-test("altered lifecycle identity, type, target, or material fails before submit", () => {
+test("altered lifecycle body or material fails before submit", () => {
   const variants = [
     { eventOverrides: { messageId: "msg_altered" } },
     { eventOverrides: { eventType: "review-failed" } },
@@ -187,6 +184,9 @@ test("altered lifecycle identity, type, target, or material fails before submit"
     },
     { argumentOverrides: { commitSha: "4".repeat(40) } },
     { eventOverrides: { relationshipId: "rel_altered" } },
+    { eventOverrides: { content: "Altered event content." } },
+    { eventOverrides: { reason: "Altered event reason." } },
+    { eventOverrides: { freshness: { expectedObjectiveVersion: 2 } } },
   ];
   for (const variant of variants) {
     const current = boundPublishCase(variant);

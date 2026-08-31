@@ -40,6 +40,18 @@ function taskRef(actor) {
   return { taskId: actor.taskId, incarnationId: actor.incarnationId };
 }
 
+export function decisionResultProjection({ messageId, receiver, disposition }) {
+  return {
+    messageId,
+    receiver: taskRef(receiver),
+    decision: {
+      state: disposition.decision,
+      reasonCode: disposition.decisionReasonCode,
+      decisionRevision: disposition.revision,
+    },
+  };
+}
+
 function actor(role, ref) {
   return {
     taskId: `task_m52_${role}`,
@@ -83,6 +95,20 @@ function event({ eventType, messageId, sender, target, relationshipId, content }
     freshness: { expectedObjectiveVersion: 1 },
     createdAt: "2026-08-31T11:59:00.000Z",
     expiresAt: EXPIRES_AT,
+  };
+}
+
+export function lifecycleActionEventBody(value) {
+  return {
+    eventType: value.eventType,
+    messageId: value.messageId,
+    target: { ...value.target },
+    relationshipId: value.relationshipId,
+    content: value.content,
+    reason: value.reason,
+    evidenceRefs: [...(value.evidenceRefs ?? [])],
+    freshness: { ...value.freshness },
+    causality: value.causality ? { ...value.causality } : null,
   };
 }
 
@@ -222,11 +248,7 @@ export function submitLifecycleFromBoundAction({
   const expectedArgs = expectedTool && materialKeys[expectedTool]
     ? {
         sourceEventId: persisted.intent.eventId,
-        messageId: lifecycleEvent?.messageId,
-        eventType: lifecycleEvent?.eventType,
-        targetTaskId: lifecycleEvent?.target?.taskId,
-        targetIncarnationId: lifecycleEvent?.target?.incarnationId,
-        relationshipId: lifecycleEvent?.relationshipId,
+        event: lifecycleEvent ? lifecycleActionEventBody(lifecycleEvent) : null,
         ...expectedMaterial,
       }
     : null;
@@ -334,7 +356,7 @@ async function acceptAndAdmit({
       const pending = coordinator.claimPending(
         sourceEvent.sender.incarnationId, sourceEvent.messageId, 0, principal,
       );
-      return coordinator.acknowledgePending(
+      const acknowledged = coordinator.acknowledgePending(
         sourceEvent.sender.incarnationId,
         sourceEvent.messageId,
         pending.claimToken,
@@ -342,6 +364,11 @@ async function acceptAndAdmit({
         0,
         principal,
       );
+      return decisionResultProjection({
+        messageId: sourceEvent.messageId,
+        receiver: current,
+        disposition: acknowledged,
+      });
     },
     record,
   });
@@ -620,17 +647,18 @@ export async function runIntegratedCoordinatorLoop({ runtime, artifactsDirectory
     let evidenceHead = null;
     const strictOrder = [];
 
+    const artifactEvent = event({
+      eventType: "artifact-ready", messageId: "msg_m52_artifact",
+      sender: actors.a, target: actors.r, relationshipId: grants.ar.relationshipId,
+      content: "A committed implementation candidate is ready for review.",
+    });
     let implementation = await durableTurn({
       coordinator, runtime, role: "a", ref: refs.a, current: actors.a,
       phase: "implementation", chainId: requirement.chainId,
       messageId: "msg_m52_artifact", eventId: "event_m52_artifact_source",
       tool: "threadmesh_publish_artifact", arguments: {
         sourceEventId: "event_m52_artifact_source",
-        messageId: "msg_m52_artifact",
-        eventType: "artifact-ready",
-        targetTaskId: actors.r.taskId,
-        targetIncarnationId: actors.r.incarnationId,
-        relationshipId: grants.ar.relationshipId,
+        event: lifecycleActionEventBody(artifactEvent),
         commitSha: sha("3"),
       },
       result: { published: true }, record,
@@ -641,11 +669,6 @@ export async function runIntegratedCoordinatorLoop({ runtime, artifactsDirectory
     evidenceRevision = implementation.evidenceState.recordCount;
     evidenceHead = implementation.evidenceState.headDigest;
     strictOrder.push("a-implementation-promoted");
-    const artifactEvent = event({
-      eventType: "artifact-ready", messageId: "msg_m52_artifact",
-      sender: actors.a, target: actors.r, relationshipId: grants.ar.relationshipId,
-      content: "A committed implementation candidate is ready for review.",
-    });
     submitLifecycleFromBoundAction({
       coordinator, execution: implementation,
       expectedTool: "threadmesh_publish_artifact",
@@ -676,17 +699,18 @@ export async function runIntegratedCoordinatorLoop({ runtime, artifactsDirectory
       record, onClaim: () => strictOrder.push("r-next-only-claim"),
     });
     strictOrder.push("r-decision-admission-exact-resume");
+    const reviewEvent = event({
+      eventType: "review-failed", messageId: "msg_m52_review",
+      sender: actors.r, target: actors.a, relationshipId: grants.ra.relationshipId,
+      content: "The candidate has a reproducible blocking counterexample.",
+    });
     let review = await durableTurn({
       coordinator, runtime, role: "r", ref: refs.r, current: actors.r,
       phase: "review", chainId: requirement.chainId,
       messageId: "msg_m52_artifact", eventId: rObserved.eventId,
       tool: "threadmesh_report_review_finding", arguments: {
         sourceEventId: rObserved.eventId,
-        messageId: "msg_m52_review",
-        eventType: "review-failed",
-        targetTaskId: actors.a.taskId,
-        targetIncarnationId: actors.a.incarnationId,
-        relationshipId: grants.ra.relationshipId,
+        event: lifecycleActionEventBody(reviewEvent),
         findingDigest,
       },
       result: { blocking: true }, record,
@@ -697,11 +721,6 @@ export async function runIntegratedCoordinatorLoop({ runtime, artifactsDirectory
     evidenceRevision = review.evidenceState.recordCount;
     evidenceHead = review.evidenceState.headDigest;
     strictOrder.push("r-review-promoted");
-    const reviewEvent = event({
-      eventType: "review-failed", messageId: "msg_m52_review",
-      sender: actors.r, target: actors.a, relationshipId: grants.ra.relationshipId,
-      content: "The candidate has a reproducible blocking counterexample.",
-    });
     submitLifecycleFromBoundAction({
       coordinator, execution: review,
       expectedTool: "threadmesh_report_review_finding",
@@ -720,17 +739,18 @@ export async function runIntegratedCoordinatorLoop({ runtime, artifactsDirectory
       record, onClaim: () => strictOrder.push("same-a-next-only-claim"),
     });
     strictOrder.push("same-a-decision-admission-exact-resume");
+    const fixEvent = event({
+      eventType: "artifact-ready", messageId: "msg_m52_fix",
+      sender: actors.a, target: actors.v, relationshipId: grants.av.relationshipId,
+      content: "The same A task published the direct-descendant fix.",
+    });
     let fix = await durableTurn({
       coordinator, runtime, role: "a", ref: refs.a, current: actors.a,
       phase: "fix", chainId: requirement.chainId,
       messageId: "msg_m52_review", eventId: aObserved.eventId,
       tool: "threadmesh_publish_dependency", arguments: {
         sourceEventId: aObserved.eventId,
-        messageId: "msg_m52_fix",
-        eventType: "artifact-ready",
-        targetTaskId: actors.v.taskId,
-        targetIncarnationId: actors.v.incarnationId,
-        relationshipId: grants.av.relationshipId,
+        event: lifecycleActionEventBody(fixEvent),
         commitSha: sha("5"),
       },
       result: { published: true }, record,
@@ -741,11 +761,6 @@ export async function runIntegratedCoordinatorLoop({ runtime, artifactsDirectory
     evidenceRevision = fix.evidenceState.recordCount;
     evidenceHead = fix.evidenceState.headDigest;
     strictOrder.push("same-a-fix-promoted");
-    const fixEvent = event({
-      eventType: "artifact-ready", messageId: "msg_m52_fix",
-      sender: actors.a, target: actors.v, relationshipId: grants.av.relationshipId,
-      content: "The same A task published the direct-descendant fix.",
-    });
     submitLifecycleFromBoundAction({
       coordinator, execution: fix,
       expectedTool: "threadmesh_publish_dependency",
@@ -770,13 +785,17 @@ export async function runIntegratedCoordinatorLoop({ runtime, artifactsDirectory
       expectedEvidenceChainRevision: evidenceRevision,
       expectedEvidenceChainHead: evidenceHead,
     };
+    const verifiedEvent = {
+      ...event({
+        eventType: "dependency-satisfied", messageId: "msg_m52_fix",
+        sender: actors.v, target: actors.dependent, relationshipId: grants.vd.relationshipId,
+        content: "The exact fixed evidence chain passed fixture verification.",
+      }),
+      freshness: { expectedRunId: "run-dependent", expectedObjectiveVersion: 2, expectedCheckpoint: "waiting-for-verified-fix" },
+    };
     const verificationActionArguments = {
       sourceEventId: vObserved.eventId,
-      messageId: "msg_m52_fix",
-      eventType: "dependency-satisfied",
-      targetTaskId: actors.dependent.taskId,
-      targetIncarnationId: actors.dependent.incarnationId,
-      relationshipId: grants.vd.relationshipId,
+      event: lifecycleActionEventBody(verifiedEvent),
       ...verificationArguments,
     };
     let verifierExecution = await durableTurn({
@@ -787,14 +806,6 @@ export async function runIntegratedCoordinatorLoop({ runtime, artifactsDirectory
       result: verification, record,
     });
     strictOrder.push("v-verification-completed-bound");
-    const verifiedEvent = {
-      ...event({
-        eventType: "dependency-satisfied", messageId: "msg_m52_fix",
-        sender: actors.v, target: actors.dependent, relationshipId: grants.vd.relationshipId,
-        content: "The exact fixed evidence chain passed fixture verification.",
-      }),
-      freshness: { expectedRunId: "run-dependent", expectedObjectiveVersion: 2, expectedCheckpoint: "waiting-for-verified-fix" },
-    };
     submitLifecycleFromBoundAction({
       coordinator, execution: verifierExecution, expectedTool: "threadmesh_verify_exact_chain",
       expectedMaterial: verificationArguments,

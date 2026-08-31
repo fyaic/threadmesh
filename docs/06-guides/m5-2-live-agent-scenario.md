@@ -49,11 +49,15 @@ The command runs a scripted A→R→same-A→V plan through an isolated SQLite v
 coordinator, including grants, a bound dependency, exact task admission,
 durable turn/tool receipts, evidence promotion, cursor commits, and atomic v7
 finalization. Lifecycle-producing tool arguments freeze the exact source event,
-outgoing message/type/target/relationship, and material commit, finding, or
-chain coordinates; altered or reused effects fail before submission. The final
-dependent path uses its own durable decision and admission receipt rather than
-a harness-authored acceptance. It emits these files in a new temporary
-directory:
+the complete bounded outgoing event body (message/type/target/relationship,
+content, reason, evidence references, freshness, and causality), and material
+commit, finding, or chain coordinates; altered or reused effects fail before
+submission. Receiver decision actions bind their result digest to the stable
+ack-time projection of message, exact receiver, state, reason code, and decision
+revision. The final dependent path additionally requires a completed admission
+whose exact adapter-reference digest matches the bound decision execution,
+rather than a harness-authored acceptance. It emits these files in a new
+temporary directory:
 
 - `private-trace.jsonl`: hash-linked detailed trace, including fixture adapter
   references. It is local audit material and must not be published verbatim.

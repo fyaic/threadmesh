@@ -60,6 +60,20 @@ const GIT_EVIDENCE_STAGE_TOOL = Object.freeze({
 });
 const FINAL_GIT_EVIDENCE_TOOL = "threadmesh_verify_exact_chain";
 
+function boundedLifecycleActionEventBody(event) {
+  return {
+    eventType: event.eventType,
+    messageId: event.messageId,
+    target: { ...event.target },
+    relationshipId: event.relationshipId,
+    content: event.content,
+    reason: event.reason,
+    evidenceRefs: [...(event.evidenceRefs ?? [])],
+    freshness: { ...event.freshness },
+    causality: event.causality ? { ...event.causality } : null,
+  };
+}
+
 export function gitEvidenceVerificationResultDigest({
   request,
   response,
@@ -2577,26 +2591,20 @@ export class SqliteCoordinator {
       }
       const action = execution.actions[actionOrdinal];
       const toolArgs = action ? JSON.parse(action.argsJson) : null;
+      const expectedVerificationToolArguments = {
+        sourceEventId: execution.intent.eventId,
+        event: boundedLifecycleActionEventBody(event),
+        chainId: chain.requirement.chainId,
+        expectedEvidenceChainRevision: 3,
+        expectedEvidenceChainHead,
+      };
       if (
         !action || action.ordinal !== actionOrdinal ||
         action.name !== FINAL_GIT_EVIDENCE_TOOL ||
         action.resultStatus !== "completed" ||
         !action.actionDigest ||
         canonicalJson(toolArgs) !== canonicalJson(verificationToolArguments) ||
-        canonicalJson(Object.keys(toolArgs ?? {}).sort()) !== canonicalJson([
-          "chainId", "eventType", "expectedEvidenceChainHead",
-          "expectedEvidenceChainRevision", "messageId", "relationshipId",
-          "sourceEventId", "targetIncarnationId", "targetTaskId",
-        ].sort()) ||
-        toolArgs.sourceEventId !== execution.intent.eventId ||
-        toolArgs.messageId !== event.messageId ||
-        toolArgs.eventType !== event.eventType ||
-        toolArgs.targetTaskId !== event.target.taskId ||
-        toolArgs.targetIncarnationId !== event.target.incarnationId ||
-        toolArgs.relationshipId !== event.relationshipId ||
-        toolArgs.chainId !== chain.requirement.chainId ||
-        toolArgs.expectedEvidenceChainRevision !== 3 ||
-        toolArgs.expectedEvidenceChainHead !== expectedEvidenceChainHead ||
+        canonicalJson(toolArgs) !== canonicalJson(expectedVerificationToolArguments) ||
         action.resultDigest !== gitEvidenceVerificationResultDigest({
           request, response, expectedTrustAnchor,
         })
@@ -2995,6 +3003,60 @@ export class SqliteCoordinator {
       ) {
         throw codedError("threadmesh_finalized_dependency_attention_decision_mismatch");
       }
+      const decisionAuditRows = this.db.prepare(
+        `SELECT revision, detail_json FROM audit_events
+         WHERE sender_incarnation_id = ? AND message_id = ?
+           AND event_type = 'receiver-decided'
+         ORDER BY sequence`,
+      ).all(claim.sender_incarnation_id, claim.message_id);
+      let decisionAudit;
+      try {
+        decisionAudit = decisionAuditRows.length === 1
+          ? { ...decisionAuditRows[0], detail: JSON.parse(decisionAuditRows[0].detail_json) }
+          : null;
+      } catch {
+        throw codedError("threadmesh_finalized_dependency_attention_decision_mismatch");
+      }
+      const decisionProjection = decisionAudit ? {
+        messageId: claim.message_id,
+        receiver: {
+          taskId: claim.receiver_task_id,
+          incarnationId: claim.receiver_incarnation_id,
+        },
+        decision: {
+          state: decisionAudit.detail.decision,
+          reasonCode: decisionAudit.detail.reasonCode,
+          decisionRevision: decisionAudit.revision,
+        },
+      } : null;
+      if (
+        !decisionProjection ||
+        decisionProjection.decision.state !== args.decision ||
+        action.resultDigest !== sha256Digest(decisionProjection)
+      ) {
+        throw codedError("threadmesh_finalized_dependency_attention_decision_result_mismatch");
+      }
+      const admission = this.db.prepare(
+        `SELECT * FROM admission_claims
+         WHERE sender_incarnation_id = ? AND message_id = ?`,
+      ).get(claim.sender_incarnation_id, claim.message_id);
+      let admittedRef = null;
+      try {
+        admittedRef = admission?.adapter_ref_json
+          ? JSON.parse(admission.adapter_ref_json)
+          : null;
+      } catch {
+        throw codedError("threadmesh_finalized_dependency_attention_admission_mismatch");
+      }
+      if (
+        !admission || admission.state !== "completed" ||
+        admission.adapter_ref_digest !== execution.row.adapter_ref_digest ||
+        sha256Digest(admittedRef) !== execution.row.adapter_ref_digest ||
+        admittedRef?.threadId !== execution.intent.actor.threadId ||
+        admittedRef?.snapshotDigest !== execution.intent.actor.snapshotDigest
+      ) {
+        throw codedError("threadmesh_finalized_dependency_attention_admission_mismatch");
+      }
       const cursor = this.#attentionCursorRow({
         taskId: claim.receiver_task_id,
         incarnationId: claim.receiver_incarnation_id,
@@ -3069,6 +3131,8 @@ export class SqliteCoordinator {
       );
       if (
         liveDisposition.decision_state !== args.decision ||
+        liveDisposition.decision_reason_code !==
+          decisionProjection.decision.reasonCode ||
         liveDisposition.outcome_state !== "externally-verified"
       ) {
         throw codedError("threadmesh_finalized_dependency_attention_decision_mismatch");

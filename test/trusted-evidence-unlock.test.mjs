@@ -316,13 +316,18 @@ function lifecycleEvent(context) {
 }
 
 function acceptedDisposition(context, sourceEvent, serviceAttestation) {
+  const persisted = context.coordinator.getDisposition(
+    sourceEvent.sender.incarnationId,
+    sourceEvent.messageId,
+    taskPrincipal(context.dependent),
+  );
   return {
     specVersion: "0.0-draft",
     dispositionId: "dsp_git_unlock",
     messageId: sourceEvent.messageId,
     receiver: taskRef(context.dependent),
-    revision: 3,
-    delivery: { state: "adapter-submitted", observedAt: "2026-08-31T12:00:00.000Z" },
+    revision: persisted.revision + 1,
+    delivery: { state: persisted.delivery, observedAt: "2026-08-31T12:00:00.000Z" },
     decision: {
       state: "accepted",
       decidedAt: "2026-08-31T11:59:30.000Z",
@@ -502,7 +507,7 @@ function setup(filename) {
   };
 }
 
-function prepareAcceptedMessage(context, sourceEvent) {
+function prepareAcceptedMessage(context, sourceEvent, { withAdmission = false } = {}) {
   const sender = taskPrincipal(context.actors.verifier);
   const receiver = taskPrincipal(context.dependent);
   context.coordinator.submit(projectLifecycleEventToEnvelope(sourceEvent), sender);
@@ -510,15 +515,37 @@ function prepareAcceptedMessage(context, sourceEvent) {
     sourceEvent.sender.incarnationId, sourceEvent.messageId,
     "accepted", 0, receiver,
   );
+  if (withAdmission) {
+    const admission = context.coordinator.prepareContextAdmission(
+      sourceEvent.sender.incarnationId, sourceEvent.messageId, 1, receiver,
+    );
+    context.coordinator.confirmContextAdmission(
+      sourceEvent.sender.incarnationId,
+      sourceEvent.messageId,
+      1,
+      admission.admissionToken,
+      {
+        threadId: context.dependent.threadId,
+        turnId: "turn_dependent_admission",
+        turnStatus: "completed",
+        snapshotDigest: context.dependent.snapshotDigest,
+      },
+      receiver,
+    );
+  }
+  const submissionRevision = withAdmission ? 2 : 1;
   const prepared = context.coordinator.prepareAdapterSubmission(
-    sourceEvent.sender.incarnationId, sourceEvent.messageId, 1, receiver,
+    sourceEvent.sender.incarnationId,
+    sourceEvent.messageId,
+    submissionRevision,
+    receiver,
   );
   context.coordinator.beginAdapterSubmission(
-    prepared.submission.submissionId, 1, receiver,
+    prepared.submission.submissionId, submissionRevision, receiver,
   );
   context.coordinator.recordAdapterReceipt(
     prepared.submission.submissionId,
-    1,
+    submissionRevision,
     {
       adapterOperationId: "operation_trusted_unlock",
       acceptedAt: "2026-08-31T12:00:00.000Z",
@@ -528,15 +555,22 @@ function prepareAcceptedMessage(context, sourceEvent) {
   );
 }
 
-function prepareFinalization(context) {
+function prepareFinalization(context, { withDependentAdmission = false } = {}) {
   const verification = createIndependentVerification(context);
+  const sourceEvent = lifecycleEvent(context);
   const verificationToolArguments = {
     sourceEventId: "event_verification",
-    messageId: "msg_trusted_unlock",
-    eventType: "dependency-satisfied",
-    targetTaskId: context.dependent.taskId,
-    targetIncarnationId: context.dependent.incarnationId,
-    relationshipId: "rel_trusted_unlock",
+    event: {
+      eventType: sourceEvent.eventType,
+      messageId: sourceEvent.messageId,
+      target: { ...sourceEvent.target },
+      relationshipId: sourceEvent.relationshipId,
+      content: sourceEvent.content,
+      reason: sourceEvent.reason,
+      evidenceRefs: [],
+      freshness: { ...sourceEvent.freshness },
+      causality: null,
+    },
     chainId: context.requirement.chainId,
     expectedEvidenceChainRevision: 3,
     expectedEvidenceChainHead: context.evidenceHead,
@@ -552,11 +586,12 @@ function prepareFinalization(context) {
       expectedTrustAnchor: context.signing.trustAnchor,
     }),
   });
-  const sourceEvent = lifecycleEvent(context);
+  prepareAcceptedMessage(
+    context, sourceEvent, { withAdmission: withDependentAdmission },
+  );
   const disposition = acceptedDisposition(
     context, sourceEvent, verification.response.attestation,
   );
-  prepareAcceptedMessage(context, sourceEvent);
   return { verification, verificationToolArguments, execution, sourceEvent, disposition };
 }
 
@@ -577,7 +612,12 @@ function finalizeArgs(context, prepared, overrides = {}) {
   };
 }
 
-function prepareDependentAttentionHandler(context, prepared, decision = "accepted") {
+function prepareDependentAttentionHandler(
+  context,
+  prepared,
+  decision = "accepted",
+  resultDigestOverride = null,
+) {
   const principal = taskPrincipal(context.dependent);
   const observed = context.coordinator.waitTask(
     taskRef(context.dependent), { afterCursor: 0, limit: 50 }, principal,
@@ -603,14 +643,24 @@ function prepareDependentAttentionHandler(context, prepared, decision = "accepte
     eventId: observed.eventId,
     toolName: "threadmesh_decide_offer",
     arguments: { messageId: prepared.sourceEvent.messageId, decision },
-    resultDigest: digest(`dependent-${decision}`),
+    resultDigest: resultDigestOverride ?? (decision === "accepted"
+      ? sha256Digest({
+          messageId: prepared.sourceEvent.messageId,
+          receiver: taskRef(context.dependent),
+          decision: {
+            state: "accepted",
+            reasonCode: "accepted",
+            decisionRevision: 1,
+          },
+        })
+      : digest(`dependent-${decision}`)),
   });
   context.coordinator.bindCompletedAttentionHandler(
     claimEpoch,
     { turnExecutionId: execution.executionId, expectedRevision: 0 },
     principal,
   );
-  return { claimEpoch, principal };
+  return { claimEpoch, principal, execution };
 }
 
 test("atomically finalizes an exact model-selected verifier chain and replays after restart", () => {
@@ -677,18 +727,46 @@ test("atomically finalizes an exact model-selected verifier chain and replays af
 });
 
 test("commits dependent attention only from its bound accepted decision and finalized effect", () => {
-  for (const decision of ["accepted", "deferred"]) {
+  for (const variant of [
+    "accepted", "altered-result", "deferred", "missing-admission", "adapter-mismatch",
+  ]) {
     const temporary = temporaryDatabase();
     const context = setup(temporary.filename);
     try {
-      const prepared = prepareFinalization(context);
-      const handler = prepareDependentAttentionHandler(context, prepared, decision);
+      const prepared = prepareFinalization(context, { withDependentAdmission: true });
+      const decision = variant === "deferred" ? "deferred" : "accepted";
+      const handler = prepareDependentAttentionHandler(
+        context,
+        prepared,
+        decision,
+        variant === "altered-result" ? digest("altered-decision-result") : null,
+      );
       context.coordinator.finalizeGitEvidenceDependency(
         prepared.execution.executionId,
         finalizeArgs(context, prepared),
         taskPrincipal(context.actors.verifier),
       );
-      if (decision === "deferred") {
+      if (variant === "missing-admission") {
+        context.coordinator.db.prepare(
+          "DELETE FROM admission_claims WHERE sender_incarnation_id = ? AND message_id = ?",
+        ).run(context.actors.verifier.incarnationId, prepared.sourceEvent.messageId);
+      }
+      if (variant === "adapter-mismatch") {
+        context.coordinator.db.prepare(
+          `UPDATE admission_claims SET adapter_ref_digest = ?
+           WHERE sender_incarnation_id = ? AND message_id = ?`,
+        ).run(
+          digest("other-adapter"),
+          context.actors.verifier.incarnationId,
+          prepared.sourceEvent.messageId,
+        );
+      }
+      if (variant !== "accepted") {
+        const expectedCode = ["missing-admission", "adapter-mismatch"].includes(variant)
+          ? "threadmesh_finalized_dependency_attention_admission_mismatch"
+          : variant === "altered-result"
+            ? "threadmesh_finalized_dependency_attention_decision_result_mismatch"
+            : "threadmesh_finalized_dependency_attention_decision_mismatch";
         assert.throws(
           () => context.coordinator.commitFinalizedDependencyAttentionHandler(
             handler.claimEpoch,
@@ -699,7 +777,7 @@ test("commits dependent attention only from its bound accepted decision and fina
             },
             handler.principal,
           ),
-          { code: "threadmesh_finalized_dependency_attention_decision_mismatch" },
+          { code: expectedCode },
         );
         assert.equal(
           context.coordinator.getAttentionCursor(
