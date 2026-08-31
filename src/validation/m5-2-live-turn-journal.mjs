@@ -7,6 +7,7 @@ import { validateCodexNativeTurnBaseline } from "../state/codex-turn-reconciliat
 
 const SCHEMA_VERSION = 2;
 const MAX_JOURNAL_BYTES = 2 * 1024 * 1024;
+const DECISION_ACTION_SCHEMA_VERSION = 1;
 const RECORD_KEYS = Object.freeze([
   "schemaVersion", "scenarioId", "executionId", "role", "phase",
   "adapterRef", "adapterIdempotencyKey", "operationBinding", "baseline", "resourceManifest",
@@ -174,6 +175,195 @@ function assertPrivateFile(filename) {
     linkStats.isSymbolicLink() || !linkStats.isFile() || linkStats.nlink !== 1 ||
     (linkStats.mode & 0o777) !== 0o600
   ) throw journalError("threadmesh_m52_live_turn_journal_shape_invalid", "file");
+}
+
+function decisionActionFilename(filename) {
+  return `${filename}.decision-action`;
+}
+
+function validatedDecisionAction(record) {
+  const keys = [
+    "schemaVersion", "state", "scenarioId", "executionId", "messageId",
+    "adapterIdempotencyKey", "baseJournalRecordDigest", "threadId", "turnId",
+    "callId", "ordinal", "tool", "arguments", "argumentsDigest",
+    "resultStatus", "outputDigest", "previousRecordDigest", "recordDigest",
+  ];
+  if (!exactKeys(record, keys) || record.schemaVersion !== DECISION_ACTION_SCHEMA_VERSION ||
+      !["selection-staged", "call-completed"].includes(record.state)) {
+    throw journalError("threadmesh_m52_decision_action_journal_shape_invalid");
+  }
+  for (const field of [
+    "scenarioId", "executionId", "messageId", "adapterIdempotencyKey", "threadId",
+    "turnId", "callId", "tool",
+  ]) identity(record[field], field);
+  if (record.tool !== "threadmesh_decide_offer" || record.ordinal !== 0 ||
+      !exactKeys(record.arguments, ["messageId", "decision"]) ||
+      record.arguments.messageId !== record.messageId ||
+      !["accepted", "deferred", "rejected"].includes(record.arguments.decision)) {
+    throw journalError("threadmesh_m52_decision_action_journal_shape_invalid", "selection");
+  }
+  digest(record.baseJournalRecordDigest, "baseJournalRecordDigest");
+  digest(record.argumentsDigest, "argumentsDigest");
+  if (record.argumentsDigest !== sha256Digest(record.arguments)) {
+    throw journalError("threadmesh_m52_decision_action_journal_integrity_mismatch", "arguments");
+  }
+  if (record.state === "selection-staged") {
+    if (record.resultStatus !== null || record.outputDigest !== null ||
+        record.previousRecordDigest !== null) {
+      throw journalError("threadmesh_m52_decision_action_journal_shape_invalid", "staged");
+    }
+  } else {
+    if (record.resultStatus !== "completed") {
+      throw journalError("threadmesh_m52_decision_action_journal_shape_invalid", "completion");
+    }
+    digest(record.outputDigest, "outputDigest");
+    digest(record.previousRecordDigest, "previousRecordDigest");
+  }
+  const { recordDigest, ...body } = record;
+  if (recordDigest !== sha256Digest(body)) {
+    throw journalError("threadmesh_m52_decision_action_journal_integrity_mismatch", "record");
+  }
+  return record;
+}
+
+function readDecisionActionFile(filename) {
+  assertPrivateDirectory(path.dirname(filename));
+  let descriptor;
+  try {
+    assertPrivateFile(filename);
+    descriptor = fs.openSync(filename, fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW ?? 0));
+    const stats = fs.fstatSync(descriptor);
+    if (!stats.isFile() || stats.nlink !== 1 || (stats.mode & 0o777) !== 0o600 ||
+        stats.size < 2 || stats.size > MAX_JOURNAL_BYTES) {
+      throw journalError("threadmesh_m52_decision_action_journal_shape_invalid", "file");
+    }
+    return validatedDecisionAction(JSON.parse(fs.readFileSync(descriptor, "utf8")));
+  } catch (error) {
+    if (error?.code?.startsWith?.("threadmesh_")) throw error;
+    throw journalError("threadmesh_m52_decision_action_journal_unavailable");
+  } finally {
+    if (descriptor !== undefined) fs.closeSync(descriptor);
+  }
+}
+
+function durableReplaceDecisionAction(filename, record, expectedRecordDigest = null) {
+  validatedDecisionAction(record);
+  const directory = path.dirname(filename);
+  assertPrivateDirectory(directory);
+  const lock = `${filename}.lock`;
+  let lockDescriptor;
+  let temporary;
+  try {
+    lockDescriptor = fs.openSync(lock, "wx", 0o600);
+    if (expectedRecordDigest === null) {
+      if (fs.existsSync(filename)) throw journalError("threadmesh_m52_decision_action_journal_conflict");
+    } else {
+      const current = readDecisionActionFile(filename);
+      if (current.recordDigest !== expectedRecordDigest) {
+        throw journalError("threadmesh_m52_decision_action_journal_conflict");
+      }
+    }
+    temporary = path.join(directory, `.${path.basename(filename)}.${process.pid}.${randomUUID()}.tmp`);
+    const descriptor = fs.openSync(temporary, "wx", 0o600);
+    try {
+      fs.writeFileSync(descriptor, `${canonicalJson(record)}\n`, "utf8");
+      fs.fsyncSync(descriptor);
+    } finally {
+      fs.closeSync(descriptor);
+    }
+    if (expectedRecordDigest !== null &&
+        readDecisionActionFile(filename).recordDigest !== expectedRecordDigest) {
+      throw journalError("threadmesh_m52_decision_action_journal_conflict");
+    }
+    fs.renameSync(temporary, filename);
+    temporary = undefined;
+    const directoryDescriptor = fs.openSync(directory, "r");
+    try { fs.fsyncSync(directoryDescriptor); } finally { fs.closeSync(directoryDescriptor); }
+  } finally {
+    if (temporary) fs.rmSync(temporary, { force: true });
+    if (lockDescriptor !== undefined) fs.closeSync(lockDescriptor);
+    fs.rmSync(lock, { force: true });
+  }
+  return projectM52DecisionActionJournal(record);
+}
+
+export function stageM52DecisionAction({ filename, ...body }) {
+  const actionFilename = decisionActionFilename(filename);
+  const staged = {
+    schemaVersion: DECISION_ACTION_SCHEMA_VERSION,
+    state: "selection-staged",
+    ...body,
+    resultStatus: null,
+    outputDigest: null,
+    previousRecordDigest: null,
+  };
+  const record = { ...staged, recordDigest: sha256Digest(staged) };
+  return durableReplaceDecisionAction(actionFilename, record);
+}
+
+export function completeM52DecisionAction({ filename, expectedRecordDigest, outputDigest }) {
+  const actionFilename = decisionActionFilename(filename);
+  const current = readDecisionActionFile(actionFilename);
+  if (current.recordDigest !== expectedRecordDigest || current.state !== "selection-staged") {
+    throw journalError("threadmesh_m52_decision_action_journal_conflict");
+  }
+  const { recordDigest: previousRecordDigest, ...prior } = current;
+  const completed = {
+    ...prior,
+    state: "call-completed",
+    resultStatus: "completed",
+    outputDigest,
+    previousRecordDigest,
+  };
+  const record = { ...completed, recordDigest: sha256Digest(completed) };
+  return durableReplaceDecisionAction(actionFilename, record, expectedRecordDigest);
+}
+
+export function readM52DecisionAction({ filename, expectedScenarioId, expectedExecutionId,
+  expectedBaseJournalRecordDigest = null }) {
+  const record = readDecisionActionFile(decisionActionFilename(filename));
+  if (record.scenarioId !== expectedScenarioId || record.executionId !== expectedExecutionId ||
+      (expectedBaseJournalRecordDigest !== null &&
+       record.baseJournalRecordDigest !== expectedBaseJournalRecordDigest)) {
+    throw journalError("threadmesh_m52_decision_action_journal_binding_mismatch");
+  }
+  return record;
+}
+
+export function projectM52DecisionActionJournal(record) {
+  validatedDecisionAction(record);
+  return Object.freeze({
+    state: record.state,
+    recordDigest: record.recordDigest,
+    previousRecordDigest: record.previousRecordDigest,
+    baseJournalRecordDigest: record.baseJournalRecordDigest,
+    executionId: record.executionId,
+    adapterIdempotencyKey: record.adapterIdempotencyKey,
+    messageId: record.messageId,
+    decision: record.arguments.decision,
+    threadId: record.threadId,
+    turnId: record.turnId,
+    callId: record.callId,
+    ordinal: record.ordinal,
+    tool: record.tool,
+    argumentsDigest: record.argumentsDigest,
+    resultStatus: record.resultStatus,
+    outputDigest: record.outputDigest,
+  });
+}
+
+export function retireM52DecisionAction({ filename, expectedScenarioId, expectedExecutionId,
+  expectedRecordDigest }) {
+  const actionFilename = decisionActionFilename(filename);
+  const record = readDecisionActionFile(actionFilename);
+  if (record.scenarioId !== expectedScenarioId || record.executionId !== expectedExecutionId ||
+      record.recordDigest !== expectedRecordDigest || record.state !== "call-completed") {
+    throw journalError("threadmesh_m52_decision_action_journal_integrity_mismatch", "retire");
+  }
+  fs.unlinkSync(actionFilename);
+  const directoryDescriptor = fs.openSync(path.dirname(actionFilename), "r");
+  try { fs.fsyncSync(directoryDescriptor); } finally { fs.closeSync(directoryDescriptor); }
+  return Object.freeze({ retired: true, recordDigest: record.recordDigest });
 }
 
 export function writeM52LiveTurnJournal({

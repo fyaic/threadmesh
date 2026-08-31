@@ -6,7 +6,10 @@ import path from "node:path";
 import { AcpStdioAdapter } from "../adapters/acp-stdio.mjs";
 import { CodexAppServerAdapter } from "../adapters/codex-app-server.mjs";
 import { canonicalJson, sha256Digest } from "../canonical-json.mjs";
-import { renderRegisteredPeerContext } from "../rendering/context-admission.mjs";
+import {
+  renderRegisteredPeerContext,
+  renderRegisteredPeerOffer,
+} from "../rendering/context-admission.mjs";
 import {
   classifyCodexNativeTurnReconciliation,
   freezeCodexNativeTurnBaseline,
@@ -14,9 +17,14 @@ import {
 import { createBoundedGitLoopFixture } from "./bounded-git-loop-fixture.mjs";
 import { runIntegratedCoordinatorLoop } from "./integrated-coordinator-loop.mjs";
 import {
+  completeM52DecisionAction,
   projectM52LiveTurnJournal,
+  projectM52DecisionActionJournal,
+  readM52DecisionAction,
   readM52LiveTurnJournal,
+  retireM52DecisionAction,
   retireM52LiveTurnJournal,
+  stageM52DecisionAction,
   writeM52LiveTurnJournal,
 } from "./m5-2-live-turn-journal.mjs";
 
@@ -58,6 +66,27 @@ const LIVE_CODEX_MISSING_GATES = Object.freeze([
   "durable-recovery-checkpoints",
   "independent-verifier-attestation",
   "dependency-finalization",
+]);
+
+export const REGISTERED_PEER_DECISION_TOOL = Object.freeze({
+  type: "function",
+  name: "threadmesh_decide_offer",
+  description: "Choose the receiver-owned disposition for one registered ThreadMesh offer.",
+  inputSchema: Object.freeze({
+    type: "object",
+    additionalProperties: false,
+    required: Object.freeze(["messageId", "decision"]),
+    properties: Object.freeze({
+      messageId: Object.freeze({ type: "string", minLength: 1, maxLength: 512 }),
+      decision: Object.freeze({ enum: Object.freeze(["accepted", "deferred", "rejected"]) }),
+    }),
+  }),
+});
+const RECEIVER_DECISION_PHASE_CAPABILITY = Symbol("threadmesh.receiver-decision-phase");
+const PROTECTED_PHASE_POLICIES = new WeakMap();
+const PROTECTED_PHASE_KINDS = Object.freeze([
+  "receiver-decision",
+  "admitted-tool",
 ]);
 
 const A_TOOLS = Object.freeze([
@@ -283,6 +312,216 @@ function admissionOperationBinding(projection, adapterIdempotencyKey) {
   });
 }
 
+export function createAdmittedTurnBinding(prepared) {
+  if (!prepared || typeof prepared !== "object" || Array.isArray(prepared)) {
+    throw scenarioError("threadmesh_live_admitted_turn_binding_invalid");
+  }
+  return Object.freeze({
+    messageId: prepared.envelope?.messageId ?? null,
+    admissionToken: prepared.admissionToken ?? null,
+    revision: prepared.revision ?? null,
+    receiverIncarnationId: prepared.admission?.receiverIncarnationId ?? null,
+    adapterRefDigest: sha256Digest(prepared.adapterRef),
+    preparedDigest: sha256Digest(prepared),
+  });
+}
+
+function assertAdmittedTurnBinding(prepared, binding) {
+  const expectedKeys = [
+    "adapterRefDigest", "admissionToken", "messageId", "preparedDigest",
+    "receiverIncarnationId", "revision",
+  ].sort();
+  if (
+    !binding || typeof binding !== "object" || Array.isArray(binding) ||
+    canonicalJson(Object.keys(binding).sort()) !== canonicalJson(expectedKeys) ||
+    canonicalJson(binding) !== canonicalJson(createAdmittedTurnBinding(prepared))
+  ) throw scenarioError("threadmesh_live_admitted_turn_binding_mismatch");
+  return binding;
+}
+
+function assertDecisionSelection(metadata, messageId) {
+  const args = metadata?.arguments;
+  if (
+    metadata?.tool !== "threadmesh_decide_offer" ||
+    !args || typeof args !== "object" || Array.isArray(args) ||
+    canonicalJson(Object.keys(args).sort()) !== canonicalJson(["decision", "messageId"]) ||
+    args.messageId !== messageId ||
+    !["accepted", "deferred", "rejected"].includes(args.decision)
+  ) throw scenarioError("threadmesh_live_receiver_decision_invalid");
+  return Object.freeze({ messageId: args.messageId, decision: args.decision });
+}
+
+function selectedToolCallProjection(metadata) {
+  if (
+    !metadata || typeof metadata !== "object" ||
+    typeof metadata.turnId !== "string" || metadata.turnId.length < 1 ||
+    typeof metadata.callId !== "string" || metadata.callId.length < 1 ||
+    !Number.isInteger(metadata.ordinal) || metadata.ordinal < 0 ||
+    typeof metadata.tool !== "string" || metadata.tool.length < 1 ||
+    metadata.argumentsDigest !== sha256Digest(metadata.arguments)
+  ) throw scenarioError("threadmesh_live_product_tool_selection_invalid");
+  return Object.freeze({
+    threadId: metadata.threadId,
+    turnId: metadata.turnId,
+    callId: metadata.callId,
+    ordinal: metadata.ordinal,
+    tool: metadata.tool,
+    argumentsDigest: metadata.argumentsDigest,
+  });
+}
+
+function completedToolCallProjection(metadata, selected, outputDigest) {
+  if (
+    metadata?.resultStatus !== "completed" || metadata?.outputDigest !== outputDigest ||
+    canonicalJson({
+      threadId: metadata?.threadId,
+      turnId: metadata?.turnId,
+      callId: metadata?.callId,
+      ordinal: metadata?.ordinal,
+      tool: metadata?.tool,
+      argumentsDigest: metadata?.argumentsDigest,
+    }) !== canonicalJson(selected)
+  ) throw scenarioError("threadmesh_live_product_tool_completion_invalid");
+  return Object.freeze({
+    ...selected,
+    outputDigest: metadata.outputDigest,
+    resultStatus: metadata.resultStatus,
+  });
+}
+
+function assertExactToolCallCorrelation(turn, selectedCalls, completedCalls) {
+  if (
+    selectedCalls.length !== completedCalls.length ||
+    selectedCalls.some((selected, ordinal) => selected.ordinal !== ordinal) ||
+    canonicalJson(turn.toolCalls) !== canonicalJson(completedCalls)
+  ) throw scenarioError("threadmesh_live_product_tool_correlation_invalid");
+}
+
+function stagedDecisionOutput(selection) {
+  return Object.freeze({
+    state: "selection-staged",
+    authority: "non-authoritative",
+    selectionDigest: sha256Digest(selection),
+  });
+}
+
+export function createRecoveredDecisionCommit({
+  messageId,
+  decision,
+  executionId,
+  journalRecordDigest,
+  adapterIdempotencyKey,
+  turnId,
+  decisionActionRecordDigest,
+}) {
+  if (
+    typeof messageId !== "string" || messageId.length < 1 || messageId.length > 512 ||
+    !["accepted", "deferred", "rejected"].includes(decision) ||
+    typeof executionId !== "string" || executionId.length < 1 || executionId.length > 512 ||
+    !/^sha256:[a-f0-9]{64}$/u.test(journalRecordDigest ?? "") ||
+    typeof adapterIdempotencyKey !== "string" || adapterIdempotencyKey.length < 1 ||
+    adapterIdempotencyKey.length > 512 ||
+    typeof turnId !== "string" || turnId.length < 1 || turnId.length > 512 ||
+    !/^sha256:[a-f0-9]{64}$/u.test(decisionActionRecordDigest ?? "")
+  ) throw scenarioError("threadmesh_live_receiver_decision_recovery_result_invalid");
+  const body = {
+    state: "already-committed",
+    alreadyCommitted: true,
+    messageId,
+    decision,
+    executionId,
+    journalRecordDigest,
+    adapterIdempotencyKey,
+    turnId,
+    decisionActionRecordDigest,
+  };
+  return Object.freeze({ ...body, bindingDigest: sha256Digest(body) });
+}
+
+function assertRecoveredDecisionCommit(value, expected) {
+  const keys = [
+    "adapterIdempotencyKey", "alreadyCommitted", "bindingDigest", "decision", "executionId",
+    "decisionActionRecordDigest", "journalRecordDigest", "messageId", "state", "turnId",
+  ].sort();
+  if (
+    !value || typeof value !== "object" || Array.isArray(value) ||
+    canonicalJson(Object.keys(value).sort()) !== canonicalJson(keys)
+  ) throw scenarioError("threadmesh_live_receiver_decision_recovery_result_invalid");
+  let rebuilt;
+  try {
+    rebuilt = createRecoveredDecisionCommit(value);
+  } catch {
+    throw scenarioError("threadmesh_live_receiver_decision_recovery_result_invalid");
+  }
+  if (
+    canonicalJson(rebuilt) !== canonicalJson(value) ||
+    Object.entries(expected).some(([key, expectedValue]) => value[key] !== expectedValue)
+  ) throw scenarioError("threadmesh_live_receiver_decision_recovery_result_invalid");
+  return rebuilt;
+}
+
+export function createCompletedDecisionCommit({
+  messageId, decision, executionId, journalRecordDigest, adapterIdempotencyKey, turnId,
+  decisionActionRecordDigest,
+}) {
+  const recovered = createRecoveredDecisionCommit({
+    messageId, decision, executionId, journalRecordDigest, adapterIdempotencyKey, turnId,
+    decisionActionRecordDigest,
+  });
+  const { state: _state, alreadyCommitted: _alreadyCommitted, bindingDigest: _digest, ...rest } =
+    recovered;
+  const body = { state: "committed", alreadyCommitted: false, ...rest };
+  return Object.freeze({ ...body, bindingDigest: sha256Digest(body) });
+}
+
+function assertCompletedDecisionCommit(value, expected) {
+  const keys = [
+    "adapterIdempotencyKey", "alreadyCommitted", "bindingDigest", "decision",
+    "decisionActionRecordDigest", "executionId", "journalRecordDigest", "messageId",
+    "state", "turnId",
+  ].sort();
+  if (!value || typeof value !== "object" || Array.isArray(value) ||
+      canonicalJson(Object.keys(value).sort()) !== canonicalJson(keys)) {
+    throw scenarioError("threadmesh_live_receiver_decision_completion_result_invalid");
+  }
+  let rebuilt;
+  try { rebuilt = createCompletedDecisionCommit(value); } catch {
+    throw scenarioError("threadmesh_live_receiver_decision_completion_result_invalid");
+  }
+  if (canonicalJson(rebuilt) !== canonicalJson(value) ||
+      Object.entries(expected).some(([key, expectedValue]) => value[key] !== expectedValue)) {
+    throw scenarioError("threadmesh_live_receiver_decision_completion_result_invalid");
+  }
+  return rebuilt;
+}
+
+function assertExactCompletedToolTurn(turn, ref, started, expectedToolCount = null) {
+  if (
+    turn?.evidence?.turnStatus !== "completed" ||
+    typeof turn.evidence.turnId !== "string" || turn.evidence.turnId.length < 1 ||
+    turn.evidence.threadId !== ref.threadId ||
+    turn.evidence.snapshotDigest !== ref.snapshotDigest ||
+    started?.turnId !== turn.evidence.turnId ||
+    !Array.isArray(turn.toolCalls) ||
+    (expectedToolCount !== null && turn.toolCalls.length !== expectedToolCount) ||
+    turn.toolCalls.some((call, ordinal) =>
+      call?.turnId !== turn.evidence.turnId || call.ordinal !== ordinal)
+  ) throw scenarioError("threadmesh_live_product_turn_result_invalid");
+  return turn;
+}
+
+function admittedTurnReceipt(turn) {
+  const acceptedAt = turn.receipt?.acceptedAt;
+  if (typeof acceptedAt !== "string" || !Number.isFinite(Date.parse(acceptedAt))) {
+    throw scenarioError("threadmesh_live_admitted_turn_receipt_invalid");
+  }
+  return Object.freeze({
+    adapterOperationId: turn.receipt.adapterOperationId,
+    acceptedAt,
+    evidenceRefs: Object.freeze([...turn.receipt.evidenceRefs]),
+  });
+}
+
 function assertCompletedContextAdmission(result, ref, started) {
   if (
     result?.state !== "completed" || !result.receipt || !result.evidence ||
@@ -446,18 +685,40 @@ export class CodexLiveAgentRuntime {
     this.model = model;
     this.adapter = adapter;
     this.roles = new Map();
+    PROTECTED_PHASE_POLICIES.set(this, new Map());
   }
 
   async probe(cwd) {
     return this.adapter.probe({ command: this.command, args: this.args, cwd, env: this.env });
   }
 
-  async createRole({ role, cwd, tools, phaseTools = null, instructions, scenarioId }) {
+  async createRole({
+    role,
+    cwd,
+    tools,
+    phaseTools = null,
+    protectedPhases = null,
+    instructions,
+    scenarioId,
+  }) {
     if (
       !Array.isArray(tools) || tools.length < 1 ||
       (phaseTools !== null && (
         !phaseTools || typeof phaseTools !== "object" || Array.isArray(phaseTools) ||
         Object.values(phaseTools).some((entry) => !Array.isArray(entry) || entry.length < 1)
+      )) ||
+      (protectedPhases !== null && (
+        !protectedPhases || typeof protectedPhases !== "object" ||
+        Array.isArray(protectedPhases) || phaseTools === null ||
+        Object.entries(protectedPhases).some(([phase, kind]) =>
+          typeof phase !== "string" || phase.length < 1 ||
+          !PROTECTED_PHASE_KINDS.includes(kind) || !Array.isArray(phaseTools[phase]) ||
+          (kind === "receiver-decision" &&
+            canonicalJson(phaseTools[phase].map(({ name }) => name)) !==
+              canonicalJson(["threadmesh_decide_offer"])) ||
+          (kind === "admitted-tool" &&
+            phaseTools[phase].some(({ name }) => name === "threadmesh_decide_offer"))
+        )
       ))
     ) throw scenarioError("threadmesh_live_role_tools_invalid", role);
     const allTools = new Map();
@@ -529,8 +790,17 @@ export class CodexLiveAgentRuntime {
       throw error;
     }
     this.roles.set(role, {
-      ref, tools, phaseTools, allTools, registeredTools, instructions,
+      ref,
+      tools,
+      phaseTools,
+      allTools,
+      registeredTools,
+      instructions,
     });
+    PROTECTED_PHASE_POLICIES.get(this).set(
+      role,
+      protectedPhases === null ? null : Object.freeze({ ...protectedPhases }),
+    );
     return ref;
   }
 
@@ -548,6 +818,8 @@ export class CodexLiveAgentRuntime {
     scenarioId,
     turnRecovery = null,
     allowedToolNames = null,
+    adapterIdempotencyKeyOverride = null,
+    protectedPhaseCapability = null,
   }) {
     const configured = this.roles.get(role);
     if (
@@ -557,6 +829,12 @@ export class CodexLiveAgentRuntime {
     ) {
       throw scenarioError("threadmesh_live_scenario_role_ref_mismatch", role);
     }
+    const protectedKind = PROTECTED_PHASE_POLICIES.get(this)?.get(role)?.[phase] ?? null;
+    if (
+      protectedKind !== null &&
+      !(protectedKind === "receiver-decision" &&
+        protectedPhaseCapability === RECEIVER_DECISION_PHASE_CAPABILITY)
+    ) throw scenarioError("threadmesh_live_protected_phase_requires_wrapper", phase);
     let turnTools = configured.tools;
     if (configured.phaseTools !== null) {
       if (!Array.isArray(allowedToolNames) || allowedToolNames.length < 1) {
@@ -578,7 +856,12 @@ export class CodexLiveAgentRuntime {
       allowedToolNames !== null &&
       canonicalJson(configured.tools.map(({ name }) => name)) !== canonicalJson(allowedToolNames)
     ) throw scenarioError("threadmesh_live_phase_tool_allowlist_invalid", phase);
-    const adapterIdempotencyKey = `idem_${scenarioId}_${role}_${phase}`;
+    const adapterIdempotencyKey = adapterIdempotencyKeyOverride ??
+      `idem_${scenarioId}_${role}_${phase}`;
+    if (
+      typeof adapterIdempotencyKey !== "string" || adapterIdempotencyKey.length < 1 ||
+      adapterIdempotencyKey.length > 512 || /[\r\n\0]/u.test(adapterIdempotencyKey)
+    ) throw scenarioError("threadmesh_live_turn_idempotency_key_invalid", phase);
     let baseline = null;
     let journalProjection = null;
     if (turnRecovery === null) {
@@ -704,6 +987,732 @@ export class CodexLiveAgentRuntime {
         journal: journalProjection,
       };
       throw terminal;
+    }
+  }
+
+  async runReceiverDecisionTurn({
+    role,
+    phase = "receiver-decision",
+    cwd,
+    ref,
+    offer,
+    scenarioId,
+    turnRecovery,
+    onDecision = undefined,
+    onCompletedDecisionTurn,
+    recoverCompletedDecision = null,
+    beforeTurnStart = async () => {},
+    onTurnStarted = async () => {},
+    beforeToolCall = undefined,
+    afterToolCall = undefined,
+  }) {
+    const configured = this.roles.get(role);
+    if (onDecision !== undefined) {
+      throw scenarioError("threadmesh_live_receiver_decision_commit_callback_forbidden");
+    }
+    if (beforeToolCall !== undefined || afterToolCall !== undefined) {
+      throw scenarioError("threadmesh_live_receiver_decision_tool_callback_forbidden");
+    }
+    if (typeof onCompletedDecisionTurn !== "function") {
+      throw scenarioError("threadmesh_live_receiver_decision_completion_callback_required");
+    }
+    if (recoverCompletedDecision !== null && typeof recoverCompletedDecision !== "function") {
+      throw scenarioError("threadmesh_live_receiver_decision_recovery_handler_invalid");
+    }
+    if (PROTECTED_PHASE_POLICIES.get(this)?.get(role)?.[phase] !== "receiver-decision") {
+      throw scenarioError("threadmesh_live_receiver_decision_phase_unprotected", phase);
+    }
+    if (
+      !turnRecovery || typeof turnRecovery !== "object" ||
+      typeof turnRecovery.filename !== "string" ||
+      typeof turnRecovery.executionId !== "string" ||
+      typeof turnRecovery.onOutcomeUnknown !== "function" ||
+      typeof turnRecovery.onTerminalReconciliation !== "function"
+    ) {
+      throw scenarioError("threadmesh_live_turn_recovery_required", phase);
+    }
+    const prompt = renderRegisteredPeerOffer(offer);
+    const messageId = offer.envelope.messageId;
+    const adapterIdempotencyKey = `idem_threadmesh_decision_${sha256Digest({
+      scenarioId,
+      role,
+      phase,
+      messageId,
+      revision: offer.disposition.revision,
+      promptDigest: sha256Digest(prompt),
+    }).slice("sha256:".length)}`;
+
+    if (!fs.existsSync(turnRecovery.filename) &&
+        fs.existsSync(`${turnRecovery.filename}.decision-action`)) {
+      let actionRecord;
+      try {
+        actionRecord = readM52DecisionAction({
+          filename: turnRecovery.filename,
+          expectedScenarioId: scenarioId,
+          expectedExecutionId: turnRecovery.executionId,
+        });
+        if (actionRecord.state !== "call-completed" ||
+            actionRecord.messageId !== messageId ||
+            actionRecord.adapterIdempotencyKey !== adapterIdempotencyKey ||
+            actionRecord.threadId !== ref.threadId) {
+          throw scenarioError("threadmesh_live_receiver_decision_action_binding_mismatch");
+        }
+      } catch {
+        throw scenarioError("threadmesh_live_receiver_decision_completed_recovery_unresolved");
+      }
+      if (recoverCompletedDecision === null) {
+        throw scenarioError("threadmesh_live_receiver_decision_completed_recovery_unresolved");
+      }
+      const decisionAction = projectM52DecisionActionJournal(actionRecord);
+      let recovered;
+      try {
+        recovered = await recoverCompletedDecision({
+          messageId,
+          decision: actionRecord.arguments.decision,
+          executionId: turnRecovery.executionId,
+          adapterIdempotencyKey,
+          journal: Object.freeze({ recordDigest: actionRecord.baseJournalRecordDigest }),
+          decisionAction,
+          observedTurn: Object.freeze({
+            turnId: actionRecord.turnId,
+            turnStatus: "completed",
+            observationDigest: null,
+          }),
+        });
+        recovered = assertRecoveredDecisionCommit(recovered, {
+          messageId,
+          decision: actionRecord.arguments.decision,
+          executionId: turnRecovery.executionId,
+          journalRecordDigest: actionRecord.baseJournalRecordDigest,
+          adapterIdempotencyKey,
+          turnId: actionRecord.turnId,
+          decisionActionRecordDigest: actionRecord.recordDigest,
+        });
+      } catch {
+        throw scenarioError("threadmesh_live_receiver_decision_completed_recovery_unresolved");
+      }
+      const retiredAction = retireM52DecisionAction({
+        filename: turnRecovery.filename,
+        expectedScenarioId: scenarioId,
+        expectedExecutionId: turnRecovery.executionId,
+        expectedRecordDigest: actionRecord.recordDigest,
+      });
+      return Object.freeze({
+        state: "recovered", recovered: true,
+        decision: Object.freeze({ messageId, decision: recovered.decision }),
+        decisionCompletion: recovered,
+        evidence: Object.freeze({ turnId: actionRecord.turnId, turnStatus: "completed" }),
+        recoveryJournal: Object.freeze({
+          retired: true, recordDigest: actionRecord.baseJournalRecordDigest,
+        }),
+        decisionActionJournal: Object.freeze({ ...decisionAction, ...retiredAction }),
+      });
+    }
+
+    if (fs.existsSync(turnRecovery.filename)) {
+      const stored = readM52LiveTurnJournal({
+        filename: turnRecovery.filename,
+        expectedScenarioId: scenarioId,
+        expectedExecutionId: turnRecovery.executionId,
+      });
+      if (
+        stored.role !== role || stored.phase !== phase ||
+        stored.adapterIdempotencyKey !== adapterIdempotencyKey ||
+        canonicalJson(stored.adapterRef) !== canonicalJson({
+          kind: ref?.kind,
+          threadId: ref?.threadId,
+          snapshotDigest: ref?.snapshotDigest,
+        })
+      ) throw scenarioError("threadmesh_live_receiver_decision_recovery_binding_mismatch");
+      await turnRecovery.onOutcomeUnknown({ baseline: stored.baseline, replay: true });
+      const observation = await this.adapter.observePersistedTurns({
+        command: this.command,
+        args: this.args,
+        cwd,
+        env: this.env,
+        threadId: ref.threadId,
+        expectedSnapshotDigest: ref.snapshotDigest,
+        includeItemsList: false,
+        timeoutMs: 30_000,
+      });
+      const classified = classifyCodexNativeTurnReconciliation({
+        baseline: stored.baseline,
+        observation,
+      });
+      if (
+        classified.state === "ambiguous" &&
+        classified.reasonCode === "codex-native-turn-completed-observation-only" &&
+        classified.correlation === "client-id"
+      ) {
+        const journal = { ...projectM52LiveTurnJournal(stored), replay: true };
+        let actionRecord;
+        try {
+          actionRecord = readM52DecisionAction({
+            filename: turnRecovery.filename,
+            expectedScenarioId: scenarioId,
+            expectedExecutionId: turnRecovery.executionId,
+            expectedBaseJournalRecordDigest: stored.recordDigest,
+          });
+          if (actionRecord.state !== "call-completed" ||
+              actionRecord.messageId !== messageId ||
+              actionRecord.adapterIdempotencyKey !== adapterIdempotencyKey ||
+              actionRecord.threadId !== ref.threadId ||
+              actionRecord.turnId !== classified.candidateTurnId) {
+            throw scenarioError("threadmesh_live_receiver_decision_action_binding_mismatch");
+          }
+        } catch {
+          const unresolved = scenarioError(
+            "threadmesh_live_receiver_decision_completed_recovery_unresolved",
+          );
+          unresolved.recovery = {
+            state: "completed-pending-coordinator", journal,
+            turnIdDigest: sha256Digest(classified.candidateTurnId),
+          };
+          throw unresolved;
+        }
+        const decisionAction = projectM52DecisionActionJournal(actionRecord);
+        if (recoverCompletedDecision === null) {
+          const unresolved = scenarioError(
+            "threadmesh_live_receiver_decision_completed_recovery_unresolved",
+          );
+          unresolved.recovery = {
+            state: "completed-pending-coordinator",
+            journal,
+            turnIdDigest: sha256Digest(classified.candidateTurnId),
+          };
+          throw unresolved;
+        }
+        let recovered;
+        try {
+          recovered = await recoverCompletedDecision({
+            messageId,
+            executionId: turnRecovery.executionId,
+            adapterIdempotencyKey,
+            journal,
+            decision: actionRecord.arguments.decision,
+            decisionAction,
+            observedTurn: Object.freeze({
+              turnId: classified.candidateTurnId,
+              turnStatus: classified.turnStatus,
+              observationDigest: classified.observationDigest,
+            }),
+          });
+          recovered = assertRecoveredDecisionCommit(recovered, {
+            messageId,
+            decision: actionRecord.arguments.decision,
+            executionId: turnRecovery.executionId,
+            journalRecordDigest: stored.recordDigest,
+            adapterIdempotencyKey,
+            turnId: classified.candidateTurnId,
+            decisionActionRecordDigest: actionRecord.recordDigest,
+          });
+        } catch {
+          const unresolved = scenarioError(
+            "threadmesh_live_receiver_decision_completed_recovery_unresolved",
+          );
+          unresolved.recovery = {
+            state: "completed-pending-coordinator",
+            journal,
+            turnIdDigest: sha256Digest(classified.candidateTurnId),
+          };
+          throw unresolved;
+        }
+        const retired = retireM52LiveTurnJournal({
+          filename: turnRecovery.filename,
+          expectedScenarioId: scenarioId,
+          expectedExecutionId: turnRecovery.executionId,
+          expectedRecordDigest: stored.recordDigest,
+        });
+        const retiredAction = retireM52DecisionAction({
+          filename: turnRecovery.filename,
+          expectedScenarioId: scenarioId,
+          expectedExecutionId: turnRecovery.executionId,
+          expectedRecordDigest: actionRecord.recordDigest,
+        });
+        return Object.freeze({
+          state: "recovered",
+          recovered: true,
+          decision: Object.freeze({ messageId, decision: recovered.decision }),
+          decisionCompletion: recovered,
+          evidence: Object.freeze({
+            turnId: classified.candidateTurnId,
+            turnStatus: classified.turnStatus,
+            observationDigest: classified.observationDigest,
+          }),
+          recoveryJournal: Object.freeze({ ...journal, ...retired }),
+          decisionActionJournal: Object.freeze({ ...decisionAction, ...retiredAction }),
+        });
+      }
+      if (classified.state === "found-terminal") {
+        await turnRecovery.onTerminalReconciliation({
+          baseline: stored.baseline,
+          observation,
+          replay: true,
+        });
+        const terminal = scenarioError(
+          "threadmesh_codex_live_turn_terminal_reconciled",
+          classified.turnStatus,
+        );
+        terminal.recovery = {
+          state: "found-terminal",
+          turnStatus: classified.turnStatus,
+          journal: { ...projectM52LiveTurnJournal(stored), replay: true },
+        };
+        throw terminal;
+      }
+      const ambiguous = scenarioError(
+        "threadmesh_codex_live_turn_reconciliation_ambiguous",
+        classified.reasonCode,
+      );
+      ambiguous.recovery = {
+        state: "ambiguous",
+        reasonCode: classified.reasonCode,
+        journal: { ...projectM52LiveTurnJournal(stored), replay: true },
+      };
+      throw ambiguous;
+    }
+
+    let selection = null;
+    let started = null;
+    const selectedCalls = [];
+    const completedCalls = [];
+    let stagedOutputDigest = null;
+    let decisionAction = null;
+    const turn = await this.runTurn({
+      role,
+      phase,
+      cwd,
+      ref,
+      prompt,
+      scenarioId,
+      turnRecovery,
+      allowedToolNames: ["threadmesh_decide_offer"],
+      adapterIdempotencyKeyOverride: adapterIdempotencyKey,
+      protectedPhaseCapability: RECEIVER_DECISION_PHASE_CAPABILITY,
+      beforeTurnStart,
+      onTurnStarted: async (metadata) => {
+        if (
+          started !== null || metadata?.threadId !== ref.threadId ||
+          typeof metadata.turnId !== "string" || metadata.turnId.length < 1 ||
+          metadata.adapterIdempotencyKey !== adapterIdempotencyKey
+        ) throw scenarioError("threadmesh_live_receiver_decision_turn_mismatch");
+        started = Object.freeze({ ...metadata });
+        await onTurnStarted(metadata);
+      },
+      beforeToolCall: async (metadata) => {
+        if (
+          selection !== null || metadata?.threadId !== ref.threadId ||
+          metadata?.turnId !== started?.turnId
+        ) {
+          throw scenarioError("threadmesh_live_receiver_decision_invalid");
+        }
+        selection = assertDecisionSelection(metadata, messageId);
+        selectedCalls.push(selectedToolCallProjection(metadata));
+        const baseJournal = readM52LiveTurnJournal({
+          filename: turnRecovery.filename,
+          expectedScenarioId: scenarioId,
+          expectedExecutionId: turnRecovery.executionId,
+        });
+        decisionAction = stageM52DecisionAction({
+          filename: turnRecovery.filename,
+          scenarioId,
+          executionId: turnRecovery.executionId,
+          messageId,
+          adapterIdempotencyKey,
+          baseJournalRecordDigest: baseJournal.recordDigest,
+          threadId: metadata.threadId,
+          turnId: metadata.turnId,
+          callId: metadata.callId,
+          ordinal: metadata.ordinal,
+          tool: metadata.tool,
+          arguments: metadata.arguments,
+          argumentsDigest: metadata.argumentsDigest,
+        });
+      },
+      onToolCall: async (metadata) => {
+        if (
+          selection === null || selectedCalls.length !== 1 ||
+          canonicalJson(selectedToolCallProjection(metadata)) !==
+            canonicalJson(selectedCalls[0])
+        ) throw scenarioError("threadmesh_live_receiver_decision_invalid");
+        const output = stagedDecisionOutput(selection);
+        stagedOutputDigest = sha256Digest(output);
+        return output;
+      },
+      afterToolCall: async (metadata) => {
+        if (
+          metadata?.threadId !== ref.threadId || metadata?.turnId !== started?.turnId
+        ) {
+          throw scenarioError("threadmesh_live_receiver_decision_turn_mismatch");
+        }
+        completedCalls.push(completedToolCallProjection(
+          metadata,
+          selectedCalls[completedCalls.length],
+          stagedOutputDigest,
+        ));
+        decisionAction = completeM52DecisionAction({
+          filename: turnRecovery.filename,
+          expectedRecordDigest: decisionAction.recordDigest,
+          outputDigest: metadata.outputDigest,
+        });
+      },
+    });
+    assertExactCompletedToolTurn(turn, ref, started, 1);
+    assertExactToolCallCorrelation(turn, selectedCalls, completedCalls);
+    if (selection === null || turn.toolCalls[0]?.tool !== "threadmesh_decide_offer") {
+      throw scenarioError("threadmesh_live_receiver_decision_missing");
+    }
+    if (decisionAction?.state !== "call-completed") {
+      throw scenarioError("threadmesh_live_receiver_decision_action_incomplete");
+    }
+    let decisionCompletion;
+    try {
+      decisionCompletion = await onCompletedDecisionTurn({
+        decision: selection,
+        turn,
+        recoveryJournal: turn.recoveryJournal,
+        decisionActionJournal: decisionAction,
+      });
+      decisionCompletion = assertCompletedDecisionCommit(decisionCompletion, {
+        messageId,
+        decision: selection.decision,
+        executionId: turnRecovery.executionId,
+        journalRecordDigest: turn.recoveryJournal.recordDigest,
+        adapterIdempotencyKey,
+        turnId: turn.evidence.turnId,
+        decisionActionRecordDigest: decisionAction.recordDigest,
+      });
+    } catch {
+      const incomplete = scenarioError(
+        "threadmesh_live_receiver_decision_completion_callback_failed",
+      );
+      incomplete.recovery = {
+        state: "completed-pending-coordinator",
+        journal: turn.recoveryJournal,
+        turnIdDigest: sha256Digest(turn.evidence.turnId),
+      };
+      throw incomplete;
+    }
+    assertExactCompletedToolTurn(turn, ref, started, 1);
+    assertExactToolCallCorrelation(turn, selectedCalls, completedCalls);
+    const retired = retireM52LiveTurnJournal({
+      filename: turnRecovery.filename,
+      expectedScenarioId: scenarioId,
+      expectedExecutionId: turnRecovery.executionId,
+      expectedRecordDigest: turn.recoveryJournal.recordDigest,
+    });
+    const retiredAction = retireM52DecisionAction({
+      filename: turnRecovery.filename,
+      expectedScenarioId: scenarioId,
+      expectedExecutionId: turnRecovery.executionId,
+      expectedRecordDigest: decisionAction.recordDigest,
+    });
+    return Object.freeze({
+      ...turn,
+      decision: selection,
+      decisionCompletion,
+      recoveryJournal: Object.freeze({ ...turn.recoveryJournal, ...retired }),
+      decisionActionJournal: Object.freeze({ ...decisionAction, ...retiredAction }),
+    });
+  }
+
+  async runAdmittedToolTurn({
+    role,
+    phase,
+    cwd,
+    ref,
+    prepared,
+    admissionBinding,
+    scenarioId,
+    allowedToolNames,
+    turnRecovery,
+    onAdmissionReceipt,
+    onToolCall,
+    beforeTurnStart = async () => {},
+    onTurnStarted = async () => {},
+    beforeToolCall = async () => {},
+    afterToolCall = async () => {},
+  }) {
+    const configured = this.roles.get(role);
+    if (
+      !configured || configured.ref.kind !== ref?.kind ||
+      configured.ref.threadId !== ref?.threadId ||
+      configured.ref.snapshotDigest !== ref?.snapshotDigest ||
+      prepared?.adapterRef?.kind !== ref?.kind ||
+      prepared?.adapterRef?.threadId !== ref?.threadId ||
+      prepared?.adapterRef?.snapshotDigest !== ref?.snapshotDigest
+    ) throw scenarioError("threadmesh_live_scenario_role_ref_mismatch", role);
+    if (PROTECTED_PHASE_POLICIES.get(this)?.get(role)?.[phase] !== "admitted-tool") {
+      throw scenarioError("threadmesh_live_admitted_turn_phase_unprotected", phase);
+    }
+    if (
+      typeof phase !== "string" || phase.length < 1 ||
+      typeof onToolCall !== "function" || typeof onAdmissionReceipt !== "function"
+    ) throw scenarioError("threadmesh_live_admitted_turn_handler_invalid");
+    if (
+      !turnRecovery || typeof turnRecovery !== "object" ||
+      typeof turnRecovery.filename !== "string" ||
+      typeof turnRecovery.executionId !== "string" ||
+      typeof turnRecovery.onOutcomeUnknown !== "function" ||
+      typeof turnRecovery.onTerminalReconciliation !== "function"
+    ) throw scenarioError("threadmesh_live_context_recovery_invalid", role);
+
+    assertAdmittedTurnBinding(prepared, admissionBinding);
+    const operationProjection = admissionOperationProjection(prepared, ref);
+    if (!Array.isArray(allowedToolNames) || allowedToolNames.length < 1 ||
+        new Set(allowedToolNames).size !== allowedToolNames.length) {
+      throw scenarioError("threadmesh_live_phase_tool_allowlist_invalid", phase);
+    }
+    let turnTools;
+    if (configured.phaseTools !== null) {
+      const phaseDefinition = configured.phaseTools[phase];
+      if (
+        !phaseDefinition || canonicalJson(phaseDefinition.map(({ name }) => name)) !==
+          canonicalJson(allowedToolNames)
+      ) throw scenarioError("threadmesh_live_phase_tool_allowlist_invalid", phase);
+      turnTools = allowedToolNames.map((name) => configured.allTools.get(name));
+    } else {
+      if (canonicalJson(configured.tools.map(({ name }) => name)) !==
+          canonicalJson(allowedToolNames)) {
+        throw scenarioError("threadmesh_live_phase_tool_allowlist_invalid", phase);
+      }
+      turnTools = [...configured.tools];
+    }
+    if (turnTools.some((tool) => !tool)) {
+      throw scenarioError("threadmesh_live_phase_tool_allowlist_invalid", phase);
+    }
+
+    const sourcePreparedDigest = sha256Digest(prepared);
+    const adapterIdempotencyKey = `idem_threadmesh_admitted_${sha256Digest({
+      scenarioId,
+      role,
+      phase,
+      sourcePreparedDigest,
+      allowedToolNames,
+    }).slice("sha256:".length)}`;
+    const operationBinding = admissionOperationBinding(
+      operationProjection,
+      adapterIdempotencyKey,
+    );
+    const observe = () => this.adapter.observePersistedTurns({
+      command: this.command,
+      args: this.args,
+      cwd,
+      env: this.env,
+      threadId: ref.threadId,
+      expectedSnapshotDigest: ref.snapshotDigest,
+      includeItemsList: false,
+      timeoutMs: 30_000,
+    });
+    const safeEnv = Object.fromEntries(Object.entries(this.env).filter(
+      ([key]) => LIVE_JOURNAL_SAFE_ENV_KEYS.has(key),
+    ));
+    const cleanupParameters = {
+      command: this.command,
+      args: [...this.args],
+      cwd,
+      env: safeEnv,
+    };
+    const resourceManifest = {
+      resources: [{
+        kind: "codex-thread",
+        exactId: ref.threadId,
+        identifierDigest: sha256Digest(ref.threadId),
+        cleanupContext: {
+          method: "codex-thread-delete",
+          parameters: cleanupParameters,
+          parametersDigest: sha256Digest(cleanupParameters),
+        },
+      }],
+    };
+    const reconcile = async ({ baseline, journalProjection, startedTurnId = null }) => {
+      await turnRecovery.onOutcomeUnknown({
+        prepared,
+        adapterIdempotencyKey,
+        operationBinding,
+        baseline,
+      });
+      const observation = await observe();
+      const classified = classifyCodexNativeTurnReconciliation({ baseline, observation });
+      const exactTerminal = classified.state === "found-terminal" &&
+        (startedTurnId === null || classified.candidateTurnId === startedTurnId);
+      if (!exactTerminal) {
+        const reasonCode = classified.state === "found-terminal"
+          ? "codex-native-turn-started-id-mismatch"
+          : classified.reasonCode;
+        const ambiguous = scenarioError(
+          "threadmesh_codex_live_context_reconciliation_ambiguous",
+          reasonCode,
+        );
+        ambiguous.recovery = { state: "ambiguous", reasonCode, journal: journalProjection };
+        throw ambiguous;
+      }
+      await turnRecovery.onTerminalReconciliation({
+        prepared,
+        adapterIdempotencyKey,
+        operationBinding,
+        baseline,
+        observation,
+      });
+      const terminal = scenarioError(
+        "threadmesh_codex_live_context_terminal_reconciled",
+        classified.turnStatus,
+      );
+      terminal.recovery = {
+        state: "found-terminal",
+        turnStatus: classified.turnStatus,
+        journal: journalProjection,
+      };
+      throw terminal;
+    };
+
+    if (fs.existsSync(turnRecovery.filename)) {
+      const stored = readM52LiveTurnJournal({
+        filename: turnRecovery.filename,
+        expectedScenarioId: scenarioId,
+        expectedExecutionId: turnRecovery.executionId,
+      });
+      if (
+        stored.role !== role || stored.phase !== phase ||
+        stored.adapterIdempotencyKey !== adapterIdempotencyKey ||
+        canonicalJson(stored.adapterRef) !== canonicalJson({
+          kind: ref.kind,
+          threadId: ref.threadId,
+          snapshotDigest: ref.snapshotDigest,
+        }) ||
+        canonicalJson(stored.operationBinding) !== canonicalJson(operationBinding) ||
+        canonicalJson(stored.resourceManifest) !== canonicalJson(resourceManifest)
+      ) throw scenarioError("threadmesh_live_context_recovery_binding_mismatch", role);
+      return reconcile({
+        baseline: stored.baseline,
+        journalProjection: { ...projectM52LiveTurnJournal(stored), replay: true },
+      });
+    }
+
+    const baseline = freezeCodexNativeTurnBaseline(await observe(), {
+      clientUserMessageId: adapterIdempotencyKey,
+    });
+    const journalProjection = writeM52LiveTurnJournal({
+      filename: turnRecovery.filename,
+      scenarioId,
+      executionId: turnRecovery.executionId,
+      role,
+      phase,
+      adapterRef: ref,
+      adapterIdempotencyKey,
+      operationBinding,
+      baseline,
+      resourceManifest,
+    });
+    let nativeStartRequested = false;
+    let started = null;
+    const selectedCalls = [];
+    const completedCalls = [];
+    const outputDigests = [];
+    try {
+      const turn = await this.adapter.runAutonomousToolTurn({
+        command: this.command,
+        args: this.args,
+        cwd,
+        env: this.env,
+        adapterRef: ref,
+        prompt: prepared.rendering,
+        dynamicTools: turnTools,
+        adapterIdempotencyKey,
+        beforeTurnStart: async (metadata) => {
+          if (
+            metadata?.threadId !== ref.threadId ||
+            metadata?.snapshotDigest !== ref.snapshotDigest ||
+            metadata?.adapterIdempotencyKey !== adapterIdempotencyKey
+          ) throw scenarioError("threadmesh_live_context_start_binding_mismatch");
+          nativeStartRequested = true;
+          await beforeTurnStart(metadata);
+        },
+        onTurnStarted: async (metadata) => {
+          if (
+            started !== null || metadata?.threadId !== ref.threadId ||
+            metadata?.snapshotDigest !== ref.snapshotDigest ||
+            metadata?.adapterIdempotencyKey !== adapterIdempotencyKey ||
+            typeof metadata.turnId !== "string" || metadata.turnId.length < 1
+          ) throw scenarioError("threadmesh_live_context_start_binding_mismatch");
+          started = Object.freeze({ ...metadata });
+          await onTurnStarted(metadata);
+        },
+        beforeToolCall: async (metadata) => {
+          if (metadata?.threadId !== ref.threadId ||
+              metadata?.turnId !== started?.turnId ||
+              !allowedToolNames.includes(metadata?.tool)) {
+            throw scenarioError("threadmesh_live_admitted_turn_tool_mismatch");
+          }
+          const selected = selectedToolCallProjection(metadata);
+          if (selected.ordinal !== selectedCalls.length) {
+            throw scenarioError("threadmesh_live_admitted_turn_tool_mismatch");
+          }
+          selectedCalls.push(selected);
+          await beforeToolCall(metadata);
+        },
+        onToolCall: async (metadata) => {
+          const ordinal = metadata?.ordinal;
+          if (
+            !Number.isInteger(ordinal) || ordinal < 0 ||
+            canonicalJson(selectedToolCallProjection(metadata)) !==
+              canonicalJson(selectedCalls[ordinal]) ||
+            outputDigests[ordinal] !== undefined
+          ) throw scenarioError("threadmesh_live_admitted_turn_tool_mismatch");
+          const output = await onToolCall(metadata);
+          outputDigests[ordinal] = sha256Digest(output);
+          return output;
+        },
+        afterToolCall: async (metadata) => {
+          if (metadata?.threadId !== ref.threadId ||
+              metadata?.turnId !== started?.turnId ||
+              !allowedToolNames.includes(metadata?.tool)) {
+            throw scenarioError("threadmesh_live_admitted_turn_tool_mismatch");
+          }
+          completedCalls.push(completedToolCallProjection(
+            metadata,
+            selectedCalls[completedCalls.length],
+            outputDigests[completedCalls.length],
+          ));
+          await afterToolCall(metadata);
+        },
+        timeoutMs: 180_000,
+      });
+      assertExactCompletedToolTurn(turn, ref, started);
+      assertExactToolCallCorrelation(turn, selectedCalls, completedCalls);
+      if (
+        turn.toolCalls.length < 1 ||
+        turn.toolCalls.some((call) => !allowedToolNames.includes(call.tool))
+      ) throw scenarioError("threadmesh_live_admitted_turn_tool_missing");
+      const completed = assertCompletedContextAdmission(turn, ref, started);
+      const receipt = admittedTurnReceipt(completed);
+      if (canonicalJson(receipt) !== canonicalJson(completed.receipt)) {
+        throw scenarioError("threadmesh_live_admitted_turn_receipt_invalid");
+      }
+      const admissionConfirmation = await onAdmissionReceipt({
+        prepared,
+        receipt,
+        evidence: completed.evidence,
+        turn: completed,
+      });
+      const retired = retireM52LiveTurnJournal({
+        filename: turnRecovery.filename,
+        expectedScenarioId: scenarioId,
+        expectedExecutionId: turnRecovery.executionId,
+        expectedRecordDigest: journalProjection.recordDigest,
+      });
+      return Object.freeze({
+        ...completed,
+        admissionConfirmation,
+        recoveryJournal: Object.freeze({ ...journalProjection, ...retired }),
+      });
+    } catch (error) {
+      if (!nativeStartRequested) throw error;
+      return reconcile({
+        baseline,
+        journalProjection,
+        startedTurnId: started?.turnId ?? null,
+      });
     }
   }
 
