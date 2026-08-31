@@ -282,6 +282,7 @@ test("thread absence query fails closed on non-not-found and malformed responses
 test("runs only an accepted suggestion and captures exact turn evidence", async () => {
   const state = temporaryState();
   try {
+    const boundaries = [];
     const created = await adapter.createThread({
       command: process.execPath,
       args: [fixture],
@@ -297,6 +298,12 @@ test("runs only an accepted suggestion and captures exact turn evidence", async 
       envelope: envelope(),
       admission: admission(),
       adapterIdempotencyKey: "idem_codex_adapter01",
+      beforeTurnStart(metadata) {
+        boundaries.push(["before", metadata]);
+      },
+      onTurnStarted(metadata) {
+        boundaries.push(["started", metadata]);
+      },
     });
     assert.equal(result.state, "completed");
     assert.match(result.text, /^FAKE_CODEX:THREADMESH_UNTRUSTED_PEER_CONTEXT_JSON_V1\n/);
@@ -306,6 +313,11 @@ test("runs only an accepted suggestion and captures exact turn evidence", async 
     assert.equal(result.receipt.acceptedAt, "2026-08-20T09:00:01.000Z");
     assert.equal(result.evidence.turnStatus, "completed");
     assert.equal(result.evidence.deltaCount, 1);
+    assert.deepEqual(boundaries.map(([kind]) => kind), ["before", "started"]);
+    assert.equal(boundaries[0][1].adapterIdempotencyKey, "idem_codex_adapter01");
+    assert.equal(boundaries[0][1].threadId, created.threadId);
+    assert.equal(boundaries[1][1].turnId, result.evidence.turnId);
+    assert.equal(boundaries[1][1].adapterIdempotencyKey, "idem_codex_adapter01");
   } finally {
     fs.rmSync(state.directory, { recursive: true, force: true });
   }

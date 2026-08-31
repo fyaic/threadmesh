@@ -258,10 +258,16 @@ the bounded union at `thread/start`; each resumed phase accepts callbacks only
 for its exact subset, so a wrong-phase call fails closed. The model-visible
 union is a known limitation and the current five-tool A surface must be reduced
 to the App Server four-tool budget before the real gate. Context-admission
-turns do not yet have the same private baseline/journal/reconciliation path;
-the live runtime rejects that boundary explicitly. Therefore this slice cannot
-set `liveProductEvidence=true`, and a real SIGKILL supervisor plus durable
-admission recovery remain required before the full A -> R -> same-A -> V gate.
+turns now use the same private baseline and fsynced pre-turn journal, bind the
+exact coordinator-prepared token/message/revision/ref and shared deterministic
+prompt, and read an existing journal before any new baseline or native call. A
+known pre-start failure retires that journal durably. Post-start terminal
+reconciliation leaves the admission claim unconfirmed; completed, zero,
+missing-client, and multiple-delta observations remain ambiguous without
+resend. Coordinator-backed tests cover both exact success confirmation and
+terminal non-confirmation. This still cannot set `liveProductEvidence=true`:
+no admission-specific killed-process run or full correlated A -> R -> same-A ->
+V gate has passed, so the real SIGKILL supervisor remains required.
 Role cleanup is absence-first and replay-safe: an already-absent thread is an
 exact success; an existing thread is deleted and then must produce a
 `thread/read` not-found observation. Delete acknowledgement alone is not

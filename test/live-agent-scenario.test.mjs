@@ -11,7 +11,10 @@ import {
   runLiveAgentScenario,
   verifyLiveAgentEvidence,
 } from "../src/validation/live-agent-scenario.mjs";
+import { sha256Digest } from "../src/canonical-json.mjs";
+import { renderRegisteredPeerContext } from "../src/rendering/context-admission.mjs";
 import { createCodexPersistedTurnObservation } from "../src/state/codex-turn-reconciliation.mjs";
+import { SqliteCoordinator } from "../src/coordinator/sqlite-coordinator.mjs";
 
 function git(cwd, ...args) {
   return execFileSync("git", args, {
@@ -442,6 +445,565 @@ test("Codex live runtime forwards durable start callbacks and blocks unreconcile
     { code: "threadmesh_live_context_recovery_required" },
   );
   assert.equal(calls.some(([name]) => name === "admission"), false);
+});
+
+function contextPrepared(ref, overrides = {}) {
+  const envelope = {
+    specVersion: "0.0-draft",
+    messageId: "msg-context-recovery",
+    relationshipId: "rel-context-recovery",
+    sender: {
+      taskId: "task-a", incarnationId: "inc-a", actorType: "agent",
+    },
+    target: { taskId: "task-r", incarnationId: "inc-r" },
+    intent: "suggest",
+    reason: "Independent review found a relevant constraint.",
+    content: "Use the exact reviewed constraint as advisory context.",
+    claimStatus: "unverified",
+    delivery: { requestedMode: "checkpoint-offer" },
+    createdAt: "2026-09-01T09:00:00.000Z",
+  };
+  const admission = {
+    decision: "accepted", receiverIncarnationId: "inc-r", revision: 1,
+  };
+  return {
+    admissionToken: "admission-token-context-recovery",
+    adapterRef: ref,
+    envelope,
+    admission,
+    revision: 1,
+    rendering: renderRegisteredPeerContext(envelope),
+    ...overrides,
+  };
+}
+
+function contextRecoveryAdapter({ outcome = "success", terminalStatus = "interrupted" } = {}) {
+  const snapshotDigest = `sha256:${"7".repeat(64)}`;
+  const state = {
+    observations: 0,
+    nativeStarts: 0,
+    callbackOrder: [],
+    adapterIdempotencyKey: null,
+    preparedRendering: null,
+  };
+  const ref = {
+    kind: "codex-app-server",
+    threadId: "thread-context-recovery",
+    snapshotDigest,
+    userAgent: "codex-test/0.145.0",
+  };
+  function turnsForObservation() {
+    if (state.observations === 1 || outcome === "zero") return [];
+    const items = outcome === "missing-client" ? [] : [{
+      type: "userMessage", clientId: state.adapterIdempotencyKey,
+    }];
+    const turns = [{ id: "turn-context-recovery", status: terminalStatus, items }];
+    if (outcome === "multiple") {
+      turns.push({
+        id: "turn-context-racer", status: "interrupted",
+        items: [{ type: "userMessage", clientId: "unrelated-client" }],
+      });
+    }
+    return turns;
+  }
+  return {
+    state,
+    ref,
+    async createDynamicToolThread() { return ref; },
+    async observePersistedTurns() {
+      state.observations += 1;
+      const turns = turnsForObservation();
+      return createCodexPersistedTurnObservation({
+        threadId: ref.threadId,
+        snapshotDigest,
+        threadStatus: state.observations === 1 ? "idle" : "notLoaded",
+        readTurns: turns,
+        listedTurns: turns,
+      });
+    },
+    async runAcceptedSuggestion(options) {
+      state.nativeStarts += 1;
+      state.adapterIdempotencyKey = options.adapterIdempotencyKey;
+      state.preparedRendering = options.preparedRendering;
+      state.callbackOrder.push("adapter-called");
+      if (outcome === "pre-start-failure") {
+        throw Object.assign(new Error("pre-start validation failed"), {
+          code: "codex_app_server_receiver_acceptance_required",
+        });
+      }
+      state.callbackOrder.push("before");
+      await options.beforeTurnStart({
+        threadId: ref.threadId,
+        snapshotDigest,
+        adapterIdempotencyKey: options.adapterIdempotencyKey,
+      });
+      state.callbackOrder.push("started");
+      await options.onTurnStarted({
+        threadId: ref.threadId,
+        turnId: "turn-context-recovery",
+        snapshotDigest,
+        adapterIdempotencyKey: options.adapterIdempotencyKey,
+      });
+      if (outcome !== "success" && outcome !== "missing-receipt") {
+        throw Object.assign(new Error("post-start transport failed"), {
+          code: "codex_app_server_exited",
+        });
+      }
+      const evidence = {
+        threadId: ref.threadId,
+        turnId: "turn-context-recovery",
+        turnStatus: "completed",
+        snapshotDigest,
+      };
+      if (outcome === "missing-receipt") return { state: "completed", evidence };
+      return {
+        state: "completed",
+        text: "accepted",
+        truncated: false,
+        receipt: {
+          adapterOperationId: evidence.turnId,
+          acceptedAt: "2026-09-01T09:00:01.000Z",
+          evidenceRefs: [
+            `codex-app-server://thread/${ref.threadId}/turn/${evidence.turnId}`,
+          ],
+        },
+        evidence,
+      };
+    },
+  };
+}
+
+async function contextRuntimeFixture(t, adapter, name) {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), `threadmesh-context-${name}-`));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const runtime = new CodexLiveAgentRuntime({ command: "/fake/codex", adapter });
+  const ref = await runtime.createRole({
+    role: "r",
+    cwd: "/private/reviewer",
+    tools: CANARY_TOOLS,
+    instructions: "Use only bounded tools.",
+    scenarioId: `m52-context-${name}`,
+  });
+  return {
+    directory,
+    filename: path.join(directory, "admission-turn-journal.json"),
+    runtime,
+    ref,
+    prepared: contextPrepared(ref),
+  };
+}
+
+function coordinatorContextAdmission(ref, suffix) {
+  const now = Date.parse("2026-09-01T09:00:00.000Z");
+  const coordinator = new SqliteCoordinator({ clock: () => now });
+  const owner = { kind: "user", principalId: `owner-${suffix}` };
+  const senderPrincipal = {
+    kind: "task", taskId: `task-a-${suffix}`, incarnationId: `inc_a_${suffix}`,
+  };
+  const receiverPrincipal = {
+    kind: "task", taskId: `task-r-${suffix}`, incarnationId: `inc_r_${suffix}`,
+  };
+  coordinator.registerTask({
+    taskId: senderPrincipal.taskId,
+    incarnationId: senderPrincipal.incarnationId,
+    harness: "codex-app-server",
+    state: "running",
+  }, owner);
+  coordinator.registerTask({
+    taskId: receiverPrincipal.taskId,
+    incarnationId: receiverPrincipal.incarnationId,
+    harness: "codex-app-server",
+    state: "idle",
+    adapterRef: ref,
+  }, owner);
+  coordinator.issueGrant({
+    specVersion: "0.0-draft",
+    grantId: `grant_${suffix}`,
+    grantVersion: 1,
+    relationshipId: `rel_${suffix}`,
+    relationshipType: "peer",
+    source: {
+      taskId: senderPrincipal.taskId,
+      incarnationId: senderPrincipal.incarnationId,
+    },
+    target: {
+      taskId: receiverPrincipal.taskId,
+      incarnationId: receiverPrincipal.incarnationId,
+    },
+    allowedIntents: ["suggest"],
+    allowedDeliveryModes: ["checkpoint-offer"],
+    summaryVisibility: "coordination",
+    structuredGateResponses: false,
+    createdAt: "2026-09-01T08:00:00.000Z",
+    expiresAt: "2026-09-01T10:00:00.000Z",
+  }, {
+    decisionId: `decision_${suffix}`,
+    authenticationId: `authn_${suffix}`,
+    decidedAt: "2026-09-01T08:00:00.000Z",
+  }, owner);
+  const messageId = `msg_${suffix}`;
+  coordinator.submit({
+    specVersion: "0.0-draft",
+    messageId,
+    messageType: "suggestion",
+    intent: "suggest",
+    claimStatus: "sender-asserted",
+    sender: {
+      taskId: senderPrincipal.taskId,
+      incarnationId: senderPrincipal.incarnationId,
+      actorType: "agent",
+      harness: "codex-app-server",
+    },
+    target: {
+      taskId: receiverPrincipal.taskId,
+      incarnationId: receiverPrincipal.incarnationId,
+      harness: "codex-app-server",
+    },
+    relationshipId: `rel_${suffix}`,
+    content: "Use the independently reviewed constraint.",
+    reason: "The receiver needs exact peer context.",
+    delivery: {
+      requestedMode: "checkpoint-offer",
+      requiresDisposition: true,
+    },
+    createdAt: "2026-09-01T09:00:00.000Z",
+    expiresAt: "2026-09-01T09:10:00.000Z",
+  }, senderPrincipal);
+  coordinator.respond(
+    senderPrincipal.incarnationId,
+    messageId,
+    "accepted",
+    0,
+    receiverPrincipal,
+  );
+  const prepared = coordinator.prepareContextAdmission(
+    senderPrincipal.incarnationId,
+    messageId,
+    1,
+    receiverPrincipal,
+  );
+  return {
+    coordinator, senderPrincipal, receiverPrincipal, messageId, prepared,
+  };
+}
+
+test("Codex context admission journals first, preserves callback order, and returns exact receipt/evidence", async (t) => {
+  const adapter = contextRecoveryAdapter();
+  const fixture = await contextRuntimeFixture(t, adapter, "success");
+  let unknown = 0;
+  const result = await fixture.runtime.deliverContext({
+    role: "r",
+    ref: fixture.ref,
+    prepared: fixture.prepared,
+    cwd: "/private/reviewer",
+    scenarioId: "m52-context-success",
+    turnRecovery: {
+      filename: fixture.filename,
+      executionId: "execution-context-success",
+      async onOutcomeUnknown() { unknown += 1; },
+      async onTerminalReconciliation() { throw new Error("must not reconcile success"); },
+    },
+  });
+  assert.deepEqual(adapter.state.callbackOrder, ["adapter-called", "before", "started"]);
+  assert.equal(adapter.state.nativeStarts, 1);
+  assert.equal(adapter.state.observations, 1);
+  assert.equal(unknown, 0);
+  assert.equal(result.receipt.adapterOperationId, result.evidence.turnId);
+  assert.equal(result.evidence.turnStatus, "completed");
+  assert.match(result.recoveryJournal.recordDigest, /^sha256:[a-f0-9]{64}$/u);
+  const journal = JSON.parse(fs.readFileSync(fixture.filename, "utf8"));
+  assert.equal(journal.operationBinding.kind, "context-admission");
+  assert.equal(journal.operationBinding.messageId, fixture.prepared.envelope.messageId);
+  assert.equal(journal.operationBinding.admissionToken, fixture.prepared.admissionToken);
+  assert.equal(journal.operationBinding.revision, fixture.prepared.revision);
+  assert.equal(
+    journal.operationBinding.adapterIdempotencyKey,
+    adapter.state.adapterIdempotencyKey,
+  );
+  assert.equal(adapter.state.preparedRendering, fixture.prepared.rendering);
+  assert.equal(
+    journal.operationBinding.promptDigest,
+    sha256Digest(adapter.state.preparedRendering),
+  );
+  assert.equal(Object.hasOwn(result, "action"), false);
+});
+
+test("Codex context admission completes the exact coordinator claim only from native receipt evidence", async (t) => {
+  const adapter = contextRecoveryAdapter();
+  const fixture = await contextRuntimeFixture(t, adapter, "coordinator-success");
+  const admission = coordinatorContextAdmission(fixture.ref, "coordinator-success");
+  t.after(() => admission.coordinator.close());
+  const delivered = await fixture.runtime.deliverContext({
+    role: "r", ref: fixture.ref, prepared: admission.prepared,
+    cwd: "/private/reviewer", scenarioId: "m52-context-coordinator-success",
+    turnRecovery: {
+      filename: fixture.filename,
+      executionId: "execution-context-coordinator-success",
+      async onOutcomeUnknown() {},
+      async onTerminalReconciliation() {},
+    },
+  });
+  const disposition = admission.coordinator.confirmContextAdmission(
+    admission.senderPrincipal.incarnationId,
+    admission.messageId,
+    1,
+    admission.prepared.admissionToken,
+    delivered.evidence,
+    admission.receiverPrincipal,
+  );
+  assert.equal(disposition.delivery, "context-admitted");
+  assert.deepEqual(
+    admission.coordinator.auditEvents(
+      admission.senderPrincipal.incarnationId,
+      admission.messageId,
+      admission.receiverPrincipal,
+    ).map(({ eventType }) => eventType),
+    [
+      "message-durably-received",
+      "receiver-decided",
+      "context-admission-claimed",
+      "context-admitted",
+    ],
+  );
+  assert.equal(delivered.receipt.adapterOperationId, delivered.evidence.turnId);
+});
+
+test("Codex terminal admission recovery leaves the coordinator claim unconfirmed and suppresses resend", async (t) => {
+  const adapter = contextRecoveryAdapter({ outcome: "terminal" });
+  const fixture = await contextRuntimeFixture(t, adapter, "coordinator-terminal");
+  const admission = coordinatorContextAdmission(fixture.ref, "coordinator-terminal");
+  t.after(() => admission.coordinator.close());
+  const operation = () => fixture.runtime.deliverContext({
+    role: "r", ref: fixture.ref, prepared: admission.prepared,
+    cwd: "/private/reviewer", scenarioId: "m52-context-coordinator-terminal",
+    turnRecovery: {
+      filename: fixture.filename,
+      executionId: "execution-context-coordinator-terminal",
+      async onOutcomeUnknown() {},
+      async onTerminalReconciliation() {},
+    },
+  });
+  await assert.rejects(operation, {
+    code: "threadmesh_codex_live_context_terminal_reconciled",
+  });
+  await assert.rejects(operation, {
+    code: "threadmesh_codex_live_context_terminal_reconciled",
+  });
+  assert.equal(adapter.state.nativeStarts, 1);
+  assert.equal(
+    admission.coordinator.getDisposition(
+      admission.senderPrincipal.incarnationId,
+      admission.messageId,
+      admission.receiverPrincipal,
+    ).delivery,
+    "durably-received",
+  );
+  assert.equal(
+    admission.coordinator.auditEvents(
+      admission.senderPrincipal.incarnationId,
+      admission.messageId,
+      admission.receiverPrincipal,
+    ).some(({ eventType }) => eventType === "context-admitted"),
+    false,
+  );
+});
+
+test("Codex context admission keeps a pre-start failure pre-effect", async (t) => {
+  const adapter = contextRecoveryAdapter({ outcome: "pre-start-failure" });
+  const fixture = await contextRuntimeFixture(t, adapter, "pre-start");
+  let unknown = 0;
+  await assert.rejects(
+    fixture.runtime.deliverContext({
+      role: "r", ref: fixture.ref, prepared: fixture.prepared,
+      cwd: "/private/reviewer", scenarioId: "m52-context-pre-start",
+      turnRecovery: {
+        filename: fixture.filename,
+        executionId: "execution-context-pre-start",
+        async onOutcomeUnknown() { unknown += 1; },
+        async onTerminalReconciliation() {},
+      },
+    }),
+    { code: "codex_app_server_receiver_acceptance_required" },
+  );
+  assert.equal(fs.existsSync(fixture.filename), false);
+  assert.equal(adapter.state.nativeStarts, 1);
+  assert.equal(adapter.state.observations, 1);
+  assert.equal(unknown, 0);
+  await assert.rejects(
+    fixture.runtime.deliverContext({
+      role: "r", ref: fixture.ref, prepared: fixture.prepared,
+      cwd: "/private/reviewer", scenarioId: "m52-context-pre-start",
+      turnRecovery: {
+        filename: fixture.filename,
+        executionId: "execution-context-pre-start",
+        async onOutcomeUnknown() { unknown += 1; },
+        async onTerminalReconciliation() {},
+      },
+    }),
+    { code: "codex_app_server_receiver_acceptance_required" },
+  );
+  assert.equal(fs.existsSync(fixture.filename), false);
+  assert.equal(adapter.state.nativeStarts, 2);
+  assert.equal(adapter.state.observations, 2);
+  assert.equal(unknown, 0);
+});
+
+test("Codex context admission reconciles only an exact post-start terminal once", async (t) => {
+  const adapter = contextRecoveryAdapter({ outcome: "terminal" });
+  const fixture = await contextRuntimeFixture(t, adapter, "terminal");
+  let unknown = 0;
+  let terminal = 0;
+  await assert.rejects(
+    fixture.runtime.deliverContext({
+      role: "r", ref: fixture.ref, prepared: fixture.prepared,
+      cwd: "/private/reviewer", scenarioId: "m52-context-terminal",
+      turnRecovery: {
+        filename: fixture.filename,
+        executionId: "execution-context-terminal",
+        async onOutcomeUnknown({ prepared, operationBinding }) {
+          unknown += 1;
+          assert.equal(prepared.admissionToken, fixture.prepared.admissionToken);
+          assert.equal(operationBinding.messageId, fixture.prepared.envelope.messageId);
+        },
+        async onTerminalReconciliation({ observation, operationBinding }) {
+          terminal += 1;
+          assert.equal(observation.turns[0].status, "interrupted");
+          assert.equal(operationBinding.admissionToken, fixture.prepared.admissionToken);
+        },
+      },
+    }),
+    (error) => error?.code === "threadmesh_codex_live_context_terminal_reconciled" &&
+      error?.recovery?.state === "found-terminal" &&
+      error?.recovery?.turnStatus === "interrupted",
+  );
+  assert.equal(adapter.state.nativeStarts, 1);
+  assert.equal(adapter.state.observations, 2);
+  assert.equal(unknown, 1);
+  assert.equal(terminal, 1);
+  await assert.rejects(
+    fixture.runtime.deliverContext({
+      role: "r", ref: fixture.ref, prepared: fixture.prepared,
+      cwd: "/private/reviewer", scenarioId: "m52-context-terminal",
+      turnRecovery: {
+        filename: fixture.filename,
+        executionId: "execution-context-terminal",
+        async onOutcomeUnknown() { unknown += 1; },
+        async onTerminalReconciliation() { terminal += 1; },
+      },
+    }),
+    (error) => error?.code === "threadmesh_codex_live_context_terminal_reconciled" &&
+      error?.recovery?.journal?.replay === true,
+  );
+  assert.equal(adapter.state.nativeStarts, 1);
+  assert.equal(adapter.state.observations, 3);
+  assert.equal(unknown, 2);
+  assert.equal(terminal, 2);
+});
+
+test("Codex context admission keeps completed, zero, missing, and multiple deltas ambiguous without retry", async (t) => {
+  const cases = [
+    ["completed", { outcome: "terminal", terminalStatus: "completed" },
+      "codex-native-turn-completed-observation-only"],
+    ["zero", { outcome: "zero" }, "codex-native-turn-no-observable-delta"],
+    ["missing", { outcome: "missing-client" }, "codex-native-turn-client-id-missing"],
+    ["multiple", { outcome: "multiple" }, "codex-native-turn-multiple-new-turns"],
+  ];
+  for (const [name, options, reasonCode] of cases) {
+    const adapter = contextRecoveryAdapter(options);
+    const fixture = await contextRuntimeFixture(t, adapter, name);
+    let terminal = 0;
+    await assert.rejects(
+      fixture.runtime.deliverContext({
+        role: "r", ref: fixture.ref, prepared: fixture.prepared,
+        cwd: "/private/reviewer", scenarioId: `m52-context-${name}`,
+        turnRecovery: {
+          filename: fixture.filename,
+          executionId: `execution-context-${name}`,
+          async onOutcomeUnknown() {},
+          async onTerminalReconciliation() { terminal += 1; },
+        },
+      }),
+      (error) => error?.code === "threadmesh_codex_live_context_reconciliation_ambiguous" &&
+        error?.recovery?.reasonCode === reasonCode,
+    );
+    assert.equal(adapter.state.nativeStarts, 1, name);
+    assert.equal(adapter.state.observations, 2, name);
+    assert.equal(terminal, 0, name);
+  }
+});
+
+test("Codex context admission rejects missing recovery and prepared mismatch before native start", async (t) => {
+  const adapter = contextRecoveryAdapter();
+  const fixture = await contextRuntimeFixture(t, adapter, "prepared-invalid");
+  await assert.rejects(
+    fixture.runtime.deliverContext({
+      role: "r", ref: fixture.ref, prepared: fixture.prepared,
+      cwd: "/private/reviewer", scenarioId: "m52-context-prepared-invalid",
+    }),
+    { code: "threadmesh_live_context_recovery_required" },
+  );
+  await assert.rejects(
+    fixture.runtime.deliverContext({
+      role: "r",
+      ref: fixture.ref,
+      prepared: { ...fixture.prepared, revision: 2 },
+      cwd: "/private/reviewer",
+      scenarioId: "m52-context-prepared-invalid",
+      turnRecovery: {
+        filename: fixture.filename,
+        executionId: "execution-context-prepared-invalid",
+        async onOutcomeUnknown() {},
+        async onTerminalReconciliation() {},
+      },
+    }),
+    { code: "threadmesh_live_context_prepared_invalid" },
+  );
+  await assert.rejects(
+    fixture.runtime.deliverContext({
+      role: "r",
+      ref: fixture.ref,
+      prepared: {
+        ...fixture.prepared,
+        rendering: "THREADMESH_UNTRUSTED_PEER_CONTEXT_JSON_V1\n{\"content\":\"spliced\"}",
+      },
+      cwd: "/private/reviewer",
+      scenarioId: "m52-context-prepared-invalid",
+      turnRecovery: {
+        filename: fixture.filename,
+        executionId: "execution-context-prepared-spliced",
+        async onOutcomeUnknown() {},
+        async onTerminalReconciliation() {},
+      },
+    }),
+    { code: "threadmesh_live_context_prepared_invalid" },
+  );
+  assert.equal(adapter.state.nativeStarts, 0);
+  assert.equal(adapter.state.observations, 0);
+});
+
+test("Codex context admission never fabricates a missing receipt or action", async (t) => {
+  const adapter = contextRecoveryAdapter({
+    outcome: "missing-receipt",
+    terminalStatus: "completed",
+  });
+  const fixture = await contextRuntimeFixture(t, adapter, "missing-receipt");
+  await assert.rejects(
+    fixture.runtime.deliverContext({
+      role: "r", ref: fixture.ref, prepared: fixture.prepared,
+      cwd: "/private/reviewer", scenarioId: "m52-context-missing-receipt",
+      turnRecovery: {
+        filename: fixture.filename,
+        executionId: "execution-context-missing-receipt",
+        async onOutcomeUnknown() {},
+        async onTerminalReconciliation() {},
+      },
+    }),
+    (error) => error?.code === "threadmesh_codex_live_context_reconciliation_ambiguous" &&
+      error?.recovery?.reasonCode === "codex-native-turn-completed-observation-only" &&
+      !Object.hasOwn(error, "receipt") && !Object.hasOwn(error, "action"),
+  );
+  assert.equal(adapter.state.nativeStarts, 1);
+  assert.equal(adapter.state.observations, 2);
 });
 
 test("Codex live role cleanup is absence-first, replay-safe, and digest-only", async () => {

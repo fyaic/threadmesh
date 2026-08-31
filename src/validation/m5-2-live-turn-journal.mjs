@@ -5,14 +5,19 @@ import path from "node:path";
 import { canonicalJson, sha256Digest } from "../canonical-json.mjs";
 import { validateCodexNativeTurnBaseline } from "../state/codex-turn-reconciliation.mjs";
 
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 const MAX_JOURNAL_BYTES = 2 * 1024 * 1024;
 const RECORD_KEYS = Object.freeze([
   "schemaVersion", "scenarioId", "executionId", "role", "phase",
-  "adapterRef", "adapterIdempotencyKey", "baseline", "resourceManifest",
+  "adapterRef", "adapterIdempotencyKey", "operationBinding", "baseline", "resourceManifest",
   "recordDigest",
 ]);
 const ADAPTER_REF_KEYS = Object.freeze(["kind", "threadId", "snapshotDigest"]);
+const CONTEXT_ADMISSION_BINDING_KEYS = Object.freeze([
+  "kind", "messageId", "admissionToken", "revision", "receiverIncarnationId",
+  "adapterRefDigest", "envelopeDigest", "admissionDigest", "promptDigest",
+  "adapterIdempotencyKey", "preparedDigest",
+]);
 
 function journalError(code, detail) {
   const error = new Error(detail ? `${code}: ${detail}` : code);
@@ -61,6 +66,43 @@ function assertAdapterRef(value) {
   digest(value.snapshotDigest, "adapterRef.snapshotDigest");
 }
 
+function assertOperationBinding(value, record) {
+  if (exactKeys(value, ["kind"]) && value.kind === "native-turn") return;
+  if (
+    !exactKeys(value, CONTEXT_ADMISSION_BINDING_KEYS) ||
+    value.kind !== "context-admission"
+  ) throw journalError("threadmesh_m52_live_turn_journal_shape_invalid", "operationBinding");
+  identity(value.messageId, "operationBinding.messageId");
+  identity(value.admissionToken, "operationBinding.admissionToken");
+  identity(value.receiverIncarnationId, "operationBinding.receiverIncarnationId");
+  if (!Number.isInteger(value.revision) || value.revision < 0) {
+    throw journalError("threadmesh_m52_live_turn_journal_shape_invalid", "operationBinding.revision");
+  }
+  for (const field of [
+    "adapterRefDigest", "envelopeDigest", "admissionDigest", "promptDigest",
+    "preparedDigest",
+  ]) digest(value[field], `operationBinding.${field}`);
+  if (value.adapterRefDigest !== sha256Digest(record.adapterRef)) {
+    throw journalError(
+      "threadmesh_m52_live_turn_journal_integrity_mismatch",
+      "operationBinding.adapterRef",
+    );
+  }
+  if (value.adapterIdempotencyKey !== record.adapterIdempotencyKey) {
+    throw journalError(
+      "threadmesh_m52_live_turn_journal_integrity_mismatch",
+      "operationBinding.adapterIdempotencyKey",
+    );
+  }
+  const { preparedDigest, ...preparedProjection } = value;
+  if (preparedDigest !== sha256Digest(preparedProjection)) {
+    throw journalError(
+      "threadmesh_m52_live_turn_journal_integrity_mismatch",
+      "operationBinding.preparedDigest",
+    );
+  }
+}
+
 function assertResourceManifest(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw journalError("threadmesh_m52_live_turn_journal_shape_invalid", "resourceManifest");
@@ -107,6 +149,7 @@ function validatedRecord(record) {
   identity(record.phase, "phase");
   identity(record.adapterIdempotencyKey, "adapterIdempotencyKey");
   assertAdapterRef(record.adapterRef);
+  assertOperationBinding(record.operationBinding, record);
   assertResourceManifest(record.resourceManifest);
   if (
     record.resourceManifest.resources.length !== 1 ||
@@ -141,6 +184,7 @@ export function writeM52LiveTurnJournal({
   phase,
   adapterRef,
   adapterIdempotencyKey,
+  operationBinding = { kind: "native-turn" },
   baseline,
   resourceManifest = { resources: [] },
 }) {
@@ -159,6 +203,7 @@ export function writeM52LiveTurnJournal({
       snapshotDigest: adapterRef?.snapshotDigest,
     },
     adapterIdempotencyKey,
+    operationBinding,
     baseline,
     resourceManifest,
   };
@@ -256,4 +301,31 @@ export function projectM52LiveTurnJournal(record) {
     baselineTurnCount: record.baseline.turns.length,
     resourceCount: record.resourceManifest.resources.length,
   });
+}
+
+export function retireM52LiveTurnJournal({
+  filename,
+  expectedScenarioId,
+  expectedExecutionId,
+  expectedRecordDigest,
+}) {
+  const record = readM52LiveTurnJournal({
+    filename,
+    expectedScenarioId,
+    expectedExecutionId,
+  });
+  if (record.recordDigest !== expectedRecordDigest) {
+    throw journalError("threadmesh_m52_live_turn_journal_integrity_mismatch", "retire");
+  }
+  fs.unlinkSync(filename);
+  const directoryDescriptor = fs.openSync(path.dirname(filename), "r");
+  try {
+    fs.fsyncSync(directoryDescriptor);
+  } finally {
+    fs.closeSync(directoryDescriptor);
+  }
+  if (fs.existsSync(filename)) {
+    throw journalError("threadmesh_m52_live_turn_journal_unavailable", "retire");
+  }
+  return Object.freeze({ retired: true, recordDigest: record.recordDigest });
 }

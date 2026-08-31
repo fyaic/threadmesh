@@ -6,13 +6,19 @@ import path from "node:path";
 import { AcpStdioAdapter } from "../adapters/acp-stdio.mjs";
 import { CodexAppServerAdapter } from "../adapters/codex-app-server.mjs";
 import { canonicalJson, sha256Digest } from "../canonical-json.mjs";
+import { renderRegisteredPeerContext } from "../rendering/context-admission.mjs";
 import {
   classifyCodexNativeTurnReconciliation,
   freezeCodexNativeTurnBaseline,
 } from "../state/codex-turn-reconciliation.mjs";
 import { createBoundedGitLoopFixture } from "./bounded-git-loop-fixture.mjs";
 import { runIntegratedCoordinatorLoop } from "./integrated-coordinator-loop.mjs";
-import { writeM52LiveTurnJournal } from "./m5-2-live-turn-journal.mjs";
+import {
+  projectM52LiveTurnJournal,
+  readM52LiveTurnJournal,
+  retireM52LiveTurnJournal,
+  writeM52LiveTurnJournal,
+} from "./m5-2-live-turn-journal.mjs";
 
 export const LIVE_AGENT_SCENARIO_ACK =
   "maintainer-approved-threadmesh-live-agent-scenario";
@@ -215,6 +221,72 @@ function publicRef(ref) {
     identifierDigest: identifier ? sha256Digest(identifier) : null,
     snapshotDigest: ref?.snapshotDigest ?? null,
   };
+}
+
+function admissionOperationProjection(prepared, ref) {
+  const expectedKeys = [
+    "adapterRef", "admission", "admissionToken", "envelope", "rendering", "revision",
+  ].sort();
+  if (
+    !prepared || typeof prepared !== "object" || Array.isArray(prepared) ||
+    canonicalJson(Object.keys(prepared).sort()) !== canonicalJson(expectedKeys) ||
+    typeof prepared.admissionToken !== "string" || prepared.admissionToken.length < 1 ||
+    prepared.admissionToken.length > 512 || /[\r\n\0]/u.test(prepared.admissionToken) ||
+    typeof prepared.envelope?.messageId !== "string" ||
+    prepared.envelope.messageId.length < 1 || prepared.envelope.messageId.length > 512 ||
+    !Number.isInteger(prepared.revision) || prepared.revision < 0 ||
+    prepared.admission?.decision !== "accepted" ||
+    prepared.admission.revision !== prepared.revision ||
+    typeof prepared.admission.receiverIncarnationId !== "string" ||
+    prepared.admission.receiverIncarnationId !== prepared.envelope?.target?.incarnationId ||
+    typeof prepared.rendering !== "string" || prepared.rendering.length < 1 ||
+    prepared.rendering.length > 20_000 ||
+    prepared.rendering !== renderRegisteredPeerContext(prepared.envelope) ||
+    canonicalJson(prepared.adapterRef) !== canonicalJson(ref)
+  ) throw scenarioError("threadmesh_live_context_prepared_invalid");
+  const journalAdapterRef = {
+    kind: ref.kind,
+    threadId: ref.threadId,
+    snapshotDigest: ref.snapshotDigest,
+  };
+  return Object.freeze({
+    kind: "context-admission",
+    messageId: prepared.envelope.messageId,
+    admissionToken: prepared.admissionToken,
+    revision: prepared.revision,
+    receiverIncarnationId: prepared.admission.receiverIncarnationId,
+    adapterRefDigest: sha256Digest(journalAdapterRef),
+    envelopeDigest: sha256Digest(prepared.envelope),
+    admissionDigest: sha256Digest(prepared.admission),
+    promptDigest: sha256Digest(prepared.rendering),
+  });
+}
+
+function admissionOperationBinding(projection, adapterIdempotencyKey) {
+  const preparedProjection = { ...projection, adapterIdempotencyKey };
+  return Object.freeze({
+    ...preparedProjection,
+    preparedDigest: sha256Digest(preparedProjection),
+  });
+}
+
+function assertCompletedContextAdmission(result, ref, started) {
+  if (
+    result?.state !== "completed" || !result.receipt || !result.evidence ||
+    typeof result.receipt.adapterOperationId !== "string" ||
+    typeof result.receipt.acceptedAt !== "string" ||
+    !Array.isArray(result.receipt.evidenceRefs) ||
+    result.receipt.evidenceRefs.length !== 1 ||
+    result.evidence.threadId !== ref.threadId ||
+    result.evidence.snapshotDigest !== ref.snapshotDigest ||
+    result.evidence.turnStatus !== "completed" ||
+    typeof result.evidence.turnId !== "string" ||
+    result.receipt.adapterOperationId !== result.evidence.turnId ||
+    result.receipt.evidenceRefs[0] !==
+      `codex-app-server://thread/${ref.threadId}/turn/${result.evidence.turnId}` ||
+    (started !== null && started.turnId !== result.evidence.turnId)
+  ) throw scenarioError("threadmesh_live_context_result_invalid");
+  return result;
 }
 
 function exactTools(turn, expected, code) {
@@ -593,7 +665,196 @@ export class CodexLiveAgentRuntime {
     if (turnRecovery === null) {
       throw scenarioError("threadmesh_live_context_recovery_required", role);
     }
-    throw scenarioError("threadmesh_live_context_recovery_not_implemented", role);
+    if (
+      !turnRecovery || typeof turnRecovery !== "object" ||
+      typeof turnRecovery.filename !== "string" ||
+      typeof turnRecovery.executionId !== "string" ||
+      typeof turnRecovery.onOutcomeUnknown !== "function" ||
+      typeof turnRecovery.onTerminalReconciliation !== "function"
+    ) throw scenarioError("threadmesh_live_context_recovery_invalid", role);
+    const operationProjection = admissionOperationProjection(prepared, ref);
+    const sourcePreparedDigest = sha256Digest(prepared);
+    const adapterIdempotencyKey = `idem_threadmesh_admission_${sha256Digest({
+      scenarioId, role, sourcePreparedDigest,
+    }).slice("sha256:".length)}`;
+    const operationBinding = admissionOperationBinding(
+      operationProjection,
+      adapterIdempotencyKey,
+    );
+    const observe = () => this.adapter.observePersistedTurns({
+      command: this.command,
+      args: this.args,
+      cwd,
+      env: this.env,
+      threadId: ref.threadId,
+      expectedSnapshotDigest: ref.snapshotDigest,
+      includeItemsList: false,
+      timeoutMs: 30_000,
+    });
+    const resourceManifest = {
+      resources: [{
+        kind: "codex-thread",
+        exactId: ref.threadId,
+        identifierDigest: sha256Digest(ref.threadId),
+        cleanupContext: {
+          method: "codex-thread-delete",
+          parameters: {
+            command: this.command,
+            args: [...this.args],
+            cwd,
+            env: Object.fromEntries(Object.entries(this.env).filter(
+              ([key]) => LIVE_JOURNAL_SAFE_ENV_KEYS.has(key),
+            )),
+          },
+          parametersDigest: sha256Digest({
+            command: this.command,
+            args: [...this.args],
+            cwd,
+            env: Object.fromEntries(Object.entries(this.env).filter(
+              ([key]) => LIVE_JOURNAL_SAFE_ENV_KEYS.has(key),
+            )),
+          }),
+        },
+      }],
+    };
+    const reconcile = async ({ baseline, journalProjection, startedTurnId = null }) => {
+      await turnRecovery.onOutcomeUnknown({
+        prepared,
+        adapterIdempotencyKey,
+        operationBinding,
+        baseline,
+      });
+      const recoveredObservation = await observe();
+      const classified = classifyCodexNativeTurnReconciliation({
+        baseline,
+        observation: recoveredObservation,
+      });
+      const exactTerminal = classified.state === "found-terminal" &&
+        (startedTurnId === null || classified.candidateTurnId === startedTurnId);
+      if (!exactTerminal) {
+        const reasonCode = classified.state === "found-terminal"
+          ? "codex-native-turn-started-id-mismatch"
+          : classified.reasonCode;
+        const ambiguous = scenarioError(
+          "threadmesh_codex_live_context_reconciliation_ambiguous",
+          reasonCode,
+        );
+        ambiguous.recovery = {
+          state: "ambiguous",
+          reasonCode,
+          journal: journalProjection,
+        };
+        throw ambiguous;
+      }
+      await turnRecovery.onTerminalReconciliation({
+        prepared,
+        adapterIdempotencyKey,
+        operationBinding,
+        baseline,
+        observation: recoveredObservation,
+      });
+      const terminal = scenarioError(
+        "threadmesh_codex_live_context_terminal_reconciled",
+        classified.turnStatus,
+      );
+      terminal.recovery = {
+        state: "found-terminal",
+        turnStatus: classified.turnStatus,
+        journal: journalProjection,
+      };
+      throw terminal;
+    };
+    if (fs.existsSync(turnRecovery.filename)) {
+      const stored = readM52LiveTurnJournal({
+        filename: turnRecovery.filename,
+        expectedScenarioId: scenarioId,
+        expectedExecutionId: turnRecovery.executionId,
+      });
+      const expectedAdapterRef = {
+        kind: ref.kind,
+        threadId: ref.threadId,
+        snapshotDigest: ref.snapshotDigest,
+      };
+      if (
+        stored.role !== role || stored.phase !== "context-admission" ||
+        stored.adapterIdempotencyKey !== adapterIdempotencyKey ||
+        canonicalJson(stored.adapterRef) !== canonicalJson(expectedAdapterRef) ||
+        canonicalJson(stored.operationBinding) !== canonicalJson(operationBinding) ||
+        canonicalJson(stored.resourceManifest) !== canonicalJson(resourceManifest)
+      ) throw scenarioError("threadmesh_live_context_recovery_binding_mismatch", role);
+      return reconcile({
+        baseline: stored.baseline,
+        journalProjection: { ...projectM52LiveTurnJournal(stored), replay: true },
+      });
+    }
+    const observation = await observe();
+    const baseline = freezeCodexNativeTurnBaseline(observation, {
+      clientUserMessageId: adapterIdempotencyKey,
+    });
+    const journalProjection = writeM52LiveTurnJournal({
+      filename: turnRecovery.filename,
+      scenarioId,
+      executionId: turnRecovery.executionId,
+      role,
+      phase: "context-admission",
+      adapterRef: ref,
+      adapterIdempotencyKey,
+      operationBinding,
+      baseline,
+      resourceManifest,
+    });
+    let nativeStartRequested = false;
+    let started = null;
+    try {
+      const result = await this.adapter.runAcceptedSuggestion({
+        command: this.command,
+        args: this.args,
+        cwd,
+        env: this.env,
+        adapterRef: ref,
+        envelope: prepared.envelope,
+        admission: prepared.admission,
+        adapterIdempotencyKey,
+        preparedRendering: prepared.rendering,
+        beforeTurnStart: async (metadata) => {
+          if (
+            metadata?.threadId !== ref.threadId ||
+            metadata?.snapshotDigest !== ref.snapshotDigest ||
+            metadata?.adapterIdempotencyKey !== adapterIdempotencyKey
+          ) throw scenarioError("threadmesh_live_context_start_binding_mismatch");
+          nativeStartRequested = true;
+        },
+        onTurnStarted: async (metadata) => {
+          if (
+            metadata?.threadId !== ref.threadId ||
+            metadata?.snapshotDigest !== ref.snapshotDigest ||
+            metadata?.adapterIdempotencyKey !== adapterIdempotencyKey ||
+            typeof metadata.turnId !== "string" || metadata.turnId.length < 1
+          ) throw scenarioError("threadmesh_live_context_start_binding_mismatch");
+          started = Object.freeze({ ...metadata });
+        },
+        timeoutMs: 180_000,
+      });
+      return {
+        ...assertCompletedContextAdmission(result, ref, started),
+        recoveryJournal: journalProjection,
+      };
+    } catch (error) {
+      if (!nativeStartRequested) {
+        retireM52LiveTurnJournal({
+          filename: turnRecovery.filename,
+          expectedScenarioId: scenarioId,
+          expectedExecutionId: turnRecovery.executionId,
+          expectedRecordDigest: journalProjection.recordDigest,
+        });
+        throw error;
+      }
+      return reconcile({
+        baseline,
+        journalProjection,
+        startedTurnId: started?.turnId ?? null,
+      });
+    }
   }
 
   async deleteRole({ role, ref, cwd }) {

@@ -7,6 +7,7 @@ import {
   projectCodexTerminalTurnReconciliation,
 } from "../state/codex-turn-reconciliation.mjs";
 import { canonicalJson, sha256Digest } from "../canonical-json.mjs";
+import { renderRegisteredPeerContext } from "../rendering/context-admission.mjs";
 import {
   assertProtocolObject,
   codedError,
@@ -4830,20 +4831,7 @@ export class SqliteCoordinator {
         envelope,
         admission,
         revision: expectedRevision,
-        rendering: `THREADMESH_UNTRUSTED_PEER_CONTEXT_JSON_V1\n${canonicalJson({
-          type: "threadmesh.peer-suggestion",
-          authority: "untrusted-peer",
-          provenance: {
-            messageId: envelope.messageId,
-            sourceTask: envelope.sender.taskId,
-            sourceIncarnation: envelope.sender.incarnationId,
-            relationshipId: envelope.relationshipId,
-            actorType: envelope.sender.actorType,
-            claimStatus: envelope.claimStatus,
-          },
-          reason: envelope.reason,
-          content: envelope.content,
-        })}`,
+        rendering: renderRegisteredPeerContext(envelope),
       };
     }).immediate();
   }

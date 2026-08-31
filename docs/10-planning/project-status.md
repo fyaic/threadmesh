@@ -38,7 +38,7 @@ orchestration are paused until this outcome is demonstrated.
 | Research and problem framing | Codex deep dive, community signals, ecosystem comparison, ADRs | Established |
 | Community adoption | No external stars, forks, watchers, issue comments, or independent setup result as of 2026-08-28 | Unvalidated |
 | Active product outcome | One-command lifecycle-event and dependency-handoff loop with an inspector | Deterministic slice merged; real Codex M5.1 seam passed; full multi-role loop pending |
-| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 275 unit/subtests | Executable draft |
+| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 284 unit/subtests | Executable draft |
 | Minimal adapter SDK | `@fyaic/threadmesh` `0.1.0-alpha.0`; six bounded client methods, per-turn proactive bridge, about 20 kB tarball, packed-consumer execution | Real Pi clean-consumer pass; not published to npm |
 | Local binding | Schema-validated JSON-RPC, transport-derived principals, typed errors | Executable local reference |
 | Local persistence | SQLite registry, proposals, grants, summaries, mailbox, claims, receipts, reconciliation, replay, audit, retention tombstones, and append-only Git evidence chains | Experimental |
@@ -217,6 +217,17 @@ atomically appends final evidence, promotes the turn, verifies the accepted
 disposition, satisfies the edge, and persists their unified replay identity.
 This closes the deterministic trusted-chain consumption seam. The real Codex
 implementation/review/same-session-fix/verification loop remains pending.
+
+The Codex context-admission turn now uses the same private pre-turn baseline,
+fsynced journal, exact client key, and read-first restart boundary. The journal
+binds the coordinator-prepared token, message, revision, registered adapter
+reference, and exact shared deterministic prompt. A known pre-start failure
+durably retires the journal; after a possible start, only one exact
+`interrupted` or `failed` turn may reconcile. Completed, zero, missing-client,
+or multiple deltas remain ambiguous and never resend. Coordinator-backed tests
+prove successful receipt/evidence can confirm the exact claim, while terminal
+recovery leaves it unconfirmed. This remains deterministic recovery evidence,
+not a killed-process or live-product pass.
 
 ## What the prototype proves
 
