@@ -1,9 +1,8 @@
 # Project status
 
-> Snapshot: 2026-08-31. Technical evidence is current through the M5.2 isolated
-> Git/evidence/verifier foundation following the real Codex M5.1 attention-seam
-> pass; product direction reflects the community and competitive review that
-> established the attention-router mainline.
+> Snapshot: 2026-09-01. Technical evidence is current through the first real
+> Codex M5.2 model/tool canary. The canary completed its A/R/same-A/V sequence
+> but remains intentionally blocked from the integrated product-evidence claim.
 
 ## Executive summary
 
@@ -37,8 +36,8 @@ orchestration are paused until this outcome is demonstrated.
 |---|---|---|
 | Research and problem framing | Codex deep dive, community signals, ecosystem comparison, ADRs | Established |
 | Community adoption | No external stars, forks, watchers, issue comments, or independent setup result as of 2026-08-28 | Unvalidated |
-| Active product outcome | One-command lifecycle-event and dependency-handoff loop with an inspector | Deterministic slice merged; real Codex M5.1 seam passed; full multi-role loop pending |
-| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 284 unit/subtests | Executable draft |
+| Active product outcome | One-command lifecycle-event and dependency-handoff loop with an inspector | Deterministic slice merged; real Codex M5.1 seam passed; real A/R/same-A/V model-tool canary completed; integrated lifecycle loop pending |
+| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 294 unit/subtests | Executable draft |
 | Minimal adapter SDK | `@fyaic/threadmesh` `0.1.0-alpha.0`; six bounded client methods, per-turn proactive bridge, about 20 kB tarball, packed-consumer execution | Real Pi clean-consumer pass; not published to npm |
 | Local binding | Schema-validated JSON-RPC, transport-derived principals, typed errors | Executable local reference |
 | Local persistence | SQLite registry, proposals, grants, summaries, mailbox, claims, receipts, reconciliation, replay, audit, retention tombstones, and append-only Git evidence chains | Experimental |
@@ -55,7 +54,8 @@ orchestration are paused until this outcome is demonstrated.
 | Codex-to-Kimi proactive flow | Codex A selected discovery and one send; persistent Kimi ACP B completed; exact A deletion and B delete/absence passed at `e0adb0e` | First real cross-harness proactive case passed |
 | Pi integration-kit flow | Fresh packed consumer exposed exactly two native tools; real Pi passed relevant/irrelevant/control behavior and supplied one admitted input to Kimi at `02d8d24` | Maintainer integration passed; independent human feedback pending |
 | Codex M5 attention seam | Real persistent A model-selected discovery/publication; durable cursor resumed the pre-created persistent B exactly once; local verification unlocked the dependency and restart recovered B as ready at `3d5caee` | M5.1 passed; logical wake only, local verifier simulation; M5.2/M5.3 pending |
-| M5.2 Git evidence foundation | Independent temporary bare repo and role worktrees, same-worktree implementer fix, SQLite v5 evidence chains, SQLite v6 turn/cursor recovery, SQLite v7 bound verifier-only atomic unlock, private signed-result recovery journal, five controlled coordinator-reopen checkpoints, and a preconfigured-key child verifier bound to exact commits/finding/test | Deterministic safety, persistence, model-action receipt, authority, and coordinator-reopen recovery seams passed; process-crash recovery and real Codex multi-role loop pending |
+| M5.2 Git evidence foundation | Independent temporary bare repo and role worktrees, same-worktree implementer fix, SQLite v5 evidence chains, SQLite v6 turn/cursor recovery, SQLite v7 bound verifier-only atomic unlock, private signed-result recovery journal, five controlled coordinator-reopen checkpoints, and a preconfigured-key child verifier bound to exact commits/finding/test | Deterministic safety, persistence, model-action receipt, authority, and coordinator-reopen recovery seams passed; integrated process-crash recovery and coordinator-driven real loop pending |
+| M5.2 real Codex model/tool canary | Five persistent roles; four real A/R/same-A/V turns; seven model-selected tool calls; exact two-commit chain; same-A identity/worktree; dependent and irrelevant zero-turn controls; five-of-five cleanup on base `1155fc8` | Canary completed; intentionally `blocked` with `liveProductEvidence=false` because the runner submitted four phase prompts and ThreadMesh performed no lifecycle handoff |
 | Gemini CLI headless | Official package 0.56.0 integrity, required flags, isolated-home cleanup | Real no-model preflight passed |
 | Gemini live model behavior | Exact marker script requires explicit provider key | Not authorized, not run |
 | Multi-product admission | One mailbox/acceptance/claim/evidence path across ACP, Codex, and Gemini fakes | Merged experimental implementation |
@@ -215,8 +215,15 @@ finalizer requires completed promoted publication actions for the first three
 stages and a completed-turn-bound exact-chain tool result for the fourth, then
 atomically appends final evidence, promotes the turn, verifies the accepted
 disposition, satisfies the edge, and persists their unified replay identity.
-This closes the deterministic trusted-chain consumption seam. The real Codex
-implementation/review/same-session-fix/verification loop remains pending.
+This closes the deterministic trusted-chain consumption seam. The first real
+Codex model/tool canary has now also completed the bounded
+implementation/review/same-session-fix/verification sequence: five roles, four
+turns, seven model-selected tool calls, two directly related commits, exact
+same-A reuse, zero-turn dependent and irrelevant controls, and five-of-five
+cleanup. It remains a canary rather than the M5.2 product result because the
+runner supplied all four phase prompts, ThreadMesh supplied no lifecycle
+handoff, and the dependent stayed locked. See the
+[public evidence record](../09-reviews/2026-09-01-m5-2-real-codex-canary.md).
 
 The Codex context-admission turn now uses the same private pre-turn baseline,
 fsynced journal, exact client key, and read-first restart boundary. The journal
