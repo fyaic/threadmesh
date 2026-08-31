@@ -257,7 +257,7 @@ peer content or as a production security boundary.
   install Ajv and native `better-sqlite3`.
 - **Reference runtime:** authenticated JSON-RPC + SQLite coordinator for local,
   trusted-process experiments.
-- **Validation:** 228 unit/subtests plus schema, transition, documentation, and
+- **Validation:** 233 unit/subtests plus schema, transition, documentation, and
   link checks; real Pi, Codex, and Kimi evidence recorded.
 - **Default:** proactive coordination remains off unless a maintainer explicitly
   opts into the bounded experimental profile.
