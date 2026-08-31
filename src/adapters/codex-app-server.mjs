@@ -210,6 +210,39 @@ function appendBoundedText(state, delta) {
   if (accepted.byteLength < chunk.byteLength) state.truncated = true;
 }
 
+function createTurnOperationGate(onTurnStarted) {
+  let settled = false;
+  let resolveReady;
+  let rejectReady;
+  const ready = new Promise((resolve, reject) => {
+    resolveReady = resolve;
+    rejectReady = reject;
+  });
+  // A turn may fail without ever requesting a dynamic tool. Keep the gate's
+  // rejection handled while still forwarding it to a waiting tool callback.
+  void ready.catch(() => {});
+  return {
+    ready,
+    async bind(metadata) {
+      if (settled) throw codedError("codex_app_server_turn_boundary_conflict");
+      try {
+        if (onTurnStarted) await onTurnStarted(metadata);
+        settled = true;
+        resolveReady(metadata);
+      } catch (error) {
+        settled = true;
+        rejectReady(error);
+        throw error;
+      }
+    },
+    close(error) {
+      if (settled) return;
+      settled = true;
+      rejectReady(error);
+    },
+  };
+}
+
 function classifyFailure(error, stderr) {
   const detail = `${error?.message ?? String(error)}\n${stderr}`;
   let classified;
@@ -505,6 +538,10 @@ export class CodexAppServerAdapter {
     prompt,
     dynamicTools,
     onToolCall,
+    beforeToolCall = null,
+    afterToolCall = null,
+    beforeTurnStart = null,
+    onTurnStarted = null,
     adapterIdempotencyKey,
     timeoutMs = 120_000,
   }) {
@@ -515,6 +552,14 @@ export class CodexAppServerAdapter {
     }
     if (typeof onToolCall !== "function") {
       throw codedError("codex_app_server_tool_handler_invalid");
+    }
+    if (
+      (beforeTurnStart !== null && typeof beforeTurnStart !== "function") ||
+      (onTurnStarted !== null && typeof onTurnStarted !== "function") ||
+      (beforeToolCall !== null && typeof beforeToolCall !== "function") ||
+      (afterToolCall !== null && typeof afterToolCall !== "function")
+    ) {
+      throw codedError("codex_app_server_turn_boundary_handler_invalid");
     }
     validateAdapterRef(adapterRef);
     if (typeof adapterIdempotencyKey !== "string" || adapterIdempotencyKey.length < 1) {
@@ -527,6 +572,8 @@ export class CodexAppServerAdapter {
       }
       await peer.request("thread/resume", threadResumeParams(adapterRef.threadId, cwd));
       const calls = [];
+      let nextToolOrdinal = 0;
+      const operationGate = createTurnOperationGate(onTurnStarted);
       const forbiddenToolItems = new Set();
       const stopInspecting = peer.onNotification(({ method, params }) => {
         if (
@@ -547,17 +594,36 @@ export class CodexAppServerAdapter {
           params?.threadId !== adapterRef.threadId || typeof params.turnId !== "string" ||
           typeof params.callId !== "string" || !allowedNames.has(params.tool)
         ) throw codedError("codex_app_server_dynamic_tool_call_invalid");
+        const started = await operationGate.ready;
+        if (params.turnId !== started.turnId) {
+          throw codedError("codex_app_server_dynamic_tool_call_invalid");
+        }
         if (calls.length >= 4) throw codedError("codex_app_server_dynamic_tool_budget_exceeded");
-        const value = await onToolCall({ tool: params.tool, arguments: params.arguments });
+        const ordinal = nextToolOrdinal;
+        nextToolOrdinal += 1;
+        const metadata = {
+          threadId: params.threadId,
+          turnId: params.turnId,
+          callId: params.callId,
+          ordinal,
+          tool: params.tool,
+          arguments: params.arguments,
+          argumentsDigest: sha256Digest(params.arguments),
+        };
+        if (beforeToolCall) await beforeToolCall(metadata);
+        const value = await onToolCall(metadata);
         const text = canonicalJson(value);
         if (Buffer.byteLength(text) > 16 * 1024) {
           throw codedError("codex_app_server_dynamic_tool_output_too_large");
         }
-        calls.push({
-          tool: params.tool,
-          argumentsDigest: sha256Digest(params.arguments),
+        const completedCall = {
+          ...metadata,
           outputDigest: sha256Digest(value),
-        });
+          resultStatus: "completed",
+        };
+        delete completedCall.arguments;
+        if (afterToolCall) await afterToolCall(completedCall);
+        calls.push(completedCall);
         return { success: true, contentItems: [{ type: "inputText", text }] };
       });
       try {
@@ -567,12 +633,19 @@ export class CodexAppServerAdapter {
           adapterRef,
           prompt,
           adapterIdempotencyKey,
+          { beforeTurnStart, onTurnStarted: (metadata) => operationGate.bind(metadata) },
         );
         if (forbiddenToolItems.size > 0) {
           throw codedError("codex_app_server_unexpected_autonomous_tool");
         }
-        return { ...turn, toolCalls: calls, nonThreadMeshToolCalls: 0 };
+        const toolCalls = [...calls].sort((left, right) => left.ordinal - right.ordinal);
+        if (toolCalls.some((call, ordinal) =>
+          call.ordinal !== ordinal || call.turnId !== turn.evidence.turnId)) {
+          throw codedError("codex_app_server_dynamic_tool_call_invalid");
+        }
+        return { ...turn, toolCalls, nonThreadMeshToolCalls: 0 };
       } finally {
+        operationGate.close(codedError("codex_app_server_turn_not_started"));
         stopInspecting();
         stopHandling();
       }
@@ -587,6 +660,10 @@ export class CodexAppServerAdapter {
     prompt,
     dynamicTools,
     onToolCall,
+    beforeToolCall = null,
+    afterToolCall = null,
+    beforeTurnStart = null,
+    onTurnStarted = null,
     developerInstructions,
     adapterIdempotencyKey,
     model = null,
@@ -599,6 +676,14 @@ export class CodexAppServerAdapter {
     }
     if (typeof onToolCall !== "function") {
       throw codedError("codex_app_server_tool_handler_invalid");
+    }
+    if (
+      (beforeTurnStart !== null && typeof beforeTurnStart !== "function") ||
+      (onTurnStarted !== null && typeof onTurnStarted !== "function") ||
+      (beforeToolCall !== null && typeof beforeToolCall !== "function") ||
+      (afterToolCall !== null && typeof afterToolCall !== "function")
+    ) {
+      throw codedError("codex_app_server_turn_boundary_handler_invalid");
     }
     if (typeof developerInstructions !== "string" || developerInstructions.length < 1) {
       throw codedError("codex_app_server_developer_instructions_invalid");
@@ -619,6 +704,8 @@ export class CodexAppServerAdapter {
         const adapterRef = projectThread(response, initialization);
         createdAdapterRef = adapterRef;
         const calls = [];
+        let nextToolOrdinal = 0;
+        const operationGate = createTurnOperationGate(onTurnStarted);
         const forbiddenToolItems = new Set();
         const stopInspecting = peer.onNotification(({ method, params }) => {
           if (
@@ -639,17 +726,36 @@ export class CodexAppServerAdapter {
             params?.threadId !== adapterRef.threadId || typeof params.turnId !== "string" ||
             typeof params.callId !== "string" || !allowedNames.has(params.tool)
           ) throw codedError("codex_app_server_dynamic_tool_call_invalid");
+          const started = await operationGate.ready;
+          if (params.turnId !== started.turnId) {
+            throw codedError("codex_app_server_dynamic_tool_call_invalid");
+          }
           if (calls.length >= 4) throw codedError("codex_app_server_dynamic_tool_budget_exceeded");
-          const value = await onToolCall({ tool: params.tool, arguments: params.arguments });
+          const ordinal = nextToolOrdinal;
+          nextToolOrdinal += 1;
+          const metadata = {
+            threadId: params.threadId,
+            turnId: params.turnId,
+            callId: params.callId,
+            ordinal,
+            tool: params.tool,
+            arguments: params.arguments,
+            argumentsDigest: sha256Digest(params.arguments),
+          };
+          if (beforeToolCall) await beforeToolCall(metadata);
+          const value = await onToolCall(metadata);
           const text = canonicalJson(value);
           if (Buffer.byteLength(text) > 16 * 1024) {
             throw codedError("codex_app_server_dynamic_tool_output_too_large");
           }
-          calls.push({
-            tool: params.tool,
-            argumentsDigest: sha256Digest(params.arguments),
+          const completedCall = {
+            ...metadata,
             outputDigest: sha256Digest(value),
-          });
+            resultStatus: "completed",
+          };
+          delete completedCall.arguments;
+          if (afterToolCall) await afterToolCall(completedCall);
+          calls.push(completedCall);
           return { success: true, contentItems: [{ type: "inputText", text }] };
         });
         try {
@@ -659,17 +765,24 @@ export class CodexAppServerAdapter {
             adapterRef,
             prompt,
             adapterIdempotencyKey,
+            { beforeTurnStart, onTurnStarted: (metadata) => operationGate.bind(metadata) },
           );
           if (forbiddenToolItems.size > 0) {
             throw codedError("codex_app_server_unexpected_autonomous_tool");
           }
+          const toolCalls = [...calls].sort((left, right) => left.ordinal - right.ordinal);
+          if (toolCalls.some((call, ordinal) =>
+            call.ordinal !== ordinal || call.turnId !== turn.evidence.turnId)) {
+            throw codedError("codex_app_server_dynamic_tool_call_invalid");
+          }
           return {
             ...turn,
             adapterRef,
-            toolCalls: calls,
+            toolCalls,
             nonThreadMeshToolCalls: 0,
           };
         } finally {
+          operationGate.close(codedError("codex_app_server_turn_not_started"));
           stopInspecting();
           stopHandling();
         }
@@ -864,7 +977,14 @@ export class CodexAppServerAdapter {
     });
   }
 
-  async #runTurn(peer, initialization, adapterRef, promptText, adapterIdempotencyKey) {
+  async #runTurn(
+    peer,
+    initialization,
+    adapterRef,
+    promptText,
+    adapterIdempotencyKey,
+    { beforeTurnStart = null, onTurnStarted = null } = {},
+  ) {
     const outputsByTurn = new Map();
     let activeTurnId = null;
     const stopListening = peer.onNotification(({ method, params }) => {
@@ -886,6 +1006,13 @@ export class CodexAppServerAdapter {
     });
 
     try {
+      if (beforeTurnStart) {
+        await beforeTurnStart({
+          threadId: adapterRef.threadId,
+          snapshotDigest: initialization.snapshotDigest,
+          adapterIdempotencyKey,
+        });
+      }
       const response = await peer.request("turn/start", {
         threadId: adapterRef.threadId,
         input: [{ type: "text", text: promptText }],
@@ -896,6 +1023,14 @@ export class CodexAppServerAdapter {
         throw codedError("codex_app_server_turn_invalid");
       }
       activeTurnId = response.turn.id;
+      if (onTurnStarted) {
+        await onTurnStarted({
+          threadId: adapterRef.threadId,
+          turnId: activeTurnId,
+          snapshotDigest: initialization.snapshotDigest,
+          adapterIdempotencyKey,
+        });
+      }
       const output = outputsByTurn.get(activeTurnId) ?? {
         chunks: [],
         bytes: 0,

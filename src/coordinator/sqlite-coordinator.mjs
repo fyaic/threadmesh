@@ -29,6 +29,19 @@ import {
   createGitEvidenceRequirement as createPureGitEvidenceRequirement,
   validateGitEvidenceChain,
 } from "../state/git-evidence-chain.mjs";
+import {
+  abandonDurableTurnIntent,
+  bindCompletedTurnIntent,
+  bindStartedTurnOperation,
+  completeModelSelectedToolAction,
+  createProposedDurableTurnIntent,
+  markTurnOutcomeUnknown,
+  promoteDurableTurnIntent,
+  reconcileUnknownDurableTurnIntent,
+  recordModelSelectedToolAction,
+  startDurableTurnIntent,
+  validateDurableTurnIntent,
+} from "../state/durable-turn-intent.mjs";
 
 const DEFAULT_DECISION_REASONS = Object.freeze({
   accepted: "accepted",
@@ -40,9 +53,15 @@ const DEFAULT_DECISION_REASONS = Object.freeze({
   revoked: "revoked",
 });
 const PURGED_TEXT = "Content purged by the ThreadMesh retention policy.";
-export const SQLITE_SCHEMA_VERSION = 5;
-export const SQLITE_SCHEMA_NAME = "threadmesh-git-evidence-state";
+const GIT_EVIDENCE_STAGE_TOOL = Object.freeze({
+  implementation: "threadmesh_publish_artifact",
+  "review-failed": "threadmesh_report_review_finding",
+  fix: "threadmesh_publish_dependency",
+});
+export const SQLITE_SCHEMA_VERSION = 6;
+export const SQLITE_SCHEMA_NAME = "threadmesh-durable-turn-intents";
 const SQLITE_SCHEMA_V4_NAME = "threadmesh-durable-dependency-state";
+const SQLITE_SCHEMA_V5_NAME = "threadmesh-git-evidence-state";
 const SQLITE_SCHEMA_V2_MANIFEST = Object.freeze({
   tables: {
     tasks: [
@@ -237,7 +256,7 @@ const SQLITE_SCHEMA_V5_EVIDENCE_CONSTRAINTS = Object.freeze({
     }),
   }),
 });
-export const SQLITE_SCHEMA_MANIFEST = Object.freeze({
+const SQLITE_SCHEMA_V5_MANIFEST = Object.freeze({
   ...SQLITE_SCHEMA_V4_MANIFEST,
   tables: Object.freeze({
     ...SQLITE_SCHEMA_V4_MANIFEST.tables,
@@ -265,6 +284,225 @@ export const SQLITE_SCHEMA_MANIFEST = Object.freeze({
   ]),
   constraints: SQLITE_SCHEMA_V5_EVIDENCE_CONSTRAINTS,
 });
+const SQLITE_SCHEMA_V6_CONSTRAINTS = Object.freeze({
+  tables: Object.freeze({
+    ...SQLITE_SCHEMA_V5_EVIDENCE_CONSTRAINTS.tables,
+    turn_execution_intents: Object.freeze({
+      columns: Object.freeze([
+        "execution_id|TEXT|1||1",
+        "task_id|TEXT|1||0",
+        "incarnation_id|TEXT|1||0",
+        "adapter_kind|TEXT|1||0",
+        "adapter_thread_id|TEXT|1||0",
+        "adapter_snapshot_digest|TEXT|1||0",
+        "adapter_ref_digest|TEXT|1||0",
+        "task_revision|INTEGER|1||0",
+        "adapter_idempotency_key|TEXT|1||0",
+        "tool_allowlist_json|TEXT|1||0",
+        "tool_allowlist_digest|TEXT|1||0",
+        "prompt_digest|TEXT|1||0",
+        "intent_digest|TEXT|1||0",
+        "intent_json|TEXT|1||0",
+        "scenario_id|TEXT|0||0",
+        "chain_id|TEXT|0||0",
+        "message_id|TEXT|0||0",
+        "state|TEXT|1||0",
+        "turn_id|TEXT|0||0",
+        "action_count|INTEGER|1|0|0",
+        "action_head_digest|TEXT|0||0",
+        "receipt_json|TEXT|0||0",
+        "receipt_digest|TEXT|0||0",
+        "reconciliation_json|TEXT|0||0",
+        "reconciliation_digest|TEXT|0||0",
+        "revision|INTEGER|1|0|0",
+        "created_at|TEXT|1||0",
+        "started_at|TEXT|0||0",
+        "completed_at|TEXT|0||0",
+        "updated_at|TEXT|1||0",
+      ]),
+      unique: Object.freeze(["adapter_idempotency_key", "execution_id"]),
+      foreignKeys: Object.freeze([
+        "task_id->tasks.task_id,incarnation_id->tasks.incarnation_id",
+      ]),
+    }),
+    turn_tool_actions: Object.freeze({
+      columns: Object.freeze([
+        "execution_id|TEXT|1||1",
+        "ordinal|INTEGER|1||2",
+        "turn_id|TEXT|1||0",
+        "call_id|TEXT|1||0",
+        "tool_name|TEXT|1||0",
+        "args_json|TEXT|1||0",
+        "args_digest|TEXT|1||0",
+        "selection_digest|TEXT|1||0",
+        "result_digest|TEXT|0||0",
+        "result_status|TEXT|0||0",
+        "previous_action_digest|TEXT|0||0",
+        "action_digest|TEXT|0||0",
+        "observed_at|TEXT|1||0",
+        "result_completed_at|TEXT|0||0",
+      ]),
+      unique: Object.freeze([
+        "execution_id,call_id",
+        "execution_id,ordinal",
+        "execution_id,selection_digest",
+      ]),
+      foreignKeys: Object.freeze([
+        "execution_id->turn_execution_intents.execution_id",
+      ]),
+    }),
+    attention_receiver_cursors: Object.freeze({
+      columns: Object.freeze([
+        "receiver_task_id|TEXT|1||1",
+        "receiver_incarnation_id|TEXT|1||2",
+        "committed_cursor|INTEGER|1|0|0",
+        "commit_count|INTEGER|1|0|0",
+        "commit_head_digest|TEXT|0||0",
+        "revision|INTEGER|1|0|0",
+        "active_claim_epoch|TEXT|0||0",
+        "active_event_cursor|INTEGER|0||0",
+        "updated_at|TEXT|1||0",
+      ]),
+      unique: Object.freeze([
+        "receiver_task_id,receiver_incarnation_id",
+      ]),
+      foreignKeys: Object.freeze([
+        "receiver_task_id->tasks.task_id,receiver_incarnation_id->tasks.incarnation_id",
+      ]),
+    }),
+    attention_cursor_commits: Object.freeze({
+      columns: Object.freeze([
+        "receiver_task_id|TEXT|1||1",
+        "receiver_incarnation_id|TEXT|1||2",
+        "sequence|INTEGER|1||3",
+        "from_cursor|INTEGER|1||0",
+        "to_cursor|INTEGER|1||0",
+        "kind|TEXT|1||0",
+        "source_id|TEXT|1||0",
+        "event_digest|TEXT|1||0",
+        "classification_digest|TEXT|0||0",
+        "previous_commit_digest|TEXT|0||0",
+        "commit_digest|TEXT|1||0",
+        "committed_at|TEXT|1||0",
+      ]),
+      unique: Object.freeze([
+        "receiver_task_id,receiver_incarnation_id,commit_digest",
+        "receiver_task_id,receiver_incarnation_id,sequence",
+        "receiver_task_id,receiver_incarnation_id,source_id",
+      ]),
+      foreignKeys: Object.freeze([
+        "receiver_task_id->attention_receiver_cursors.receiver_task_id,receiver_incarnation_id->attention_receiver_cursors.receiver_incarnation_id",
+      ]),
+    }),
+    attention_handler_claims: Object.freeze({
+      columns: Object.freeze([
+        "claim_epoch|TEXT|1||1",
+        "receiver_task_id|TEXT|1||0",
+        "receiver_incarnation_id|TEXT|1||0",
+        "event_cursor|INTEGER|1||0",
+        "event_id|TEXT|1||0",
+        "sender_incarnation_id|TEXT|1||0",
+        "message_id|TEXT|1||0",
+        "event_digest|TEXT|1||0",
+        "state|TEXT|1||0",
+        "turn_execution_id|TEXT|0||0",
+        "revision|INTEGER|1|0|0",
+        "claimed_at|TEXT|1||0",
+        "completed_at|TEXT|0||0",
+        "updated_at|TEXT|1||0",
+      ]),
+      unique: Object.freeze([
+        "claim_epoch",
+        "receiver_task_id,receiver_incarnation_id,event_cursor",
+        "receiver_task_id,receiver_incarnation_id,event_id",
+      ]),
+      foreignKeys: Object.freeze([
+        "receiver_task_id->tasks.task_id,receiver_incarnation_id->tasks.incarnation_id",
+        "turn_execution_id->turn_execution_intents.execution_id",
+      ]),
+    }),
+  }),
+  indexes: Object.freeze({
+    ...SQLITE_SCHEMA_V5_EVIDENCE_CONSTRAINTS.indexes,
+    turn_execution_intents_task_state: Object.freeze({
+      table: "turn_execution_intents",
+      unique: 0,
+      partial: 0,
+      columns: Object.freeze(["task_id", "incarnation_id", "state"]),
+    }),
+    turn_tool_actions_execution_ordinal: Object.freeze({
+      table: "turn_tool_actions",
+      unique: 0,
+      partial: 0,
+      columns: Object.freeze(["execution_id", "ordinal"]),
+    }),
+    attention_handler_claims_receiver_cursor: Object.freeze({
+      table: "attention_handler_claims",
+      unique: 0,
+      partial: 0,
+      columns: Object.freeze([
+        "receiver_task_id", "receiver_incarnation_id", "event_cursor",
+      ]),
+    }),
+    attention_cursor_commits_receiver_sequence: Object.freeze({
+      table: "attention_cursor_commits",
+      unique: 0,
+      partial: 0,
+      columns: Object.freeze([
+        "receiver_task_id", "receiver_incarnation_id", "sequence",
+      ]),
+    }),
+  }),
+});
+export const SQLITE_SCHEMA_MANIFEST = Object.freeze({
+  ...SQLITE_SCHEMA_V5_MANIFEST,
+  tables: Object.freeze({
+    ...SQLITE_SCHEMA_V5_MANIFEST.tables,
+    turn_execution_intents: Object.freeze([
+      "execution_id", "task_id", "incarnation_id", "adapter_kind",
+      "adapter_thread_id", "adapter_snapshot_digest", "adapter_ref_digest",
+      "task_revision", "adapter_idempotency_key", "tool_allowlist_json",
+      "tool_allowlist_digest", "prompt_digest", "intent_digest",
+      "intent_json",
+      "scenario_id", "chain_id",
+      "message_id", "state", "turn_id", "action_count",
+      "action_head_digest", "receipt_json", "receipt_digest",
+      "reconciliation_json", "reconciliation_digest", "revision",
+      "created_at", "started_at", "completed_at", "updated_at",
+    ]),
+    turn_tool_actions: Object.freeze([
+      "execution_id", "ordinal", "turn_id", "call_id", "tool_name",
+      "args_json", "args_digest", "selection_digest", "result_digest",
+      "result_status", "previous_action_digest", "action_digest",
+      "observed_at", "result_completed_at",
+    ]),
+    attention_receiver_cursors: Object.freeze([
+      "receiver_task_id", "receiver_incarnation_id", "committed_cursor",
+      "commit_count", "commit_head_digest", "revision", "active_claim_epoch",
+      "active_event_cursor", "updated_at",
+    ]),
+    attention_cursor_commits: Object.freeze([
+      "receiver_task_id", "receiver_incarnation_id", "sequence",
+      "from_cursor", "to_cursor", "kind", "source_id", "event_digest",
+      "classification_digest", "previous_commit_digest", "commit_digest",
+      "committed_at",
+    ]),
+    attention_handler_claims: Object.freeze([
+      "claim_epoch", "receiver_task_id", "receiver_incarnation_id",
+      "event_cursor", "event_id", "sender_incarnation_id", "message_id",
+      "event_digest", "state", "turn_execution_id", "revision",
+      "claimed_at", "completed_at", "updated_at",
+    ]),
+  }),
+  indexes: Object.freeze([
+    ...SQLITE_SCHEMA_V5_MANIFEST.indexes,
+    "turn_execution_intents_task_state",
+    "turn_tool_actions_execution_ordinal",
+    "attention_handler_claims_receiver_cursor",
+    "attention_cursor_commits_receiver_sequence",
+  ]),
+  constraints: SQLITE_SCHEMA_V6_CONSTRAINTS,
+});
 export const SQLITE_SCHEMA_MIGRATIONS = Object.freeze([
   Object.freeze({
     version: 1,
@@ -288,6 +526,11 @@ export const SQLITE_SCHEMA_MIGRATIONS = Object.freeze([
   }),
   Object.freeze({
     version: 5,
+    name: SQLITE_SCHEMA_V5_NAME,
+    manifest: SQLITE_SCHEMA_V5_MANIFEST,
+  }),
+  Object.freeze({
+    version: 6,
     name: SQLITE_SCHEMA_NAME,
     manifest: SQLITE_SCHEMA_MANIFEST,
   }),
@@ -684,6 +927,8 @@ export class SqliteCoordinator {
     try {
       this.#migrate();
       this.#validatePersistedGitEvidenceChains();
+      this.#validatePersistedTurnExecutions();
+      this.#validatePersistedAttentionState();
     } catch (error) {
       this.db.close();
       throw error;
@@ -754,6 +999,9 @@ export class SqliteCoordinator {
       }
       if (version < 5) {
         this.#initializeGitEvidenceSchema();
+      }
+      if (version < 6) {
+        this.#initializeDurableTurnIntentSchema();
       }
       this.#assertSchemaCompatible();
       for (const migration of SQLITE_SCHEMA_MIGRATIONS) {
@@ -1071,6 +1319,140 @@ export class SqliteCoordinator {
 
       CREATE INDEX IF NOT EXISTS git_evidence_records_chain_sequence
         ON git_evidence_records (chain_id, sequence);
+    `);
+  }
+
+  #initializeDurableTurnIntentSchema() {
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS turn_execution_intents (
+        execution_id TEXT NOT NULL PRIMARY KEY,
+        task_id TEXT NOT NULL,
+        incarnation_id TEXT NOT NULL,
+        adapter_kind TEXT NOT NULL,
+        adapter_thread_id TEXT NOT NULL,
+        adapter_snapshot_digest TEXT NOT NULL,
+        adapter_ref_digest TEXT NOT NULL,
+        task_revision INTEGER NOT NULL,
+        adapter_idempotency_key TEXT NOT NULL UNIQUE,
+        tool_allowlist_json TEXT NOT NULL,
+        tool_allowlist_digest TEXT NOT NULL,
+        prompt_digest TEXT NOT NULL,
+        intent_digest TEXT NOT NULL,
+        intent_json TEXT NOT NULL,
+        scenario_id TEXT,
+        chain_id TEXT,
+        message_id TEXT,
+        state TEXT NOT NULL,
+        turn_id TEXT,
+        action_count INTEGER NOT NULL DEFAULT 0,
+        action_head_digest TEXT,
+        receipt_json TEXT,
+        receipt_digest TEXT,
+        reconciliation_json TEXT,
+        reconciliation_digest TEXT,
+        revision INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        started_at TEXT,
+        completed_at TEXT,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (task_id, incarnation_id)
+          REFERENCES tasks (task_id, incarnation_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS turn_tool_actions (
+        execution_id TEXT NOT NULL,
+        ordinal INTEGER NOT NULL,
+        turn_id TEXT NOT NULL,
+        call_id TEXT NOT NULL,
+        tool_name TEXT NOT NULL,
+        args_json TEXT NOT NULL,
+        args_digest TEXT NOT NULL,
+        selection_digest TEXT NOT NULL,
+        result_digest TEXT,
+        result_status TEXT,
+        previous_action_digest TEXT,
+        action_digest TEXT,
+        observed_at TEXT NOT NULL,
+        result_completed_at TEXT,
+        PRIMARY KEY (execution_id, ordinal),
+        UNIQUE (execution_id, call_id),
+        UNIQUE (execution_id, selection_digest),
+        FOREIGN KEY (execution_id)
+          REFERENCES turn_execution_intents (execution_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS attention_receiver_cursors (
+        receiver_task_id TEXT NOT NULL,
+        receiver_incarnation_id TEXT NOT NULL,
+        committed_cursor INTEGER NOT NULL DEFAULT 0,
+        commit_count INTEGER NOT NULL DEFAULT 0,
+        commit_head_digest TEXT,
+        revision INTEGER NOT NULL DEFAULT 0,
+        active_claim_epoch TEXT,
+        active_event_cursor INTEGER,
+        updated_at TEXT NOT NULL,
+        PRIMARY KEY (receiver_task_id, receiver_incarnation_id),
+        FOREIGN KEY (receiver_task_id, receiver_incarnation_id)
+          REFERENCES tasks (task_id, incarnation_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS attention_cursor_commits (
+        receiver_task_id TEXT NOT NULL,
+        receiver_incarnation_id TEXT NOT NULL,
+        sequence INTEGER NOT NULL,
+        from_cursor INTEGER NOT NULL,
+        to_cursor INTEGER NOT NULL,
+        kind TEXT NOT NULL,
+        source_id TEXT NOT NULL,
+        event_digest TEXT NOT NULL,
+        classification_digest TEXT,
+        previous_commit_digest TEXT,
+        commit_digest TEXT NOT NULL,
+        committed_at TEXT NOT NULL,
+        PRIMARY KEY (receiver_task_id, receiver_incarnation_id, sequence),
+        UNIQUE (receiver_task_id, receiver_incarnation_id, source_id),
+        UNIQUE (receiver_task_id, receiver_incarnation_id, commit_digest),
+        FOREIGN KEY (receiver_task_id, receiver_incarnation_id)
+          REFERENCES attention_receiver_cursors (
+            receiver_task_id, receiver_incarnation_id
+          )
+      );
+
+      CREATE TABLE IF NOT EXISTS attention_handler_claims (
+        claim_epoch TEXT NOT NULL PRIMARY KEY,
+        receiver_task_id TEXT NOT NULL,
+        receiver_incarnation_id TEXT NOT NULL,
+        event_cursor INTEGER NOT NULL,
+        event_id TEXT NOT NULL,
+        sender_incarnation_id TEXT NOT NULL,
+        message_id TEXT NOT NULL,
+        event_digest TEXT NOT NULL,
+        state TEXT NOT NULL,
+        turn_execution_id TEXT,
+        revision INTEGER NOT NULL DEFAULT 0,
+        claimed_at TEXT NOT NULL,
+        completed_at TEXT,
+        updated_at TEXT NOT NULL,
+        UNIQUE (receiver_task_id, receiver_incarnation_id, event_cursor),
+        UNIQUE (receiver_task_id, receiver_incarnation_id, event_id),
+        FOREIGN KEY (receiver_task_id, receiver_incarnation_id)
+          REFERENCES tasks (task_id, incarnation_id),
+        FOREIGN KEY (turn_execution_id)
+          REFERENCES turn_execution_intents (execution_id)
+      );
+
+      CREATE INDEX IF NOT EXISTS turn_execution_intents_task_state
+        ON turn_execution_intents (task_id, incarnation_id, state);
+      CREATE INDEX IF NOT EXISTS turn_tool_actions_execution_ordinal
+        ON turn_tool_actions (execution_id, ordinal);
+      CREATE INDEX IF NOT EXISTS attention_handler_claims_receiver_cursor
+        ON attention_handler_claims (
+          receiver_task_id, receiver_incarnation_id, event_cursor
+        );
+      CREATE INDEX IF NOT EXISTS attention_cursor_commits_receiver_sequence
+        ON attention_cursor_commits (
+          receiver_task_id, receiver_incarnation_id, sequence
+        );
     `);
   }
 
@@ -1449,6 +1831,721 @@ export class SqliteCoordinator {
         },
       })),
     };
+  }
+
+  createTurnExecutionIntent(input, expectedTaskRevision, principal) {
+    const intent = createProposedDurableTurnIntent(input);
+    assertTaskPrincipal(principal, intent.actor.taskId, intent.actor.incarnationId);
+    if (!Number.isInteger(expectedTaskRevision) || expectedTaskRevision < 0) {
+      throw codedError("threadmesh_turn_execution_task_revision_invalid");
+    }
+    return this.db.transaction(() => {
+      const existing = this.db.prepare(
+        "SELECT * FROM turn_execution_intents WHERE execution_id = ? OR adapter_idempotency_key = ?",
+      ).get(intent.intentId, intent.adapterIdempotencyKey);
+      if (existing) {
+        const snapshot = this.#turnExecutionSnapshot(existing.execution_id, existing);
+        if (
+          snapshot.row.execution_id === intent.intentId &&
+          snapshot.row.task_revision === expectedTaskRevision &&
+          snapshot.row.intent_digest === this.#turnIntentDigest(intent)
+        ) return { ...snapshot, replay: true };
+        throw codedError("threadmesh_turn_execution_intent_conflict");
+      }
+      const current = this.#assertTurnExecutionActorCurrent(intent.actor);
+      if (current.taskRevision !== expectedTaskRevision) {
+        throw codedError("threadmesh_turn_execution_task_revision_conflict");
+      }
+      const at = nowIso(this.clock);
+      const allowlistJson = canonicalJson(intent.allowedTools);
+      this.db.prepare(
+        `INSERT INTO turn_execution_intents (
+           execution_id, task_id, incarnation_id, adapter_kind,
+           adapter_thread_id, adapter_snapshot_digest, adapter_ref_digest,
+           task_revision, adapter_idempotency_key, tool_allowlist_json,
+           tool_allowlist_digest, prompt_digest, intent_digest, intent_json,
+           scenario_id, chain_id, message_id, state, turn_id,
+           action_count, action_head_digest, receipt_json, receipt_digest,
+           reconciliation_json, reconciliation_digest, revision,
+           created_at, started_at, completed_at, updated_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL,
+           0, NULL, NULL, NULL, NULL, NULL, 0, ?, NULL, NULL, ?)`,
+      ).run(
+        intent.intentId,
+        intent.actor.taskId,
+        intent.actor.incarnationId,
+        current.adapterRef.kind,
+        intent.actor.threadId,
+        intent.actor.snapshotDigest,
+        current.adapterRefDigest,
+        current.taskRevision,
+        intent.adapterIdempotencyKey,
+        allowlistJson,
+        sha256Digest(intent.allowedTools),
+        intent.promptDigest,
+        this.#turnIntentDigest(intent),
+        canonicalJson(intent),
+        intent.scenarioId,
+        intent.chainId,
+        intent.messageId,
+        intent.state,
+        at,
+        at,
+      );
+      return { ...this.#turnExecutionSnapshot(intent.intentId), replay: false };
+    }).immediate();
+  }
+
+  markTurnExecutionStarted(
+    executionId,
+    { expectedRevision } = {},
+    principal,
+  ) {
+    return this.#transitionTurnExecution(
+      executionId,
+      expectedRevision,
+      principal,
+      (snapshot) => startDurableTurnIntent(snapshot.intent),
+      { replayState: "started", replayMatch: () => true, acquired: true },
+    );
+  }
+
+  bindStartedTurnExecutionOperation(
+    executionId,
+    { turnId, expectedRevision } = {},
+    principal,
+  ) {
+    return this.#transitionTurnExecution(
+      executionId,
+      expectedRevision,
+      principal,
+      (snapshot) => bindStartedTurnOperation(snapshot.intent, { turnId }),
+      {
+        replayState: "started",
+        replayMatch: (intent) => intent.turnStart?.turnId === turnId,
+      },
+    );
+  }
+
+  recordModelSelectedTurnToolAction(
+    executionId,
+    {
+      turnId, callId, ordinal, name, arguments: argumentsValue,
+      expectedRevision, expectedActionHeadDigest,
+    } = {},
+    principal,
+  ) {
+    return this.db.transaction(() => {
+      const snapshot = this.#turnExecutionSnapshot(executionId);
+      this.#assertTurnExecutionPrincipalAndBinding(snapshot, principal);
+      const argsJson = this.#boundedCanonicalArguments(argumentsValue);
+      const action = {
+        turnId,
+        callId,
+        ordinal,
+        name,
+        argumentsDigest: sha256Digest(JSON.parse(argsJson)),
+      };
+      const existing = snapshot.actions.find(
+        (entry) => entry.ordinal === ordinal || entry.callId === callId,
+      );
+      if (existing) {
+        if (
+          existing.ordinal === ordinal && existing.callId === callId &&
+          existing.turnId === turnId && existing.name === name &&
+          existing.argumentsDigest === action.argumentsDigest &&
+          existing.argsJson === argsJson
+        ) return { ...snapshot, replay: true };
+        throw codedError("threadmesh_turn_execution_tool_action_conflict");
+      }
+      this.#assertTurnExecutionCas(snapshot, expectedRevision);
+      if (expectedActionHeadDigest !== snapshot.actionHeadDigest) {
+        throw codedError("threadmesh_turn_execution_action_head_conflict");
+      }
+      const nextIntent = recordModelSelectedToolAction(snapshot.intent, action);
+      const selectionDigest = sha256Digest({
+        executionId, ...action, args: JSON.parse(argsJson),
+        previousActionDigest: snapshot.actionHeadDigest,
+      });
+      const at = nowIso(this.clock);
+      try {
+        this.db.prepare(
+          `INSERT INTO turn_tool_actions (
+             execution_id, ordinal, turn_id, call_id, tool_name, args_json,
+             args_digest, selection_digest, result_digest, result_status,
+             previous_action_digest, action_digest, observed_at,
+             result_completed_at
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, NULL, ?, NULL)`,
+        ).run(
+          executionId, ordinal, turnId, callId, name, argsJson,
+          action.argumentsDigest, selectionDigest,
+          snapshot.actionHeadDigest, at,
+        );
+        const updated = this.db.prepare(
+          `UPDATE turn_execution_intents
+           SET intent_json = ?, action_count = action_count + 1,
+               action_head_digest = ?, revision = revision + 1, updated_at = ?
+           WHERE execution_id = ? AND revision = ?
+             AND action_count = ?
+             AND ((action_head_digest IS NULL AND ? IS NULL)
+               OR action_head_digest = ?)`,
+        ).run(
+          canonicalJson(nextIntent), selectionDigest, at, executionId,
+          expectedRevision, snapshot.actionCount,
+          snapshot.actionHeadDigest, snapshot.actionHeadDigest,
+        );
+        if (updated.changes !== 1) {
+          throw codedError("threadmesh_turn_execution_revision_conflict");
+        }
+      } catch (error) {
+        if (String(error?.code ?? "").startsWith("SQLITE_CONSTRAINT")) {
+          throw codedError("threadmesh_turn_execution_tool_action_conflict");
+        }
+        throw error;
+      }
+      return { ...this.#turnExecutionSnapshot(executionId), replay: false };
+    }).immediate();
+  }
+
+  completeModelSelectedTurnToolAction(
+    executionId,
+    {
+      turnId, callId, ordinal, resultDigest, resultStatus,
+      expectedRevision, expectedActionHeadDigest,
+    } = {},
+    principal,
+  ) {
+    return this.db.transaction(() => {
+      const snapshot = this.#turnExecutionSnapshot(executionId);
+      this.#assertTurnExecutionPrincipalAndBinding(snapshot, principal);
+      const selected = snapshot.actions[ordinal];
+      if (!selected || selected.turnId !== turnId || selected.callId !== callId) {
+        throw codedError("threadmesh_turn_execution_tool_completion_missing_selection");
+      }
+      if (selected.resultDigest !== null || selected.resultStatus !== null) {
+        if (selected.resultDigest === resultDigest && selected.resultStatus === resultStatus) {
+          return { ...snapshot, replay: true };
+        }
+        throw codedError("threadmesh_turn_execution_tool_completion_conflict");
+      }
+      this.#assertTurnExecutionCas(snapshot, expectedRevision);
+      if (expectedActionHeadDigest !== snapshot.actionHeadDigest) {
+        throw codedError("threadmesh_turn_execution_action_head_conflict");
+      }
+      const nextIntent = completeModelSelectedToolAction(snapshot.intent, {
+        turnId, callId, ordinal, resultDigest, resultStatus,
+      });
+      const actionDigest = sha256Digest({
+        selectionDigest: selected.selectionDigest,
+        resultDigest,
+        resultStatus,
+      });
+      const at = nowIso(this.clock);
+      const actionUpdated = this.db.prepare(
+        `UPDATE turn_tool_actions
+         SET result_digest = ?, result_status = ?, action_digest = ?,
+             result_completed_at = ?
+         WHERE execution_id = ? AND ordinal = ? AND call_id = ?
+           AND result_digest IS NULL AND result_status IS NULL
+           AND action_digest IS NULL`,
+      ).run(resultDigest, resultStatus, actionDigest, at, executionId, ordinal, callId);
+      if (actionUpdated.changes !== 1) {
+        throw codedError("threadmesh_turn_execution_tool_completion_conflict");
+      }
+      const headerUpdated = this.db.prepare(
+        `UPDATE turn_execution_intents
+         SET intent_json = ?, revision = revision + 1, updated_at = ?
+         WHERE execution_id = ? AND revision = ?
+           AND action_head_digest = ?`,
+      ).run(
+        canonicalJson(nextIntent), at, executionId, expectedRevision,
+        snapshot.actionHeadDigest,
+      );
+      if (headerUpdated.changes !== 1) {
+        throw codedError("threadmesh_turn_execution_revision_conflict");
+      }
+      return { ...this.#turnExecutionSnapshot(executionId), replay: false };
+    }).immediate();
+  }
+
+  bindCompletedTurnExecution(
+    executionId,
+    { binding, expectedRevision } = {},
+    principal,
+  ) {
+    return this.#transitionTurnExecution(
+      executionId,
+      expectedRevision,
+      principal,
+      (snapshot) => bindCompletedTurnIntent(snapshot.intent, binding),
+      {
+        replayStates: ["completed-turn-bound", "promoted"],
+        replayMatch: (_intent, snapshot) =>
+          snapshot.row.receipt_json !== null &&
+          sha256Digest(JSON.parse(snapshot.row.receipt_json)) === sha256Digest(binding),
+        receipt: binding,
+      },
+    );
+  }
+
+  markTurnExecutionOutcomeUnknown(
+    executionId,
+    { reasonCode, expectedRevision } = {},
+    principal,
+  ) {
+    const marker = { reasonCode };
+    return this.#transitionTurnExecution(
+      executionId, expectedRevision, principal,
+      (snapshot) => markTurnOutcomeUnknown(snapshot.intent, marker),
+      {
+        replayState: "outcome-unknown",
+        replayMatch: (intent) => sha256Digest(intent.abandonment) === sha256Digest(marker),
+        reconciliation: { state: "outcome-unknown", ...marker },
+      },
+    );
+  }
+
+  reconcileTurnExecution(
+    executionId,
+    { result, expectedRevision } = {},
+    principal,
+  ) {
+    return this.db.transaction(() => {
+      const snapshot = this.#turnExecutionSnapshot(executionId);
+      this.#assertTurnExecutionPrincipalAndBinding(snapshot, principal);
+      this.#assertTurnExecutionCas(snapshot, expectedRevision);
+      const next = reconcileUnknownDurableTurnIntent(snapshot.intent, result);
+      if (next === snapshot.intent) return { ...snapshot, replay: true };
+      const receipt = result?.state === "found" ? result.binding : null;
+      if (result?.state === "found") {
+        this.#persistReconciledToolCompletions(snapshot, next);
+      }
+      return this.#writeTurnTransition(snapshot, next, {
+        receipt,
+        reconciliation: result,
+      });
+    }).immediate();
+  }
+
+  promoteTurnExecutionWithGitEvidenceRecord(
+    executionId,
+    {
+      stage, payload, expectedEvidenceChainRevision,
+      expectedEvidenceChainHead, expectedRevision,
+    } = {},
+    principal,
+  ) {
+    return this.db.transaction(() => {
+      const snapshot = this.#turnExecutionSnapshot(executionId);
+      this.#assertTurnExecutionPrincipalAndBinding(snapshot, principal);
+      const chain = this.#gitEvidenceSnapshot(snapshot.intent.chainId);
+      const expectedToolName = GIT_EVIDENCE_STAGE_TOOL[stage];
+      const referencedAction = snapshot.actions.find((action) =>
+        action.name === expectedToolName &&
+        payload?.actor?.taskId === snapshot.intent.actor.taskId &&
+        payload?.actor?.incarnationId === snapshot.intent.actor.incarnationId &&
+        payload?.turnId === action.turnId &&
+        payload?.toolCallDigest === action.actionDigest,
+      );
+      if (!expectedToolName || !referencedAction) {
+        const code = snapshot.intent.state === "promoted"
+          ? "threadmesh_turn_execution_promotion_conflict"
+          : "threadmesh_turn_execution_stage_tool_mismatch";
+        throw codedError(code);
+      }
+      if (snapshot.intent.state === "promoted") {
+        let replayRecord;
+        try {
+          const prefix = chain.records.slice(0, expectedEvidenceChainRevision);
+          const prefixState = validateGitEvidenceChain(chain.requirement, prefix);
+          this.#assertGitEvidenceCas(
+            prefixState,
+            expectedEvidenceChainRevision,
+            expectedEvidenceChainHead,
+          );
+          replayRecord = appendPureGitEvidenceRecord(
+            chain.requirement,
+            prefix,
+            { stage, payload },
+          );
+        } catch {
+          throw codedError("threadmesh_turn_execution_promotion_conflict");
+        }
+        const persisted = chain.records[expectedEvidenceChainRevision];
+        if (
+          persisted?.recordDigest === replayRecord.recordDigest &&
+          snapshot.intent.promotion?.expectedEvidenceChainRevision ===
+            expectedEvidenceChainRevision + 1 &&
+          snapshot.intent.promotion?.expectedEvidenceChainHead === persisted.recordDigest
+        ) return { ...snapshot, evidenceRecord: persisted, evidenceState: chain.state, replay: true };
+        throw codedError("threadmesh_turn_execution_promotion_conflict");
+      }
+      this.#assertTurnExecutionCas(snapshot, expectedRevision);
+      this.#assertGitEvidenceCas(
+        chain.state,
+        expectedEvidenceChainRevision,
+        expectedEvidenceChainHead,
+      );
+      const record = appendPureGitEvidenceRecord(
+        chain.requirement,
+        chain.records,
+        { stage, payload },
+      );
+      assertTaskPrincipal(
+        principal,
+        record.payload.actor.taskId,
+        record.payload.actor.incarnationId,
+      );
+      const role = stage === "review-failed" ? "reviewer" : "implementer";
+      this.#assertGitEvidenceActorCurrent(
+        record.payload.actor,
+        chain.adapterRefDigests[role],
+        chain.taskRevisions[role],
+      );
+      this.#insertGitEvidenceRecord(
+        record,
+        expectedEvidenceChainRevision,
+        expectedEvidenceChainHead,
+      );
+      const evidenceState = validateGitEvidenceChain(
+        chain.requirement,
+        [...chain.records, record],
+      );
+      const expected = {
+        expectedEvidenceChainRevision: evidenceState.recordCount,
+        expectedEvidenceChainHead: evidenceState.headDigest,
+      };
+      const next = promoteDurableTurnIntent(snapshot.intent, expected);
+      return {
+        ...this.#writeTurnTransition(snapshot, next),
+        evidenceRecord: record,
+        evidenceState,
+      };
+    }).immediate();
+  }
+
+  abandonTurnExecution(
+    executionId,
+    { reasonCode, expectedRevision } = {},
+    principal,
+  ) {
+    const marker = { reasonCode };
+    return this.#transitionTurnExecution(
+      executionId, expectedRevision, principal,
+      (snapshot) => abandonDurableTurnIntent(snapshot.intent, marker),
+      {
+        replayState: "abandoned",
+        replayMatch: (intent) => sha256Digest(intent.abandonment) === sha256Digest(marker),
+        reconciliation: { state: "abandoned", ...marker },
+      },
+    );
+  }
+
+  getTurnExecution(executionId, principal) {
+    const snapshot = this.#turnExecutionSnapshot(executionId);
+    this.#assertTurnExecutionReadAuthority(snapshot.row, principal);
+    return snapshot;
+  }
+
+  claimAttentionEvent(
+    receiver,
+    { claimEpoch, eventCursor, eventId, expectedRevision } = {},
+    principal,
+  ) {
+    assertTaskPrincipal(principal, receiver?.taskId, receiver?.incarnationId);
+    return this.db.transaction(() => {
+      this.#assertTaskActive(receiver);
+      this.#assertAttentionId(claimEpoch, "threadmesh_attention_claim_invalid");
+      const event = this.#attentionEventSnapshot(eventCursor, eventId, receiver);
+      const existing = this.db.prepare(
+        `SELECT * FROM attention_handler_claims
+         WHERE claim_epoch = ? OR
+           (receiver_task_id = ? AND receiver_incarnation_id = ? AND event_cursor = ?)`,
+      ).get(claimEpoch, receiver.taskId, receiver.incarnationId, eventCursor);
+      if (existing) {
+        if (
+          existing.claim_epoch === claimEpoch &&
+          existing.event_id === event.eventId &&
+          existing.event_digest === event.eventDigest &&
+          existing.state === "claimed"
+        ) return { claim: this.#projectAttentionClaim(existing), replay: true, acquired: false };
+        throw codedError("threadmesh_attention_claim_conflict");
+      }
+      const cursor = this.#attentionCursorRow(receiver, true);
+      this.#assertAttentionRevision(cursor, expectedRevision);
+      this.#assertNextAttentionEvent(cursor, event);
+      if (cursor.active_claim_epoch !== null || eventCursor <= cursor.committed_cursor) {
+        throw codedError("threadmesh_attention_cursor_conflict");
+      }
+      const at = nowIso(this.clock);
+      this.db.prepare(
+        `INSERT INTO attention_handler_claims (
+           claim_epoch, receiver_task_id, receiver_incarnation_id,
+           event_cursor, event_id, sender_incarnation_id, message_id,
+           event_digest, state, turn_execution_id, revision,
+           claimed_at, completed_at, updated_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'claimed', NULL, 0, ?, NULL, ?)`,
+      ).run(
+        claimEpoch, receiver.taskId, receiver.incarnationId,
+        eventCursor, event.eventId, event.senderIncarnationId, event.messageId,
+        event.eventDigest, at, at,
+      );
+      const update = this.db.prepare(
+        `UPDATE attention_receiver_cursors
+         SET active_claim_epoch = ?, active_event_cursor = ?,
+             revision = revision + 1, updated_at = ?
+         WHERE receiver_task_id = ? AND receiver_incarnation_id = ?
+           AND revision = ? AND active_claim_epoch IS NULL`,
+      ).run(
+        claimEpoch, eventCursor, at, receiver.taskId, receiver.incarnationId,
+        expectedRevision,
+      );
+      if (update.changes !== 1) throw codedError("threadmesh_attention_cursor_conflict");
+      return {
+        claim: this.#projectAttentionClaim(this.db.prepare(
+          "SELECT * FROM attention_handler_claims WHERE claim_epoch = ?",
+        ).get(claimEpoch)),
+        cursor: this.#projectAttentionCursor(this.#attentionCursorRow(receiver)),
+        replay: false,
+        acquired: true,
+      };
+    }).immediate();
+  }
+
+  bindCompletedAttentionHandler(
+    claimEpoch,
+    { turnExecutionId, expectedRevision } = {},
+    principal,
+  ) {
+    return this.db.transaction(() => {
+      const claim = this.#attentionClaimRow(claimEpoch);
+      assertTaskPrincipal(
+        principal, claim.receiver_task_id, claim.receiver_incarnation_id,
+      );
+      if (
+        claim.state === "completed-bound" &&
+        claim.turn_execution_id === turnExecutionId
+      ) return { claim: this.#projectAttentionClaim(claim), replay: true };
+      if (claim.state !== "claimed" || claim.revision !== expectedRevision) {
+        throw codedError("threadmesh_attention_claim_revision_conflict");
+      }
+      const execution = this.#turnExecutionSnapshot(turnExecutionId);
+      this.#assertTurnExecutionPrincipalAndBinding(execution, principal);
+      if (
+        !["completed-turn-bound", "promoted"].includes(execution.intent.state) ||
+        execution.intent.actor.taskId !== claim.receiver_task_id ||
+        execution.intent.actor.incarnationId !== claim.receiver_incarnation_id ||
+        execution.intent.eventId !== claim.event_id ||
+        execution.intent.messageId !== claim.message_id
+      ) throw codedError("threadmesh_attention_handler_binding_mismatch");
+      const at = nowIso(this.clock);
+      const updated = this.db.prepare(
+        `UPDATE attention_handler_claims
+         SET state = 'completed-bound', turn_execution_id = ?,
+             revision = revision + 1, completed_at = ?, updated_at = ?
+         WHERE claim_epoch = ? AND state = 'claimed' AND revision = ?`,
+      ).run(turnExecutionId, at, at, claimEpoch, expectedRevision);
+      if (updated.changes !== 1) {
+        throw codedError("threadmesh_attention_claim_revision_conflict");
+      }
+      return {
+        claim: this.#projectAttentionClaim(this.#attentionClaimRow(claimEpoch)),
+        replay: false,
+      };
+    }).immediate();
+  }
+
+  promoteAttentionHandler(
+    claimEpoch,
+    { expectedClaimRevision, expectedCursorRevision } = {},
+    principal,
+  ) {
+    return this.db.transaction(() => {
+      const claim = this.#attentionClaimRow(claimEpoch);
+      assertTaskPrincipal(
+        principal, claim.receiver_task_id, claim.receiver_incarnation_id,
+      );
+      if (claim.state === "promoted") {
+        return { claim: this.#projectAttentionClaim(claim), replay: true };
+      }
+      if (claim.state !== "completed-bound" || claim.revision !== expectedClaimRevision) {
+        throw codedError("threadmesh_attention_claim_revision_conflict");
+      }
+      const execution = this.#turnExecutionSnapshot(claim.turn_execution_id);
+      this.#assertTurnExecutionPrincipalAndBinding(execution, principal);
+      if (execution.intent.state !== "promoted") {
+        throw codedError("threadmesh_attention_handler_not_promoted");
+      }
+      const receiver = {
+        taskId: claim.receiver_task_id,
+        incarnationId: claim.receiver_incarnation_id,
+      };
+      const cursor = this.#attentionCursorRow(receiver);
+      this.#assertAttentionRevision(cursor, expectedCursorRevision);
+      if (
+        cursor.active_claim_epoch !== claimEpoch ||
+        cursor.active_event_cursor !== claim.event_cursor
+      ) throw codedError("threadmesh_attention_cursor_conflict");
+      const commit = this.#appendAttentionCursorCommit(cursor, {
+        toCursor: claim.event_cursor,
+        kind: "handler-promoted",
+        sourceId: claimEpoch,
+        eventDigest: claim.event_digest,
+        classificationDigest: null,
+      });
+      const at = nowIso(this.clock);
+      const updated = this.db.prepare(
+        `UPDATE attention_handler_claims
+         SET state = 'promoted', revision = revision + 1, updated_at = ?
+         WHERE claim_epoch = ? AND state = 'completed-bound' AND revision = ?`,
+      ).run(at, claimEpoch, expectedClaimRevision);
+      if (updated.changes !== 1) {
+        throw codedError("threadmesh_attention_claim_revision_conflict");
+      }
+      return {
+        claim: this.#projectAttentionClaim(this.#attentionClaimRow(claimEpoch)),
+        cursor: this.#projectAttentionCursor(this.#attentionCursorRow(receiver)),
+        commit,
+        replay: false,
+      };
+    }).immediate();
+  }
+
+  abandonAttentionHandler(
+    claimEpoch,
+    { expectedRevision } = {},
+    principal,
+  ) {
+    return this.db.transaction(() => {
+      const claim = this.#attentionClaimRow(claimEpoch);
+      assertTaskPrincipal(
+        principal, claim.receiver_task_id, claim.receiver_incarnation_id,
+      );
+      if (claim.state === "abandoned") {
+        return { claim: this.#projectAttentionClaim(claim), replay: true };
+      }
+      if (!["claimed", "completed-bound"].includes(claim.state) ||
+          claim.revision !== expectedRevision) {
+        throw codedError("threadmesh_attention_claim_revision_conflict");
+      }
+      const updated = this.db.prepare(
+        `UPDATE attention_handler_claims
+         SET state = 'abandoned', revision = revision + 1, updated_at = ?
+         WHERE claim_epoch = ? AND revision = ?`,
+      ).run(nowIso(this.clock), claimEpoch, expectedRevision);
+      if (updated.changes !== 1) {
+        throw codedError("threadmesh_attention_claim_revision_conflict");
+      }
+      return {
+        claim: this.#projectAttentionClaim(this.#attentionClaimRow(claimEpoch)),
+        replay: false,
+      };
+    }).immediate();
+  }
+
+  reopenAbandonedAttentionHandler(
+    claimEpoch,
+    { expectedRevision } = {},
+    principal,
+  ) {
+    return this.db.transaction(() => {
+      const claim = this.#attentionClaimRow(claimEpoch);
+      assertTaskPrincipal(
+        principal, claim.receiver_task_id, claim.receiver_incarnation_id,
+      );
+      if (claim.state !== "abandoned" || claim.revision !== expectedRevision) {
+        throw codedError("threadmesh_attention_claim_revision_conflict");
+      }
+      const cursor = this.#attentionCursorRow({
+        taskId: claim.receiver_task_id,
+        incarnationId: claim.receiver_incarnation_id,
+      });
+      if (cursor.active_claim_epoch !== claimEpoch) {
+        throw codedError("threadmesh_attention_cursor_conflict");
+      }
+      const updated = this.db.prepare(
+        `UPDATE attention_handler_claims
+         SET state = CASE WHEN turn_execution_id IS NULL
+               THEN 'claimed' ELSE 'completed-bound' END,
+             revision = revision + 1, updated_at = ?
+         WHERE claim_epoch = ? AND state = 'abandoned' AND revision = ?`,
+      ).run(nowIso(this.clock), claimEpoch, expectedRevision);
+      if (updated.changes !== 1) {
+        throw codedError("threadmesh_attention_claim_revision_conflict");
+      }
+      return {
+        claim: this.#projectAttentionClaim(this.#attentionClaimRow(claimEpoch)),
+        replay: false,
+      };
+    }).immediate();
+  }
+
+  advanceAttentionCursor(
+    receiver,
+    {
+      eventCursor, eventId, classificationDigest,
+      expectedRevision,
+    } = {},
+    principal,
+  ) {
+    assertTaskPrincipal(principal, receiver?.taskId, receiver?.incarnationId);
+    if (!/^sha256:[a-f0-9]{64}$/u.test(classificationDigest ?? "")) {
+      throw codedError("threadmesh_attention_classification_invalid");
+    }
+    return this.db.transaction(() => {
+      this.#assertTaskActive(receiver);
+      const event = this.#attentionEventSnapshot(eventCursor, eventId, receiver);
+      const cursor = this.#attentionCursorRow(receiver, true);
+      const existing = this.db.prepare(
+        `SELECT * FROM attention_cursor_commits
+         WHERE receiver_task_id = ? AND receiver_incarnation_id = ?
+           AND source_id = ?`,
+      ).get(receiver.taskId, receiver.incarnationId, eventId);
+      if (existing) {
+        if (
+          existing.kind === "irrelevant-skip" &&
+          existing.to_cursor === eventCursor &&
+          existing.event_digest === event.eventDigest &&
+          existing.classification_digest === classificationDigest
+        ) return { cursor: this.#projectAttentionCursor(cursor), replay: true };
+        throw codedError("threadmesh_attention_cursor_commit_conflict");
+      }
+      this.#assertAttentionRevision(cursor, expectedRevision);
+      this.#assertNextAttentionEvent(cursor, event);
+      if (cursor.active_claim_epoch !== null || eventCursor <= cursor.committed_cursor) {
+        throw codedError("threadmesh_attention_cursor_conflict");
+      }
+      const commit = this.#appendAttentionCursorCommit(cursor, {
+        toCursor: eventCursor,
+        kind: "irrelevant-skip",
+        sourceId: eventId,
+        eventDigest: event.eventDigest,
+        classificationDigest,
+      });
+      return {
+        cursor: this.#projectAttentionCursor(this.#attentionCursorRow(receiver)),
+        commit,
+        replay: false,
+      };
+    }).immediate();
+  }
+
+  getAttentionCursor(receiver, principal) {
+    if (!isTaskPrincipal(principal, receiver?.taskId, receiver?.incarnationId)) {
+      assertControlPlanePrincipal(principal);
+      if (principal.kind !== "policy") {
+        const task = this.#taskRecord(receiver);
+        if (
+          task.owner_kind !== principal.kind ||
+          task.owner_principal_id !== principal.principalId
+        ) throw codedError("threadmesh_attention_cursor_read_not_authorized");
+      }
+    }
+    const cursor = this.#attentionCursorRow(receiver, true);
+    const activeClaim = cursor.active_claim_epoch === null
+      ? null
+      : this.#projectAttentionClaim(this.#attentionClaimRow(cursor.active_claim_epoch));
+    return { cursor: this.#projectAttentionCursor(cursor), activeClaim };
   }
 
   createDependencyEdge(edge, principal) {
@@ -3962,6 +5059,619 @@ export class SqliteCoordinator {
       )
     ) {
       throw codedError("threadmesh_git_evidence_trust_anchor_not_configured");
+    }
+  }
+
+  #turnIntentDigest(intent) {
+    return sha256Digest({
+      intentId: intent.intentId,
+      scenarioId: intent.scenarioId,
+      chainId: intent.chainId,
+      messageId: intent.messageId,
+      eventId: intent.eventId,
+      actor: intent.actor,
+      adapterIdempotencyKey: intent.adapterIdempotencyKey,
+      promptDigest: intent.promptDigest,
+      allowedTools: intent.allowedTools,
+    });
+  }
+
+  #boundedCanonicalArguments(value) {
+    let serialized;
+    try {
+      serialized = canonicalJson(value);
+    } catch {
+      throw codedError("threadmesh_turn_execution_arguments_invalid");
+    }
+    if (serialized.length < 2 || Buffer.byteLength(serialized, "utf8") > 65_536) {
+      throw codedError("threadmesh_turn_execution_arguments_invalid");
+    }
+    return serialized;
+  }
+
+  #assertTurnExecutionActorCurrent(
+    actor,
+    expectedAdapterRefDigest = null,
+    expectedTaskRevision = null,
+  ) {
+    const task = this.#assertTaskActive(actor);
+    const taskRevision = this.#taskMetadata(actor).revision;
+    let adapterRef;
+    try {
+      adapterRef = task.adapter_ref_json ? JSON.parse(task.adapter_ref_json) : null;
+    } catch {
+      throw codedError("threadmesh_turn_execution_actor_snapshot_mismatch");
+    }
+    const adapterRefDigest = sha256Digest(adapterRef);
+    if (
+      adapterRef?.kind !== "codex-app-server" ||
+      adapterRef.threadId !== actor.threadId ||
+      adapterRef.snapshotDigest !== actor.snapshotDigest ||
+      (expectedAdapterRefDigest !== null && adapterRefDigest !== expectedAdapterRefDigest) ||
+      (expectedTaskRevision !== null && taskRevision !== expectedTaskRevision)
+    ) {
+      throw codedError("threadmesh_turn_execution_actor_snapshot_mismatch");
+    }
+    return { task, adapterRef, adapterRefDigest, taskRevision };
+  }
+
+  #turnExecutionSnapshot(executionId, knownRow = null) {
+    const row = knownRow ?? this.db.prepare(
+      "SELECT * FROM turn_execution_intents WHERE execution_id = ?",
+    ).get(executionId);
+    if (!row) throw codedError("threadmesh_turn_execution_not_found", executionId);
+    let intent;
+    try {
+      intent = validateDurableTurnIntent(JSON.parse(row.intent_json));
+    } catch (error) {
+      if (error?.code) throw error;
+      throw codedError("threadmesh_turn_execution_storage_tampered");
+    }
+    let allowlist;
+    try {
+      allowlist = JSON.parse(row.tool_allowlist_json);
+    } catch {
+      throw codedError("threadmesh_turn_execution_storage_tampered");
+    }
+    if (
+      row.execution_id !== intent.intentId ||
+      row.task_id !== intent.actor.taskId ||
+      row.incarnation_id !== intent.actor.incarnationId ||
+      row.adapter_kind !== "codex-app-server" ||
+      row.adapter_thread_id !== intent.actor.threadId ||
+      row.adapter_snapshot_digest !== intent.actor.snapshotDigest ||
+      row.adapter_idempotency_key !== intent.adapterIdempotencyKey ||
+      row.tool_allowlist_digest !== sha256Digest(allowlist) ||
+      canonicalJson(allowlist) !== canonicalJson(intent.allowedTools) ||
+      row.prompt_digest !== intent.promptDigest ||
+      row.intent_digest !== this.#turnIntentDigest(intent) ||
+      row.scenario_id !== intent.scenarioId ||
+      row.chain_id !== intent.chainId ||
+      row.message_id !== intent.messageId ||
+      row.state !== intent.state ||
+      row.turn_id !== (intent.turnStart?.turnId ?? null) ||
+      !Number.isInteger(row.task_revision) || row.task_revision < 0 ||
+      !Number.isInteger(row.revision) || row.revision < 0 ||
+      !Number.isInteger(row.action_count) || row.action_count < 0 ||
+      !/^sha256:[a-f0-9]{64}$/u.test(row.adapter_ref_digest)
+    ) throw codedError("threadmesh_turn_execution_storage_tampered");
+
+    const actionRows = this.db.prepare(
+      "SELECT * FROM turn_tool_actions WHERE execution_id = ? ORDER BY ordinal",
+    ).all(executionId);
+    const actions = [];
+    let head = null;
+    for (let ordinal = 0; ordinal < actionRows.length; ordinal += 1) {
+      const actionRow = actionRows[ordinal];
+      let args;
+      try { args = JSON.parse(actionRow.args_json); } catch {
+        throw codedError("threadmesh_turn_execution_storage_tampered");
+      }
+      const selected = intent.toolActions[ordinal];
+      const projected = {
+        ordinal: actionRow.ordinal,
+        turnId: actionRow.turn_id,
+        callId: actionRow.call_id,
+        name: actionRow.tool_name,
+        argumentsDigest: actionRow.args_digest,
+        resultDigest: actionRow.result_digest,
+        resultStatus: actionRow.result_status,
+        argsJson: actionRow.args_json,
+        selectionDigest: actionRow.selection_digest,
+        actionDigest: actionRow.action_digest,
+      };
+      const selectionDigest = sha256Digest({
+        executionId,
+        turnId: projected.turnId,
+        callId: projected.callId,
+        ordinal: projected.ordinal,
+        name: projected.name,
+        argumentsDigest: projected.argumentsDigest,
+        args,
+        previousActionDigest: head,
+      });
+      const completed = projected.resultDigest !== null || projected.resultStatus !== null ||
+        projected.actionDigest !== null || actionRow.result_completed_at !== null;
+      const completionConsistent = !completed
+        ? projected.resultDigest === null && projected.resultStatus === null &&
+          projected.actionDigest === null && actionRow.result_completed_at === null
+        : /^sha256:[a-f0-9]{64}$/u.test(projected.resultDigest ?? "") &&
+          projected.resultStatus === "completed" &&
+          projected.actionDigest === sha256Digest({
+            selectionDigest,
+            resultDigest: projected.resultDigest,
+            resultStatus: projected.resultStatus,
+          }) && typeof actionRow.result_completed_at === "string";
+      if (
+        actionRow.ordinal !== ordinal || !selected ||
+        canonicalJson(args) !== actionRow.args_json ||
+        actionRow.args_digest !== sha256Digest(args) ||
+        actionRow.previous_action_digest !== head ||
+        actionRow.selection_digest !== selectionDigest || !completionConsistent ||
+        selected.turnId !== projected.turnId || selected.callId !== projected.callId ||
+        selected.ordinal !== projected.ordinal || selected.name !== projected.name ||
+        selected.argumentsDigest !== projected.argumentsDigest ||
+        selected.resultDigest !== projected.resultDigest ||
+        selected.resultStatus !== projected.resultStatus
+      ) throw codedError("threadmesh_turn_execution_storage_tampered");
+      head = selectionDigest;
+      actions.push(projected);
+    }
+    if (
+      actionRows.length !== intent.toolActions.length ||
+      row.action_count !== actionRows.length || row.action_head_digest !== head
+    ) throw codedError("threadmesh_turn_execution_storage_tampered");
+    if (row.receipt_json !== null) {
+      let receipt;
+      try { receipt = JSON.parse(row.receipt_json); } catch {
+        throw codedError("threadmesh_turn_execution_storage_tampered");
+      }
+      if (
+        row.receipt_digest !== receipt.adapterReceiptDigest ||
+        intent.completedTurn === null ||
+        sha256Digest(intent.completedTurn) !== sha256Digest({
+          evidence: receipt.evidence,
+          adapterReceiptDigest: receipt.adapterReceiptDigest,
+          toolCalls: receipt.toolCalls,
+        })
+      ) throw codedError("threadmesh_turn_execution_storage_tampered");
+    } else if (intent.completedTurn !== null || row.receipt_digest !== null) {
+      throw codedError("threadmesh_turn_execution_storage_tampered");
+    }
+    if (row.reconciliation_json !== null) {
+      try {
+        const value = JSON.parse(row.reconciliation_json);
+        if (row.reconciliation_digest !== sha256Digest(value)) {
+          throw codedError("threadmesh_turn_execution_storage_tampered");
+        }
+      } catch (error) {
+        if (error?.code) throw error;
+        throw codedError("threadmesh_turn_execution_storage_tampered");
+      }
+    } else if (row.reconciliation_digest !== null) {
+      throw codedError("threadmesh_turn_execution_storage_tampered");
+    }
+    return Object.freeze({
+      executionId,
+      intent,
+      revision: row.revision,
+      actionCount: row.action_count,
+      actionHeadDigest: row.action_head_digest,
+      actions: Object.freeze(actions.map((entry) => Object.freeze(entry))),
+      row,
+    });
+  }
+
+  #assertTurnExecutionPrincipalAndBinding(snapshot, principal) {
+    assertTaskPrincipal(principal, snapshot.row.task_id, snapshot.row.incarnation_id);
+    this.#assertTurnExecutionActorCurrent(
+      snapshot.intent.actor,
+      snapshot.row.adapter_ref_digest,
+      snapshot.row.task_revision,
+    );
+  }
+
+  #persistReconciledToolCompletions(snapshot, nextIntent) {
+    const at = nowIso(this.clock);
+    for (const selected of snapshot.actions) {
+      const recovered = nextIntent.toolActions[selected.ordinal];
+      if (
+        !recovered || recovered.turnId !== selected.turnId ||
+        recovered.callId !== selected.callId || recovered.name !== selected.name ||
+        recovered.argumentsDigest !== selected.argumentsDigest ||
+        recovered.resultStatus !== "completed" ||
+        !/^sha256:[a-f0-9]{64}$/u.test(recovered.resultDigest ?? "")
+      ) throw codedError("threadmesh_turn_execution_reconciliation_conflict");
+      if (selected.resultDigest !== null || selected.resultStatus !== null) {
+        if (
+          selected.resultDigest !== recovered.resultDigest ||
+          selected.resultStatus !== recovered.resultStatus
+        ) throw codedError("threadmesh_turn_execution_reconciliation_conflict");
+        continue;
+      }
+      const actionDigest = sha256Digest({
+        selectionDigest: selected.selectionDigest,
+        resultDigest: recovered.resultDigest,
+        resultStatus: recovered.resultStatus,
+      });
+      const updated = this.db.prepare(
+        `UPDATE turn_tool_actions
+         SET result_digest = ?, result_status = ?, action_digest = ?,
+             result_completed_at = ?
+         WHERE execution_id = ? AND ordinal = ?
+           AND selection_digest = ? AND result_digest IS NULL
+           AND result_status IS NULL AND action_digest IS NULL`,
+      ).run(
+        recovered.resultDigest, recovered.resultStatus, actionDigest, at,
+        snapshot.executionId, selected.ordinal, selected.selectionDigest,
+      );
+      if (updated.changes !== 1) {
+        throw codedError("threadmesh_turn_execution_reconciliation_conflict");
+      }
+    }
+  }
+
+  #assertTurnExecutionCas(snapshot, expectedRevision) {
+    if (!Number.isInteger(expectedRevision) || expectedRevision !== snapshot.revision) {
+      throw codedError("threadmesh_turn_execution_revision_conflict");
+    }
+  }
+
+  #transitionTurnExecution(
+    executionId,
+    expectedRevision,
+    principal,
+    transition,
+    options = {},
+  ) {
+    return this.db.transaction(() => {
+      const snapshot = this.#turnExecutionSnapshot(executionId);
+      this.#assertTurnExecutionPrincipalAndBinding(snapshot, principal);
+      if (
+        (options.replayState === snapshot.intent.state ||
+          options.replayStates?.includes(snapshot.intent.state)) &&
+        options.replayMatch?.(snapshot.intent, snapshot)
+      ) return { ...snapshot, replay: true, acquired: false };
+      this.#assertTurnExecutionCas(snapshot, expectedRevision);
+      const next = transition(snapshot);
+      const result = this.#writeTurnTransition(snapshot, next, options);
+      return { ...result, acquired: options.acquired === true };
+    }).immediate();
+  }
+
+  #writeTurnTransition(snapshot, nextIntent, { receipt, reconciliation } = {}) {
+    const at = nowIso(this.clock);
+    const receiptJson = receipt === undefined
+      ? snapshot.row.receipt_json
+      : receipt === null ? null : canonicalJson(receipt);
+    const receiptDigest = receipt === undefined
+      ? snapshot.row.receipt_digest
+      : receipt === null ? null : receipt.adapterReceiptDigest;
+    const reconciliationJson = reconciliation === undefined
+      ? snapshot.row.reconciliation_json
+      : reconciliation === null ? null : canonicalJson(reconciliation);
+    const reconciliationDigest = reconciliation === undefined
+      ? snapshot.row.reconciliation_digest
+      : reconciliation === null ? null : sha256Digest(reconciliation);
+    const updated = this.db.prepare(
+      `UPDATE turn_execution_intents
+       SET intent_json = ?, state = ?, turn_id = ?, receipt_json = ?,
+           receipt_digest = ?, reconciliation_json = ?,
+           reconciliation_digest = ?, revision = revision + 1,
+           started_at = CASE WHEN ? = 'started' AND started_at IS NULL THEN ? ELSE started_at END,
+           completed_at = CASE WHEN ? IN ('completed-turn-bound','promoted','abandoned')
+             THEN COALESCE(completed_at, ?) ELSE completed_at END,
+           updated_at = ?
+       WHERE execution_id = ? AND revision = ?`,
+    ).run(
+      canonicalJson(nextIntent), nextIntent.state, nextIntent.turnStart?.turnId ?? null,
+      receiptJson, receiptDigest, reconciliationJson, reconciliationDigest,
+      nextIntent.state, at, nextIntent.state, at, at,
+      snapshot.executionId, snapshot.revision,
+    );
+    if (updated.changes !== 1) {
+      throw codedError("threadmesh_turn_execution_revision_conflict");
+    }
+    return { ...this.#turnExecutionSnapshot(snapshot.executionId), replay: false };
+  }
+
+  #validatePersistedTurnExecutions() {
+    const rows = this.db.prepare(
+      "SELECT execution_id FROM turn_execution_intents ORDER BY execution_id",
+    ).all();
+    for (const row of rows) this.#turnExecutionSnapshot(row.execution_id);
+  }
+
+  #assertTurnExecutionReadAuthority(row, principal) {
+    if (isTaskPrincipal(principal, row.task_id, row.incarnation_id)) return;
+    assertControlPlanePrincipal(principal);
+    if (principal.kind === "policy") return;
+    const task = this.#taskRecord({ taskId: row.task_id, incarnationId: row.incarnation_id });
+    if (
+      task.owner_kind !== principal.kind ||
+      task.owner_principal_id !== principal.principalId
+    ) throw codedError("threadmesh_turn_execution_read_not_authorized");
+  }
+
+  #assertAttentionId(value, code) {
+    if (
+      typeof value !== "string" || value.length < 1 || value.length > 256 ||
+      !/^[A-Za-z0-9][A-Za-z0-9._:-]*$/u.test(value)
+    ) throw codedError(code);
+  }
+
+  #attentionEventSnapshot(eventCursor, eventId, receiver) {
+    if (!Number.isInteger(eventCursor) || eventCursor < 1) {
+      throw codedError("threadmesh_attention_event_invalid");
+    }
+    this.#assertAttentionId(eventId, "threadmesh_attention_event_invalid");
+    const row = this.db.prepare(
+      "SELECT * FROM audit_events WHERE sequence = ? AND event_id = ?",
+    ).get(eventCursor, eventId);
+    if (!row) throw codedError("threadmesh_attention_event_not_found");
+    const message = this.db.prepare(
+      `SELECT * FROM messages
+       WHERE sender_incarnation_id = ? AND message_id = ?`,
+    ).get(row.sender_incarnation_id, row.message_id);
+    if (
+      !message || message.target_task_id !== receiver.taskId ||
+      message.target_incarnation_id !== receiver.incarnationId
+    ) throw codedError("threadmesh_attention_event_receiver_mismatch");
+    let detail;
+    try { detail = JSON.parse(row.detail_json); } catch {
+      throw codedError("threadmesh_attention_event_storage_tampered");
+    }
+    const event = {
+      eventCursor: row.sequence,
+      eventId: row.event_id,
+      senderIncarnationId: row.sender_incarnation_id,
+      messageId: row.message_id,
+      eventType: row.event_type,
+      revision: row.revision,
+      detail,
+      occurredAt: row.occurred_at,
+    };
+    return { ...event, eventDigest: sha256Digest(event) };
+  }
+
+  #attentionCursorRow(receiver, create = false) {
+    if (create) {
+      this.db.prepare(
+        `INSERT INTO attention_receiver_cursors (
+           receiver_task_id, receiver_incarnation_id, committed_cursor,
+           commit_count, commit_head_digest, revision,
+           active_claim_epoch, active_event_cursor, updated_at
+         ) VALUES (?, ?, 0, 0, NULL, 0, NULL, NULL, ?)
+         ON CONFLICT(receiver_task_id, receiver_incarnation_id) DO NOTHING`,
+      ).run(receiver.taskId, receiver.incarnationId, nowIso(this.clock));
+    }
+    const row = this.db.prepare(
+      `SELECT * FROM attention_receiver_cursors
+       WHERE receiver_task_id = ? AND receiver_incarnation_id = ?`,
+    ).get(receiver.taskId, receiver.incarnationId);
+    if (!row) throw codedError("threadmesh_attention_cursor_not_found");
+    return row;
+  }
+
+  #assertNextAttentionEvent(cursor, event) {
+    const next = this.db.prepare(
+      `SELECT audit.sequence, audit.event_id
+       FROM audit_events AS audit
+       JOIN messages AS message
+         ON message.sender_incarnation_id = audit.sender_incarnation_id
+        AND message.message_id = audit.message_id
+       WHERE message.target_task_id = ?
+         AND message.target_incarnation_id = ?
+         AND audit.sequence > ?
+       ORDER BY audit.sequence
+       LIMIT 1`,
+    ).get(
+      cursor.receiver_task_id,
+      cursor.receiver_incarnation_id,
+      cursor.committed_cursor,
+    );
+    if (!next || next.sequence !== event.eventCursor || next.event_id !== event.eventId) {
+      throw codedError("threadmesh_attention_event_not_next");
+    }
+  }
+
+  #attentionClaimRow(claimEpoch) {
+    this.#assertAttentionId(claimEpoch, "threadmesh_attention_claim_invalid");
+    const row = this.db.prepare(
+      "SELECT * FROM attention_handler_claims WHERE claim_epoch = ?",
+    ).get(claimEpoch);
+    if (!row) throw codedError("threadmesh_attention_claim_not_found");
+    return row;
+  }
+
+  #assertAttentionRevision(cursor, expectedRevision) {
+    if (!Number.isInteger(expectedRevision) || expectedRevision !== cursor.revision) {
+      throw codedError("threadmesh_attention_cursor_revision_conflict");
+    }
+  }
+
+  #projectAttentionCursor(row) {
+    return Object.freeze({
+      receiver: Object.freeze({
+        taskId: row.receiver_task_id,
+        incarnationId: row.receiver_incarnation_id,
+      }),
+      committedCursor: row.committed_cursor,
+      commitCount: row.commit_count,
+      commitHeadDigest: row.commit_head_digest,
+      revision: row.revision,
+      activeClaimEpoch: row.active_claim_epoch,
+      activeEventCursor: row.active_event_cursor,
+    });
+  }
+
+  #projectAttentionClaim(row) {
+    return Object.freeze({
+      claimEpoch: row.claim_epoch,
+      receiver: Object.freeze({
+        taskId: row.receiver_task_id,
+        incarnationId: row.receiver_incarnation_id,
+      }),
+      eventCursor: row.event_cursor,
+      eventId: row.event_id,
+      senderIncarnationId: row.sender_incarnation_id,
+      messageId: row.message_id,
+      eventDigest: row.event_digest,
+      state: row.state,
+      turnExecutionId: row.turn_execution_id,
+      revision: row.revision,
+    });
+  }
+
+  #appendAttentionCursorCommit(cursor, input) {
+    if (input.toCursor <= cursor.committed_cursor) {
+      throw codedError("threadmesh_attention_cursor_conflict");
+    }
+    const sequence = cursor.commit_count + 1;
+    const commitBody = {
+      receiver: {
+        taskId: cursor.receiver_task_id,
+        incarnationId: cursor.receiver_incarnation_id,
+      },
+      sequence,
+      fromCursor: cursor.committed_cursor,
+      toCursor: input.toCursor,
+      kind: input.kind,
+      sourceId: input.sourceId,
+      eventDigest: input.eventDigest,
+      classificationDigest: input.classificationDigest,
+      previousCommitDigest: cursor.commit_head_digest,
+    };
+    const commitDigest = sha256Digest(commitBody);
+    const at = nowIso(this.clock);
+    try {
+      this.db.prepare(
+        `INSERT INTO attention_cursor_commits (
+           receiver_task_id, receiver_incarnation_id, sequence,
+           from_cursor, to_cursor, kind, source_id, event_digest,
+           classification_digest, previous_commit_digest, commit_digest,
+           committed_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).run(
+        cursor.receiver_task_id, cursor.receiver_incarnation_id, sequence,
+        cursor.committed_cursor, input.toCursor, input.kind, input.sourceId,
+        input.eventDigest, input.classificationDigest, cursor.commit_head_digest,
+        commitDigest, at,
+      );
+      const updated = this.db.prepare(
+        `UPDATE attention_receiver_cursors
+         SET committed_cursor = ?, commit_count = commit_count + 1,
+             commit_head_digest = ?, revision = revision + 1,
+             active_claim_epoch = NULL, active_event_cursor = NULL,
+             updated_at = ?
+         WHERE receiver_task_id = ? AND receiver_incarnation_id = ?
+           AND revision = ? AND commit_count = ?
+           AND ((commit_head_digest IS NULL AND ? IS NULL)
+             OR commit_head_digest = ?)` ,
+      ).run(
+        input.toCursor, commitDigest, at,
+        cursor.receiver_task_id, cursor.receiver_incarnation_id,
+        cursor.revision, cursor.commit_count,
+        cursor.commit_head_digest, cursor.commit_head_digest,
+      );
+      if (updated.changes !== 1) {
+        throw codedError("threadmesh_attention_cursor_conflict");
+      }
+    } catch (error) {
+      if (String(error?.code ?? "").startsWith("SQLITE_CONSTRAINT")) {
+        throw codedError("threadmesh_attention_cursor_commit_conflict");
+      }
+      throw error;
+    }
+    return Object.freeze({ ...commitBody, commitDigest, committedAt: at });
+  }
+
+  #validatePersistedAttentionState() {
+    const cursors = this.db.prepare(
+      "SELECT * FROM attention_receiver_cursors ORDER BY receiver_task_id, receiver_incarnation_id",
+    ).all();
+    for (const cursor of cursors) {
+      const commits = this.db.prepare(
+        `SELECT * FROM attention_cursor_commits
+         WHERE receiver_task_id = ? AND receiver_incarnation_id = ?
+         ORDER BY sequence`,
+      ).all(cursor.receiver_task_id, cursor.receiver_incarnation_id);
+      let position = 0;
+      let head = null;
+      for (let index = 0; index < commits.length; index += 1) {
+        const commit = commits[index];
+        const body = {
+          receiver: {
+            taskId: cursor.receiver_task_id,
+            incarnationId: cursor.receiver_incarnation_id,
+          },
+          sequence: commit.sequence,
+          fromCursor: commit.from_cursor,
+          toCursor: commit.to_cursor,
+          kind: commit.kind,
+          sourceId: commit.source_id,
+          eventDigest: commit.event_digest,
+          classificationDigest: commit.classification_digest,
+          previousCommitDigest: commit.previous_commit_digest,
+        };
+        if (
+          commit.sequence !== index + 1 || commit.from_cursor !== position ||
+          commit.to_cursor <= position || commit.previous_commit_digest !== head ||
+          commit.commit_digest !== sha256Digest(body) ||
+          !["irrelevant-skip", "handler-promoted"].includes(commit.kind)
+        ) throw codedError("threadmesh_attention_storage_tampered");
+        position = commit.to_cursor;
+        head = commit.commit_digest;
+      }
+      if (
+        cursor.committed_cursor !== position ||
+        cursor.commit_count !== commits.length ||
+        cursor.commit_head_digest !== head ||
+        !Number.isInteger(cursor.revision) || cursor.revision < commits.length ||
+        ((cursor.active_claim_epoch === null) !== (cursor.active_event_cursor === null))
+      ) throw codedError("threadmesh_attention_storage_tampered");
+      if (cursor.active_claim_epoch !== null) {
+        const claim = this.#attentionClaimRow(cursor.active_claim_epoch);
+        if (
+          claim.receiver_task_id !== cursor.receiver_task_id ||
+          claim.receiver_incarnation_id !== cursor.receiver_incarnation_id ||
+          claim.event_cursor !== cursor.active_event_cursor ||
+          claim.event_cursor <= cursor.committed_cursor ||
+          claim.state === "promoted"
+        ) throw codedError("threadmesh_attention_storage_tampered");
+      }
+    }
+    const claims = this.db.prepare(
+      "SELECT * FROM attention_handler_claims ORDER BY claim_epoch",
+    ).all();
+    for (const claim of claims) {
+      if (!['claimed', 'completed-bound', 'promoted', 'abandoned'].includes(claim.state)) {
+        throw codedError("threadmesh_attention_storage_tampered");
+      }
+      const event = this.#attentionEventSnapshot(
+        claim.event_cursor,
+        claim.event_id,
+        { taskId: claim.receiver_task_id, incarnationId: claim.receiver_incarnation_id },
+      );
+      if (
+        claim.sender_incarnation_id !== event.senderIncarnationId ||
+        claim.message_id !== event.messageId ||
+        claim.event_digest !== event.eventDigest
+      ) throw codedError("threadmesh_attention_storage_tampered");
+      if (claim.turn_execution_id !== null) {
+        const execution = this.#turnExecutionSnapshot(claim.turn_execution_id);
+        if (
+          claim.state === "claimed" ||
+          execution.intent.eventId !== claim.event_id ||
+          execution.intent.messageId !== claim.message_id ||
+          execution.intent.actor.taskId !== claim.receiver_task_id ||
+          execution.intent.actor.incarnationId !== claim.receiver_incarnation_id ||
+          !["completed-turn-bound", "promoted"].includes(execution.intent.state) ||
+          (claim.state === "promoted" && execution.intent.state !== "promoted")
+        ) throw codedError("threadmesh_attention_storage_tampered");
+      } else if (["completed-bound", "promoted"].includes(claim.state)) {
+        throw codedError("threadmesh_attention_storage_tampered");
+      }
     }
   }
 

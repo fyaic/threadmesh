@@ -120,26 +120,32 @@ runner state.
 5. **M5.3 repetitions:** relevant 3/3, manual baseline, irrelevant, unverified,
    stale, restart, and injected-cleanup cases.
 
-The current work is slice 1. Dependency unlock integration is deliberately
-deferred until persisted replay is trustworthy; record count, final-stage
-presence, or a cached `trusted` flag can never authorize unlock.
+Slices 1 and 2 are implemented as deterministic foundations. Dependency unlock
+integration remains deliberately separate; record count, final-stage presence,
+or a cached `trusted` flag can never authorize unlock.
 
-## Required slice-2 seams
+## Delivered slice-2 seams and remaining closure
 
-The persistence slice intentionally stores caller-supplied turn fields; they do
-not yet prove that a Codex turn completed or that the model selected the tool.
-The next slice must close that gap with three durable seams (names are working
-API names, not protocol commitments):
+SQLite v6 and the Codex adapter now provide these internal seams (names remain
+implementation details, not protocol commitments):
 
-- `recordAdapterTurnAction` stores one immutable completed-turn receipt bound to
-  task/incarnation, adapter thread and snapshot, turn, tool ordinal, canonical
-  arguments, and receipt digest. Evidence append may only reference this row.
-- `claimAttentionCursor` / `commitAttentionCursor` persist receiver cursor,
-  message, and handler state so a crash cannot cause a replacement decision,
-  review, fix, or verifier model turn.
-- `finalizeGitEvidenceDependency` replays the exact completed chain and, in one
-  authorized transaction, binds its final record to the current event,
-  disposition, dependency edge/version, and verified satisfaction effect.
+- A proposed turn execution is persisted and frozen to the task revision,
+  adapter thread/snapshot, idempotency key, prompt digest, and tool allowlist
+  before native `turn/start`.
+- `beforeToolCall` persists the exact model-selected turn/call/ordinal/tool and
+  canonical arguments before the bounded callback may create a side effect;
+  `afterToolCall` persists its result separately.
+- Unknown turn outcomes are reconciliation-only. A receipt may complete only
+  an already-persisted selection and can never invent a tool call.
+- `promoteTurnExecutionWithGitEvidenceRecord` atomically binds the exact action
+  to the implementation, review-failed, or fix record; each stage accepts only
+  its designated model publication tool.
+- Attention cursor claims are exclusive, cannot skip an earlier receiver
+  event, and advance only after a completed durable handler effect. Retrying a
+  completed-bound handler preserves the original turn.
 
-Until all three exist, a stored four-record chain is durable safety evidence,
-not proof of model initiative and not authority to unlock a task.
+The next seam is the only authority-bearing one:
+`finalizeGitEvidenceDependency` must replay the exact signed final chain and, in
+one authorized transaction, bind its final record to the current event,
+disposition, dependency edge/version, and verified satisfaction effect. Until
+that exists, durable model-action evidence is not authority to unlock a task.

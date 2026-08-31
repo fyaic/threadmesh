@@ -325,6 +325,11 @@ test("upgrades a v3 coordinator database without rewriting existing state", () =
   coordinator.close();
   const database = new Database(temporary.filename);
   database.exec(`
+    DROP TABLE attention_handler_claims;
+    DROP TABLE attention_cursor_commits;
+    DROP TABLE attention_receiver_cursors;
+    DROP TABLE turn_tool_actions;
+    DROP TABLE turn_execution_intents;
     DROP INDEX git_evidence_records_chain_sequence;
     DROP TABLE git_evidence_records;
     DROP TABLE git_evidence_requirements;
@@ -342,7 +347,7 @@ test("upgrades a v3 coordinator database without rewriting existing state", () =
     verificationTrustAnchors: trustedVerifier.trustAnchors,
   });
   try {
-    assert.equal(coordinator.storageInfo().schemaVersion, 5);
+    assert.equal(coordinator.storageInfo().schemaVersion, 6);
     assert.equal(
       coordinator.getTask(prerequisite, owner).incarnationId,
       prerequisite.incarnationId,
