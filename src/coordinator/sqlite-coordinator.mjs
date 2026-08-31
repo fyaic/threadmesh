@@ -3038,17 +3038,21 @@ export class SqliteCoordinator {
       }
       const materialKeys = Object.keys(expectedMaterial ?? {}).sort();
       const expectedKeys = [...(specification?.materialKeys ?? [])].sort();
-      const expectedArguments = specification ? {
-        sourceEventId: execution.intent.eventId,
+      const expectedArguments = specification ? [
+        execution.intent.eventId,
+        execution.intent.messageId,
+      ].map((sourceEventId) => ({
+        sourceEventId,
         event: boundedLifecycleActionEventBody(event),
         ...expectedMaterial,
-      } : null;
+      })) : [];
       if (
         !["completed-turn-bound", "promoted"].includes(execution.intent.state) ||
         !action || action.name !== expectedTool || !action.actionDigest ||
         action.resultStatus !== "completed" || specification?.eventType !== event.eventType ||
         canonicalJson(materialKeys) !== canonicalJson(expectedKeys) ||
-        canonicalJson(argumentsValue) !== canonicalJson(expectedArguments) ||
+        !expectedArguments.some((candidate) =>
+          canonicalJson(argumentsValue) === canonicalJson(candidate)) ||
         execution.intent.turnStart?.turnId !== action.turnId ||
         execution.intent.actor.taskId !== event.sender.taskId ||
         execution.intent.actor.incarnationId !== event.sender.incarnationId
@@ -6440,6 +6444,29 @@ export class SqliteCoordinator {
     };
   }
 
+  readAttentionEvents(taskRef, { afterCursor = 0, limit = 50 } = {}, principal) {
+    assertTaskPrincipal(principal, taskRef.taskId, taskRef.incarnationId);
+    const rows = this.db.prepare(
+      `SELECT a.sequence AS cursor, a.event_id AS eventId,
+              a.event_type AS eventType, a.revision,
+              a.detail_json AS detailJson, a.occurred_at AS occurredAt,
+              a.sender_incarnation_id AS senderIncarnationId,
+              a.message_id AS messageId
+       FROM audit_events a
+       JOIN messages m USING (sender_incarnation_id, message_id)
+       WHERE a.sequence > ? AND a.event_type = 'message-durably-received'
+         AND m.target_task_id = ? AND m.target_incarnation_id = ?
+       ORDER BY a.sequence ASC LIMIT ?`,
+    ).all(
+      afterCursor, taskRef.taskId, taskRef.incarnationId, Math.min(limit, 100),
+    );
+    return {
+      events: rows.map((event) => ({ ...event, detail: JSON.parse(event.detailJson) })),
+      nextCursor: rows.at(-1)?.cursor ?? afterCursor,
+      timedOut: rows.length === 0,
+    };
+  }
+
   #currentDependencyEdgeRow(dependencyId, required = true) {
     if (typeof dependencyId !== "string" || dependencyId.length === 0) {
       throw codedError("threadmesh_dependency_edge_invalid", "dependencyId");
@@ -7259,7 +7286,8 @@ export class SqliteCoordinator {
         execution.intent.actor.taskId !== event.sender.taskId ||
         execution.intent.actor.incarnationId !== event.sender.incarnationId ||
         canonicalJson(actionArgumentKeys) !== canonicalJson(expectedArgumentKeys) ||
-        actionArguments?.sourceEventId !== execution.intent.eventId ||
+        ![execution.intent.eventId, execution.intent.messageId]
+          .includes(actionArguments?.sourceEventId) ||
         canonicalJson(actionArguments?.event) !==
           canonicalJson(boundedLifecycleActionEventBody(event)) ||
         event.sender.incarnationId !== row.sender_incarnation_id ||

@@ -76,7 +76,7 @@ function exactNextEvent(coordinator, receiver, principal, cursorState) {
       senderIncarnationId: cursorState.activeClaim.senderIncarnationId,
     };
   }
-  const page = coordinator.waitTask(
+  const page = coordinator.readAttentionEvents(
     receiver,
     { afterCursor: cursorState.cursor.committedCursor, limit: 1 },
     principal,

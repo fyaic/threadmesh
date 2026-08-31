@@ -235,6 +235,44 @@ function expectCode(operation, code) {
   assert.throws(operation, (error) => error?.code === code);
 }
 
+test("lifecycle source binds to intent event/message id and rejects a third value", () => {
+  for (const [suffix, sourceEventId, accepted] of [
+    ["message_source", "msg_v8_artifact_01", true],
+    ["third_source", "event_unbound_third_value", false],
+  ]) {
+    const temporary = temporaryDatabase();
+    const coordinator = setup(temporary.filename);
+    try {
+      const sourceEvent = event();
+      const execution = completedExecution({
+        coordinator, actor: sender, suffix,
+        messageId: sourceEvent.messageId, eventId: `evt_v8_${suffix}`,
+        tool: "threadmesh_publish_artifact",
+        argumentsValue: {
+          sourceEventId,
+          event: actionEventBody(sourceEvent),
+          commitSha: "1".repeat(40),
+        },
+        resultDigest: sha256Digest({ published: true }),
+      });
+      const publish = () => coordinator.publishLifecycleFromCompletedAction(
+        execution.executionId,
+        {
+          expectedTool: "threadmesh_publish_artifact",
+          event: sourceEvent,
+          expectedMaterial: { commitSha: "1".repeat(40) },
+        },
+        senderPrincipal,
+      );
+      if (accepted) assert.equal(publish().replay, false);
+      else expectCode(publish, "threadmesh_lifecycle_publication_action_mismatch");
+    } finally {
+      coordinator.close();
+      temporary.cleanup();
+    }
+  }
+});
+
 function turnIntentHeaderDigest(intent) {
   return sha256Digest({
     intentId: intent.intentId,
