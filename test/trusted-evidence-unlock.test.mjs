@@ -861,6 +861,80 @@ test("restart rejects a tampered finalization binding", () => {
   }
 });
 
+test("historical replay remains valid after the bound edge naturally expires", () => {
+  const temporary = temporaryDatabase();
+  const context = setup(temporary.filename);
+  const prepared = prepareFinalization(context);
+  context.coordinator.finalizeGitEvidenceDependency(
+    prepared.execution.executionId,
+    finalizeArgs(context, prepared),
+    taskPrincipal(context.actors.verifier),
+  );
+  context.coordinator.close();
+  const reopened = new SqliteCoordinator({
+    filename: temporary.filename,
+    clock: () => Date.parse("2026-08-31T14:00:00.000Z"),
+    verificationTrustAnchors: [context.signing.trustAnchor],
+  });
+  try {
+    assert.equal(
+      reopened.getDependencyEdge(
+        context.dependencyId, taskPrincipal(context.dependent),
+      ).status,
+      "satisfied",
+    );
+    assert.equal(
+      reopened.inspectGitEvidenceChain(context.requirement.chainId, owner)
+        .trustedComplete,
+      true,
+    );
+  } finally {
+    reopened.close();
+    temporary.cleanup();
+  }
+});
+
+test("restart rejects tampered satisfaction and disposition timestamps", () => {
+  for (const variant of ["satisfaction", "disposition"]) {
+    const temporary = temporaryDatabase();
+    const context = setup(temporary.filename);
+    const prepared = prepareFinalization(context);
+    context.coordinator.finalizeGitEvidenceDependency(
+      prepared.execution.executionId,
+      finalizeArgs(context, prepared),
+      taskPrincipal(context.actors.verifier),
+    );
+    context.coordinator.close();
+    const database = new Database(temporary.filename);
+    if (variant === "satisfaction") {
+      database.prepare(
+        `UPDATE dependency_satisfactions SET satisfied_at = ?
+         WHERE dependency_id = ?`,
+      ).run("2026-08-31T12:01:00.000Z", context.dependencyId);
+    } else {
+      database.prepare(
+        `UPDATE dependency_satisfactions
+         SET disposition_json = json_set(disposition_json, '$.updatedAt', ?)
+         WHERE dependency_id = ?`,
+      ).run("2026-08-31T12:01:00.000Z", context.dependencyId);
+    }
+    database.close();
+    try {
+      assert.throws(
+        () => new SqliteCoordinator({
+          filename: temporary.filename,
+          clock: () => Date.parse("2026-08-31T14:00:00.000Z"),
+          verificationTrustAnchors: [context.signing.trustAnchor],
+        }),
+        { code: "threadmesh_git_evidence_dependency_storage_tampered" },
+        variant,
+      );
+    } finally {
+      temporary.cleanup();
+    }
+  }
+});
+
 test("a late satisfaction write failure rolls back final evidence and turn promotion", () => {
   const temporary = temporaryDatabase();
   const context = setup(temporary.filename);

@@ -6464,14 +6464,25 @@ export class SqliteCoordinator {
         throw codedError("threadmesh_git_evidence_dependency_storage_tampered");
       }
       const finalRecord = chain.records[3];
-      const effect = edge && evaluateDependencyEffect({
-        event,
-        disposition,
-        trustAnchors: this.#verificationTrustAnchors,
-        dependencyEdge: JSON.parse(edge.edge_json),
-        currentDependencyEdge: JSON.parse(edge.edge_json),
-        now: this.clock(),
-      });
+      const satisfactionTime = Date.parse(satisfaction?.satisfied_at ?? "");
+      const historicalTimeValid =
+        Number.isFinite(satisfactionTime) &&
+        satisfaction.satisfied_at === disposition?.updatedAt;
+      let effect = null;
+      if (edge && historicalTimeValid) {
+        try {
+          effect = evaluateDependencyEffect({
+            event,
+            disposition,
+            trustAnchors: this.#verificationTrustAnchors,
+            dependencyEdge: JSON.parse(edge.edge_json),
+            currentDependencyEdge: JSON.parse(edge.edge_json),
+            now: satisfactionTime,
+          });
+        } catch {
+          effect = null;
+        }
+      }
       const body = {
         chainId: row.chain_id,
         requirementDigest: chain.requirement.requirementDigest,
@@ -6493,6 +6504,7 @@ export class SqliteCoordinator {
       }
       if (
         !chain.state.trustedComplete || !finalRecord || !satisfaction || !edge ||
+        !historicalTimeValid ||
         execution.intent.state !== "promoted" || !action ||
         action.name !== FINAL_GIT_EVIDENCE_TOOL ||
         action.resultStatus !== "completed" ||
