@@ -1,0 +1,202 @@
+import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import test from "node:test";
+
+import {
+  DeterministicLiveAgentRuntime,
+  runLiveAgentScenario,
+  verifyLiveAgentEvidence,
+} from "../src/validation/live-agent-scenario.mjs";
+
+function git(cwd, ...args) {
+  return execFileSync("git", args, {
+    cwd,
+    encoding: "utf8",
+    env: {
+      PATH: process.env.PATH ?? "",
+      GIT_CONFIG_NOSYSTEM: "1",
+      GIT_AUTHOR_NAME: "ThreadMesh Test",
+      GIT_AUTHOR_EMAIL: "test@example.invalid",
+      GIT_COMMITTER_NAME: "ThreadMesh Test",
+      GIT_COMMITTER_EMAIL: "test@example.invalid",
+    },
+  }).trim();
+}
+
+function sourceRepository() {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "threadmesh-live-scenario-source-"));
+  git(root, "init", "--quiet");
+  fs.writeFileSync(path.join(root, "README.md"), "source\n");
+  git(root, "add", "README.md");
+  git(root, "commit", "--quiet", "--no-gpg-sign", "-m", "source");
+  return { root, sha: git(root, "rev-parse", "HEAD") };
+}
+
+test("dry-run proves the A-R-same-A-V runner contract without claiming product evidence", async () => {
+  const source = sourceRepository();
+  const artifacts = fs.mkdtempSync(path.join(os.tmpdir(), "threadmesh-live-scenario-artifacts-"));
+  const temporaryParent = fs.mkdtempSync(path.join(os.tmpdir(), "threadmesh-live-scenario-fixture-"));
+  const runtime = new DeterministicLiveAgentRuntime();
+  try {
+    const result = await runLiveAgentScenario({
+      mode: "dry-run",
+      product: "fixture",
+      sourceRoot: source.root,
+      validatedBaseSha: source.sha,
+      artifactsDirectory: artifacts,
+      temporaryParent,
+      runtime,
+      scenarioId: "m52-dry-contract",
+    });
+    assert.equal(result.state, "passed");
+    assert.equal(result.liveProductEvidence, false);
+    assert.equal(result.claim, "runner-contract-only-not-product-evidence");
+    assert.deepEqual(result.proactiveSignal, {
+      reviewerSelectedFindingTool: true,
+      receiver: "same-a-session",
+      manualRelayActions: 0,
+      userPromptAddedAfterReview: false,
+      irrelevantAuthorizedWakeCount: 0,
+      irrelevantAuthorizedTurnCount: 0,
+    });
+    assert.equal(result.chain.directDescendant, true);
+    assert.equal(result.chain.independentlyVerified, true);
+    assert.equal(result.chain.dependencyUnlocked, false);
+    assert.equal(result.cleanup.complete, true);
+    assert.deepEqual(runtime.turns.map(({ role, phase }) => `${role}:${phase}`), [
+      "a:implementation", "r:review", "a:fix", "v:verification",
+    ]);
+    assert.equal(runtime.turns[0].ref, runtime.turns[2].ref);
+    assert.notEqual(runtime.turns[0].ref, runtime.turns[1].ref);
+    assert.notEqual(runtime.turns[2].ref, runtime.turns[3].ref);
+    assert.equal(result.liveClosureGates.satisfied, false);
+    assert.ok(result.liveClosureGates.pending.length >= 5);
+    assert.deepEqual(result.liveClosureGates.restartCheckpoints, {
+      eventCreated: false,
+      nativeStarted: false,
+      receiptRecorded: false,
+      finalVerification: false,
+      satisfaction: false,
+    });
+    const records = fs.readFileSync(path.join(artifacts, "private-trace.jsonl"), "utf8")
+      .trim().split("\n").map(JSON.parse);
+    assert.equal(verifyLiveAgentEvidence(records).valid, true);
+    const dispatch = records.find((record) => record.type === "attention.dispatched");
+    const reviewTurn = records.find((record) =>
+      record.type === "turn.completed" && record.detail.phase === "review");
+    assert.ok(dispatch.sequence > reviewTurn.sequence);
+    assert.equal(dispatch.detail.triggerSource, "model-selected-tool");
+    assert.equal(dispatch.detail.manualRelayActions, 0);
+    const irrelevant = records.find((record) => record.type === "control.irrelevant-authorized");
+    assert.deepEqual(
+      [irrelevant.detail.wakeCount, irrelevant.detail.receiverTurnCount],
+      [0, 0],
+    );
+    assert.equal(fs.existsSync(path.join(artifacts, "cleanup-manifest.json")), true);
+    assert.deepEqual(fs.readdirSync(temporaryParent), []);
+  } finally {
+    fs.rmSync(source.root, { recursive: true, force: true });
+    fs.rmSync(artifacts, { recursive: true, force: true });
+    fs.rmSync(temporaryParent, { recursive: true, force: true });
+  }
+});
+
+test("Codex live is capability-preflight only until durable attention and trusted finalize gates close", async () => {
+  const source = sourceRepository();
+  const artifacts = fs.mkdtempSync(path.join(os.tmpdir(), "threadmesh-live-scenario-codex-gate-"));
+  let probes = 0;
+  const runtime = {
+    async probe() {
+      probes += 1;
+      return {
+        userAgent: "codex-test/0.145.0",
+        snapshotDigest: `sha256:${"c".repeat(64)}`,
+      };
+    },
+    async createRole() {
+      throw new Error("must not create a role while live gate is closed");
+    },
+  };
+  try {
+    const result = await runLiveAgentScenario({
+      mode: "live",
+      product: "codex",
+      sourceRoot: source.root,
+      validatedBaseSha: source.sha,
+      artifactsDirectory: artifacts,
+      runtime,
+      ack: "maintainer-approved-threadmesh-live-agent-scenario",
+      scenarioId: "m52-live-gated",
+    });
+    assert.equal(result.state, "blocked");
+    assert.equal(result.code, "threadmesh_codex_live_attention_glue_not_closed");
+    assert.equal(result.liveProductEvidence, false);
+    assert.equal(result.cleanup.threadsCreated, 0);
+    assert.equal(probes, 1);
+    assert.equal(fs.existsSync(path.join(artifacts, "result.json")), true);
+  } finally {
+    fs.rmSync(source.root, { recursive: true, force: true });
+    fs.rmSync(artifacts, { recursive: true, force: true });
+  }
+});
+
+test("evidence verifier rejects a modified record", () => {
+  const body = {
+    schemaVersion: 1,
+    sequence: 1,
+    previousDigest: null,
+    scenarioId: "x",
+    evidenceClass: "deterministic-fixture",
+    product: "fixture",
+    type: "scenario.started",
+    detail: {},
+  };
+  const records = [{ ...body, recordDigest: "sha256:" + "0".repeat(64) }];
+  assert.equal(verifyLiveAgentEvidence(records).valid, false);
+});
+
+test("live execution requires explicit acknowledgement before any runtime action", async () => {
+  const source = sourceRepository();
+  const artifacts = fs.mkdtempSync(path.join(os.tmpdir(), "threadmesh-live-scenario-ack-"));
+  try {
+    await assert.rejects(
+      () => runLiveAgentScenario({
+        mode: "live",
+        product: "codex",
+        sourceRoot: source.root,
+        validatedBaseSha: source.sha,
+        artifactsDirectory: artifacts,
+        runtime: new DeterministicLiveAgentRuntime(),
+      }),
+      { code: "threadmesh_live_scenario_ack_required" },
+    );
+    assert.deepEqual(fs.readdirSync(artifacts), []);
+  } finally {
+    fs.rmSync(source.root, { recursive: true, force: true });
+    fs.rmSync(artifacts, { recursive: true, force: true });
+  }
+});
+
+test("dry-run refuses a product label so fixture output cannot impersonate Codex or Kimi", async () => {
+  const source = sourceRepository();
+  const artifacts = fs.mkdtempSync(path.join(os.tmpdir(), "threadmesh-live-scenario-label-"));
+  try {
+    await assert.rejects(
+      () => runLiveAgentScenario({
+        mode: "dry-run",
+        product: "kimi",
+        sourceRoot: source.root,
+        validatedBaseSha: source.sha,
+        artifactsDirectory: artifacts,
+      }),
+      { code: "threadmesh_live_scenario_dry_run_product_invalid" },
+    );
+    assert.deepEqual(fs.readdirSync(artifacts), []);
+  } finally {
+    fs.rmSync(source.root, { recursive: true, force: true });
+    fs.rmSync(artifacts, { recursive: true, force: true });
+  }
+});

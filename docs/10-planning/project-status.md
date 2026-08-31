@@ -38,7 +38,7 @@ orchestration are paused until this outcome is demonstrated.
 | Research and problem framing | Codex deep dive, community signals, ecosystem comparison, ADRs | Established |
 | Community adoption | No external stars, forks, watchers, issue comments, or independent setup result as of 2026-08-28 | Unvalidated |
 | Active product outcome | One-command lifecycle-event and dependency-handoff loop with an inspector | Deterministic slice merged; real Codex M5.1 seam passed; full multi-role loop pending |
-| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 228 unit/subtests | Executable draft |
+| Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 233 unit/subtests | Executable draft |
 | Minimal adapter SDK | `@fyaic/threadmesh` `0.1.0-alpha.0`; six bounded client methods, per-turn proactive bridge, about 20 kB tarball, packed-consumer execution | Real Pi clean-consumer pass; not published to npm |
 | Local binding | Schema-validated JSON-RPC, transport-derived principals, typed errors | Executable local reference |
 | Local persistence | SQLite registry, proposals, grants, summaries, mailbox, claims, receipts, reconciliation, replay, audit, retention tombstones, and append-only Git evidence chains | Experimental |

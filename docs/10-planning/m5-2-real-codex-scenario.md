@@ -149,3 +149,12 @@ The next seam is the only authority-bearing one:
 one authorized transaction, bind its final record to the current event,
 disposition, dependency edge/version, and verified satisfaction effect. Until
 that exists, durable model-action evidence is not authority to unlock a task.
+
+The [persistent-agent scenario runner](../06-guides/m5-2-live-agent-scenario.md)
+now provides a one-command deterministic rehearsal, hash-linked private trace,
+bounded public projection, cleanup manifest, and real Codex/Kimi capability
+preflights. Product modes remain fail-closed `blocked`: the deterministic
+fixture is not live evidence, and real turns stay disabled until the event,
+next-only cursor claim, receiver decision, admission receipt, exact-task
+resume, promotion, cursor commit, restart, and trusted-finalization gates are
+all machine-verified.
