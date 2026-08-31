@@ -68,11 +68,12 @@ class AttentionAdapterMock {
         evidenceRefs: ["threadmesh-test://codex-attention/turn-b-received"],
       },
       evidence: {
-        kind: "codex-app-server",
         threadId: adapterRef.threadId,
         turnId: "turn-b-received",
         turnStatus: "completed",
         snapshotDigest: adapterRef.snapshotDigest,
+        completedAt: "2026-08-31T10:01:45.000Z",
+        notificationCount: 7,
       },
     };
   }

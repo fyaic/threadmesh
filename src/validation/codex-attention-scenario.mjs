@@ -402,6 +402,7 @@ export async function runCodexAttentionScenario({
     }
 
     let receiverTurn = null;
+    let receiverEvidence = null;
     let transportDisposition = null;
     const consumer = new AttentionWakeCursorConsumer({
       readPage: (options) => coordinator.waitTask(taskRef(scenario.b), options, bPrincipal),
@@ -444,7 +445,6 @@ export async function runCodexAttentionScenario({
         });
         assertExact(receiverTurn, CODEX_ATTENTION_B_READY_MARKER, "threadmesh_codex_attention_b_marker_mismatch");
         if (
-          receiverTurn.evidence?.kind !== "codex-app-server" ||
           receiverTurn.evidence?.threadId !== bRef.threadId ||
           receiverTurn.evidence?.snapshotDigest !== bRef.snapshotDigest ||
           receiverTurn.evidence?.turnStatus !== "completed" ||
@@ -454,6 +454,13 @@ export async function runCodexAttentionScenario({
         ) {
           throw scenarioError("threadmesh_codex_attention_receiver_evidence_mismatch");
         }
+        receiverEvidence = {
+          kind: "codex-app-server",
+          threadId: receiverTurn.evidence.threadId,
+          turnId: receiverTurn.evidence.turnId,
+          turnStatus: receiverTurn.evidence.turnStatus,
+          snapshotDigest: receiverTurn.evidence.snapshotDigest,
+        };
         const receipt = coordinator.recordAdapterReceipt(
           prepared.submission.submissionId,
           accepted.revision,
@@ -483,7 +490,7 @@ export async function runCodexAttentionScenario({
         persisted,
         receiver: scenario.b,
         verifier,
-        receiverEvidence: receiverTurn.evidence,
+        receiverEvidence,
         receiverOutput: receiverTurn.text,
         verifiedAt: new Date(clock()).toISOString(),
         deliveryObservedAt: receiverTurn.receipt.acceptedAt,
@@ -564,7 +571,7 @@ export async function runCodexAttentionScenario({
         modelProvider: bRef.modelProvider ?? null,
       },
       threads: { a: publicAdapterRef(aRef), b: publicAdapterRef(bRef) },
-      receiverEvidence: receiverTurn?.evidence ?? null,
+      receiverEvidence,
       adapterReceipt: receiverTurn?.receipt ?? null,
       evidenceDigests: {
         lifecycleEvent: event ? sha256Digest(event) : null,
