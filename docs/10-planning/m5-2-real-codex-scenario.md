@@ -208,23 +208,37 @@ wrong scenario/checkpoint/replay binding, unsafe link/parent, oversized write,
 and conflicting overwrite fail closed; signed contents never enter the public
 result or trace.
 
-The remaining recovery gap is narrower but still hard: there is no adapter
-query/reconcile surface after native start but before operation binding. The
-current native-started checkpoint is explicitly an operation-bound coordinator
-reopen, not a process-crash-before-bind test, and the remaining checkpoints are
-controlled coordinator reopens rather than killed runner processes. Process
-fault injection and adapter reconciliation precede the real persistent Codex A
-implementation, R review, same-A fix, and V verification run. Kimi remains a
-capability-only compatibility preflight until it exposes bounded dynamic-tool
-and receipt evidence.
+The adapter now has a bounded, read-only persisted-turn observation seam based
+on the official App Server [`thread/read` and experimental list
+surfaces](https://developers.openai.com/codex/app-server). It cross-checks
+`thread/read(includeTurns:true)` against every page of
+`thread/turns/list(itemsView:"full")`; `thread/items/list` is optional because
+local Codex `0.145.0` reports it unsupported. A pre-start baseline freezes the
+complete turn/status/client-key projection, thread status, adapter snapshot,
+and observation digest, and is accepted only while the thread is `idle` or
+`notLoaded`.
 
-Codex `0.145.0` accepts `clientUserMessageId`, but interrupted turns expose no
-readable items and `thread/items/list` is unsupported. `thread/read` plus
-`turns/list` can support a baseline-set/unique-delta lookup only after proving
-the thread has one writer; without that proof the outcome remains ambiguous,
-and an immediate crash may yield `thread/read` not-found. The future adapter
-seam therefore needs persisted baseline turn IDs plus a terminal-state query,
-or an equivalent exclusive-writer proof, before it may reconcile as found.
+Reconciliation remains deliberately narrow. Only one new `interrupted` or
+`failed` turn carrying the exact frozen `clientUserMessageId` may bind a
+terminal observation and abandon the durable intent with its turn ID, status,
+and evidence references. One strict projection re-runs classification and
+binds the baseline, observation, client-key digest, registered thread, and
+adapter snapshot; callers cannot submit a classifier-shaped terminal shortcut.
+Exact replay is idempotent and conflicting persisted evidence fails closed
+after restart. Zero visible delta, a completed or
+in-progress turn, missing or mismatched client ID, multiple deltas, baseline
+mutation/truncation, or read/list disagreement is `ambiguous`; none authorizes
+retry, receipt creation, tool reconstruction, or completion.
+
+This closes the deterministic reconciliation seam, not process-crash proof.
+The current native-started checkpoint is still an operation-bound coordinator
+reopen, the full runner has not yet injected a killed App Server process, and
+local `0.145.0` crash probes showed that interrupted turns can have empty items
+and that an immediate kill can leave no observable turn. Real persistent Codex
+A implementation, R review, same-A fix, and V verification therefore remain
+blocked on integrated fault injection and a live correlated gate run. Kimi
+remains a capability-only compatibility preflight until it exposes bounded
+dynamic-tool and receipt evidence.
 
 The [persistent-agent scenario runner](../06-guides/m5-2-live-agent-scenario.md)
 provides a one-command deterministic integrated rehearsal, hash-linked private

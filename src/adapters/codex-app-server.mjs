@@ -4,6 +4,10 @@ import readline from "node:readline";
 
 import { canonicalJson, sha256Digest } from "../canonical-json.mjs";
 import { assertProtocolObject, codedError } from "../protocol-validator.mjs";
+import {
+  CODEX_TURN_OBSERVATION_LIMITS,
+  createCodexPersistedTurnObservation,
+} from "../state/codex-turn-reconciliation.mjs";
 
 const STDERR_LIMIT = 64 * 1024;
 const TEXT_LIMIT = 1024 * 1024;
@@ -265,6 +269,89 @@ async function waitForExit(child, timeoutMs) {
     new Promise((resolve) => child.once("exit", resolve)),
     new Promise((resolve) => setTimeout(resolve, timeoutMs)),
   ]);
+}
+
+function isUnsupportedAppServerMethod(error) {
+  return /(?:not supported|unsupported|method not found|-32601)/iu.test(
+    error?.message ?? "",
+  );
+}
+
+function assertTurnPage(page, label) {
+  if (!page || !Array.isArray(page.data)) {
+    throw codedError("codex_app_server_persisted_turn_observation_invalid", label);
+  }
+  if (
+    page.nextCursor !== null && page.nextCursor !== undefined &&
+    (typeof page.nextCursor !== "string" || page.nextCursor.length === 0 ||
+      page.nextCursor.length > 4_096)
+  ) throw codedError("codex_app_server_persisted_turn_observation_invalid", `${label}.nextCursor`);
+}
+
+async function listAllPersistedTurns(peer, threadId) {
+  const turns = [];
+  const seenCursors = new Set();
+  let cursor = null;
+  for (let pageNumber = 0; pageNumber < CODEX_TURN_OBSERVATION_LIMITS.maxPages; pageNumber += 1) {
+    const page = await peer.request("thread/turns/list", {
+      threadId,
+      cursor,
+      limit: CODEX_TURN_OBSERVATION_LIMITS.pageSize,
+      sortDirection: "desc",
+      itemsView: "full",
+    });
+    assertTurnPage(page, "thread/turns/list");
+    turns.push(...page.data);
+    if (turns.length > CODEX_TURN_OBSERVATION_LIMITS.maxTurns) {
+      throw codedError("codex_app_server_persisted_turn_observation_limit", "turns");
+    }
+    if (page.nextCursor === null || page.nextCursor === undefined) return turns;
+    if (seenCursors.has(page.nextCursor)) {
+      throw codedError("codex_app_server_persisted_turn_observation_conflict", "cursor cycle");
+    }
+    seenCursors.add(page.nextCursor);
+    cursor = page.nextCursor;
+  }
+  throw codedError("codex_app_server_persisted_turn_observation_limit", "pages");
+}
+
+async function listOptionalPersistedItems(peer, threadId, turns) {
+  const itemPages = {};
+  for (const turn of turns) {
+    const items = [];
+    const seenCursors = new Set();
+    let cursor = null;
+    try {
+      for (let pageNumber = 0; pageNumber < CODEX_TURN_OBSERVATION_LIMITS.maxPages; pageNumber += 1) {
+        const page = await peer.request("thread/items/list", {
+          threadId,
+          turnId: turn.id,
+          cursor,
+          limit: CODEX_TURN_OBSERVATION_LIMITS.pageSize,
+          sortDirection: "asc",
+        });
+        assertTurnPage(page, "thread/items/list");
+        items.push(...page.data);
+        if (items.length > CODEX_TURN_OBSERVATION_LIMITS.maxItemsPerTurn) {
+          throw codedError("codex_app_server_persisted_turn_observation_limit", "items");
+        }
+        if (page.nextCursor === null || page.nextCursor === undefined) break;
+        if (seenCursors.has(page.nextCursor)) {
+          throw codedError("codex_app_server_persisted_turn_observation_conflict", "item cursor cycle");
+        }
+        seenCursors.add(page.nextCursor);
+        cursor = page.nextCursor;
+        if (pageNumber === CODEX_TURN_OBSERVATION_LIMITS.maxPages - 1) {
+          throw codedError("codex_app_server_persisted_turn_observation_limit", "item pages");
+        }
+      }
+    } catch (error) {
+      if (isUnsupportedAppServerMethod(error)) return { itemPages: null, supported: false };
+      throw error;
+    }
+    itemPages[turn.id] = items;
+  }
+  return { itemPages, supported: true };
 }
 
 class JsonLinePeer {
@@ -858,6 +945,54 @@ export class CodexAppServerAdapter {
         deleted: true,
         snapshotDigest: initialization.snapshotDigest,
       };
+    });
+  }
+
+  async observePersistedTurns({
+    command,
+    args = ["app-server", "--listen", "stdio://"],
+    cwd,
+    env = {},
+    threadId,
+    expectedSnapshotDigest,
+    includeItemsList = true,
+    timeoutMs = 30_000,
+  }) {
+    assertInvocation(command, args, cwd, env);
+    if (typeof threadId !== "string" || threadId.length === 0) {
+      throw codedError("codex_app_server_thread_id_invalid");
+    }
+    if (!/^sha256:[a-f0-9]{64}$/u.test(expectedSnapshotDigest ?? "")) {
+      throw codedError("codex_app_server_snapshot_mismatch");
+    }
+    if (typeof includeItemsList !== "boolean") {
+      throw codedError("codex_app_server_persisted_turn_observation_invalid", "includeItemsList");
+    }
+    return this.#withServer({ command, args, cwd, env, timeoutMs }, async (peer) => {
+      const initialization = await this.#initialize(peer, { experimentalApi: true });
+      if (initialization.snapshotDigest !== expectedSnapshotDigest) {
+        throw codedError("codex_app_server_snapshot_mismatch");
+      }
+      const read = await peer.request("thread/read", { threadId, includeTurns: true });
+      if (
+        read?.thread?.id !== threadId || !Array.isArray(read.thread.turns) ||
+        read.thread.status === null || read.thread.status === undefined
+      ) {
+        throw codedError("codex_app_server_persisted_turn_observation_invalid", "thread/read");
+      }
+      const listedTurns = await listAllPersistedTurns(peer, threadId);
+      const optionalItems = includeItemsList
+        ? await listOptionalPersistedItems(peer, threadId, listedTurns)
+        : { itemPages: null, supported: false };
+      return createCodexPersistedTurnObservation({
+        threadId,
+        snapshotDigest: initialization.snapshotDigest,
+        threadStatus: read.thread.status,
+        readTurns: read.thread.turns,
+        listedTurns,
+        itemPages: optionalItems.itemPages,
+        itemsListSupported: optionalItems.supported,
+      });
     });
   }
 

@@ -3,6 +3,9 @@ import fs from "node:fs";
 
 import Database from "better-sqlite3";
 
+import {
+  projectCodexTerminalTurnReconciliation,
+} from "../state/codex-turn-reconciliation.mjs";
 import { canonicalJson, sha256Digest } from "../canonical-json.mjs";
 import {
   assertProtocolObject,
@@ -2370,9 +2373,41 @@ export class SqliteCoordinator {
     { result, expectedRevision } = {},
     principal,
   ) {
+    if (result?.state === "found-terminal") {
+      throw codedError("threadmesh_turn_execution_terminal_projection_required");
+    }
+    return this.#reconcileTurnExecutionResult(
+      executionId, result, expectedRevision, principal,
+    );
+  }
+
+  reconcileCodexTerminalTurnExecution(
+    executionId,
+    { baseline, observation, expectedRevision } = {},
+    principal,
+  ) {
+    const result = projectCodexTerminalTurnReconciliation({ baseline, observation });
+    return this.#reconcileTurnExecutionResult(
+      executionId, result, expectedRevision, principal,
+    );
+  }
+
+  #reconcileTurnExecutionResult(executionId, result, expectedRevision, principal) {
     return this.db.transaction(() => {
       const snapshot = this.#turnExecutionSnapshot(executionId);
       this.#assertTurnExecutionPrincipalAndBinding(snapshot, principal);
+      if (
+        snapshot.intent.state === "abandoned" &&
+        snapshot.row.reconciliation_json !== null
+      ) {
+        const persisted = JSON.parse(snapshot.row.reconciliation_json);
+        if (persisted?.state === "found-terminal" || result?.state === "found-terminal") {
+          if (sha256Digest(persisted) === sha256Digest(result)) {
+            return { ...snapshot, replay: true };
+          }
+          throw codedError("threadmesh_turn_execution_reconciliation_conflict");
+        }
+      }
       this.#assertTurnExecutionCas(snapshot, expectedRevision);
       const next = reconcileUnknownDurableTurnIntent(snapshot.intent, result);
       if (next === snapshot.intent) return { ...snapshot, replay: true };
@@ -6040,6 +6075,18 @@ export class SqliteCoordinator {
         if (row.reconciliation_digest !== sha256Digest(value)) {
           throw codedError("threadmesh_turn_execution_storage_tampered");
         }
+        if (
+          value?.state === "found-terminal" &&
+          (
+            intent.state !== "abandoned" || row.receipt_json !== null ||
+            row.action_count !== 0 ||
+            sha256Digest(value) !== sha256Digest({
+              state: "found-terminal",
+              turnId: intent.turnStart?.turnId,
+              ...intent.abandonment,
+            })
+          )
+        ) throw codedError("threadmesh_turn_execution_storage_tampered");
       } catch (error) {
         if (error?.code) throw error;
         throw codedError("threadmesh_turn_execution_storage_tampered");
