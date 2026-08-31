@@ -15,7 +15,42 @@ inspector, and an independently repeated implementation/review/fix loop.
 Normative M0 review remains a parallel governance track. Maintainer-authorized
 experiments are explicitly labeled and do not satisfy it.
 
-## Active sequence — 2026-08-28
+## Active critical path — 2026-09-01
+
+M5.2 is the only implementation critical path. The next releasable outcome is
+one correlated **real Codex** gate in which persistent A implements, persistent
+R reviews, the **same A session** fixes, and persistent V requests independent
+verification. A waiting dependent must become ready only from the trusted
+chain, while an authorized but irrelevant task must receive no native turn
+after the precreation/bootstrap baseline.
+
+Execute in this order:
+
+1. Merge fail-closed persisted-turn observation and reconciliation for Codex.
+2. Connect the live role runtime to durable start, tool, receipt, admission,
+   lifecycle, and reconciliation seams without a scripted action plan.
+3. Pass killed-runner recovery at every unknown native-turn boundary without a
+   replacement turn or duplicate external effect.
+4. Run A -> R -> same-A -> V with the dependent and irrelevant controls in the
+   same isolated scenario and retain correlated private and public evidence.
+5. Publish the bounded case record and update the inspector/demo only after the
+   live result is classified as `passed`, `blocked`, `failed`, or `not-run`.
+
+The five hard blockers are: complete paginated native-turn observation; exact
+client-identity classification; real multi-tool runtime wiring with model-owned
+decisions; process-crash reconciliation without blind retry; and exact
+evidence, control, restart, and cleanup correlation. In the current slice, a
+missing client id is always ambiguous; unique-delta classification under a
+durable exclusive-writer proof is a future option, not an accepted path. The
+detailed go/no-go checks live in the
+[real Codex scenario plan](m5-2-real-codex-scenario.md).
+
+The merged scripted fixture and coordinator-reopen matrix remain deterministic
+foundation evidence, not live initiative evidence. Kimi compatibility and
+cross-harness repetition start only after the Codex gate is recorded; they do
+not delay or substitute for that gate.
+
+## Product sequence — 2026-08-28
 
 1. Define the flagship closed-loop demo using existing primitives and the six
    product events: `completed`, `blocked`, `needs-input`, `review-failed`,
