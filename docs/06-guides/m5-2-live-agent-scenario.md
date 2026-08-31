@@ -18,8 +18,12 @@ The fixture machine-verifies this sequence:
 5. the exact registered receiver task is resumed;
 6. the completed turn is bound and its model-selected effect is promoted;
 7. only then is the receiver cursor committed;
-8. the fixture-signed final chain is replayed and atomically finalized before any
-   dependency satisfaction.
+8. the dependent independently claims the final event, selects acceptance,
+   admits it into its exact registered task, and binds that completed decision;
+9. the fixture-signed final chain is replayed and atomically finalized before
+   dependency satisfaction;
+10. a specialized finalized-dependency commit advances the dependent cursor
+    without pretending its decision turn was an evidence promotion.
 
 It also registers an authorized-but-irrelevant task and proves zero model turns
 and a zero cursor for that control. This is a scripted integration fixture, not
@@ -44,7 +48,11 @@ npm run validate:m5-2:fake
 The command runs a scripted A→R→same-A→V plan through an isolated SQLite v7
 coordinator, including grants, a bound dependency, exact task admission,
 durable turn/tool receipts, evidence promotion, cursor commits, and atomic v7
-finalization. It emits these files in a new temporary
+finalization. Lifecycle-producing tool arguments freeze the exact source event,
+outgoing message/type/target/relationship, and material commit, finding, or
+chain coordinates; altered or reused effects fail before submission. The final
+dependent path uses its own durable decision and admission receipt rather than
+a harness-authored acceptance. It emits these files in a new temporary
 directory:
 
 - `private-trace.jsonl`: hash-linked detailed trace, including fixture adapter

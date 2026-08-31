@@ -2,7 +2,7 @@ import { generateKeyPairSync, sign } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
-import { sha256Digest } from "../canonical-json.mjs";
+import { canonicalJson, sha256Digest } from "../canonical-json.mjs";
 import {
   SqliteCoordinator,
   createEffectiveGrant,
@@ -199,22 +199,65 @@ async function durableTurn({
 
 export function submitLifecycleFromBoundAction({
   coordinator, execution, actionOrdinal = 0, expectedTool, lifecycleEvent, principal,
-  allowCompletedFinalVerification = false,
+  expectedMaterial, consumedActions = null, allowCompletedFinalVerification = false,
 }) {
   const persisted = coordinator.getTurnExecution(execution.executionId, principal);
   const action = persisted.actions[actionOrdinal];
+  const toolEventTypes = {
+    threadmesh_publish_artifact: "artifact-ready",
+    threadmesh_report_review_finding: "review-failed",
+    threadmesh_publish_dependency: "artifact-ready",
+    threadmesh_verify_exact_chain: "dependency-satisfied",
+  };
+  const materialKeys = {
+    threadmesh_publish_artifact: ["commitSha"],
+    threadmesh_report_review_finding: ["findingDigest"],
+    threadmesh_publish_dependency: ["commitSha"],
+    threadmesh_verify_exact_chain: [
+      "chainId", "expectedEvidenceChainHead", "expectedEvidenceChainRevision",
+    ],
+  };
+  let args = null;
+  try { args = action ? JSON.parse(action.argsJson) : null; } catch { /* fail below */ }
+  const expectedArgs = expectedTool && materialKeys[expectedTool]
+    ? {
+        sourceEventId: persisted.intent.eventId,
+        messageId: lifecycleEvent?.messageId,
+        eventType: lifecycleEvent?.eventType,
+        targetTaskId: lifecycleEvent?.target?.taskId,
+        targetIncarnationId: lifecycleEvent?.target?.incarnationId,
+        relationshipId: lifecycleEvent?.relationshipId,
+        ...expectedMaterial,
+      }
+    : null;
   const allowedState = persisted.intent.state === "promoted" || (
     allowCompletedFinalVerification &&
     persisted.intent.state === "completed-turn-bound" &&
     expectedTool === "threadmesh_verify_exact_chain"
   );
+  const consumptionKey = sha256Digest({
+    executionId: execution.executionId,
+    actionOrdinal,
+    messageId: lifecycleEvent.messageId,
+    sender: lifecycleEvent.sender,
+  });
   if (
     !allowedState || !action || action.name !== expectedTool ||
     action.resultStatus !== "completed" ||
-    persisted.intent.actor.taskId !== lifecycleEvent.sender.taskId ||
-    persisted.intent.actor.incarnationId !== lifecycleEvent.sender.incarnationId
+    toolEventTypes[expectedTool] !== lifecycleEvent?.eventType ||
+    !expectedMaterial ||
+    Object.keys(expectedMaterial).sort().join(",") !==
+      [...(materialKeys[expectedTool] ?? [])].sort().join(",") ||
+    canonicalJson(args) !== canonicalJson(expectedArgs) ||
+    !(consumedActions instanceof Set) || consumedActions.has(consumptionKey) ||
+    persisted.intent.actor.taskId !== lifecycleEvent?.sender?.taskId ||
+    persisted.intent.actor.incarnationId !== lifecycleEvent?.sender?.incarnationId
   ) throw coded("threadmesh_integrated_lifecycle_submit_unbound");
-  return coordinator.submit(projectLifecycleEventToEnvelope(lifecycleEvent), principal);
+  const submitted = coordinator.submit(
+    projectLifecycleEventToEnvelope(lifecycleEvent), principal,
+  );
+  consumedActions.add(consumptionKey);
+  return submitted;
 }
 
 function promoteStage(coordinator, execution, stage, payload, revision, head, principal) {
@@ -264,7 +307,10 @@ function drainProcessedMessageEvents(coordinator, current, messageId, senderInca
   }
 }
 
-async function acceptAndAdmit({ coordinator, runtime, role, ref, current, sourceEvent, observed, chainId, record }) {
+async function acceptAndAdmit({
+  coordinator, runtime, role, ref, current, sourceEvent, observed, chainId, record,
+  onClaim = () => {},
+}) {
   const principal = taskPrincipal(current);
   const cursor = coordinator.getAttentionCursor(taskRef(current), principal).cursor;
   const claimEpoch = `claim_m52_${role}_${sourceEvent.messageId}`;
@@ -274,8 +320,9 @@ async function acceptAndAdmit({ coordinator, runtime, role, ref, current, source
     eventId: observed.eventId,
     expectedRevision: cursor.revision,
   }, principal);
+  onClaim();
   record("coordinator.attention.next-only-claimed", { role, messageId: sourceEvent.messageId });
-  await durableTurn({
+  const decisionExecution = await durableTurn({
     coordinator, runtime, role, ref, current,
     phase: `${role}-decision-${sourceEvent.messageId}`,
     chainId,
@@ -315,7 +362,7 @@ async function acceptAndAdmit({ coordinator, runtime, role, ref, current, source
     principal,
   );
   record("coordinator.context.exact-task-admitted", { role, threadId: current.threadId });
-  return { claimEpoch };
+  return { claimEpoch, decisionExecution };
 }
 
 function bindAndCommitHandler(coordinator, current, claimEpoch, execution, record) {
@@ -434,22 +481,8 @@ function createVerification({ requirement, payloads, verifier, dependent, trustA
   return { request, response, expectedTrustAnchor: trustAnchor };
 }
 
-function acceptedFinalDisposition(coordinator, verifier, dependent, sourceEvent, attestation) {
+function finalDispositionAfterDecision(coordinator, verifier, dependent, sourceEvent, attestation) {
   const principal = taskPrincipal(dependent);
-  const pending = coordinator.claimPending(verifier.incarnationId, sourceEvent.messageId, 0, principal);
-  coordinator.acknowledgePending(
-    verifier.incarnationId, sourceEvent.messageId, pending.claimToken, "accepted", 0, principal,
-  );
-  const prepared = coordinator.prepareAdapterSubmission(
-    verifier.incarnationId, sourceEvent.messageId, 1, principal,
-  );
-  coordinator.beginAdapterSubmission(prepared.submission.submissionId, 1, principal);
-  coordinator.recordAdapterReceipt(
-    prepared.submission.submissionId,
-    1,
-    { adapterOperationId: "fixture-dependent-resume", acceptedAt: NOW_ISO, evidenceRefs: ["fixture://dependent/receipt"] },
-    principal,
-  );
   const persisted = coordinator.getDisposition(verifier.incarnationId, sourceEvent.messageId, principal);
   return {
     specVersion: "0.0-draft",
@@ -474,6 +507,24 @@ function acceptedFinalDisposition(coordinator, verifier, dependent, sourceEvent,
   };
 }
 
+function recordDependentAdapterReceipt(coordinator, verifier, dependent, sourceEvent) {
+  const principal = taskPrincipal(dependent);
+  const prepared = coordinator.prepareAdapterSubmission(
+    verifier.incarnationId, sourceEvent.messageId, 2, principal,
+  );
+  coordinator.beginAdapterSubmission(prepared.submission.submissionId, 2, principal);
+  return coordinator.recordAdapterReceipt(
+    prepared.submission.submissionId,
+    2,
+    {
+      adapterOperationId: "fixture-dependent-post-admission-receipt",
+      acceptedAt: NOW_ISO,
+      evidenceRefs: ["fixture://dependent/post-admission-receipt"],
+    },
+    principal,
+  );
+}
+
 export async function runIntegratedCoordinatorLoop({ runtime, artifactsDirectory, record = () => {} }) {
   const databasePath = path.join(artifactsDirectory, "integrated-coordinator.sqlite");
   fs.rmSync(databasePath, { force: true });
@@ -491,6 +542,7 @@ export async function runIntegratedCoordinatorLoop({ runtime, artifactsDirectory
     clock: () => NOW,
     verificationTrustAnchors: [trustAnchor],
   });
+  const consumedLifecycleActions = new Set();
   try {
     const refs = {};
     const actors = {};
@@ -572,7 +624,15 @@ export async function runIntegratedCoordinatorLoop({ runtime, artifactsDirectory
       coordinator, runtime, role: "a", ref: refs.a, current: actors.a,
       phase: "implementation", chainId: requirement.chainId,
       messageId: "msg_m52_artifact", eventId: "event_m52_artifact_source",
-      tool: "threadmesh_publish_artifact", arguments: { commitSha: sha("3") },
+      tool: "threadmesh_publish_artifact", arguments: {
+        sourceEventId: "event_m52_artifact_source",
+        messageId: "msg_m52_artifact",
+        eventType: "artifact-ready",
+        targetTaskId: actors.r.taskId,
+        targetIncarnationId: actors.r.incarnationId,
+        relationshipId: grants.ar.relationshipId,
+        commitSha: sha("3"),
+      },
       result: { published: true }, record,
     });
     payloads.implementation.turnId = implementation.actions[0].turnId;
@@ -586,7 +646,13 @@ export async function runIntegratedCoordinatorLoop({ runtime, artifactsDirectory
       sender: actors.a, target: actors.r, relationshipId: grants.ar.relationshipId,
       content: "A committed implementation candidate is ready for review.",
     });
-    submitLifecycleFromBoundAction({ coordinator, execution: implementation, expectedTool: "threadmesh_publish_artifact", lifecycleEvent: artifactEvent, principal: taskPrincipal(actors.a) });
+    submitLifecycleFromBoundAction({
+      coordinator, execution: implementation,
+      expectedTool: "threadmesh_publish_artifact",
+      expectedMaterial: { commitSha: payloads.implementation.commitSha },
+      consumedActions: consumedLifecycleActions,
+      lifecycleEvent: artifactEvent, principal: taskPrincipal(actors.a),
+    });
     strictOrder.push("artifact-event-durable");
 
     const irrelevantTurnsBefore = runtime.turns.filter((entry) => entry.role === "irrelevant").length;
@@ -604,14 +670,25 @@ export async function runIntegratedCoordinatorLoop({ runtime, artifactsDirectory
     }
 
     const rObserved = nextReceivedEvent(coordinator, actors.r, artifactEvent.messageId);
-    strictOrder.push("r-next-only-claim");
-    const rAdmission = await acceptAndAdmit({ coordinator, runtime, role: "r", ref: refs.r, current: actors.r, sourceEvent: artifactEvent, observed: rObserved, chainId: requirement.chainId, record });
+    const rAdmission = await acceptAndAdmit({
+      coordinator, runtime, role: "r", ref: refs.r, current: actors.r,
+      sourceEvent: artifactEvent, observed: rObserved, chainId: requirement.chainId,
+      record, onClaim: () => strictOrder.push("r-next-only-claim"),
+    });
     strictOrder.push("r-decision-admission-exact-resume");
     let review = await durableTurn({
       coordinator, runtime, role: "r", ref: refs.r, current: actors.r,
       phase: "review", chainId: requirement.chainId,
       messageId: "msg_m52_artifact", eventId: rObserved.eventId,
-      tool: "threadmesh_report_review_finding", arguments: { findingDigest },
+      tool: "threadmesh_report_review_finding", arguments: {
+        sourceEventId: rObserved.eventId,
+        messageId: "msg_m52_review",
+        eventType: "review-failed",
+        targetTaskId: actors.a.taskId,
+        targetIncarnationId: actors.a.incarnationId,
+        relationshipId: grants.ra.relationshipId,
+        findingDigest,
+      },
       result: { blocking: true }, record,
     });
     payloads["review-failed"].turnId = review.actions[0].turnId;
@@ -625,20 +702,37 @@ export async function runIntegratedCoordinatorLoop({ runtime, artifactsDirectory
       sender: actors.r, target: actors.a, relationshipId: grants.ra.relationshipId,
       content: "The candidate has a reproducible blocking counterexample.",
     });
-    submitLifecycleFromBoundAction({ coordinator, execution: review, expectedTool: "threadmesh_report_review_finding", lifecycleEvent: reviewEvent, principal: taskPrincipal(actors.r) });
+    submitLifecycleFromBoundAction({
+      coordinator, execution: review,
+      expectedTool: "threadmesh_report_review_finding",
+      expectedMaterial: { findingDigest },
+      consumedActions: consumedLifecycleActions,
+      lifecycleEvent: reviewEvent, principal: taskPrincipal(actors.r),
+    });
     bindAndCommitHandler(coordinator, actors.r, rAdmission.claimEpoch, review, record);
     drainProcessedMessageEvents(coordinator, actors.r, artifactEvent.messageId, actors.a.incarnationId);
     strictOrder.push("r-cursor-committed");
 
     const aObserved = nextReceivedEvent(coordinator, actors.a, reviewEvent.messageId);
-    strictOrder.push("same-a-next-only-claim");
-    const aAdmission = await acceptAndAdmit({ coordinator, runtime, role: "a", ref: refs.a, current: actors.a, sourceEvent: reviewEvent, observed: aObserved, chainId: requirement.chainId, record });
+    const aAdmission = await acceptAndAdmit({
+      coordinator, runtime, role: "a", ref: refs.a, current: actors.a,
+      sourceEvent: reviewEvent, observed: aObserved, chainId: requirement.chainId,
+      record, onClaim: () => strictOrder.push("same-a-next-only-claim"),
+    });
     strictOrder.push("same-a-decision-admission-exact-resume");
     let fix = await durableTurn({
       coordinator, runtime, role: "a", ref: refs.a, current: actors.a,
       phase: "fix", chainId: requirement.chainId,
       messageId: "msg_m52_review", eventId: aObserved.eventId,
-      tool: "threadmesh_publish_dependency", arguments: { commitSha: sha("5") },
+      tool: "threadmesh_publish_dependency", arguments: {
+        sourceEventId: aObserved.eventId,
+        messageId: "msg_m52_fix",
+        eventType: "artifact-ready",
+        targetTaskId: actors.v.taskId,
+        targetIncarnationId: actors.v.incarnationId,
+        relationshipId: grants.av.relationshipId,
+        commitSha: sha("5"),
+      },
       result: { published: true }, record,
     });
     payloads.fix.turnId = fix.actions[0].turnId;
@@ -652,14 +746,23 @@ export async function runIntegratedCoordinatorLoop({ runtime, artifactsDirectory
       sender: actors.a, target: actors.v, relationshipId: grants.av.relationshipId,
       content: "The same A task published the direct-descendant fix.",
     });
-    submitLifecycleFromBoundAction({ coordinator, execution: fix, expectedTool: "threadmesh_publish_dependency", lifecycleEvent: fixEvent, principal: taskPrincipal(actors.a) });
+    submitLifecycleFromBoundAction({
+      coordinator, execution: fix,
+      expectedTool: "threadmesh_publish_dependency",
+      expectedMaterial: { commitSha: payloads.fix.commitSha },
+      consumedActions: consumedLifecycleActions,
+      lifecycleEvent: fixEvent, principal: taskPrincipal(actors.a),
+    });
     bindAndCommitHandler(coordinator, actors.a, aAdmission.claimEpoch, fix, record);
     drainProcessedMessageEvents(coordinator, actors.a, reviewEvent.messageId, actors.r.incarnationId);
     strictOrder.push("a-cursor-committed");
 
     const vObserved = nextReceivedEvent(coordinator, actors.v, fixEvent.messageId);
-    strictOrder.push("v-next-only-claim");
-    const vAdmission = await acceptAndAdmit({ coordinator, runtime, role: "v", ref: refs.v, current: actors.v, sourceEvent: fixEvent, observed: vObserved, chainId: requirement.chainId, record });
+    const vAdmission = await acceptAndAdmit({
+      coordinator, runtime, role: "v", ref: refs.v, current: actors.v,
+      sourceEvent: fixEvent, observed: vObserved, chainId: requirement.chainId,
+      record, onClaim: () => strictOrder.push("v-next-only-claim"),
+    });
     strictOrder.push("v-decision-admission-exact-resume");
     const verification = createVerification({ requirement, payloads, verifier: actors.v, dependent: actors.dependent, trustAnchor, privateKey });
     const verificationArguments = {
@@ -667,11 +770,20 @@ export async function runIntegratedCoordinatorLoop({ runtime, artifactsDirectory
       expectedEvidenceChainRevision: evidenceRevision,
       expectedEvidenceChainHead: evidenceHead,
     };
+    const verificationActionArguments = {
+      sourceEventId: vObserved.eventId,
+      messageId: "msg_m52_fix",
+      eventType: "dependency-satisfied",
+      targetTaskId: actors.dependent.taskId,
+      targetIncarnationId: actors.dependent.incarnationId,
+      relationshipId: grants.vd.relationshipId,
+      ...verificationArguments,
+    };
     let verifierExecution = await durableTurn({
       coordinator, runtime, role: "v", ref: refs.v, current: actors.v,
       phase: "verification", chainId: requirement.chainId,
       messageId: "msg_m52_fix", eventId: vObserved.eventId,
-      tool: "threadmesh_verify_exact_chain", arguments: verificationArguments,
+      tool: "threadmesh_verify_exact_chain", arguments: verificationActionArguments,
       result: verification, record,
     });
     strictOrder.push("v-verification-completed-bound");
@@ -685,17 +797,43 @@ export async function runIntegratedCoordinatorLoop({ runtime, artifactsDirectory
     };
     submitLifecycleFromBoundAction({
       coordinator, execution: verifierExecution, expectedTool: "threadmesh_verify_exact_chain",
+      expectedMaterial: verificationArguments,
+      consumedActions: consumedLifecycleActions,
       lifecycleEvent: verifiedEvent, principal: taskPrincipal(actors.v),
       allowCompletedFinalVerification: true,
     });
-    const finalDisposition = acceptedFinalDisposition(
+    strictOrder.push("verified-event-durable");
+    const dependentObserved = nextReceivedEvent(
+      coordinator, actors.dependent, verifiedEvent.messageId,
+    );
+    const dependentAdmission = await acceptAndAdmit({
+      coordinator, runtime, role: "dependent", ref: refs.dependent,
+      current: actors.dependent, sourceEvent: verifiedEvent,
+      observed: dependentObserved, chainId: requirement.chainId, record,
+      onClaim: () => strictOrder.push("dependent-next-only-claim"),
+    });
+    strictOrder.push("dependent-decision-admission-exact-resume");
+    coordinator.bindCompletedAttentionHandler(
+      dependentAdmission.claimEpoch,
+      {
+        turnExecutionId: dependentAdmission.decisionExecution.executionId,
+        expectedRevision: 0,
+      },
+      taskPrincipal(actors.dependent),
+    );
+    strictOrder.push("dependent-decision-handler-bound");
+    recordDependentAdapterReceipt(
+      coordinator, actors.v, actors.dependent, verifiedEvent,
+    );
+    strictOrder.push("dependent-adapter-receipt-recorded");
+    const finalDisposition = finalDispositionAfterDecision(
       coordinator, actors.v, actors.dependent, verifiedEvent, verification.response.attestation,
     );
     const finalized = coordinator.finalizeGitEvidenceDependency(
       verifierExecution.executionId,
       {
         actionOrdinal: 0,
-        verificationToolArguments: verificationArguments,
+        verificationToolArguments: verificationActionArguments,
         ...verification,
         dependencyId: "dependency_m52_verified",
         expectedDependencyVersion: 1,
@@ -709,6 +847,62 @@ export async function runIntegratedCoordinatorLoop({ runtime, artifactsDirectory
     );
     verifierExecution = finalized;
     strictOrder.push("v7-finalize-promoted-satisfied");
+    const dependentCursor = coordinator.getAttentionCursor(
+      taskRef(actors.dependent), taskPrincipal(actors.dependent),
+    ).cursor;
+    const dependentCommit = coordinator.commitFinalizedDependencyAttentionHandler(
+      dependentAdmission.claimEpoch,
+      {
+        dependencyId: "dependency_m52_verified",
+        expectedClaimRevision: 1,
+        expectedCursorRevision: dependentCursor.revision,
+      },
+      taskPrincipal(actors.dependent),
+    );
+    const dependentCommittedCursor = dependentCommit.cursor.committedCursor;
+    coordinator.clock = () => Date.parse("2026-08-31T14:00:00.000Z");
+    const expiredReplay = coordinator.commitFinalizedDependencyAttentionHandler(
+      dependentAdmission.claimEpoch,
+      {
+        dependencyId: "dependency_m52_verified",
+        expectedClaimRevision: 1,
+        expectedCursorRevision: dependentCommit.cursor.revision,
+      },
+      taskPrincipal(actors.dependent),
+    );
+    if (
+      expiredReplay.replay !== true ||
+      expiredReplay.cursor.committedCursor !== dependentCommittedCursor
+    ) throw coded("threadmesh_integrated_expired_attention_replay_failed");
+    coordinator.db.prepare(
+      "UPDATE dependency_satisfactions SET satisfied_at = ? WHERE dependency_id = ?",
+    ).run("2026-08-31T12:00:01.000Z", "dependency_m52_verified");
+    let timestampTamperRejected = false;
+    try {
+      coordinator.commitFinalizedDependencyAttentionHandler(
+        dependentAdmission.claimEpoch,
+        {
+          dependencyId: "dependency_m52_verified",
+          expectedClaimRevision: 1,
+          expectedCursorRevision: dependentCommit.cursor.revision,
+        },
+        taskPrincipal(actors.dependent),
+      );
+    } catch (error) {
+      timestampTamperRejected =
+        error?.code === "threadmesh_finalized_dependency_attention_finalization_mismatch";
+    }
+    coordinator.db.prepare(
+      "UPDATE dependency_satisfactions SET satisfied_at = ? WHERE dependency_id = ?",
+    ).run(NOW_ISO, "dependency_m52_verified");
+    coordinator.clock = () => NOW;
+    if (!timestampTamperRejected) {
+      throw coded("threadmesh_integrated_attention_timestamp_tamper_not_rejected");
+    }
+    drainProcessedMessageEvents(
+      coordinator, actors.dependent, verifiedEvent.messageId, actors.v.incarnationId,
+    );
+    strictOrder.push("dependent-finalized-cursor-committed");
     bindAndCommitHandler(coordinator, actors.v, vAdmission.claimEpoch, finalized, record);
     drainProcessedMessageEvents(coordinator, actors.v, fixEvent.messageId, actors.a.incarnationId);
     strictOrder.push("v-cursor-committed");
@@ -755,6 +949,8 @@ export async function runIntegratedCoordinatorLoop({ runtime, artifactsDirectory
         irrelevantAuthorizedTaskWakeCount: 0,
         irrelevantAuthorizedTaskTurnCount: irrelevantTurnsAfter - irrelevantTurnsBefore,
         lifecycleSubmitAuthority: "observed-bound-action-only",
+        finalizedAttentionExpiryReplayStable: true,
+        finalizedAttentionTimestampTamperRejected: true,
       },
       chain: {
         recordCount: finalized.evidenceState.recordCount,

@@ -121,6 +121,7 @@ function createExecution(coordinator, current, {
   suffix,
   chainId,
   messageId,
+  eventId = `event_${suffix}`,
   toolName,
   arguments: args,
   resultDigest,
@@ -131,7 +132,7 @@ function createExecution(coordinator, current, {
     scenarioId: "scenario_trusted_unlock",
     chainId,
     messageId,
-    eventId: `event_${suffix}`,
+    eventId,
     actor: current,
     adapterIdempotencyKey: `adapter_${suffix}`,
     promptDigest: digest(`prompt-${suffix}`),
@@ -530,6 +531,12 @@ function prepareAcceptedMessage(context, sourceEvent) {
 function prepareFinalization(context) {
   const verification = createIndependentVerification(context);
   const verificationToolArguments = {
+    sourceEventId: "event_verification",
+    messageId: "msg_trusted_unlock",
+    eventType: "dependency-satisfied",
+    targetTaskId: context.dependent.taskId,
+    targetIncarnationId: context.dependent.incarnationId,
+    relationshipId: "rel_trusted_unlock",
     chainId: context.requirement.chainId,
     expectedEvidenceChainRevision: 3,
     expectedEvidenceChainHead: context.evidenceHead,
@@ -568,6 +575,42 @@ function finalizeArgs(context, prepared, overrides = {}) {
     expectedRevision: 5,
     ...overrides,
   };
+}
+
+function prepareDependentAttentionHandler(context, prepared, decision = "accepted") {
+  const principal = taskPrincipal(context.dependent);
+  const observed = context.coordinator.waitTask(
+    taskRef(context.dependent), { afterCursor: 0, limit: 50 }, principal,
+  ).events.find((entry) =>
+    entry.messageId === prepared.sourceEvent.messageId &&
+    entry.eventType === "message-durably-received");
+  assert.ok(observed);
+  const claimEpoch = `claim_dependent_${decision}`;
+  context.coordinator.claimAttentionEvent(
+    taskRef(context.dependent),
+    {
+      claimEpoch,
+      eventCursor: observed.cursor,
+      eventId: observed.eventId,
+      expectedRevision: 0,
+    },
+    principal,
+  );
+  const execution = createExecution(context.coordinator, context.dependent, {
+    suffix: `dependent_decision_${decision}`,
+    chainId: context.requirement.chainId,
+    messageId: prepared.sourceEvent.messageId,
+    eventId: observed.eventId,
+    toolName: "threadmesh_decide_offer",
+    arguments: { messageId: prepared.sourceEvent.messageId, decision },
+    resultDigest: digest(`dependent-${decision}`),
+  });
+  context.coordinator.bindCompletedAttentionHandler(
+    claimEpoch,
+    { turnExecutionId: execution.executionId, expectedRevision: 0 },
+    principal,
+  );
+  return { claimEpoch, principal };
 }
 
 test("atomically finalizes an exact model-selected verifier chain and replays after restart", () => {
@@ -630,6 +673,75 @@ test("atomically finalizes an exact model-selected verifier chain and replays af
   } finally {
     context.coordinator.close();
     temporary.cleanup();
+  }
+});
+
+test("commits dependent attention only from its bound accepted decision and finalized effect", () => {
+  for (const decision of ["accepted", "deferred"]) {
+    const temporary = temporaryDatabase();
+    const context = setup(temporary.filename);
+    try {
+      const prepared = prepareFinalization(context);
+      const handler = prepareDependentAttentionHandler(context, prepared, decision);
+      context.coordinator.finalizeGitEvidenceDependency(
+        prepared.execution.executionId,
+        finalizeArgs(context, prepared),
+        taskPrincipal(context.actors.verifier),
+      );
+      if (decision === "deferred") {
+        assert.throws(
+          () => context.coordinator.commitFinalizedDependencyAttentionHandler(
+            handler.claimEpoch,
+            {
+              dependencyId: context.dependencyId,
+              expectedClaimRevision: 1,
+              expectedCursorRevision: 1,
+            },
+            handler.principal,
+          ),
+          { code: "threadmesh_finalized_dependency_attention_decision_mismatch" },
+        );
+        assert.equal(
+          context.coordinator.getAttentionCursor(
+            taskRef(context.dependent), handler.principal,
+          ).cursor.committedCursor,
+          0,
+        );
+      } else {
+        const committed = context.coordinator.commitFinalizedDependencyAttentionHandler(
+          handler.claimEpoch,
+          {
+            dependencyId: context.dependencyId,
+            expectedClaimRevision: 1,
+            expectedCursorRevision: 1,
+          },
+          handler.principal,
+        );
+        assert.equal(committed.replay, false);
+        assert.equal(committed.claim.state, "promoted");
+        assert.equal(committed.cursor.committedCursor, 1);
+        assert.equal(
+          context.coordinator.getTurnExecution(
+            committed.claim.turnExecutionId, handler.principal,
+          ).intent.state,
+          "completed-turn-bound",
+        );
+        const replay = context.coordinator.commitFinalizedDependencyAttentionHandler(
+          handler.claimEpoch,
+          {
+            dependencyId: context.dependencyId,
+            expectedClaimRevision: 1,
+            expectedCursorRevision: 2,
+          },
+          handler.principal,
+        );
+        assert.equal(replay.replay, true);
+        assert.equal(replay.cursor.committedCursor, 1);
+      }
+    } finally {
+      context.coordinator.close();
+      temporary.cleanup();
+    }
   }
 });
 
