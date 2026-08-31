@@ -234,11 +234,12 @@ This closes the deterministic reconciliation seam, not process-crash proof.
 The current native-started checkpoint is still an operation-bound coordinator
 reopen, the full runner has not yet injected a killed App Server process, and
 local `0.145.0` crash probes showed that interrupted turns can have empty items
-and that an immediate kill can leave no observable turn. Real persistent Codex
-A implementation, R review, same-A fix, and V verification therefore remain
-blocked on integrated fault injection and a live correlated gate run. Kimi
-remains a capability-only compatibility preflight until it exposes bounded
-dynamic-tool and receipt evidence.
+and that an immediate kill can leave no observable turn. The isolated real
+Codex role canary has since completed, but the coordinator-driven A review,
+same-A fix, V verification, and dependent-unlock lifecycle remains blocked on
+integrated fault injection and a correlated gate run. Kimi remains a
+capability-only compatibility preflight until it exposes bounded dynamic-tool
+and receipt evidence.
 
 The first live-runner recovery slice is wired but remains non-product evidence.
 Before native `turn/start`, the runner obtains the bounded read/list baseline
@@ -256,9 +257,10 @@ replacement turn. It is not a killed-process canary.
 Phase-specific dynamic-tool allowlists are exact. Codex `0.145.0` registers
 the bounded union at `thread/start`; each resumed phase accepts callbacks only
 for its exact subset, so a wrong-phase call fails closed. The model-visible
-union is a known limitation and the current five-tool A surface must be reduced
-to the App Server four-tool budget before the real gate. Context-admission
-turns now use the same private baseline and fsynced pre-turn journal, bind the
+union is a known limitation. The product canary reduced A to the App Server
+four-tool budget and completed the bounded real-model phase sequence.
+Context-admission turns now use the same private baseline and fsynced pre-turn
+journal, bind the
 exact coordinator-prepared token/message/revision/ref and shared deterministic
 prompt, and read an existing journal before any new baseline or native call. A
 known pre-start failure retires that journal durably. Post-start terminal
@@ -277,6 +279,18 @@ The [persistent-agent scenario runner](../06-guides/m5-2-live-agent-scenario.md)
 provides a one-command deterministic integrated rehearsal, hash-linked private
 trace, bounded public projection, exact cleanup manifest, retained SQLite
 evidence, private recovery journal, and real Codex/Kimi capability preflights.
-Product modes remain fail-closed `blocked`: the scripted fixture is not live
-evidence, and real turns stay disabled until process-crash and adapter recovery
-gates are closed.
+The first real Codex product canary completed on 2026-09-01. Five roles ran the
+four bounded A -> R -> same-A -> V business turns, selected seven model tools,
+produced the exact two-commit direct-parent chain, preserved the A identity and
+worktree, kept dependent and irrelevant controls at zero turns, and passed
+five-of-five deletion and absence checks. The
+[evidence record](../09-reviews/2026-09-01-m5-2-real-codex-canary.md) remains
+fail-closed `blocked`: the runner submitted all four phase prompts,
+`lifecycleHandoffsByThreadMesh=false`, and `liveProductEvidence=false`.
+
+The next slice is therefore integration, not another isolated role canary:
+connect this proven runtime to coordinator attention routing, receiver-owned
+decisions, context-admission receipts, durable recovery checkpoints, the
+independent verifier attestation, and v7 dependency finalization. M5.2 remains
+open until one correlated `real-codex-integrated-gate` run proves those six
+gates without runner-directed lifecycle sequencing.

@@ -17,38 +17,42 @@ experiments are explicitly labeled and do not satisfy it.
 
 ## Active critical path — 2026-09-01
 
-M5.2 is the only implementation critical path. The next releasable outcome is
-one correlated **real Codex** gate in which persistent A implements, persistent
-R reviews, the **same A session** fixes, and persistent V requests independent
-verification. A waiting dependent must become ready only from the trusted
-chain, while an authorized but irrelevant task must receive no native turn
-after the precreation/bootstrap baseline.
+M5.2 is the only implementation critical path. The real Codex model/tool
+canary has completed the bounded A -> R -> same-A -> V sequence, but the next
+releasable outcome remains one correlated **integrated real Codex** gate. A
+waiting dependent must become ready only from the trusted chain, while an
+authorized but irrelevant task must receive no native turn after the
+precreation/bootstrap baseline.
 
 Execute in this order:
 
-1. Merge fail-closed persisted-turn observation and reconciliation for Codex.
-2. Connect the live role runtime to durable start, tool, receipt, admission,
-   lifecycle, and reconciliation seams without a scripted action plan.
+1. Connect the proven real role runtime to coordinator attention, receiver
+   decisions, context admission, lifecycle publication, and v7 finalization;
+   remove runner-directed phase sequencing.
+2. Bind every live start, selected tool, result, receipt, admission, and
+   lifecycle transition to the existing durable journals and exact identities.
 3. Pass killed-runner recovery at every unknown native-turn boundary without a
    replacement turn or duplicate external effect.
-4. Run A -> R -> same-A -> V with the dependent and irrelevant controls in the
-   same isolated scenario and retain correlated private and public evidence.
+4. Run the integrated A -> R -> same-A -> V lifecycle with the dependent and
+   irrelevant controls in the same isolated scenario and retain correlated
+   private and public evidence.
 5. Publish the bounded case record and update the inspector/demo only after the
    live result is classified as `passed`, `blocked`, `failed`, or `not-run`.
 
-The five hard blockers are: complete paginated native-turn observation; exact
-client-identity classification; real multi-tool runtime wiring with model-owned
-decisions; process-crash reconciliation without blind retry; and exact
-evidence, control, restart, and cleanup correlation. In the current slice, a
-missing client id is always ambiguous; unique-delta classification under a
-durable exclusive-writer proof is a future option, not an accepted path. The
-detailed go/no-go checks live in the
+The real multi-tool runtime, same-A reuse, exact Git chain, negative controls,
+and cleanup have now passed as a product canary. Six integrated blockers remain:
+coordinator attention routing, receiver-owned decisions, context-admission
+receipts, durable recovery checkpoints, independent verifier attestation, and
+dependency finalization. In the current recovery seam, a missing client id is
+always ambiguous; unique-delta classification under a durable exclusive-writer
+proof is a future option, not an accepted path. The detailed go/no-go checks live in the
 [real Codex scenario plan](m5-2-real-codex-scenario.md).
 
-The merged scripted fixture and coordinator-reopen matrix remain deterministic
-foundation evidence, not live initiative evidence. Kimi compatibility and
-cross-harness repetition start only after the Codex gate is recorded; they do
-not delay or substitute for that gate.
+The [real canary record](../09-reviews/2026-09-01-m5-2-real-codex-canary.md)
+also remains below the initiative claim: its four phase prompts came from the
+runner and `lifecycleHandoffsByThreadMesh=false`. Kimi compatibility and
+cross-harness repetition start only after the integrated Codex gate is
+recorded; they do not delay or substitute for that gate.
 
 ## Product sequence — 2026-08-28
 

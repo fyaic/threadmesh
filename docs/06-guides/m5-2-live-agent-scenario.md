@@ -133,6 +133,18 @@ As of 2026-09-01, both commands are expected to exit `2` with `state=blocked`:
   or a queryable prompt-submission receipt. The runner creates no session and
   cannot claim an A→R→A→V pass.
 
+The first real Codex canary completed on source base
+`1155fc8439d81438a4f6892f4414355f129b0444` as scenario
+`m52-real-codex-20260901-01`. It pre-created five roles, completed four real
+model turns with seven model-selected tool calls, created the required two
+commit direct-parent chain, reused the same A identity and worktree, kept the
+dependent and irrelevant controls at zero post-bootstrap turns, and confirmed
+five-of-five thread cleanup. The bounded record is preserved in the
+[canary evidence document](../09-reviews/2026-09-01-m5-2-real-codex-canary.md).
+Its result remains intentionally `blocked`: the runner submitted four phase
+prompts, `lifecycleHandoffsByThreadMesh=false`, and
+`liveProductEvidence=false`.
+
 The canary reports all six missing closure gates: coordinator attention
 routing, receiver-owned decisions, context-admission receipts, durable recovery
 checkpoints, independent verifier attestation, and dependency finalization.

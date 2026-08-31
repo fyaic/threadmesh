@@ -131,16 +131,23 @@ gate is one real Codex A -> R -> same-A -> V loop, with a waiting dependent and
 an authorized irrelevant control in the same correlated run. M5.2 remains
 open; a scripted fixture is never labeled as live initiative.
 
-Five blockers must close in order:
+The real product canary has now closed the isolated role/runtime portion: five
+Codex roles completed four A -> R -> same-A -> V turns, selected seven bounded
+tool calls, produced the exact two-commit chain, preserved same-A identity, kept
+both controls at zero post-bootstrap turns, and passed five-of-five cleanup.
+It remains `blocked`, with `liveProductEvidence=false`, because the runner
+submitted all four phase prompts and ThreadMesh performed no lifecycle handoff.
+
+The remaining integrated blockers must close in order:
 
 1. observe the complete persisted Codex turn set and reconcile unknown starts
    fail-closed;
 2. classify a turn by exact client identity; a missing client id is ambiguous
    in the current slice. Unique-delta classification under a durable
    exclusive-writer proof remains a future option;
-3. wire real persistent roles and bounded multi-tool callbacks so the models,
-   not the runner, own decisions, findings, publications, fixes, and verifier
-   requests;
+3. connect the proven real persistent roles and bounded callbacks to
+   coordinator attention, receiver-owned decision, admission, and lifecycle
+   transitions instead of runner phase sequencing;
 4. survive killed-runner boundaries without blind retry, replacement turns, or
    duplicate effects;
 5. correlate native turns, admissions, lifecycle events, signed evidence,
@@ -177,10 +184,11 @@ under 15 minutes.
    events into eligible next-session attention. It must never convert receipt
    alone into a dependency unlock
    ([#90](https://github.com/fyaic/threadmesh/issues/90)).
-4. Run the first real Codex-first implementation/review/same-session-fix/
-   verification loop, including dependent and irrelevant controls. Only after
-   that correlated live-product pass, repeat it across Codex and one ACP
-   harness using the existing adapters
+4. Promote the completed real Codex model/tool canary into the first integrated
+   coordinator-driven implementation/review/same-session-fix/verification
+   loop, including dependent and irrelevant controls. Only after that
+   correlated live-product pass, repeat it across Codex and one ACP harness
+   using the existing adapters
    ([#91](https://github.com/fyaic/threadmesh/issues/91),
    [#93](https://github.com/fyaic/threadmesh/issues/93)).
 5. Add a minimal inspector view for session status, dependency edges, recent
