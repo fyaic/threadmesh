@@ -3,6 +3,7 @@ import path from "node:path";
 import readline from "node:readline";
 
 import { canonicalJson, sha256Digest } from "../canonical-json.mjs";
+import { renderRegisteredPeerContext } from "../rendering/context-admission.mjs";
 import { assertProtocolObject, codedError } from "../protocol-validator.mjs";
 import {
   CODEX_TURN_OBSERVATION_LIMITS,
@@ -1073,10 +1074,21 @@ export class CodexAppServerAdapter {
     envelope,
     admission,
     adapterIdempotencyKey,
+    preparedRendering = null,
+    beforeTurnStart = null,
+    onTurnStarted = null,
     timeoutMs = 120_000,
   }) {
     assertInvocation(command, args, cwd, env);
     validateAdmission(envelope, admission, adapterRef);
+    if (preparedRendering !== null && (
+      typeof preparedRendering !== "string" || preparedRendering.length > 20_000 ||
+      preparedRendering !== renderRegisteredPeerContext(envelope)
+    )) throw codedError("codex_app_server_prepared_rendering_invalid");
+    if (
+      (beforeTurnStart !== null && typeof beforeTurnStart !== "function") ||
+      (onTurnStarted !== null && typeof onTurnStarted !== "function")
+    ) throw codedError("codex_app_server_turn_boundary_handler_invalid");
     if (typeof adapterIdempotencyKey !== "string" || adapterIdempotencyKey.length === 0) {
       throw codedError("codex_app_server_idempotency_key_invalid");
     }
@@ -1091,8 +1103,9 @@ export class CodexAppServerAdapter {
         peer,
         initialization,
         adapterRef,
-        renderCodexPeerSuggestion(envelope, admission),
+        preparedRendering ?? renderCodexPeerSuggestion(envelope, admission),
         adapterIdempotencyKey,
+        { beforeTurnStart, onTurnStarted },
       );
     });
   }

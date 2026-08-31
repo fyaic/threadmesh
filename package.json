@@ -31,6 +31,7 @@
     "src/inspector/attention-snapshot.mjs",
     "src/policy",
     "src/protocol-validator.mjs",
+    "src/rendering",
     "src/routing",
     "src/sdk",
     "src/state",
