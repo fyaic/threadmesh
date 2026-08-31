@@ -474,18 +474,60 @@ export class CodexLiveAgentRuntime {
       Buffer.byteLength(canonicalJson(registeredTools)) > 32 * 1024
     ) throw scenarioError("threadmesh_live_role_tool_budget_exceeded", role);
     const marker = `THREADMESH_${role.toUpperCase()}_WAITING`;
-    const ref = await this.adapter.createDynamicToolThread({
-      command: this.command,
-      args: this.args,
-      cwd,
-      env: this.env,
-      dynamicTools: registeredTools,
-      developerInstructions: instructions,
-      bootstrapMarker: marker,
-      adapterIdempotencyKey: `idem_${scenarioId}_${role}_bootstrap`,
-      model: this.model,
-      timeoutMs: 180_000,
-    });
+    let ref;
+    try {
+      ref = await this.adapter.createDynamicToolThread({
+        command: this.command,
+        args: this.args,
+        cwd,
+        env: this.env,
+        dynamicTools: registeredTools,
+        developerInstructions: instructions,
+        bootstrapMarker: marker,
+        adapterIdempotencyKey: `idem_${scenarioId}_${role}_bootstrap`,
+        model: this.model,
+        timeoutMs: 180_000,
+      });
+    } catch (error) {
+      const partial = error?.adapterRef;
+      if (
+        partial?.kind === "codex-app-server" &&
+        typeof partial.threadId === "string" && partial.threadId.length > 0 &&
+        /^sha256:[a-f0-9]{64}$/u.test(partial.snapshotDigest ?? "")
+      ) {
+        const cleanupArgs = {
+          command: this.command,
+          args: this.args,
+          cwd,
+          env: this.env,
+          threadId: partial.threadId,
+        };
+        let deleted = false;
+        let absenceVerified = false;
+        try {
+          const before = await this.adapter.confirmThreadAbsent(cleanupArgs);
+          if (before.absent === true) {
+            deleted = true;
+          } else {
+            const response = await this.adapter.deleteThread(cleanupArgs);
+            deleted = response.deleted === true;
+          }
+          const after = before.absent === true
+            ? before
+            : await this.adapter.confirmThreadAbsent(cleanupArgs);
+          absenceVerified = after.absent === true;
+        } catch {
+          // The caller receives a bounded cleanup projection and must fail closed.
+        }
+        error.partialRoleCleanup = Object.freeze({
+          threadCreated: true,
+          deleted,
+          absenceVerified,
+          identifierDigest: sha256Digest(partial.threadId),
+        });
+      }
+      throw error;
+    }
     this.roles.set(role, {
       ref, tools, phaseTools, allTools, registeredTools, instructions,
     });
