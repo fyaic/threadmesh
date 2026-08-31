@@ -18,13 +18,59 @@ import {
   independentGitFindingDigest,
   verifyIndependentGitVerification,
 } from "./independent-git-verifier.mjs";
+import {
+  readM52RecoveryJournal,
+  writeM52RecoveryJournal,
+} from "./m5-2-recovery-journal.mjs";
 
 const NOW = Date.parse("2026-08-31T12:00:00.000Z");
 const NOW_ISO = new Date(NOW).toISOString();
 const EXPIRES_AT = "2026-08-31T13:00:00.000Z";
+const DEPENDENT_ADAPTER_RECEIPT = Object.freeze({
+  adapterOperationId: "fixture-dependent-post-admission-receipt",
+  acceptedAt: NOW_ISO,
+  evidenceRefs: ["fixture://dependent/post-admission-receipt"],
+});
 const owner = Object.freeze({ kind: "user", principalId: "owner_m52_integrated_fixture" });
 const sha = (character) => character.repeat(40);
 const digest = (value) => sha256Digest({ value });
+const DEFAULT_RECOVERY_CHECKPOINTS = Object.freeze([
+  "native-started-operation-bound",
+  "event-created",
+  "receipt-recorded",
+  "final-verification",
+  "satisfaction",
+]);
+const RECOVERY_STATE_TABLES = Object.freeze([
+  ["messages", "sequence"],
+  ["dispositions", "sender_incarnation_id, message_id"],
+  ["admissions", "sender_incarnation_id, message_id"],
+  ["adapterSubmissions", "sender_incarnation_id, message_id, submission_id"],
+  ["audit", "sequence"],
+  ["executions", "created_at, execution_id"],
+  ["actions", "execution_id, ordinal"],
+  ["attentionClaims", "claim_epoch"],
+  ["evidence", "chain_id, sequence"],
+  ["finalizations", "dependency_id"],
+  ["satisfactions", "dependency_id"],
+  ["cursorCommits", "receiver_task_id, receiver_incarnation_id, sequence"],
+  ["taskMetadata", "task_id, incarnation_id"],
+]);
+const RECOVERY_TABLE_NAMES = Object.freeze({
+  messages: "messages",
+  dispositions: "dispositions",
+  admissions: "admission_claims",
+  adapterSubmissions: "adapter_submissions",
+  audit: "audit_events",
+  executions: "turn_execution_intents",
+  actions: "turn_tool_actions",
+  attentionClaims: "attention_handler_claims",
+  evidence: "git_evidence_records",
+  finalizations: "git_evidence_dependency_finalizations",
+  satisfactions: "dependency_satisfactions",
+  cursorCommits: "attention_cursor_commits",
+  taskMetadata: "task_metadata",
+});
 
 function coded(code, detail) {
   const error = new Error(detail ? `${code}: ${detail}` : code);
@@ -38,6 +84,151 @@ function taskPrincipal(actor) {
 
 function taskRef(actor) {
   return { taskId: actor.taskId, incarnationId: actor.incarnationId };
+}
+
+function recoveryStateVector(coordinator, dependent, runtime) {
+  const stores = {};
+  for (const [label, orderBy] of RECOVERY_STATE_TABLES) {
+    const table = RECOVERY_TABLE_NAMES[label];
+    const rows = coordinator.db.prepare(`SELECT * FROM ${table} ORDER BY ${orderBy}`).all();
+    stores[label] = { count: rows.length, digest: sha256Digest(rows) };
+  }
+  const metadata = coordinator.db.prepare(
+    `SELECT revision FROM task_metadata
+     WHERE task_id = ? AND incarnation_id = ?`,
+  ).get(dependent.taskId, dependent.incarnationId);
+  const task = coordinator.getTask(taskRef(dependent), owner);
+  const cursor = coordinator.getAttentionCursor(
+    taskRef(dependent), taskPrincipal(dependent),
+  ).cursor;
+  return {
+    stores,
+    dependent: {
+      revision: metadata.revision,
+      state: task.state,
+      cursor: {
+        committedCursor: cursor.committedCursor,
+        commitCount: cursor.commitCount,
+        revision: cursor.revision,
+      },
+    },
+    runtime: {
+      nativeTurnCount: Array.isArray(runtime?.turns) ? runtime.turns.length : null,
+    },
+  };
+}
+
+function exactArtifactManifest(artifactsDirectory, databasePath, journalPath, journalRecord) {
+  const retained = [
+    { kind: "sqlite", path: path.basename(databasePath) },
+    { kind: "recovery-journal", path: path.basename(journalPath) },
+  ];
+  const absent = [
+    { kind: "sqlite-wal", path: path.basename(`${databasePath}-wal`) },
+    { kind: "sqlite-shm", path: path.basename(`${databasePath}-shm`) },
+    { kind: "sqlite-rollback-journal", path: path.basename(`${databasePath}-journal`) },
+  ];
+  const resources = [
+    ...retained.map((resource) => ({
+      ...resource,
+      expectedDisposition: "retained-private-evidence",
+      present: fs.existsSync(path.join(artifactsDirectory, resource.path)),
+      absenceChecked: false,
+    })),
+    ...absent.map((resource) => ({
+      ...resource,
+      expectedDisposition: "absent-after-close",
+      present: fs.existsSync(path.join(artifactsDirectory, resource.path)),
+      absenceChecked: true,
+    })),
+  ];
+  const names = fs.readdirSync(artifactsDirectory);
+  const managedOutputs = new Set([
+    "private-trace.jsonl", "result.json", "cleanup-manifest.json",
+  ]);
+  const recognized = new Set([
+    ...resources.map((entry) => entry.path), ...managedOutputs,
+  ]);
+  const temporaryPaths = names.filter((name) => name.endsWith(".tmp"));
+  const unexpectedPaths = names.filter(
+    (name) => !recognized.has(name) && !temporaryPaths.includes(name),
+  );
+  resources.push(
+    {
+      kind: "temporary-files",
+      path: null,
+      expectedDisposition: "absent-after-close",
+      present: temporaryPaths.length > 0,
+      absenceChecked: true,
+      paths: temporaryPaths,
+    },
+    {
+      kind: "unexpected-files",
+      path: null,
+      expectedDisposition: "absent-after-close",
+      present: unexpectedPaths.length > 0,
+      absenceChecked: true,
+      paths: unexpectedPaths,
+    },
+  );
+  const retainedComplete = resources
+    .filter((entry) => entry.expectedDisposition === "retained-private-evidence")
+    .every((entry) => entry.present);
+  const absenceComplete = resources
+    .filter((entry) => entry.expectedDisposition === "absent-after-close")
+    .every((entry) => entry.absenceChecked && !entry.present);
+  return {
+    attempted: true,
+    complete: retainedComplete && absenceComplete,
+    resources,
+    retainedEvidence: resources
+      .filter((entry) => entry.expectedDisposition === "retained-private-evidence" && entry.present)
+      .map((entry) => entry.path),
+    recoveryJournal: {
+      path: path.basename(journalPath),
+      present: fs.existsSync(journalPath),
+      recordDigest: journalRecord.recordDigest,
+      bundleDigest: journalRecord.bundleDigest,
+    },
+  };
+}
+
+function assertRecoveryExpectedDeltas(proofs) {
+  const byCheckpoint = Object.fromEntries(
+    proofs.map((proof) => [proof.checkpoint, proof.state]),
+  );
+  const native = byCheckpoint["native-started-operation-bound"];
+  const created = byCheckpoint["event-created"];
+  const receipt = byCheckpoint["receipt-recorded"];
+  const verified = byCheckpoint["final-verification"];
+  const satisfied = byCheckpoint.satisfaction;
+  if (
+    !native || !created || !receipt || !verified || !satisfied ||
+    native.stores.executions.count !== 1 || native.stores.actions.count !== 0 ||
+    native.runtime.nativeTurnCount !== 0 || created.runtime.nativeTurnCount !== 1 ||
+    created.stores.messages.count !== native.stores.messages.count + 1 ||
+    created.stores.actions.count !== native.stores.actions.count + 1 ||
+    created.stores.evidence.count !== native.stores.evidence.count + 1 ||
+    receipt.stores.messages.count <= created.stores.messages.count ||
+    receipt.stores.actions.count <= created.stores.actions.count ||
+    canonicalJson(receipt) !== canonicalJson(verified) ||
+    verified.stores.finalizations.count !== 0 ||
+    verified.stores.satisfactions.count !== 0 ||
+    satisfied.stores.finalizations.count !== 1 ||
+    satisfied.stores.satisfactions.count !== 1 ||
+    satisfied.stores.evidence.count !== verified.stores.evidence.count + 1 ||
+    satisfied.dependent.revision !== verified.dependent.revision + 1 ||
+    satisfied.dependent.state !== "ready"
+  ) throw coded("threadmesh_integrated_recovery_delta_mismatch");
+  return {
+    nativeStartedExecutionPersistedWithoutAction: true,
+    nativeRuntimeTurnCountAdvancesOnceAfterBoundReopen: true,
+    eventCreatedAddsOneMessageActionAndEvidenceRecord: true,
+    receiptCheckpointAdvancesDurableWork: true,
+    journalCheckpointHasNoCoordinatorDelta: true,
+    satisfactionAddsOneFinalizationSatisfactionAndEvidenceRecord: true,
+    dependentRevisionAdvancesOnce: true,
+  };
 }
 
 export function decisionResultProjection({ messageId, receiver, disposition }) {
@@ -149,7 +340,7 @@ function completedBinding(current, turn, actions) {
 
 async function durableTurn({
   coordinator, runtime, role, ref, current, phase, chainId, messageId, eventId,
-  tool, arguments: args, result, record,
+  tool, arguments: args, result, record, restartAfterNativeBound = null,
 }) {
   const principal = taskPrincipal(current);
   let execution = coordinator.createTurnExecutionIntent({
@@ -179,6 +370,14 @@ async function durableTurn({
         execution.executionId, { turnId, expectedRevision: 1 }, principal,
       );
       record("coordinator.turn.native-bound", { role, phase, turnId });
+      if (restartAfterNativeBound) {
+        coordinator = restartAfterNativeBound({
+          executionId: execution.executionId,
+          turnId,
+          principal,
+        });
+        execution = coordinator.getTurnExecution(execution.executionId, principal);
+      }
     },
     beforeToolCall: async (selected) => {
       execution = coordinator.recordModelSelectedTurnToolAction(
@@ -543,18 +742,32 @@ function recordDependentAdapterReceipt(coordinator, verifier, dependent, sourceE
   return coordinator.recordAdapterReceipt(
     prepared.submission.submissionId,
     2,
-    {
-      adapterOperationId: "fixture-dependent-post-admission-receipt",
-      acceptedAt: NOW_ISO,
-      evidenceRefs: ["fixture://dependent/post-admission-receipt"],
-    },
+    DEPENDENT_ADAPTER_RECEIPT,
     principal,
   );
 }
 
-export async function runIntegratedCoordinatorLoop({ runtime, artifactsDirectory, record = () => {} }) {
+export async function runIntegratedCoordinatorLoop({
+  runtime,
+  artifactsDirectory,
+  scenarioId = "scenario_m52_integrated_fixture",
+  restartCheckpoints = DEFAULT_RECOVERY_CHECKPOINTS,
+  record = () => {},
+}) {
+  if (
+    !Array.isArray(restartCheckpoints) ||
+    new Set(restartCheckpoints).size !== restartCheckpoints.length ||
+    restartCheckpoints.some((checkpoint) => !DEFAULT_RECOVERY_CHECKPOINTS.includes(checkpoint))
+  ) throw coded("threadmesh_integrated_recovery_checkpoint_invalid");
   const databasePath = path.join(artifactsDirectory, "integrated-coordinator.sqlite");
-  fs.rmSync(databasePath, { force: true });
+  const journalPath = path.join(artifactsDirectory, "m5-2-recovery-journal.json");
+  const reservedArtifacts = [
+    databasePath, journalPath, `${databasePath}-wal`, `${databasePath}-shm`,
+    `${databasePath}-journal`,
+  ];
+  if (reservedArtifacts.some((filename) => fs.existsSync(filename))) {
+    throw coded("threadmesh_integrated_recovery_artifacts_not_fresh");
+  }
   const { publicKey, privateKey } = generateKeyPairSync("ed25519");
   const trustAnchor = {
     keyId: "threadmesh://independent-git-verifier/key/ephemeral",
@@ -564,12 +777,15 @@ export async function runIntegratedCoordinatorLoop({ runtime, artifactsDirectory
     policyId: "threadmesh://independent-git-verifier/policy/1",
     publicKeyPem: publicKey.export({ type: "spki", format: "pem" }),
   };
-  const coordinator = new SqliteCoordinator({
+  let coordinator = new SqliteCoordinator({
     filename: databasePath,
     clock: () => NOW,
     verificationTrustAnchors: [trustAnchor],
   });
   const consumedLifecycleActions = new Set();
+  const remainingRestartCheckpoints = new Set(restartCheckpoints);
+  const recoveryProofs = [];
+  let journalRecord = null;
   try {
     const refs = {};
     const actors = {};
@@ -586,6 +802,50 @@ export async function runIntegratedCoordinatorLoop({ runtime, artifactsDirectory
         adapterRef: refs[role],
       }, owner);
     }
+    const controlledCoordinatorReopen = (checkpoint) => {
+      if (!remainingRestartCheckpoints.has(checkpoint)) return coordinator;
+      const before = recoveryStateVector(coordinator, actors.dependent, runtime);
+      coordinator.close();
+      coordinator = new SqliteCoordinator({
+        filename: databasePath,
+        clock: () => NOW,
+        verificationTrustAnchors: [trustAnchor],
+      });
+      const after = recoveryStateVector(coordinator, actors.dependent, runtime);
+      if (canonicalJson(before) !== canonicalJson(after)) {
+        throw coded("threadmesh_integrated_recovery_state_drift", checkpoint);
+      }
+      const stateDigest = sha256Digest(after);
+      recoveryProofs.push({
+        checkpoint,
+        coordinatorReopenOnly: true,
+        processCrashBeforeOperationBind: false,
+        beforeDigest: sha256Digest(before),
+        afterDigest: stateDigest,
+        state: after,
+        exactReplayNoDuplicate: false,
+      });
+      remainingRestartCheckpoints.delete(checkpoint);
+      record("coordinator.recovery.reopened", {
+        checkpoint,
+        stateDigest,
+        processCrashBeforeOperationBind: false,
+      });
+      return coordinator;
+    };
+    const assertExactReplayNoDuplicate = (checkpoint, operation) => {
+      const before = recoveryStateVector(coordinator, actors.dependent, runtime);
+      const result = operation();
+      const after = recoveryStateVector(coordinator, actors.dependent, runtime);
+      if (canonicalJson(before) !== canonicalJson(after)) {
+        throw coded("threadmesh_integrated_recovery_replay_duplicated", checkpoint);
+      }
+      const proof = recoveryProofs.find((entry) => entry.checkpoint === checkpoint);
+      if (!proof) throw coded("threadmesh_integrated_recovery_checkpoint_missing", checkpoint);
+      proof.exactReplayNoDuplicate = true;
+      proof.replayStateDigest = sha256Digest(after);
+      return result;
+    };
     const grants = {
       ar: grant(actors.a, actors.r, "a_r"),
       ra: grant(actors.r, actors.a, "r_a"),
@@ -662,6 +922,16 @@ export async function runIntegratedCoordinatorLoop({ runtime, artifactsDirectory
         commitSha: sha("3"),
       },
       result: { published: true }, record,
+      restartAfterNativeBound: ({ executionId, turnId, principal }) => {
+        controlledCoordinatorReopen("native-started-operation-bound");
+        assertExactReplayNoDuplicate(
+          "native-started-operation-bound",
+          () => coordinator.bindStartedTurnExecutionOperation(
+            executionId, { turnId, expectedRevision: 1 }, principal,
+          ),
+        );
+        return coordinator;
+      },
     });
     payloads.implementation.turnId = implementation.actions[0].turnId;
     payloads.implementation.toolCallDigest = implementation.actions[0].actionDigest;
@@ -677,20 +947,116 @@ export async function runIntegratedCoordinatorLoop({ runtime, artifactsDirectory
       lifecycleEvent: artifactEvent, principal: taskPrincipal(actors.a),
     });
     strictOrder.push("artifact-event-durable");
+    controlledCoordinatorReopen("event-created");
+    assertExactReplayNoDuplicate(
+      "event-created",
+      () => coordinator.submit(
+        projectLifecycleEventToEnvelope(artifactEvent), taskPrincipal(actors.a),
+      ),
+    );
 
     const irrelevantTurnsBefore = runtime.turns.filter((entry) => entry.role === "irrelevant").length;
+    const irrelevantClaimsBefore = coordinator.db.prepare(
+      `SELECT COUNT(*) AS count FROM attention_handler_claims
+       WHERE receiver_task_id = ? AND receiver_incarnation_id = ?`,
+    ).get(actors.irrelevant.taskId, actors.irrelevant.incarnationId).count;
+    const irrelevantControlEvent = event({
+      eventType: "artifact-ready",
+      messageId: "msg_m52_irrelevant_control",
+      sender: actors.a,
+      target: actors.irrelevant,
+      relationshipId: grants.ai.relationshipId,
+      content: "Harness-seeded negative control for durable irrelevant routing.",
+    });
+    coordinator.submit(
+      projectLifecycleEventToEnvelope(irrelevantControlEvent),
+      taskPrincipal(actors.a),
+    );
     const irrelevantRoute = evaluateAttentionRoute({
-      event: artifactEvent,
+      event: irrelevantControlEvent,
       receiverTask: taskRef(actors.irrelevant),
+      subscribedEventTypes: ["review-failed"],
       grant: grants.ai,
       currentGrant: grants.ai,
       sourceTask: actors.a,
       targetTask: actors.irrelevant,
       now: NOW,
     });
-    if (irrelevantRoute.reasonCode !== "attention-target-not-relevant") {
+    if (irrelevantRoute.reasonCode !== "attention-event-type-not-subscribed") {
       throw coded("threadmesh_integrated_irrelevant_control_failed");
     }
+    const irrelevantObserved = nextReceivedEvent(
+      coordinator, actors.irrelevant, irrelevantControlEvent.messageId,
+    );
+    const irrelevantCursorBefore = coordinator.getAttentionCursor(
+      taskRef(actors.irrelevant), taskPrincipal(actors.irrelevant),
+    ).cursor;
+    const irrelevantClassificationDigest = sha256Digest({
+      state: irrelevantRoute.state,
+      reasonCode: irrelevantRoute.reasonCode,
+      eventType: irrelevantRoute.eventType,
+      messageId: irrelevantRoute.messageId,
+    });
+    const irrelevantSkip = coordinator.advanceAttentionCursor(
+      taskRef(actors.irrelevant),
+      {
+        eventCursor: irrelevantObserved.cursor,
+        eventId: irrelevantObserved.eventId,
+        classificationDigest: irrelevantClassificationDigest,
+        expectedRevision: irrelevantCursorBefore.revision,
+      },
+      taskPrincipal(actors.irrelevant),
+    );
+    const irrelevantReplayBefore = recoveryStateVector(
+      coordinator, actors.dependent, runtime,
+    );
+    const irrelevantReplay = coordinator.advanceAttentionCursor(
+      taskRef(actors.irrelevant),
+      {
+        eventCursor: irrelevantObserved.cursor,
+        eventId: irrelevantObserved.eventId,
+        classificationDigest: irrelevantClassificationDigest,
+        expectedRevision: irrelevantSkip.cursor.revision,
+      },
+      taskPrincipal(actors.irrelevant),
+    );
+    const irrelevantReplayAfter = recoveryStateVector(
+      coordinator, actors.dependent, runtime,
+    );
+    if (
+      irrelevantReplay.replay !== true ||
+      canonicalJson(irrelevantReplayBefore) !== canonicalJson(irrelevantReplayAfter)
+    ) throw coded("threadmesh_integrated_irrelevant_replay_failed");
+    const irrelevantConflictBefore = recoveryStateVector(
+      coordinator, actors.dependent, runtime,
+    );
+    let irrelevantConflictRejected = false;
+    try {
+      coordinator.advanceAttentionCursor(
+        taskRef(actors.irrelevant),
+        {
+          eventCursor: irrelevantObserved.cursor,
+          eventId: irrelevantObserved.eventId,
+          classificationDigest: digest("conflicting-irrelevant-classification"),
+          expectedRevision: irrelevantSkip.cursor.revision,
+        },
+        taskPrincipal(actors.irrelevant),
+      );
+    } catch (error) {
+      irrelevantConflictRejected =
+        error?.code === "threadmesh_attention_cursor_commit_conflict";
+    }
+    const irrelevantConflictAfter = recoveryStateVector(
+      coordinator, actors.dependent, runtime,
+    );
+    if (
+      !irrelevantConflictRejected ||
+      canonicalJson(irrelevantConflictBefore) !== canonicalJson(irrelevantConflictAfter)
+    ) throw coded("threadmesh_integrated_irrelevant_conflict_not_closed");
+    record("coordinator.attention.irrelevant-skipped", {
+      reasonCode: irrelevantRoute.reasonCode,
+      commitDigest: irrelevantSkip.commit.commitDigest,
+    });
 
     const rObserved = nextReceivedEvent(coordinator, actors.r, artifactEvent.messageId);
     const rAdmission = await acceptAndAdmit({
@@ -833,31 +1199,138 @@ export async function runIntegratedCoordinatorLoop({ runtime, artifactsDirectory
       taskPrincipal(actors.dependent),
     );
     strictOrder.push("dependent-decision-handler-bound");
-    recordDependentAdapterReceipt(
+    const dependentReceipt = recordDependentAdapterReceipt(
       coordinator, actors.v, actors.dependent, verifiedEvent,
     );
     strictOrder.push("dependent-adapter-receipt-recorded");
+    controlledCoordinatorReopen("receipt-recorded");
+    const receiptReplay = assertExactReplayNoDuplicate(
+      "receipt-recorded",
+      () => coordinator.recordAdapterReceipt(
+        dependentReceipt.submission.submissionId,
+        2,
+        DEPENDENT_ADAPTER_RECEIPT,
+        taskPrincipal(actors.dependent),
+      ),
+    );
+    const persistedReceipt = coordinator.db.prepare(
+      `SELECT state, receipt_json FROM adapter_submissions
+       WHERE submission_id = ?`,
+    ).get(dependentReceipt.submission.submissionId);
+    const receiptProof = recoveryProofs.find(
+      (entry) => entry.checkpoint === "receipt-recorded",
+    );
+    if (
+      receiptReplay.replay !== true ||
+      persistedReceipt?.state !== "receipt-recorded" ||
+      canonicalJson(JSON.parse(persistedReceipt.receipt_json)) !==
+        canonicalJson(DEPENDENT_ADAPTER_RECEIPT)
+    ) throw coded("threadmesh_integrated_recovery_receipt_replay_failed");
+    receiptProof.receipt = {
+      state: persistedReceipt.state,
+      receiptDigest: sha256Digest(JSON.parse(persistedReceipt.receipt_json)),
+      replay: true,
+      duplicateRows: 0,
+    };
     const finalDisposition = finalDispositionAfterDecision(
       coordinator, actors.v, actors.dependent, verifiedEvent, verification.response.attestation,
     );
-    const finalized = coordinator.finalizeGitEvidenceDependency(
-      verifierExecution.executionId,
-      {
-        actionOrdinal: 0,
-        verificationToolArguments: verificationActionArguments,
-        ...verification,
-        dependencyId: "dependency_m52_verified",
-        expectedDependencyVersion: 1,
-        event: verifiedEvent,
-        disposition: finalDisposition,
-        expectedEvidenceChainRevision: evidenceRevision,
-        expectedEvidenceChainHead: evidenceHead,
-        expectedRevision: 5,
+    const persistedVerifier = coordinator.getTurnExecution(
+      verifierExecution.executionId, taskPrincipal(actors.v),
+    );
+    const verifierAction = persistedVerifier.actions[0];
+    const expectedVerificationResultDigest = gitEvidenceVerificationResultDigest({
+      ...verification,
+      expectedTrustAnchor: verification.expectedTrustAnchor,
+    });
+    if (verifierAction?.resultDigest !== expectedVerificationResultDigest) {
+      throw coded("threadmesh_integrated_recovery_verifier_result_unbound");
+    }
+    const finalizeArguments = {
+      actionOrdinal: 0,
+      verificationToolArguments: verificationActionArguments,
+      dependencyId: "dependency_m52_verified",
+      expectedDependencyVersion: 1,
+      event: verifiedEvent,
+      disposition: finalDisposition,
+      expectedEvidenceChainRevision: evidenceRevision,
+      expectedEvidenceChainHead: evidenceHead,
+      expectedRevision: 5,
+    };
+    const replayBinding = {
+      executionId: verifierExecution.executionId,
+      messageId: verifiedEvent.messageId,
+      eventDigest: sha256Digest(verifiedEvent),
+      actionDigest: verifierAction.actionDigest,
+      resultDigest: verifierAction.resultDigest,
+      expectedRevision: finalizeArguments.expectedRevision,
+    };
+    journalRecord = writeM52RecoveryJournal({
+      filename: journalPath,
+      scenarioId,
+      checkpoint: "final-verification",
+      replayBinding,
+      bundle: {
+        verification,
+        finalize: finalizeArguments,
       },
+    });
+    controlledCoordinatorReopen("final-verification");
+    const recoveredFinalVerification = readM52RecoveryJournal({
+      filename: journalPath,
+      expectedScenarioId: scenarioId,
+      expectedCheckpoint: "final-verification",
+      expectedReplayBinding: replayBinding,
+    });
+    const journalReplay = writeM52RecoveryJournal({
+      filename: journalPath,
+      scenarioId,
+      checkpoint: "final-verification",
+      replayBinding,
+      bundle: recoveredFinalVerification.bundle,
+    });
+    if (journalReplay.replay !== true) {
+      throw coded("threadmesh_integrated_recovery_journal_replay_failed");
+    }
+    const finalVerificationProof = recoveryProofs.find(
+      (entry) => entry.checkpoint === "final-verification",
+    );
+    finalVerificationProof.exactReplayNoDuplicate = true;
+    finalVerificationProof.replayStateDigest = finalVerificationProof.afterDigest;
+    const recoveredAction = coordinator.getTurnExecution(
+      verifierExecution.executionId, taskPrincipal(actors.v),
+    ).actions[0];
+    if (
+      recoveredAction.resultDigest !== replayBinding.resultDigest ||
+      gitEvidenceVerificationResultDigest({
+        ...recoveredFinalVerification.bundle.verification,
+        expectedTrustAnchor:
+          recoveredFinalVerification.bundle.verification.expectedTrustAnchor,
+      }) !== recoveredAction.resultDigest
+    ) throw coded("threadmesh_integrated_recovery_verifier_result_unbound");
+    const recoveredFinalizeArguments = {
+      ...recoveredFinalVerification.bundle.finalize,
+      ...recoveredFinalVerification.bundle.verification,
+    };
+    const finalized = coordinator.finalizeGitEvidenceDependency(
+      replayBinding.executionId,
+      recoveredFinalizeArguments,
       taskPrincipal(actors.v),
     );
     verifierExecution = finalized;
     strictOrder.push("v7-finalize-promoted-satisfied");
+    controlledCoordinatorReopen("satisfaction");
+    const satisfactionReplay = assertExactReplayNoDuplicate(
+      "satisfaction",
+      () => coordinator.finalizeGitEvidenceDependency(
+        replayBinding.executionId,
+        recoveredFinalizeArguments,
+        taskPrincipal(actors.v),
+      ),
+    );
+    if (satisfactionReplay.replay !== true || satisfactionReplay.unlock !== false) {
+      throw coded("threadmesh_integrated_recovery_satisfaction_replay_failed");
+    }
     const dependentCursor = coordinator.getAttentionCursor(
       taskRef(actors.dependent), taskPrincipal(actors.dependent),
     ).cursor;
@@ -921,12 +1394,20 @@ export async function runIntegratedCoordinatorLoop({ runtime, artifactsDirectory
     const dependencyAfter = coordinator.getDependencyEdge("dependency_m52_verified", taskPrincipal(actors.dependent));
     const dependentAfter = coordinator.getTask(taskRef(actors.dependent), owner);
     const irrelevantTurnsAfter = runtime.turns.filter((entry) => entry.role === "irrelevant").length;
+    const irrelevantClaimsAfter = coordinator.db.prepare(
+      `SELECT COUNT(*) AS count FROM attention_handler_claims
+       WHERE receiver_task_id = ? AND receiver_incarnation_id = ?`,
+    ).get(actors.irrelevant.taskId, actors.irrelevant.incarnationId).count;
     const irrelevantCursor = coordinator.getAttentionCursor(taskRef(actors.irrelevant), taskPrincipal(actors.irrelevant)).cursor;
+    const recoveryDeltas = assertRecoveryExpectedDeltas(recoveryProofs);
     if (
       dependencyBefore.status !== "waiting" || dependencyAfter.status !== "satisfied" ||
       dependentBefore.state !== "waiting" || dependentAfter.state !== "ready" ||
-      irrelevantTurnsAfter !== irrelevantTurnsBefore || irrelevantCursor.committedCursor !== 0 ||
-      refs.a.threadId !== actors.a.threadId
+      irrelevantTurnsAfter !== irrelevantTurnsBefore ||
+      irrelevantClaimsAfter !== irrelevantClaimsBefore ||
+      irrelevantSkip.commit.kind !== "irrelevant-skip" ||
+      irrelevantCursor.committedCursor !== irrelevantObserved.cursor ||
+      refs.a.threadId !== actors.a.threadId || remainingRestartCheckpoints.size !== 0
     ) throw coded("threadmesh_integrated_invariant_failed", JSON.stringify({
       dependencyBefore: dependencyBefore.status,
       dependencyAfter: dependencyAfter.status,
@@ -934,11 +1415,22 @@ export async function runIntegratedCoordinatorLoop({ runtime, artifactsDirectory
       dependentAfter: dependentAfter.state,
       irrelevantTurnsBefore,
       irrelevantTurnsAfter,
+      irrelevantClaimsBefore,
+      irrelevantClaimsAfter,
       irrelevantCursor: irrelevantCursor.committedCursor,
+      remainingRestartCheckpoints: [...remainingRestartCheckpoints],
       originalAThread: refs.a.threadId,
       actorAThread: actors.a.threadId,
     }));
     record("coordinator.integrated.completed", { strictOrder, dependencyStatus: dependencyAfter.status });
+    coordinator.close();
+    coordinator = null;
+    const cleanup = exactArtifactManifest(
+      artifactsDirectory, databasePath, journalPath, journalRecord,
+    );
+    if (!cleanup.complete) {
+      throw coded("threadmesh_integrated_recovery_cleanup_incomplete");
+    }
     return {
       state: "passed",
       evidenceClass: "deterministic-integrated-coordinator-fixture",
@@ -959,6 +1451,11 @@ export async function runIntegratedCoordinatorLoop({ runtime, artifactsDirectory
         dependentStateAfter: dependentAfter.state,
         irrelevantAuthorizedTaskWakeCount: 0,
         irrelevantAuthorizedTaskTurnCount: irrelevantTurnsAfter - irrelevantTurnsBefore,
+        irrelevantAuthorizedTaskClaimCount: irrelevantClaimsAfter - irrelevantClaimsBefore,
+        irrelevantPersistedSkip: true,
+        irrelevantCursorCommitKind: irrelevantSkip.commit.kind,
+        irrelevantExactReplayNoDuplicate: true,
+        irrelevantConflictingClassificationRejected: true,
         lifecycleSubmitAuthority: "observed-bound-action-only",
         finalizedAttentionExpiryReplayStable: true,
         finalizedAttentionTimestampTamperRejected: true,
@@ -970,23 +1467,35 @@ export async function runIntegratedCoordinatorLoop({ runtime, artifactsDirectory
         signedIndependentAttestation: false,
         dependencyUnlocked: finalized.unlock,
       },
+      recovery: {
+        controlledCoordinatorReopen: true,
+        checkpoints: recoveryProofs,
+        expectedDeltas: recoveryDeltas,
+        unifiedStateVectorStores: RECOVERY_STATE_TABLES.map(([label]) => label),
+        nativeStartedBoundary:
+          "operation-bound coordinator reopen; not process-crash-before-bind",
+        finalVerificationRecoveredFromJournal: true,
+        satisfactionReplay: true,
+        journal: {
+          path: path.basename(journalPath),
+          recordDigest: journalRecord.recordDigest,
+          bundleDigest: journalRecord.bundleDigest,
+          containsSignedVerifierBundle: true,
+          projectedIntoTrace: false,
+        },
+      },
       liveClosureGates: {
         satisfied: false,
         pending: [
           "real Codex product run",
           "crash after native start before operation binding requires adapter reconcile surface",
-          "restart-safe signed verifier result journal",
-          "restart matrix at event-created, receipt, final verification, and satisfaction",
+          "process-crash fault injection beyond controlled coordinator reopen",
           "Kimi bounded dynamic-tool evidence support",
         ],
       },
-      cleanup: {
-        attempted: true,
-        complete: true,
-        retainedEvidence: [path.basename(databasePath)],
-      },
+      cleanup,
     };
   } finally {
-    coordinator.close();
+    coordinator?.close();
   }
 }

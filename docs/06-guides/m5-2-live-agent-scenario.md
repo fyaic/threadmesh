@@ -25,17 +25,25 @@ The fixture machine-verifies this sequence:
 10. a specialized finalized-dependency commit advances the dependent cursor
     without pretending its decision turn was an evidence promotion.
 
-It also registers an authorized-but-irrelevant task and proves zero model turns
-and a zero cursor for that control. This is a scripted integration fixture, not
-evidence of model initiative or an independent verifier service.
+It also registers an authorized-but-irrelevant task, persists an
+`irrelevant-skip` cursor commit, and proves zero claims and zero native model
+turns for that control. This is a scripted integration fixture, not evidence of
+model initiative or an independent verifier service.
 
-Restart closure remains deliberately open. In particular, the adapter has no
-query/reconcile surface for a crash after native `turn/start` but before the
-operation binding is stored, and the database stores only the final verifier
-result digest, not enough signed response material to reconstruct finalization
-after a runner restart. A private durable verifier-result journal and the full
-event-created/native-started/receipt/final-verification/satisfaction fault
-matrix are required before live mode can run.
+The deterministic runner now closes and reopens the coordinator at five fixed
+checkpoints: operation-bound native start, event creation, adapter receipt,
+final verification, and satisfaction. Each reopen compares one state vector
+covering messages/dispositions, admissions, adapter submissions, audit,
+executions/actions, attention claims and commits, evidence, finalization,
+satisfaction, task metadata, dependent revision, and fixture native-turn count;
+an exact replay must add nothing. The native-start checkpoint occurs only after the native turn ID is
+durably bound. It is not a process crash between native `turn/start` and that
+binding, because the adapter still has no query/reconcile surface for that
+unknown outcome. Codex `0.145.0` exposes persisted turn sets through
+`thread/read` plus `turns/list`, but not readable client IDs or
+`thread/items/list`; a unique-delta recovery is trustworthy only with a proven
+single writer, otherwise it is ambiguous. Process-level crash injection
+therefore remains open.
 
 ## One-command deterministic rehearsal
 
@@ -66,15 +74,21 @@ temporary directory:
   reports one orchestrator prompt submission after review, and labels the
   verification mode `deterministic-in-process-fixture-signing`.
 - `integrated-coordinator.sqlite`: private coordinator audit database.
-- `cleanup-manifest.json`: exact retained-evidence manifest.
+- `m5-2-recovery-journal.json`: runner-private, mode-`0600`, atomically replaced,
+  digest-protected signed verifier bundle and exact finalization arguments. Its
+  contents never enter the trace, result projection, or cleanup projection.
+- `cleanup-manifest.json`: exact retained-evidence manifest, including the
+  journal and machine-checked absence of SQLite WAL, SHM, rollback-journal,
+  temporary, and unexpected files. `complete` is derived from those checks.
 
 A fixture `passed` result proves the integrated coordinator happy path, strict
 ordering, same-A adapter identity, dependency locked-before/satisfied-after,
-and the irrelevant zero-turn control. The tools and handoffs are scripted, and
-the orchestrator submits one prompt after review. The in-process test signer is
-trusted only inside this fixture and is explicitly reported as
+the persistent irrelevant skip, and the five controlled coordinator reopens.
+The tools and handoffs are scripted, and the orchestrator submits one prompt
+after review. The in-process test signer is trusted only inside this fixture and is explicitly reported as
 `signedIndependentAttestation=false`. It does not prove model initiative,
-independent product verification, restart safety, or a live integration.
+independent product verification, process-crash recovery, or a live
+integration.
 
 ## Real product preflight
 
@@ -120,8 +134,10 @@ agent returned the expected tool plan.
 ## Cleanup and risk
 
 The rehearsal creates no product threads or sessions. Its hash-linked trace,
-result, cleanup manifest, and SQLite evidence database remain in the explicitly
-reported artifacts directory. Product live mode must never use the fixture
-runtime under a Codex or Kimi label. Kimi quota or authentication problems are
+result, cleanup manifest, SQLite evidence database, and private recovery
+journal remain in the explicitly reported artifacts directory. The directory
+must be fresh; an existing database, journal, or SQLite sidecar is never
+deleted or overwritten. Product live mode must never use the fixture runtime
+under a Codex or Kimi label. Kimi quota or authentication problems are
 reported as blocked preconditions; they must not be rewritten as successful
 compatibility evidence.

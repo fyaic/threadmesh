@@ -166,9 +166,10 @@ next-only cursor claims, receiver-owned decision tools, exact-reference context
 admission, completed-turn binding, evidence promotion, v7 finalization, and
 cursor commits. The same A adapter reference is used for implementation and
 fix; the dependent is waiting before finalization and satisfied afterward; the
-authorized irrelevant control records zero turns and a zero cursor. A generic
-unbound lifecycle-submit bypass is also covered. The plan remains explicitly
-scripted and cannot be reported as product initiative.
+authorized irrelevant control records a durable `irrelevant-skip` while
+retaining zero claims and zero native turns. A generic unbound lifecycle-submit
+bypass is also covered. The plan remains explicitly scripted and cannot be
+reported as product initiative.
 
 Lifecycle publication is frozen to the completed model action: tool name,
 source event, complete bounded outgoing event body (including content, reason,
@@ -192,19 +193,43 @@ promotion or grant evidence authority. Exact replay remains stable after edge
 expiry, while decision-result, admission, adapter-reference, or
 satisfaction-time alteration fails closed.
 
-This closes the deterministic integrated happy path, not M5.2. Restart closure
-has two hard gaps: there is no adapter query/reconcile surface after native
-start but before operation binding, and a restarted runner cannot reconstruct
-the signed final verifier response from the digest stored in SQLite. The next
-mainline slice is therefore adapter reconciliation plus a private durable
-verifier-result journal, followed by the restart fault matrix. Only then should
-the real persistent Codex A implementation, R review, same-A fix, and V
-verification run be enabled. Kimi remains a capability-only compatibility
-preflight until it exposes bounded dynamic-tool and receipt evidence.
+This closes the deterministic integrated happy path and its coordinator-reopen
+recovery slice, not M5.2. A runner-private atomic journal now preserves the
+complete signed verifier bundle and exact finalization arguments, binds them to
+the persisted verifier action result, and reconstructs finalization after
+reopen. Event-created, operation-bound native-started, receipt-recorded,
+final-verification, and satisfaction checkpoints compare one durable state
+vector, including dispositions, admissions, adapter receipts, attention
+claims, task metadata, and fixture native-turn count, and require exact replay
+with no duplicate rows. The irrelevant skip also replays without a second
+commit and rejects a conflicting classification. The satisfaction replay also
+proves a single dependent revision transition. Journal tamper, truncation,
+wrong scenario/checkpoint/replay binding, unsafe link/parent, oversized write,
+and conflicting overwrite fail closed; signed contents never enter the public
+result or trace.
+
+The remaining recovery gap is narrower but still hard: there is no adapter
+query/reconcile surface after native start but before operation binding. The
+current native-started checkpoint is explicitly an operation-bound coordinator
+reopen, not a process-crash-before-bind test, and the remaining checkpoints are
+controlled coordinator reopens rather than killed runner processes. Process
+fault injection and adapter reconciliation precede the real persistent Codex A
+implementation, R review, same-A fix, and V verification run. Kimi remains a
+capability-only compatibility preflight until it exposes bounded dynamic-tool
+and receipt evidence.
+
+Codex `0.145.0` accepts `clientUserMessageId`, but interrupted turns expose no
+readable items and `thread/items/list` is unsupported. `thread/read` plus
+`turns/list` can support a baseline-set/unique-delta lookup only after proving
+the thread has one writer; without that proof the outcome remains ambiguous,
+and an immediate crash may yield `thread/read` not-found. The future adapter
+seam therefore needs persisted baseline turn IDs plus a terminal-state query,
+or an equivalent exclusive-writer proof, before it may reconcile as found.
 
 The [persistent-agent scenario runner](../06-guides/m5-2-live-agent-scenario.md)
 provides a one-command deterministic integrated rehearsal, hash-linked private
-trace, bounded public projection, cleanup manifest, retained SQLite evidence,
-and real Codex/Kimi capability preflights. Product modes remain fail-closed
-`blocked`: the scripted fixture is not live evidence, and real turns stay
-disabled until the two recovery gaps and restart gates are closed.
+trace, bounded public projection, exact cleanup manifest, retained SQLite
+evidence, private recovery journal, and real Codex/Kimi capability preflights.
+Product modes remain fail-closed `blocked`: the scripted fixture is not live
+evidence, and real turns stay disabled until process-crash and adapter recovery
+gates are closed.
