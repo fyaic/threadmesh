@@ -1,4 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -13,18 +14,21 @@ const REVIEW_TARGET = "265e461f1b8714c56f7fe817795b81d895f732c6";
 const PRODUCT_ADAPTERS = Object.freeze({
   codex: "codex-app-server",
   "codex-proactive": "codex-app-server",
+  "codex-attention": "codex-app-server",
   kimi: "acp-session",
   gemini: "gemini-headless",
 });
 const EVIDENCE_KEYS = Object.freeze({
   codex: ["kind", "snapshotDigest", "threadId", "turnId", "turnStatus"],
   "codex-proactive": ["kind", "snapshotDigest", "threadId", "turnId", "turnStatus"],
+  "codex-attention": ["kind", "snapshotDigest", "threadId", "turnId", "turnStatus"],
   kimi: ["kind", "sessionId", "snapshotDigest", "stopReason"],
   gemini: ["exitCode", "kind", "resultStatus", "sessionId", "snapshotDigest", "toolUseCount"],
 });
 const METADATA_KEYS = Object.freeze({
   codex: ["userAgent", "model", "modelProvider"],
   "codex-proactive": ["userAgent", "model", "modelProvider"],
+  "codex-attention": ["userAgent", "model", "modelProvider"],
   kimi: ["protocolVersion", "agentName", "agentVersion"],
   gemini: ["version", "interface", "approvalMode", "sandboxRequested"],
 });
@@ -218,6 +222,7 @@ function projectCleanup(productId, cleanup, { requireComplete }) {
   const productFields = {
     codex: ["threadDeleted"],
     "codex-proactive": ["threadDeleted", "aThreadDeleted", "bThreadDeleted"],
+    "codex-attention": ["threadDeleted", "aThreadDeleted", "bThreadDeleted"],
     kimi: ["sessionDeleted", "absenceVerified"],
     gemini: ["isolatedHomeRemoved"],
   }[productId] ?? [];
@@ -268,6 +273,31 @@ function projectLiveChildResult(result, {
   const expectedEvidenceKeys = EVIDENCE_KEYS[productId];
   const metadata = projectMetadata(productId, result.productMetadata);
   const cleanup = projectCleanup(productId, result.cleanup, { requireComplete: true });
+  if (productId === "codex-attention") {
+    const attention = projectCodexAttentionResult(result);
+    if (
+      result.adapterKind !== PRODUCT_ADAPTERS[productId] ||
+      typeof result.messageId !== "string" ||
+      !/^msg_[a-zA-Z0-9_]{1,240}$/.test(result.messageId) ||
+      result.mailbox !== "claimed-and-accepted" ||
+      result.markerMatched !== true ||
+      JSON.stringify(result.evidenceKeys) !== JSON.stringify(expectedEvidenceKeys) ||
+      !/^sha256:[a-f0-9]{64}$/.test(result.adapterSnapshotDigest ?? "") ||
+      !metadata || !cleanup || !attention
+    ) return null;
+    return {
+      ...projected,
+      messageId: result.messageId,
+      adapterKind: result.adapterKind,
+      mailbox: result.mailbox,
+      markerMatched: true,
+      evidenceKeys: [...result.evidenceKeys],
+      adapterSnapshotDigest: result.adapterSnapshotDigest,
+      productMetadata: metadata,
+      cleanup,
+      attention,
+    };
+  }
   if (
     result.adapterKind !== PRODUCT_ADAPTERS[productId] ||
     typeof result.messageId !== "string" || !/^msg_[a-zA-Z0-9_]{1,240}$/.test(result.messageId) ||
@@ -296,6 +326,152 @@ function projectLiveChildResult(result, {
     productMetadata: metadata,
     cleanup,
     ...(proactive ? { proactive } : {}),
+  };
+}
+
+function projectSha256Digest(value) {
+  return typeof value === "string" && /^sha256:[a-f0-9]{64}$/.test(value)
+    ? value
+    : null;
+}
+
+function boundedOpaqueId(value) {
+  return typeof value === "string" &&
+    Buffer.byteLength(value) >= 1 &&
+    Buffer.byteLength(value) <= 512 &&
+    !/[\u0000-\u001f\u007f]/u.test(value);
+}
+
+function opaqueIdDigest(value) {
+  return `sha256:${createHash("sha256").update(value, "utf8").digest("hex")}`;
+}
+
+function validAttentionThreadRef(ref) {
+  return ref && typeof ref === "object" && !Array.isArray(ref) &&
+    JSON.stringify(Object.keys(ref).sort()) ===
+      JSON.stringify(["snapshotDigest", "threadId"]) &&
+    boundedOpaqueId(ref.threadId) && projectSha256Digest(ref.snapshotDigest);
+}
+
+function validAttentionEvidence(evidence) {
+  return evidence && typeof evidence === "object" && !Array.isArray(evidence) &&
+    JSON.stringify(Object.keys(evidence).sort()) === JSON.stringify([
+      "kind",
+      "snapshotDigest",
+      "threadId",
+      "turnId",
+      "turnStatus",
+    ]) &&
+    evidence.kind === "codex-app-server" &&
+    boundedOpaqueId(evidence.threadId) && boundedOpaqueId(evidence.turnId) &&
+    evidence.turnStatus === "completed" &&
+    projectSha256Digest(evidence.snapshotDigest);
+}
+
+function validAttentionReceipt(receipt) {
+  return receipt && typeof receipt === "object" && !Array.isArray(receipt) &&
+    JSON.stringify(Object.keys(receipt).sort()) === JSON.stringify([
+      "acceptedAt",
+      "adapterOperationId",
+      "evidenceRefs",
+    ]) &&
+    boundedOpaqueId(receipt.adapterOperationId) &&
+    isCanonicalIsoTimestamp(receipt.acceptedAt) &&
+    Array.isArray(receipt.evidenceRefs) && receipt.evidenceRefs.length >= 1 &&
+    receipt.evidenceRefs.length <= 8 &&
+    receipt.evidenceRefs.every((value) => boundedOpaqueId(value));
+}
+
+function projectCodexAttentionResult(result) {
+  const digests = result.evidenceDigests;
+  const aThread = result.threads?.a;
+  const bThread = result.threads?.b;
+  const receiverEvidence = result.receiverEvidence;
+  const adapterReceipt = result.adapterReceipt;
+  if (
+    !digests || typeof digests !== "object" || Array.isArray(digests) ||
+    JSON.stringify(Object.keys(digests).sort()) !==
+      JSON.stringify(["dependencyEdge", "disposition", "lifecycleEvent"]) ||
+    !projectSha256Digest(digests.lifecycleEvent) ||
+    !projectSha256Digest(digests.disposition) ||
+    !projectSha256Digest(digests.dependencyEdge) ||
+    !validAttentionThreadRef(aThread) ||
+    !validAttentionThreadRef(bThread) ||
+    aThread.threadId === bThread.threadId ||
+    !validAttentionEvidence(receiverEvidence) ||
+    !validAttentionReceipt(adapterReceipt) ||
+    receiverEvidence.threadId !== bThread.threadId ||
+    receiverEvidence.snapshotDigest !== bThread.snapshotDigest ||
+    result.adapterSnapshotDigest !== bThread.snapshotDigest ||
+    adapterReceipt.adapterOperationId !== receiverEvidence.turnId ||
+    result.condition !== "relevant" ||
+    result.modelSelectedCommunication !== true ||
+    result.scriptedSubmitCount !== 0 ||
+    result.manualRelayActions !== 0 ||
+    result.modelPollingTurns !== 0 ||
+    result.relatedTaskCalls !== 1 ||
+    result.publishCalls !== 1 ||
+    result.nonThreadMeshToolCalls !== 0 ||
+    JSON.stringify(result.aToolCalls) !== JSON.stringify([
+      "threadmesh_related_tasks",
+      "threadmesh_publish_dependency",
+    ]) ||
+    result.lifecycleEventType !== "dependency-satisfied" ||
+    result.cursorEventObserved !== true ||
+    !Number.isSafeInteger(result.wakeCursor) || result.wakeCursor < 1 ||
+    result.receiverResumeCount !== 1 ||
+    result.routeReasonCode !== "attention-offer-authorized" ||
+    result.wakeReasonCode !== "attention-wake-reconciled" ||
+    result.receiverActivated !== true ||
+    result.receiverDecision !== "accepted" ||
+    result.delivery !== "adapter-submitted" ||
+    result.outcome !== "externally-verified" ||
+    result.verificationMode !== "local-simulation" ||
+    result.externalVerificationReasonCode !== "dependency-satisfied-verified" ||
+    result.dependencyStatus !== "satisfied" ||
+    result.dependencyUnlock !== true ||
+    result.restartRecovered !== true ||
+    result.recoveredTaskState !== "ready"
+  ) return null;
+  return {
+    condition: "relevant",
+    modelSelectedCommunication: true,
+    scriptedSubmitCount: 0,
+    manualRelayActions: 0,
+    modelPollingTurns: 0,
+    relatedTaskCalls: 1,
+    publishCalls: 1,
+    nonThreadMeshToolCalls: 0,
+    aToolCalls: [...result.aToolCalls],
+    lifecycleEventType: result.lifecycleEventType,
+    cursorEventObserved: true,
+    wakeCursor: result.wakeCursor,
+    receiverResumeCount: 1,
+    routeReasonCode: result.routeReasonCode,
+    wakeReasonCode: result.wakeReasonCode,
+    receiverActivated: true,
+    receiverDecision: result.receiverDecision,
+    delivery: result.delivery,
+    outcome: result.outcome,
+    verificationMode: result.verificationMode,
+    externalVerificationReasonCode: result.externalVerificationReasonCode,
+    dependencyStatus: result.dependencyStatus,
+    dependencyUnlock: true,
+    restartRecovered: true,
+    recoveredTaskState: result.recoveredTaskState,
+    threadCorrelation: {
+      aThreadDigest: opaqueIdDigest(aThread.threadId),
+      bThreadDigest: opaqueIdDigest(bThread.threadId),
+      receiverTurnDigest: opaqueIdDigest(receiverEvidence.turnId),
+      threadsDistinct: true,
+      receiverMatchedPrecreatedThread: true,
+      receiptMatchedReceiverTurn: true,
+    },
+    evidenceDigests: {
+      lifecycleEvent: digests.lifecycleEvent,
+      disposition: digests.disposition,
+      dependencyEdge: digests.dependencyEdge,
+    },
   };
 }
 
@@ -374,7 +550,7 @@ function main() {
   const allowMaintainerExperimental =
     process.env.THREADMESH_MAINTAINER_EXPERIMENTAL_ACK === MAINTAINER_EXPERIMENTAL_ACK;
   let result;
-  if (!["codex", "codex-proactive", "kimi", "gemini"].includes(productId)) {
+  if (!["codex", "codex-proactive", "codex-attention", "kimi", "gemini"].includes(productId)) {
     result = stableResult(productId ?? null, "usage", startedAt);
   } else if (process.env.THREADMESH_LIVE_E2E_ACK !== ACK) {
     result = {

@@ -110,6 +110,7 @@ implementation:
 ```sh
 npm run validate:products:live:codex
 npm run validate:proactive:live:codex
+npm run validate:attention:live:codex
 npm run validate:products:live:kimi
 GEMINI_API_KEY=... npm run validate:products:live:gemini
 ```
@@ -128,6 +129,14 @@ scripted submit, a second send, a non-ThreadMesh tool event, either marker
 mismatch, or incomplete cleanup of either task. B acceptance remains a
 deterministic receiver checkpoint policy in this first behavioral slice. See
 the [proactive validation guide](../06-guides/proactive-codex-validation.md).
+
+The Codex attention command adds the durable lifecycle-event, cursor-reconcile,
+adapter-receipt, dependency-satisfaction, and coordinator-restart path. Its
+relevant live result requires zero scripted submits, manual relays, and model
+polling turns. The embedded signing key is deliberately labelled
+`local-simulation`; this case validates the M5.1 integration seam and does not
+claim an independent external verifier or completion of issue #91. See the
+[Codex attention validation guide](../06-guides/codex-attention-validation.md).
 
 ## Result states
 

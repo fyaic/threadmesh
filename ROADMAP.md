@@ -129,11 +129,22 @@ the next milestone gate.
   ([#90](https://github.com/fyaic/threadmesh/issues/90)).
 - [ ] Demonstrate a real Codex-first implementation/review/fix loop with zero
   manual relay and zero polling turns
-  ([#91](https://github.com/fyaic/threadmesh/issues/91)).
+  ([#91](https://github.com/fyaic/threadmesh/issues/91)):
+  - [ ] M5.1: prove the real Codex dependency wake/unlock seam using durable
+    cursor reconciliation; the adapter remains `idleWake: false`.
+  - [ ] M5.2: complete the model-selected implementation → review → fix →
+    verify chain across three or four persistent sessions.
+  - [ ] M5.3: pass three fresh relevant runs plus the manual baseline,
+    irrelevant, stale/unverified, restart, and cleanup matrix.
 - [ ] Repeat the loop across Codex and one ACP-compatible harness
   ([#93](https://github.com/fyaic/threadmesh/issues/93)).
-- [ ] Publish an inspector, reproducible evidence record, and 60–90 second
-  visual demo ([#92](https://github.com/fyaic/threadmesh/issues/92)).
+- [x] Publish the bounded inspector and reproducible deterministic evidence
+  record ([#92](https://github.com/fyaic/threadmesh/issues/92)).
+
+The executable closure gates for the real-agent phases are in the
+[M5 real Codex loop plan](docs/10-planning/m5-real-codex-loop.md). A local
+verifier simulation proves plumbing only and must not be represented as an
+independent external service.
 
 Exit: a new operator can run and understand the closed loop in under 15
 minutes; the bounded scenario has zero manual relay, irrelevant wakes, and
