@@ -165,6 +165,47 @@ test("journal reads reject symlinks, hard links, and oversized writes", () => {
   }
 });
 
+test("journal reads revalidate private file and parent permissions", () => {
+  for (const variant of ["file-mode", "parent-mode", "parent-symlink"]) {
+    const current = fixture();
+    try {
+      writeM52RecoveryJournal({
+        filename: current.filename,
+        scenarioId: "scenario_m52_recovery",
+        checkpoint: "final-verification",
+        replayBinding: current.replayBinding,
+        bundle: current.bundle,
+      });
+      let filename = current.filename;
+      let expectedCode = "threadmesh_m52_recovery_journal_parent_invalid";
+      if (variant === "file-mode") {
+        fs.chmodSync(current.filename, 0o644);
+        expectedCode = "threadmesh_m52_recovery_journal_shape_invalid";
+      } else if (variant === "parent-mode") {
+        fs.chmodSync(current.directory, 0o755);
+      } else {
+        const linkedParent = `${current.directory}-link`;
+        fs.symlinkSync(current.directory, linkedParent);
+        filename = path.join(linkedParent, path.basename(current.filename));
+        current.linkedParent = linkedParent;
+      }
+      assert.throws(
+        () => readM52RecoveryJournal({
+          filename,
+          expectedScenarioId: "scenario_m52_recovery",
+          expectedCheckpoint: "final-verification",
+          expectedReplayBinding: current.replayBinding,
+        }),
+        { code: expectedCode },
+      );
+    } finally {
+      if (current.linkedParent) fs.unlinkSync(current.linkedParent);
+      fs.chmodSync(current.directory, 0o700);
+      current.cleanup();
+    }
+  }
+});
+
 test("tamper and partial writes fail closed", () => {
   for (const variant of ["tamper", "partial", "truncated"]) {
     const current = fixture();

@@ -34,6 +34,21 @@ function validateIdentity(value, label) {
   return value;
 }
 
+function assertPrivateDirectory(directory) {
+  let stats;
+  try {
+    stats = fs.lstatSync(directory);
+  } catch {
+    throw journalError("threadmesh_m52_recovery_journal_parent_invalid");
+  }
+  if (
+    !stats.isDirectory() || stats.isSymbolicLink() ||
+    (stats.mode & 0o777) !== 0o700
+  ) {
+    throw journalError("threadmesh_m52_recovery_journal_parent_invalid");
+  }
+}
+
 function validatedRecord(record) {
   if (!exactKeys(record, JOURNAL_KEYS) || record.schemaVersion !== SCHEMA_VERSION) {
     throw journalError("threadmesh_m52_recovery_journal_shape_invalid");
@@ -113,18 +128,7 @@ export function writeM52RecoveryJournal({
     throw journalError("threadmesh_m52_recovery_journal_shape_invalid", "size");
   }
   const directory = path.dirname(filename);
-  let directoryStats;
-  try {
-    directoryStats = fs.lstatSync(directory);
-  } catch {
-    throw journalError("threadmesh_m52_recovery_journal_parent_invalid");
-  }
-  if (
-    !directoryStats.isDirectory() || directoryStats.isSymbolicLink() ||
-    (directoryStats.mode & 0o077) !== 0
-  ) {
-    throw journalError("threadmesh_m52_recovery_journal_parent_invalid");
-  }
+  assertPrivateDirectory(directory);
   if (fs.existsSync(filename)) {
     const existing = readM52RecoveryJournal({
       filename,
@@ -184,12 +188,14 @@ export function readM52RecoveryJournal({
   if (!path.isAbsolute(filename ?? "")) {
     throw journalError("threadmesh_m52_recovery_journal_path_invalid");
   }
+  assertPrivateDirectory(path.dirname(filename));
   let raw;
   let descriptor;
   try {
     const linkStats = fs.lstatSync(filename);
     if (
-      linkStats.isSymbolicLink() || !linkStats.isFile() || linkStats.nlink !== 1
+      linkStats.isSymbolicLink() || !linkStats.isFile() || linkStats.nlink !== 1 ||
+      (linkStats.mode & 0o777) !== 0o600
     ) {
       throw journalError("threadmesh_m52_recovery_journal_shape_invalid", "file");
     }
@@ -198,7 +204,10 @@ export function readM52RecoveryJournal({
       fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW ?? 0),
     );
     const stats = fs.fstatSync(descriptor);
-    if (!stats.isFile() || stats.nlink !== 1 || stats.size > MAX_JOURNAL_BYTES) {
+    if (
+      !stats.isFile() || stats.nlink !== 1 ||
+      (stats.mode & 0o777) !== 0o600 || stats.size > MAX_JOURNAL_BYTES
+    ) {
       throw journalError("threadmesh_m52_recovery_journal_shape_invalid", "file");
     }
     if (stats.size < 2) {
