@@ -1,8 +1,8 @@
 # Project status
 
-> Snapshot: 2026-08-28. Technical evidence is current through the public-SDK
-> Pi-to-Kimi pass; product direction reflects the subsequent community and
-> competitive review.
+> Snapshot: 2026-08-31. Technical evidence is current through the real Codex
+> M5.1 attention-seam pass; product direction reflects the community and
+> competitive review that established the attention-router mainline.
 
 ## Executive summary
 
@@ -13,7 +13,8 @@ local JSON-RPC binding, an experimental SQLite coordinator, and conservative
 ACP, Codex App Server, and Gemini headless adapters. All three have real
 no-model product evidence and share one deterministic coordinator-mediated
 validation runner. The maintainer has authorized bounded real-product
-experiments; no real model path counts as passed until its result is recorded.
+experiments. Real model paths count only when their bounded result and
+limitations are recorded.
 
 The implementation is not a production coordinator. One real Codex-to-Kimi
 case now establishes a bounded cross-product integration path, but not general
@@ -35,7 +36,7 @@ orchestration are paused until this outcome is demonstrated.
 |---|---|---|
 | Research and problem framing | Codex deep dive, community signals, ecosystem comparison, ADRs | Established |
 | Community adoption | No external stars, forks, watchers, issue comments, or independent setup result as of 2026-08-28 | Unvalidated |
-| Active product outcome | One-command lifecycle-event and dependency-handoff loop with an inspector | Planned; not implemented |
+| Active product outcome | One-command lifecycle-event and dependency-handoff loop with an inspector | Deterministic slice merged; real Codex M5.1 seam passed; full multi-role loop pending |
 | Protocol draft | 14 JSON Schemas, 55 positive/negative cases, 7 transition cases, 185 unit/subtests | Executable draft |
 | Minimal adapter SDK | `@fyaic/threadmesh` `0.1.0-alpha.0`; six bounded client methods, per-turn proactive bridge, about 20 kB tarball, packed-consumer execution | Real Pi clean-consumer pass; not published to npm |
 | Local binding | Schema-validated JSON-RPC, transport-derived principals, typed errors | Executable local reference |
@@ -52,6 +53,7 @@ orchestration are paused until this outcome is demonstrated.
 | Two-stage Codex behavior flow | Relevant 3/3; fresh control zero tools/sends; fresh irrelevant one read-only lookup and zero sends; all A/B cleanup complete | Bounded M3 case passed; explicit experimental opt-in only |
 | Codex-to-Kimi proactive flow | Codex A selected discovery and one send; persistent Kimi ACP B completed; exact A deletion and B delete/absence passed at `e0adb0e` | First real cross-harness proactive case passed |
 | Pi integration-kit flow | Fresh packed consumer exposed exactly two native tools; real Pi passed relevant/irrelevant/control behavior and supplied one admitted input to Kimi at `02d8d24` | Maintainer integration passed; independent human feedback pending |
+| Codex M5 attention seam | Real persistent A model-selected discovery/publication; durable cursor resumed the pre-created persistent B exactly once; local verification unlocked the dependency and restart recovered B as ready at `3d5caee` | M5.1 passed; logical wake only, local verifier simulation; M5.2/M5.3 pending |
 | Gemini CLI headless | Official package 0.56.0 integrity, required flags, isolated-home cleanup | Real no-model preflight passed |
 | Gemini live model behavior | Exact marker script requires explicit provider key | Not authorized, not run |
 | Multi-product admission | One mailbox/acceptance/claim/evidence path across ACP, Codex, and Gemini fakes | Merged experimental implementation |
@@ -176,7 +178,17 @@ implementation/review/fix event sequence with stable routing and unlock reason
 codes, durable dependency/event binding, coordinator-configured trust roots,
 restart recovery, a package-installed CLI, a redacted inspector, and complete
 temporary-state cleanup. It is deterministic product integration evidence, not
-yet evidence of real Codex initiative: the participants are scripted.
+by itself evidence of real Codex initiative: the participants are scripted.
+
+M5.1 has now passed separately on real Codex CLI/App Server `0.145.0` with
+`gpt-5.6-sol`. A persistent Agent A selected the two ThreadMesh tool calls, a
+durable cursor event resumed the already-created persistent Agent B exactly
+once, local simulated verification satisfied the edge, and restart recovered B
+as `ready`, with zero manual relay, scripted submit, or model polling turns and
+complete exact cleanup. This is a ThreadMesh logical wake, not native Codex
+idle push, and it does not satisfy the M5.2 multi-role loop or M5.3 closure
+matrix. See the
+[public evidence record](../09-reviews/2026-08-31-codex-attention-live.md).
 
 ## What the prototype proves
 
@@ -270,6 +282,12 @@ can:
     irrelevant lookup and in a no-contact control, then supply one advisory
     release input to real Kimi Code `0.38.0` with audited admission and complete
     cleanup.
+40. let real persistent Codex Agent A model-select relationship discovery and
+    dependency publication, reconcile the resulting durable cursor event to
+    resume the pre-created persistent Agent B exactly once, bind its accepted
+    receiver turn to locally simulated verification, satisfy the dependency,
+    recover B as ready after restart, and clean up both exact threads without
+    user relay, scripted submit, or model polling turns.
 
 It does not prove general autonomous discovery across unrelated tasks, outcome
 improvement, acceptable receiver-interference cost, native provider-role
