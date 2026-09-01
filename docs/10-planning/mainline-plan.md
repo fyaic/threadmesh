@@ -25,17 +25,21 @@ kickoff while the runner supplies no later phase prompt or direct activation?
 
 The older product canary proved real multi-tool turns, same-A reuse, a bounded
 Git chain, controls, and cleanup, but its four prompts were runner-submitted.
-The newer event-pump gate has not completed a live chain. Its three attempts
-stopped at product-probe validation, timestamp evidence validation, and an
-operator pause after five-session bootstrap respectively. The paused attempt
-had zero coordinator tasks, turn intents, and pump dispatches before five of
-five sessions and exact temporary resources were cleaned.
+The newer event-pump gate has not completed a live chain. Its first three
+attempts stopped at product-probe validation, timestamp evidence validation,
+and an operator pause after five-session bootstrap. A fourth fresh attempt on
+`e052299` registered all five tasks and started the sole kickoff, then failed
+the exact lifecycle-action binding before any event-pump dispatch because the
+dynamic-tool schema did not expose the coordinator-bound arguments. Normal
+cleanup deleted and absence-confirmed all five sessions and removed the exact
+temporary resources.
 
 Execute in this order:
 
-1. Close the already observed bounded SIGINT/SIGTERM cleanup gap, then run the
-   current `c17c837` event-pump surface fresh. Do not add another prerequisite
-   that was not exposed by a live run.
+1. The bounded SIGINT/SIGTERM cleanup gap is closed by #129. Expose the exact
+   already-authorized lifecycle arguments through phase-specific tool schemas,
+   then run the event-pump surface fresh. Do not add another prerequisite that
+   was not exposed by a live run.
 2. Retain exact real session, native-turn, model-action, durable-dispatch,
    dependent-ordering, irrelevant-control, and cleanup evidence. The required
    behavioral counts are one kickoff, zero runner phase/business prompts or

@@ -327,13 +327,14 @@ test("a bounded shutdown after role bootstrap cleans every created role and run 
   const created = [];
   const deleted = [];
   const runtime = {
-    async createRole({ role }) {
+    async createRole(options) {
+      const { role } = options;
       const ref = {
         kind: "codex-app-server",
         threadId: `shutdown-thread-${role}`,
         snapshotDigest: sha256Digest({ role, boundary: "shutdown" }),
       };
-      created.push({ role, ref });
+      created.push({ role, ref, options });
       if (created.length === 5) controller.abort();
       return ref;
     },
@@ -370,6 +371,18 @@ test("a bounded shutdown after role bootstrap cleans every created role and run 
   assert.equal(failure?.code, "threadmesh_coordinator_driven_shutdown_requested");
   assert.deepEqual(created.map(({ role }) => role), ["a", "r", "v", "dependent", "irrelevant"]);
   assert.deepEqual(deleted.map(({ role }) => role), ["irrelevant", "dependent", "v", "r", "a"]);
+  const aKickoffSchema = created[0].options.phaseTools["user-kickoff"][0].inputSchema;
+  assert.equal(aKickoffSchema.additionalProperties, false);
+  assert.equal(aKickoffSchema.properties.sourceEventId.const, "msg_no_plan_artifact_0001");
+  assert.equal(aKickoffSchema.properties.commitSha.const, "3".repeat(40));
+  const reviewSchema = created[1].options.phaseTools["r-review"][1].inputSchema;
+  assert.equal(reviewSchema.properties.event.const.eventType, "review-failed");
+  assert.match(reviewSchema.properties.findingDigest.const, /^sha256:[a-f0-9]{64}$/u);
+  const verifySchema = created[2].options.phaseTools["v-verify"][1].inputSchema;
+  assert.equal(verifySchema.properties.chainId.const, "chain_coordinator_driven_no_plan");
+  assert.equal(verifySchema.properties.expectedEvidenceChainHead.const, undefined);
+  assert.equal(verifySchema.properties.expectedEvidenceChainHead.pattern,
+    "^sha256:[a-f0-9]{64}$");
   assert.equal(failure.cleanup?.complete, true);
   assert.equal(failure.cleanup?.roles.length, 5);
   assert.equal(failure.cleanup?.remainingJournalCount, 0);

@@ -65,6 +65,39 @@ function tool(name, description) {
   });
 }
 
+function exactArgumentsTool(base, argumentsValue) {
+  const properties = Object.fromEntries(Object.entries(argumentsValue).map(
+    ([key, value]) => [key, { const: value }],
+  ));
+  return Object.freeze({
+    ...base,
+    description: `${base.description} Use the exact coordinator-bound arguments in the schema.`,
+    inputSchema: Object.freeze({
+      type: "object",
+      additionalProperties: false,
+      properties: Object.freeze(properties),
+      required: Object.freeze(Object.keys(argumentsValue)),
+    }),
+  });
+}
+
+function exactDecisionTool(messageId) {
+  return Object.freeze({
+    ...REGISTERED_PEER_DECISION_TOOL,
+    inputSchema: Object.freeze({
+      type: "object",
+      additionalProperties: false,
+      properties: Object.freeze({
+        messageId: Object.freeze({ const: messageId }),
+        decision: Object.freeze({
+          type: "string", enum: Object.freeze(["accepted", "deferred", "rejected"]),
+        }),
+      }),
+      required: Object.freeze(["messageId", "decision"]),
+    }),
+  });
+}
+
 const TOOLS = Object.freeze({
   implementation: tool("threadmesh_publish_artifact", "Publish the bounded implementation."),
   reviewRead: tool(
@@ -600,6 +633,77 @@ export async function runCoordinatorDrivenNoPlanScenario({
     relationshipId: grants.ar.relationshipId,
     content: "A prior relevant event must never be skipped for a later expected message.",
   });
+  const kickoffArgs = {
+    sourceEventId: artifactEvent.messageId,
+    event: actionEventBody(artifactEvent),
+    commitSha: implementationSha,
+  };
+  const scenarioTools = Object.freeze({
+    implementation: exactArgumentsTool(TOOLS.implementation, kickoffArgs),
+    rDecision: exactDecisionTool(artifactEvent.messageId),
+    reviewRead: exactArgumentsTool(TOOLS.reviewRead, {
+      sourceEventId: artifactEvent.messageId,
+    }),
+    review: exactArgumentsTool(TOOLS.review, {
+      sourceEventId: artifactEvent.messageId,
+      event: actionEventBody(reviewEvent),
+      findingDigest,
+    }),
+    aDecision: exactDecisionTool(reviewEvent.messageId),
+    fixApply: exactArgumentsTool(TOOLS.fixApply, {
+      sourceEventId: reviewEvent.messageId,
+    }),
+    fix: exactArgumentsTool(TOOLS.fix, {
+      sourceEventId: reviewEvent.messageId,
+      event: actionEventBody(fixEvent),
+      commitSha: fixSha,
+    }),
+    vDecision: exactDecisionTool(fixEvent.messageId),
+    verifyRead: exactArgumentsTool(TOOLS.verifyRead, {
+      sourceEventId: fixEvent.messageId,
+    }),
+    verify: Object.freeze({
+      ...TOOLS.verify,
+      description: `${TOOLS.verify.description} Use the exact event and chain fields in the schema; copy the revision and head returned by the preceding read tool.`,
+      inputSchema: Object.freeze({
+        type: "object",
+        additionalProperties: false,
+        properties: Object.freeze({
+          sourceEventId: Object.freeze({ const: fixEvent.messageId }),
+          event: Object.freeze({ const: actionEventBody(verifiedEvent) }),
+          chainId: Object.freeze({ const: "chain_coordinator_driven_no_plan" }),
+          expectedEvidenceChainRevision: Object.freeze({ type: "integer", minimum: 0 }),
+          expectedEvidenceChainHead: Object.freeze({
+            type: "string", pattern: "^sha256:[a-f0-9]{64}$",
+          }),
+        }),
+        required: Object.freeze([
+          "sourceEventId", "event", "chainId", "expectedEvidenceChainRevision",
+          "expectedEvidenceChainHead",
+        ]),
+      }),
+    }),
+    dependentDecision: exactDecisionTool(verifiedEvent.messageId),
+    dependentCheck: exactArgumentsTool(TOOLS.dependentCheck, {}),
+    dependent: exactArgumentsTool(TOOLS.dependent, {}),
+  });
+  const routeHandlerConfigs = Object.freeze([
+    Object.freeze({ ...ROUTE_HANDLER_CONFIGS[0], businessTools: Object.freeze([
+      scenarioTools.reviewRead, scenarioTools.review,
+    ]) }),
+    Object.freeze({ ...ROUTE_HANDLER_CONFIGS[1], businessTools: Object.freeze([
+      scenarioTools.fixApply, scenarioTools.fix,
+    ]) }),
+    Object.freeze({ ...ROUTE_HANDLER_CONFIGS[2], businessTools: Object.freeze([
+      scenarioTools.verifyRead, scenarioTools.verify,
+    ]) }),
+    Object.freeze({ ...ROUTE_HANDLER_CONFIGS[3], businessTools: Object.freeze([
+      scenarioTools.dependentCheck, scenarioTools.dependent,
+    ]) }),
+    Object.freeze({ ...ROUTE_HANDLER_CONFIGS[4], businessTools: Object.freeze([
+      scenarioTools.reviewRead, scenarioTools.review,
+    ]) }),
+  ]);
 
   let refs = {};
   let runtime;
@@ -696,13 +800,13 @@ export async function runCoordinatorDrivenNoPlanScenario({
     refs.a = await runtime.createRole({
       role: "a", cwd: artifactsDirectory,
       tools: [
-        TOOLS.implementation, REGISTERED_PEER_DECISION_TOOL,
-        TOOLS.fixApply, TOOLS.fix,
+        scenarioTools.implementation, scenarioTools.aDecision,
+        scenarioTools.fixApply, scenarioTools.fix,
       ],
       phaseTools: {
-        "user-kickoff": [TOOLS.implementation],
-        "receiver-decision": [REGISTERED_PEER_DECISION_TOOL],
-        "same-a-fix": [TOOLS.fixApply, TOOLS.fix],
+        "user-kickoff": [scenarioTools.implementation],
+        "receiver-decision": [scenarioTools.aDecision],
+        "same-a-fix": [scenarioTools.fixApply, scenarioTools.fix],
       },
       protectedPhases: {
         "receiver-decision": "receiver-decision", "same-a-fix": "admitted-tool",
@@ -713,10 +817,10 @@ export async function runCoordinatorDrivenNoPlanScenario({
     throwIfShutdownRequested(signal);
     refs.r = await runtime.createRole({
       role: "r", cwd: artifactsDirectory,
-      tools: [REGISTERED_PEER_DECISION_TOOL, TOOLS.reviewRead, TOOLS.review],
+      tools: [scenarioTools.rDecision, scenarioTools.reviewRead, scenarioTools.review],
       phaseTools: {
-        "receiver-decision": [REGISTERED_PEER_DECISION_TOOL],
-        "r-review": [TOOLS.reviewRead, TOOLS.review],
+        "receiver-decision": [scenarioTools.rDecision],
+        "r-review": [scenarioTools.reviewRead, scenarioTools.review],
       },
       protectedPhases: {
         "receiver-decision": "receiver-decision", "r-review": "admitted-tool",
@@ -727,10 +831,10 @@ export async function runCoordinatorDrivenNoPlanScenario({
     throwIfShutdownRequested(signal);
     refs.v = await runtime.createRole({
       role: "v", cwd: artifactsDirectory,
-      tools: [REGISTERED_PEER_DECISION_TOOL, TOOLS.verifyRead, TOOLS.verify],
+      tools: [scenarioTools.vDecision, scenarioTools.verifyRead, scenarioTools.verify],
       phaseTools: {
-        "receiver-decision": [REGISTERED_PEER_DECISION_TOOL],
-        "v-verify": [TOOLS.verifyRead, TOOLS.verify],
+        "receiver-decision": [scenarioTools.vDecision],
+        "v-verify": [scenarioTools.verifyRead, scenarioTools.verify],
       },
       protectedPhases: {
         "receiver-decision": "receiver-decision", "v-verify": "admitted-tool",
@@ -742,11 +846,11 @@ export async function runCoordinatorDrivenNoPlanScenario({
     refs.dependent = await runtime.createRole({
       role: "dependent", cwd: artifactsDirectory,
       tools: [
-        REGISTERED_PEER_DECISION_TOOL, TOOLS.dependentCheck, TOOLS.dependent,
+        scenarioTools.dependentDecision, scenarioTools.dependentCheck, scenarioTools.dependent,
       ],
       phaseTools: {
-        "receiver-decision": [REGISTERED_PEER_DECISION_TOOL],
-        "dependent-gated-activation": [TOOLS.dependentCheck, TOOLS.dependent],
+        "receiver-decision": [scenarioTools.dependentDecision],
+        "dependent-gated-activation": [scenarioTools.dependentCheck, scenarioTools.dependent],
       },
       protectedPhases: {
         "receiver-decision": "receiver-decision",
@@ -758,7 +862,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
     throwIfShutdownRequested(signal);
     refs.irrelevant = await runtime.createRole({
       role: "irrelevant", cwd: artifactsDirectory,
-      tools: [REGISTERED_PEER_DECISION_TOOL, TOOLS.reviewRead, TOOLS.review],
+      tools: [scenarioTools.rDecision, scenarioTools.reviewRead, scenarioTools.review],
       instructions: "Remain idle unless coordinator attention is relevant.",
       scenarioId: "coordinator_driven_no_plan",
     });
@@ -877,7 +981,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
       cwd: artifactsDirectory,
       ref: refs.r,
       routes: [{
-        handlerId: ROUTE_HANDLER_CONFIGS[0].handlerId,
+        handlerId: routeHandlerConfigs[0].handlerId,
         eventType: "artifact-ready",
         subscribedEventTypes: ["artifact-ready"],
         grant: grants.ar,
@@ -885,7 +989,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
         targetTask: { ...actors.r, objectiveVersion: 1 },
         now: NOW,
         businessPhase: "r-review",
-        businessTools: [TOOLS.reviewRead, TOOLS.review],
+        businessTools: routeHandlerConfigs[0].businessTools,
         async onBusinessToolCall({ tool: selectedTool }) {
           if (selectedTool === TOOLS.reviewRead.name) {
             return { artifactDigest: digest("admitted-review-artifact") };
@@ -922,7 +1026,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
       cwd: artifactsDirectory,
       ref: refs.a,
       routes: [{
-        handlerId: ROUTE_HANDLER_CONFIGS[1].handlerId,
+        handlerId: routeHandlerConfigs[1].handlerId,
         eventType: "review-failed",
         subscribedEventTypes: ["review-failed"],
         grant: grants.ra,
@@ -930,7 +1034,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
         targetTask: { ...actors.a, objectiveVersion: 1 },
         now: NOW,
         businessPhase: "same-a-fix",
-        businessTools: [TOOLS.fixApply, TOOLS.fix],
+        businessTools: routeHandlerConfigs[1].businessTools,
         async onBusinessToolCall({ tool: selectedTool }) {
           if (selectedTool === TOOLS.fixApply.name) {
             return { appliedFindingDigest: findingDigest };
@@ -967,7 +1071,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
       cwd: artifactsDirectory,
       ref: refs.v,
       routes: [{
-        handlerId: ROUTE_HANDLER_CONFIGS[2].handlerId,
+        handlerId: routeHandlerConfigs[2].handlerId,
         eventType: "artifact-ready",
         subscribedEventTypes: ["artifact-ready"],
         grant: grants.av,
@@ -975,7 +1079,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
         targetTask: { ...actors.v, objectiveVersion: 1 },
         now: NOW,
         businessPhase: "v-verify",
-        businessTools: [TOOLS.verifyRead, TOOLS.verify],
+        businessTools: routeHandlerConfigs[2].businessTools,
         async onBusinessToolCall({ tool: selectedTool }) {
           if (selectedTool === TOOLS.verifyRead.name) {
             return { evidenceHead, evidenceRevision };
@@ -1010,7 +1114,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
       cwd: artifactsDirectory,
       ref: refs.dependent,
       routes: [{
-        handlerId: ROUTE_HANDLER_CONFIGS[3].handlerId,
+        handlerId: routeHandlerConfigs[3].handlerId,
         eventType: "dependency-satisfied",
         subscribedEventTypes: ["dependency-satisfied"],
         grant: grants.vd,
@@ -1023,7 +1127,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
         },
         now: NOW,
         businessPhase: "dependent-gated-activation",
-        businessTools: [TOOLS.dependentCheck, TOOLS.dependent],
+        businessTools: routeHandlerConfigs[3].businessTools,
         async afterAdmissionPrepared() {
           verifiedActivationOrder.push("dependent-admission-prepared");
           if (injectPreverifiedTamper === "state-only") {
@@ -1158,7 +1262,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
       cwd: artifactsDirectory,
       ref: refs.irrelevant,
       routes: [{
-        handlerId: ROUTE_HANDLER_CONFIGS[4].handlerId,
+        handlerId: routeHandlerConfigs[4].handlerId,
         eventType: "artifact-ready",
         subscribedEventTypes: ["review-failed"],
         grant: grants.ai,
@@ -1166,17 +1270,12 @@ export async function runCoordinatorDrivenNoPlanScenario({
         targetTask: { ...actors.irrelevant, objectiveVersion: 1 },
         now: NOW,
         businessPhase: "irrelevant-never-runs",
-        businessTools: [TOOLS.reviewRead, TOOLS.review],
+        businessTools: routeHandlerConfigs[4].businessTools,
         async onBusinessToolCall() { throw new Error("irrelevant business turn ran"); },
         async onLifecyclePublication() { throw new Error("irrelevant publication ran"); },
       }],
     });
 
-    const kickoffArgs = {
-      sourceEventId: artifactEvent.messageId,
-      event: actionEventBody(artifactEvent),
-      commitSha: implementationSha,
-    };
     const kickoff = await runKickoff({
       coordinator, runtime, actor: actors.a, ref: refs.a,
       event: artifactEvent, args: kickoffArgs,
@@ -1545,7 +1644,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
         "cross-process-os-kill-and-long-turn-lease-heartbeat",
         "global-selection-chain",
       ],
-      routeHandlerConfigs: ROUTE_HANDLER_CONFIGS,
+      routeHandlerConfigs,
       executedHandlerIds: selectionBindings
         .filter(({ kind }) => kind === "coordinator-activation")
         .map(({ handlerId }) => handlerId),
