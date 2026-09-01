@@ -39,6 +39,12 @@ handler rejects a counterexample that is not present in that checkout. This
 keeps the finding model-selected without requiring three serial tool calls for
 one bounded review effect.
 
+The reviewer-visible event and dynamic-tool contract are checked to exclude
+the sealed resource path, counterexample, and repair value. A uses a bounded
+fixture schema for implementation and fix content; this checkpoint tests
+cross-session initiative and evidence binding, not open-ended bug-solving
+quality.
+
 ## Validation completed
 
 - the focused coordinator, gate, and product-turn tests pass;
@@ -46,7 +52,9 @@ one bounded review effect.
   review, process-isolated verifier, finalization, and exact cleanup;
 - an automated negative path rejects a model-reported finding that is absent
   from the reviewer checkout and still proves exact cleanup;
-- the full repository suite passes 383 unit tests, 55 schema cases, 7
+- lifecycle publication accepts only one of the explicitly registered exact
+  review-evidence key sets and revalidates it after SQLite reopen;
+- the full repository suite passes 384 unit tests, 55 schema cases, 7
   transition cases, and documentation lint with zero findings;
 - live attempts created real implementation commits and reached the autonomous
   R route without runner phase prompts or direct activation;
@@ -56,6 +64,9 @@ one bounded review effect.
 
 No live attempt on this integration branch completed the full real-effects
 chain, so this record does not claim `liveProductEvidence=true` or M5.2 closure.
+The live failure CLI currently retains bounded cleanup but not a SQLite-derived
+partial-progress manifest. Consequently, the attempt table below is an
+operator audit record, not a canonical machine-verifiable attempt bundle.
 
 ## Live attempt result
 
@@ -91,6 +102,7 @@ retained. The current claims are therefore:
 - successful real-effects Codex chain: not yet established;
 - trusted Codex binary provenance: still not established;
 - manual relay/polling baseline and minimum negative/restart closure: pending.
+- bounded partial-progress manifests for interrupted live attempts: pending.
 
 The next action is one fresh live rerun after the machine resolves
 `chatgpt.com` to a valid OpenAI endpoint and `codex doctor` no longer reports

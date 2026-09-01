@@ -18,6 +18,11 @@ the operator-supplied Codex-shaped event-pump attempts actually
 established without combining those evidence classes or upgrading a failed or
 paused run into product evidence.
 
+This is a bounded operator audit record, not a canonical machine-verifiable
+attempt bundle. The live failure CLI retained exact cleanup projection but did
+not yet emit SQLite-derived partial-stage manifests for attempts 7–10. Their
+partial-progress rows therefore remain descriptive and cannot close a gate.
+
 ## Attempt ledger
 
 | Attempt | Stop condition | Evidence established | Autonomous chain | Cleanup claim |
@@ -95,6 +100,8 @@ production reliability.
   does not yet include a timed manual-workflow baseline;
 - OS-kill recovery, long-turn lease heartbeat, a global cross-dispatch chain,
   Kimi parity, and repetition remain untested on this live path.
+- interrupted live runs do not yet expose a bounded SQLite-derived partial
+  stage/turn/dispatch manifest through the public failure projection.
 
 ## Sequencing correction
 

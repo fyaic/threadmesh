@@ -273,6 +273,83 @@ test("lifecycle source binds to intent event/message id and rejects a third valu
   }
 });
 
+test("review action evidence uses one exact persisted key set", () => {
+  const temporary = temporaryDatabase();
+  let coordinator = setup(temporary.filename);
+  try {
+    const sourceEvent = event({
+      eventType: "review-failed",
+      content: "A blocking finding was reported from detached review.",
+    });
+    const finding = {
+      resourcePath: "artifact.txt",
+      counterexample: "BAD_COUNTEREXAMPLE",
+      reason: "The detached artifact contains the reported counterexample.",
+    };
+    const findingDigest = sha256Digest(finding);
+    const execution = completedExecution({
+      coordinator, actor: sender, suffix: "review_evidence",
+      messageId: sourceEvent.messageId, eventId: "evt_v8_review_evidence",
+      tool: "threadmesh_report_review_finding",
+      argumentsValue: {
+        sourceEventId: "evt_v8_review_evidence",
+        event: actionEventBody(sourceEvent),
+        findingDigest,
+        ...finding,
+      },
+      resultDigest: sha256Digest({ findingDigest, reproducible: true }),
+    });
+    assert.equal(coordinator.publishLifecycleFromCompletedAction(
+      execution.executionId,
+      {
+        expectedTool: "threadmesh_report_review_finding",
+        event: sourceEvent,
+        expectedMaterial: { findingDigest },
+        expectedActionEvidence: finding,
+      },
+      senderPrincipal,
+    ).replay, false);
+    coordinator.close();
+    coordinator = new SqliteCoordinator({ filename: temporary.filename, clock: () => NOW });
+    assert.equal(coordinator.storageInfo().schemaVersion, SQLITE_SCHEMA_VERSION);
+  } finally {
+    coordinator?.close();
+    temporary.cleanup();
+  }
+
+  const rejected = temporaryDatabase();
+  coordinator = setup(rejected.filename);
+  try {
+    const sourceEvent = event({ eventType: "review-failed" });
+    const findingDigest = sha256Digest({ finding: "bounded" });
+    const execution = completedExecution({
+      coordinator, actor: sender, suffix: "review_extra",
+      messageId: sourceEvent.messageId, eventId: "evt_v8_review_extra",
+      tool: "threadmesh_report_review_finding",
+      argumentsValue: {
+        sourceEventId: "evt_v8_review_extra",
+        event: actionEventBody(sourceEvent),
+        findingDigest,
+        unexpected: "not-an-allowed-evidence-key",
+      },
+      resultDigest: sha256Digest({ findingDigest }),
+    });
+    expectCode(() => coordinator.publishLifecycleFromCompletedAction(
+      execution.executionId,
+      {
+        expectedTool: "threadmesh_report_review_finding",
+        event: sourceEvent,
+        expectedMaterial: { findingDigest },
+        expectedActionEvidence: { unexpected: "not-an-allowed-evidence-key" },
+      },
+      senderPrincipal,
+    ), "threadmesh_lifecycle_publication_action_mismatch");
+  } finally {
+    coordinator.close();
+    rejected.cleanup();
+  }
+});
+
 function turnIntentHeaderDigest(intent) {
   return sha256Digest({
     intentId: intent.intentId,

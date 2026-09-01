@@ -87,18 +87,25 @@ const FINAL_GIT_EVIDENCE_TOOL = "threadmesh_verify_exact_chain";
 const LIFECYCLE_PUBLICATION_TOOLS = Object.freeze({
   threadmesh_publish_artifact: Object.freeze({
     eventType: "artifact-ready", materialKeys: Object.freeze(["commitSha"]),
+    actionEvidenceKeySets: Object.freeze([Object.freeze([])]),
   }),
   threadmesh_report_review_finding: Object.freeze({
     eventType: "review-failed", materialKeys: Object.freeze(["findingDigest"]),
+    actionEvidenceKeySets: Object.freeze([
+      Object.freeze([]),
+      Object.freeze(["counterexample", "reason", "resourcePath"]),
+    ]),
   }),
   threadmesh_publish_dependency: Object.freeze({
     eventType: "artifact-ready", materialKeys: Object.freeze(["commitSha"]),
+    actionEvidenceKeySets: Object.freeze([Object.freeze([])]),
   }),
   threadmesh_verify_exact_chain: Object.freeze({
     eventType: "dependency-satisfied",
     materialKeys: Object.freeze([
       "chainId", "expectedEvidenceChainHead", "expectedEvidenceChainRevision",
     ]),
+    actionEvidenceKeySets: Object.freeze([Object.freeze([])]),
   }),
 });
 const ATTENTION_OFFER_ROUTE_KEYS = Object.freeze([
@@ -3343,9 +3350,12 @@ export class SqliteCoordinator {
           !Array.isArray(expectedActionEvidence)
         ? Object.keys(expectedActionEvidence).sort()
         : null;
+      const permittedEvidenceKeySets = specification?.actionEvidenceKeySets ?? [];
       if (
         evidenceKeys === null || evidenceKeys.some((key) =>
-          ["sourceEventId", "event", ...expectedKeys].includes(key))
+          ["sourceEventId", "event", ...expectedKeys].includes(key)) ||
+        !permittedEvidenceKeySets.some((keys) =>
+          canonicalJson([...keys].sort()) === canonicalJson(evidenceKeys))
       ) throw codedError("threadmesh_lifecycle_publication_action_mismatch");
       const expectedArguments = specification ? [
         execution.intent.eventId,
@@ -8505,8 +8515,10 @@ export class SqliteCoordinator {
       const actionArgumentKeys = actionArguments && typeof actionArguments === "object"
         ? Object.keys(actionArguments).sort()
         : [];
-      const expectedArgumentKeys = publicationTool
-        ? ["sourceEventId", "event", ...publicationTool.materialKeys].sort()
+      const expectedArgumentKeySets = publicationTool
+        ? publicationTool.actionEvidenceKeySets.map((evidenceKeys) =>
+          ["sourceEventId", "event", ...publicationTool.materialKeys,
+            ...evidenceKeys].sort())
         : [];
       const message = this.db.prepare(
         `SELECT * FROM messages WHERE sender_incarnation_id = ? AND message_id = ?`,
@@ -8540,7 +8552,8 @@ export class SqliteCoordinator {
         execution.intent.turnStart?.turnId !== action.turnId ||
         execution.intent.actor.taskId !== event.sender.taskId ||
         execution.intent.actor.incarnationId !== event.sender.incarnationId ||
-        expectedArgumentKeys.some((key) => !actionArgumentKeys.includes(key)) ||
+        !expectedArgumentKeySets.some((keys) =>
+          canonicalJson(actionArgumentKeys) === canonicalJson(keys)) ||
         ![execution.intent.eventId, execution.intent.messageId]
           .includes(actionArguments?.sourceEventId) ||
         canonicalJson(actionArguments?.event) !==

@@ -683,7 +683,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
     target: actors.a,
     relationshipId: grants.ra.relationshipId,
     content: realEffects
-      ? "Blocking finding: artifact.txt contains BAD_COUNTEREXAMPLE."
+      ? "A blocking finding was reported from the detached candidate review."
       : "Blocking finding: the bounded candidate returns 41, not 42.",
   });
   const fixEvent = lifecycleEvent({
@@ -839,6 +839,16 @@ export async function runCoordinatorDrivenNoPlanScenario({
     dependentCheck: exactArgumentsTool(TOOLS.dependentCheck, {}),
     dependent: exactArgumentsTool(TOOLS.dependent, {}),
   });
+  if (realEffects) {
+    const reviewerVisibleContract = canonicalJson({
+      event: actionEventBody(reviewEvent),
+      tools: [scenarioTools.reviewRead, scenarioTools.review],
+    });
+    if ([REAL_EFFECT_RESOURCE, REAL_EFFECT_IMPLEMENTATION.trim(), REAL_EFFECT_FIX.trim()]
+      .some((sealedValue) => reviewerVisibleContract.includes(sealedValue))) {
+      throw scenarioError("threadmesh_real_effect_review_context_not_content_blind");
+    }
+  }
   const routeHandlerConfigs = Object.freeze([
     Object.freeze({ ...ROUTE_HANDLER_CONFIGS[0], businessTools: Object.freeze([
       scenarioTools.reviewRead, scenarioTools.review,

@@ -200,7 +200,7 @@ test("one pump autonomously closes A to R to same-A to V to dependent", async (t
     deleted && absenceVerified));
 });
 
-test("real-effects path binds Git commits, model finding, and child verifier", async (t) => {
+test("real-effects path keeps reviewer context blind and binds model finding", async (t) => {
   const artifactsDirectory = fs.mkdtempSync(
     path.join(os.tmpdir(), "threadmesh-real-effects-artifacts-"),
   );
