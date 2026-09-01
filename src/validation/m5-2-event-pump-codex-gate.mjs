@@ -108,10 +108,11 @@ export function projectM52EventPumpFailureCleanup(value) {
   ];
   const exactSchema = canonicalJson(Object.keys(source).sort()) ===
     canonicalJson(expectedKeys.sort());
-  const roleNames = roles.map((role) => role?.role).sort();
-  const rolesClosed = Array.isArray(source.roles) && source.roles.length === 5 &&
-    canonicalJson(roleNames) ===
-      canonicalJson(["a", "dependent", "irrelevant", "r", "v"]) &&
+  const roleCreationOrder = ["a", "r", "v", "dependent", "irrelevant"];
+  const expectedCleanupOrder = roleCreationOrder.slice(0, roles.length).reverse();
+  const rolesClosed = Array.isArray(source.roles) && source.roles.length <= 5 &&
+    canonicalJson(roles.map((role) => role?.role)) ===
+      canonicalJson(expectedCleanupOrder) &&
     roles.every((role) => role?.deleted === true && role?.absenceVerified === true);
   const ownedJournalRemovedCountValid =
     Number.isSafeInteger(source.ownedJournalRemovedCount) &&

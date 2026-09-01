@@ -350,7 +350,7 @@ test("failure cleanup projection is bounded and omits raw role and path data", (
 
   const fullCleanup = {
     complete: false,
-    roles: ["a", "r", "v", "dependent", "irrelevant"].map((role) => ({
+    roles: ["irrelevant", "dependent", "v", "r", "a"].map((role) => ({
       role, deleted: true, absenceVerified: true,
     })),
     ownedJournalRemovedCount: 0,
@@ -365,10 +365,17 @@ test("failure cleanup projection is bounded and omits raw role and path data", (
   };
   assert.equal(projectM52EventPumpFailureCleanup(fullCleanup).complete, true);
   assert.equal(projectM52EventPumpFailureCleanup({ complete: true }).complete, false);
+  for (const roles of [[], ["a"], ["r", "a"]]) {
+    const partialCleanup = structuredClone(fullCleanup);
+    partialCleanup.roles = roles.map((role) => ({
+      role, deleted: true, absenceVerified: true,
+    }));
+    assert.equal(projectM52EventPumpFailureCleanup(partialCleanup).complete, true);
+  }
 
   const duplicates = structuredClone(fullCleanup);
   duplicates.complete = true;
-  duplicates.roles[4].role = "a";
+  duplicates.roles[0].role = "a";
   assert.deepEqual(projectM52EventPumpFailureCleanup(duplicates), {
     complete: false,
     rolesDeleted: 5,
@@ -376,6 +383,15 @@ test("failure cleanup projection is bounded and omits raw role and path data", (
     coordinatorRemoved: true,
     remainingJournalCount: 0,
   });
+  for (const invalidRoles of [
+    [{ role: "unknown", deleted: true, absenceVerified: true }],
+    [...fullCleanup.roles, { role: "unknown", deleted: true, absenceVerified: true }],
+  ]) {
+    const invalid = structuredClone(fullCleanup);
+    invalid.complete = true;
+    invalid.roles = invalidRoles;
+    assert.equal(projectM52EventPumpFailureCleanup(invalid).complete, false);
+  }
 
   for (const mutate of [
     (value) => { value.unknownJournalCount = 1; },
