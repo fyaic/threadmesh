@@ -9,6 +9,8 @@ import {
 } from "./live-agent-scenario.mjs";
 
 const DIGEST = /^sha256:[a-f0-9]{64}$/u;
+const ADAPTER_OWNED_CODEX_USER_AGENT =
+  /^threadmesh-codex-app-server-adapter\/[0-9]+\.[0-9]+\.[0-9]+ \(Mac OS [0-9]+(?:\.[0-9]+){1,3}; (?:arm64|x86_64)\) dumb \(threadmesh-codex-app-server-adapter; 0\.0\.0\)$/u;
 const BLOCKED_CODE = "threadmesh_m52_independent_verifier_service_pending";
 const EXPECTED_PHASES = Object.freeze([
   ["a", "user-kickoff", "kickoff", 1],
@@ -585,9 +587,8 @@ export function projectM52EventPumpCodexGateResult(coreResult, { productProbe = 
 export function projectOperatorSuppliedCodexProbe(probe) {
   exactObject(probe, ["userAgent", "platformFamily", "platformOs", "snapshotDigest"],
     "operatorSuppliedProductProbe");
-  if (!/^codex_cli_rs\/[0-9]+\.[0-9]+\.[0-9]+(?:\s|\(|$)/u.test(probe.userAgent) ||
-      typeof probe.platformFamily !== "string" || probe.platformFamily.length < 1 ||
-      typeof probe.platformOs !== "string" || probe.platformOs.length < 1 ||
+  if (!ADAPTER_OWNED_CODEX_USER_AGENT.test(probe.userAgent) ||
+      probe.platformFamily !== "unix" || probe.platformOs !== "macos" ||
       probe.snapshotDigest !== sha256Digest({
         userAgent: probe.userAgent,
         platformFamily: probe.platformFamily,
