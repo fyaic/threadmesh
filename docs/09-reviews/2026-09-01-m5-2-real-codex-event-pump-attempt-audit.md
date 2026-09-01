@@ -6,6 +6,9 @@ Latest completed behavioral `main`: `f98c56b83057b43f8b9618d6f69e1b2f481f77bd`
 
 Latest real-effects integration attempt: `1845d86`
 
+Subsequent merged integration: [#133](https://github.com/fyaic/threadmesh/pull/133)
+at `5ec7b19`; no later live attempt is claimed
+
 Classification: ten live attempts; attempt 6 completed the real autonomous
 behavioral chain, while attempts 7–10 exercised the real Git/child-verifier
 integration without completing its end-to-end product gate

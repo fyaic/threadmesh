@@ -15,9 +15,40 @@ reproduction and audit.
 
 | Case | Agent A | Agent B | Initiative observed | Receiver outcome | Evidence |
 |---|---|---|---|---|---|
+| Codex lifecycle chain | Codex CLI `0.145.0`, implementation/review/fix/verifier roles | Codex dependent + irrelevant control | One kickoff; 9 native turns; 0 later phase prompts/direct activations; irrelevant 0 turns | Dependent ran only after accepted finalization; cleanup 5/5 | [behavior](../09-reviews/2026-09-01-m5-2-real-codex-event-pump-behavior.md) · [real-effects status](../09-reviews/2026-09-01-m5-2-real-effects-integration.md) |
 | Pi → Kimi | Pi `0.84.2`, `zai/glm-5.3` | Kimi Code `0.38.0`, ACP v1 | Relevant: discover + send; irrelevant: discover only; control: zero calls | One advisory input accepted and admitted; exact marker | [Guide](pi-to-kimi-demo.md) · [record](../09-reviews/2026-08-25-pi-integration-kit-validation.md) |
 | Codex → Kimi | Codex CLI `0.145.0`, `gpt-5.6-sol` | Kimi Code `0.38.0`, ACP v1 | Codex selected the exact discover → send sequence with no other tool | Missing dependency became completed benchmark outcome | [record](../09-reviews/2026-08-25-codex-to-kimi-proactive.md) |
 | Codex same-product matrix | Codex CLI `0.145.0` | Codex CLI `0.145.0` | Two-stage policy passed relevant 3/3; fresh irrelevant read only; control stayed quiet | B activated only on relevant send | [behavior gate](../09-reviews/2026-08-25-codex-behavior-gate.md) · [repetitions](../09-reviews/2026-08-25-codex-behavior-repetitions.md) |
+
+## Flagship case — a review loop advances itself
+
+The sixth retained Codex event-pump attempt is the clearest evidence of the
+session initiative that motivated ThreadMesh. The operator kicked off A once.
+After that, durable lifecycle attention advanced:
+
+```text
+A implementation → R review → same-A fix → V verification → dependent
+```
+
+The run contained nine real native Codex turns and zero later runner phase
+prompts or direct activations. The authorized irrelevant session ran zero
+turns. The dependent ran only after accepted finalization, and five of five
+sessions plus coordinator artifacts were removed.
+
+This retained run proves real model/session behavior, but its Git and verifier
+effects were simulated. [#133](https://github.com/fyaic/threadmesh/pull/133)
+subsequently merged real bounded Git worktrees and a process-isolated child
+verifier into the same event-pump path. A fresh combined live traversal remains
+pending a network-valid host, so the two evidence sets are not silently fused
+into a stronger claim.
+
+The deterministic one-command demo complements that evidence with two
+reproducible product checks: a four-handoff workflow has a manual lower bound of
+nine user actions versus one kickoff, and a running receiver retains the event
+at a checkpoint with zero steer, interrupt, or native-turn starts. See the
+[demo guide](attention-router-demo.md),
+[manual baseline](manual-relay-baseline.md), and
+[active-session safety case](non-interrupting-handoff.md).
 
 ## Case 1 — Pi notices a Kimi dependency
 

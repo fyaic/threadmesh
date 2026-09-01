@@ -2,7 +2,8 @@
 
 Date: 2026-09-01
 
-Integration branch: `feat/m52-event-pump-real-effects`
+Merged integration: [#133](https://github.com/fyaic/threadmesh/pull/133),
+`main` commit `5ec7b19`
 
 Status: implementation complete; real Codex end-to-end rerun blocked by local
 DNS/TLS failure
@@ -104,7 +105,31 @@ retained. The current claims are therefore:
 - manual relay/polling baseline and minimum negative/restart closure: pending.
 - bounded partial-progress manifests for interrupted live attempts: pending.
 
+The product-proof branch adds two deterministic closure aids without promoting
+them to live evidence:
+
+- executable manual workflow accounting: at least nine user actions for the
+  four-handoff manual path versus one ThreadMesh kickoff; elapsed time and token
+  counts remain unmeasured;
+- an active-receiver negative: completion is retained as a pending
+  `checkpoint-offer`, receiver state stays `running`, and zero steer, interrupt,
+  or native-turn starts occur.
+
+## Product-proof preflight
+
+A fresh preflight on 2026-09-01 did not start another live attempt:
+
+- `codex doctor --summary` reported healthy auth/configuration and HTTP
+  reachability, but the Responses WebSocket timed out;
+- the system resolver still returned non-OpenAI addresses for `chatgpt.com`,
+  including the previously observed Meta IPv6 range;
+- a certificate-verifying HTTPS request timed out during SSL connection after
+  five seconds;
+- no DNS, proxy, certificate, or TLS setting was changed.
+
+This is an external environment blocker, not a ThreadMesh pass or failure.
+
 The next action is one fresh live rerun after the machine resolves
 `chatgpt.com` to a valid OpenAI endpoint and `codex doctor` no longer reports
-the WebSocket certificate failure. Do not change protocol logic or bypass TLS
+the WebSocket failure. Do not change protocol logic or bypass TLS
 to compensate for this network condition.

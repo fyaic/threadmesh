@@ -1,13 +1,15 @@
 # Project status
 
 > Snapshot: 2026-09-01 after behavioral `main` commit
-> `f98c56b83057b43f8b9618d6f69e1b2f481f77bd` and real-effects integration
-> commit `1845d86`. Technical evidence includes the
+> `f98c56b83057b43f8b9618d6f69e1b2f481f77bd` and merged real-effects
+> integration [#133](https://github.com/fyaic/threadmesh/pull/133) at
+> `5ec7b19`. Technical evidence includes the
 > deterministic no-plan autonomous fixture, the earlier runner-sequenced real
 > Codex canary, nine fail-closed event-pump attempts, and one completed real
 > autonomous behavioral chain. Real Git and child-verifier wiring is complete,
-> but its successful Codex rerun, a manual baseline, and critical closure cases
-> remain pending.
+> but its successful Codex rerun and measured manual/live baseline remain
+> pending. Deterministic workflow accounting and the active-receiver checkpoint
+> negative are executable in the public demo.
 
 ## Executive summary
 
@@ -27,16 +29,17 @@ interoperability, hostile-peer safety, or production reliability. The normative
 M0 blockers are resolved; M0 remains open only for two independent reviews,
 including one outside the maintainer organization.
 
-The current product gap is sharper than the technical gap. ThreadMesh has no
-independent adopter, and its one-message demonstration does not yet remove a
-meaningful workflow burden. The deterministic and fail-closed results support
-the technical direction, but execution order became imbalanced: generalized
-durability, verifier/Git proof, and recovery advanced before one uninterrupted
-real proactive chain was retained. The active mainline is therefore an
-[attention and handoff router](product-mainline-2026-08-28.md): a one-command,
-observable implementation/review/fix loop that eliminates manual relay and
-polling while preserving receiver control. Non-mainline expansion is paused
-until this outcome is demonstrated.
+The current product gap is adoption, not another transport feature. ThreadMesh
+still has no independent setup attempt. The public demo now makes the workflow
+burden concrete: a four-handoff manual path has a lower bound of nine user
+actions versus one kickoff, and a running receiver retains a completion at a
+checkpoint without steer, interrupt, or native-turn start. That is executable
+product evidence, not measured human timing or live native queue evidence. The
+active mainline remains the
+[attention and handoff router](product-mainline-2026-08-28.md). New harness,
+transport, and generalized protocol expansion is paused until a network-valid
+real-effects traversal, the measured baseline, and three external 15-minute
+setup attempts are retained.
 
 ## Evidence ledger
 
@@ -44,7 +47,7 @@ until this outcome is demonstrated.
 |---|---|---|
 | Research and problem framing | Codex deep dive, community signals, ecosystem comparison, ADRs | Established |
 | Community adoption | No external stars, forks, watchers, issue comments, or independent setup result as of 2026-08-28 | Unvalidated |
-| Active product outcome | One-command lifecycle-event and dependency-handoff loop with an inspector | Real Codex A/R/same-A/V/dependent behavioral chain completed after one kickoff; independent Git/verifier closure pending |
+| Active product outcome | One-command lifecycle-event and dependency-handoff loop with inspector, manual-action accounting, active-receiver checkpoint negative, and 76-second walkthrough | Real Codex A/R/same-A/V/dependent behavioral chain completed after one kickoff; real Git/verifier path merged; combined network-valid rerun pending |
 | Protocol draft | 14 JSON Schemas; 55 schema cases; 7 transition cases; 384 tests | Executable draft; counts are reported separately |
 | Minimal adapter SDK | `@fyaic/threadmesh` `0.1.0-alpha.0`; six bounded client methods, per-turn proactive bridge, about 20 kB tarball, packed-consumer execution | Real Pi clean-consumer pass; not published to npm |
 | Local binding | Schema-validated JSON-RPC, transport-derived principals, typed errors | Executable local reference |
@@ -62,7 +65,7 @@ until this outcome is demonstrated.
 | Codex-to-Kimi proactive flow | Codex A selected discovery and one send; persistent Kimi ACP B completed; exact A deletion and B delete/absence passed at `e0adb0e` | First real cross-harness proactive case passed |
 | Pi integration-kit flow | Fresh packed consumer exposed exactly two native tools; real Pi passed relevant/irrelevant/control behavior and supplied one admitted input to Kimi at `02d8d24` | Maintainer integration passed; independent human feedback pending |
 | Codex M5 attention seam | Real persistent A model-selected discovery/publication; durable cursor resumed the pre-created persistent B exactly once; local verification unlocked the dependency and restart recovered B as ready at `3d5caee` | M5.1 passed; logical wake only, local verifier simulation; M5.2/M5.3 pending |
-| M5.2 Git evidence foundation | Independent temporary bare repo and role worktrees, same-worktree implementer fix, SQLite v5 evidence chains, SQLite v6 turn/cursor recovery, SQLite v7 bound verifier-only atomic unlock, private signed-result recovery journal, five controlled coordinator-reopen checkpoints, and a preconfigured-key child verifier bound to exact commits/finding/test | Deterministic safety, persistence, model-action receipt, authority, and coordinator-reopen recovery seams passed; integrated process-crash recovery and coordinator-driven real loop pending |
+| M5.2 Git/verifier real-effects path | Independent temporary bare repo and role worktrees, same-worktree implementer fix, exact commit/finding/test binding, and process-isolated child verifier wired into the autonomous event pump by #133 | Deterministic positive and wrong-finding negative pass; fresh real Codex traversal pending network-valid endpoint |
 | M5.2 real Codex model/tool canary | Five persistent roles; four real A/R/same-A/V turns; seven model-selected tool calls; exact two-commit chain; same-A identity/worktree; dependent and irrelevant zero-turn controls; five-of-five cleanup on base `1155fc8` | Canary completed; intentionally `blocked` with `liveProductEvidence=false` because the runner submitted four phase prompts and ThreadMesh performed no lifecycle handoff |
 | M5.2 autonomous no-plan fixture | One user kickoff; durable SQLite attention drives A→R→same-A→V→dependent; zero fixture-runner activation dispatches or phase/business prompts; zero manual relay and polling; pump starts protected receiver turns; trusted finalization precedes dependent turn; exact cleanup | Deterministic in-process fixture at `711da66`; per-dispatch recovery durable, global chain absent; OS kill/heartbeat/live products/external verifier pending |
 | M5.2 real event-pump attempts | Six attempts: five bounded fail-closed stops, then one complete real Codex A/R/same-A/V/dependent chain with one kickoff, nine bound turns, eight business tool calls, zero later runner prompts/direct activations, an irrelevant zero-turn control, and exact cleanup | Behavioral checkpoint passed; result remains honestly `blocked`/`liveProductEvidence=false` because Git effects and verifier custody are simulated; M5.2 remains open |
@@ -295,14 +298,16 @@ temporary-resource cleanup. See the
 [attempt audit](../09-reviews/2026-09-01-m5-2-real-codex-event-pump-attempt-audit.md)
 and [behavior record](../09-reviews/2026-09-01-m5-2-real-codex-event-pump-behavior.md).
 
-The sequencing decision is now explicit: retain the proven path and reuse the
-existing bounded Git-worktree and verifier foundations inside it. Add the
-manual baseline and minimum critical negative/restart evidence; do not build a
-new substrate. OS-kill and heartbeat matrices, a global cross-dispatch chain,
-Kimi parity, new harnesses, and further presentation work remain frozen. The
-completed chain is still `blocked` and `liveProductEvidence=false` because its
-Git effects and verifier custody are simulated; it clears the behavioral
-checkpoint, not M5.2.
+The sequencing decision is now explicit. The existing bounded Git worktrees and
+child verifier are integrated in #133; deterministic positive and wrong-finding
+negative cases pass. The public demo adds a modeled manual-action baseline and
+active-receiver checkpoint negative. Next, retain one network-valid real Codex
+traversal, run the measured manual arm, and observe three external operators.
+OS-kill and heartbeat matrices, a global cross-dispatch chain, Kimi parity, new
+harnesses, and transport/protocol expansion remain frozen. The completed live
+behavioral chain is still `blocked` and `liveProductEvidence=false` because its
+Git effects and verifier custody were simulated; the merged integration is not
+silently combined with that earlier run.
 
 The Codex context-admission turn now uses the same private pre-turn baseline,
 fsynced journal, exact client key, and read-first restart boundary. The journal

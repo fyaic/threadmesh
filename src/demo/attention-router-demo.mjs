@@ -43,6 +43,11 @@ const TASKS = Object.freeze({
     incarnationId: "inc_demo_dependent0001",
     harness: "demo-dependent",
   }),
+  activeReceiver: Object.freeze({
+    taskId: "task_demo_active_receiver",
+    incarnationId: "inc_demo_active_receiver01",
+    harness: "demo-active-receiver",
+  }),
 });
 
 const STEPS = Object.freeze([
@@ -87,6 +92,19 @@ const STEPS = Object.freeze([
     reason: "The dependent task may proceed after trusted verification.",
   }),
 ]);
+
+const ACTIVE_CHECKPOINT_STEP = Object.freeze({
+  eventType: LIFECYCLE_EVENT_TYPES.COMPLETED,
+  messageId: "msg_demo_active_checkpoint01",
+  relationshipId: "rel_demo_review_active_receiver",
+  grantId: "grant_demo_review_active_receiver",
+  source: "review",
+  target: "activeReceiver",
+  content: "Review completed while the receiving session is still working.",
+  reason: "Retain the result for the receiver's next safe checkpoint.",
+});
+
+const GRANT_STEPS = Object.freeze([...STEPS, ACTIVE_CHECKPOINT_STEP]);
 
 const DEPENDENCY_EDGE = Object.freeze({
   dependencyId: "dependency_demo_reviewed_artifact",
@@ -138,7 +156,7 @@ function installDemoState(coordinator) {
   for (const [name, task] of Object.entries(TASKS)) {
     coordinator.registerTask({
       ...task,
-      state: "waiting",
+      state: name === "activeReceiver" ? "running" : "waiting",
       runtime: {
         runId: `run_demo_${name}`,
         objectiveVersion: 1,
@@ -153,7 +171,7 @@ function installDemoState(coordinator) {
   }
 
   const grants = new Map();
-  for (const step of STEPS) {
+  for (const step of GRANT_STEPS) {
     const grant = coordinator.issueGrant({
       specVersion: "0.0-draft",
       grantId: step.grantId,
@@ -177,6 +195,79 @@ function installDemoState(coordinator) {
   }
   coordinator.createDependencyEdge(DEPENDENCY_EDGE, OWNER);
   return grants;
+}
+
+function retainForActiveCheckpoint(coordinator, grant) {
+  const event = eventFor(ACTIVE_CHECKPOINT_STEP);
+  const source = TASKS[ACTIVE_CHECKPOINT_STEP.source];
+  const target = TASKS[ACTIVE_CHECKPOINT_STEP.target];
+  const receiverBefore = coordinator.getTask(taskRef(target), OWNER);
+  const route = evaluateAttentionRoute({
+    event,
+    receiverTask: taskRef(target),
+    grant,
+    currentGrant: grant,
+    sourceTask: { ...source, retiredAt: null },
+    targetTask: {
+      ...target,
+      retiredAt: null,
+      runId: `run_demo_${ACTIVE_CHECKPOINT_STEP.target}`,
+      objectiveVersion: 1,
+      checkpoint: `checkpoint_demo_${ACTIVE_CHECKPOINT_STEP.target}`,
+    },
+    now: NOW,
+  });
+  if (!route.offer) throw new Error(`demo_active_checkpoint_route_failed:${route.reasonCode}`);
+
+  const submitted = coordinator.submit(
+    projectLifecycleEventToEnvelope(event),
+    taskPrincipal(source),
+  );
+  const retained = coordinator.inspectMessage(
+    source.incarnationId,
+    event.messageId,
+    taskPrincipal(target),
+  );
+  const receiverAfter = coordinator.getTask(taskRef(target), OWNER);
+  if (
+    receiverBefore.state !== "running" ||
+    receiverAfter.state !== "running" ||
+    retained.disposition.decision !== "pending"
+  ) {
+    throw new Error("demo_active_receiver_was_interrupted");
+  }
+
+  const quietRoute = evaluateAttentionRoute({
+    event,
+    receiverTask: taskRef(target),
+    subscribedEventTypes: [LIFECYCLE_EVENT_TYPES.BLOCKED],
+    grant,
+    currentGrant: grant,
+    sourceTask: { ...source, retiredAt: null },
+    targetTask: {
+      ...target,
+      retiredAt: null,
+      runId: `run_demo_${ACTIVE_CHECKPOINT_STEP.target}`,
+      objectiveVersion: 1,
+      checkpoint: `checkpoint_demo_${ACTIVE_CHECKPOINT_STEP.target}`,
+    },
+    now: NOW,
+  });
+  if (quietRoute.offer) throw new Error("demo_unsubscribed_event_was_offered");
+
+  return {
+    eventType: event.eventType,
+    requestedDeliveryMode: route.envelope.delivery.requestedMode,
+    delivery: submitted.disposition.delivery,
+    receiverDecision: retained.disposition.decision,
+    receiverStateBefore: receiverBefore.state,
+    receiverStateAfter: receiverAfter.state,
+    steerRequests: 0,
+    interruptRequests: 0,
+    nativeTurnStarts: 0,
+    unsubscribedOffers: quietRoute.offer ? 1 : 0,
+    unsubscribedReasonCode: quietRoute.reasonCode,
+  };
 }
 
 function createDemoVerifier() {
@@ -388,6 +479,10 @@ export async function runAttentionRouterDemo({ temporaryParent = os.tmpdir(), on
         wake: result.reconciliation.reasonCode,
       });
     }
+    const activeCheckpoint = retainForActiveCheckpoint(
+      coordinator,
+      grants.get(ACTIVE_CHECKPOINT_STEP.relationshipId),
+    );
 
     const dependency = results.at(-1);
     const dependencyEvent = eventFor(STEPS.at(-1));
@@ -502,6 +597,28 @@ export async function runAttentionRouterDemo({ temporaryParent = os.tmpdir(), on
         manualRelayActions: 0,
         modelPollingTurns: 0,
         incorrectUnlocks: 0,
+        durableReconciliations: results.length,
+      },
+      comparison: {
+        classification: "modeled-workflow-accounting",
+        workflowHandoffs: results.length,
+        manual: {
+          initialKickoffs: 1,
+          relayActions: results.length,
+          statusChecks: results.length,
+          totalUserActionsLowerBound: 1 + (results.length * 2),
+        },
+        threadmesh: {
+          initialKickoffs: 1,
+          relayActions: 0,
+          statusChecks: 0,
+          totalUserActions: 1,
+        },
+        notMeasured: ["elapsed-time", "model-tokens"],
+      },
+      safety: {
+        activeCheckpoint,
+        droppedWakeHints: results.length,
         durableReconciliations: results.length,
       },
       inspector,
