@@ -184,7 +184,8 @@ export THREADMESH_CODEX_COMMAND=/absolute/path/to/codex
 node scripts/run-m5-2-event-pump-gate.mjs --mode live --artifacts-dir /fresh/owned/directory
 ```
 
-Six bounded attempts are retained:
+Ten bounded attempts are retained. Attempts 1–6 cover the behavioral path;
+attempts 7–10 exercise the real Git/child-verifier integration:
 
 | Attempt | Stop | Chain evidence | Cleanup evidence |
 |---|---|---|---|
@@ -194,6 +195,10 @@ Six bounded attempts are retained:
 | 4 | Exact lifecycle publication action mismatch after kickoff | Five tasks and one kickoff intent; no pump dispatch | Normal five-of-five session and temporary-resource cleanup |
 | 5 | Ambiguous reconciliation during the admitted same-A fix turn | Real chain through reviewer review and same-A acceptance | Normal five-of-five session and temporary-resource cleanup |
 | 6 | Completed with expected `threadmesh_m52_independent_verifier_service_pending` product-gate classification | Full real `A -> R -> same-A -> V -> dependent`; one kickoff, nine bound turns, zero later runner prompts/direct activations, irrelevant zero turns | Normal five-of-five session cleanup, coordinator removal, zero journals, and removal of the exact empty artifacts directory |
+| 7 | R admitted turn ended before a tool selection | Real A implementation commit and autonomous R route | Complete role/verifier/Git/coordinator cleanup |
+| 8 | R admitted turn ended after its detached-checkout read | Real A implementation plus one R read action | Complete role/verifier/Git/coordinator cleanup |
+| 9 | R decision turn was terminally reconciled | Real A implementation and R route selection | Complete role/verifier/Git/coordinator cleanup |
+| 10 | R admitted turn became ambiguous during a reproduced DNS/TLS endpoint failure | Real A implementation, R acceptance, and admission start | Complete role/verifier/Git/coordinator cleanup |
 
 [#126](https://github.com/fyaic/threadmesh/pull/126) and
 [#127](https://github.com/fyaic/threadmesh/pull/127) fixed the first two observed
@@ -203,11 +208,12 @@ extended only protected admitted business turns to 300 seconds. Attempt 6 is a
 completed `state=blocked` gate result and the first real autonomous behavioral
 chain.
 
-The next checkpoint is no longer another behavioral rerun. Reuse the existing
-bounded Git-worktree and verifier foundations inside this correlated event-pump
-path, then add the manual relay/polling baseline and minimum critical
-negative/restart evidence. Until those gates pass, the correct public result
-remains `state=blocked` and `liveProductEvidence=false`.
+The bounded Git-worktree and process-isolated child-verifier foundations are
+now wired into this correlated path. The next checkpoint is one successful
+live rerun after `codex doctor` no longer reports the current WebSocket
+certificate failure, then the manual relay/polling baseline and minimum
+critical negative/restart evidence. Until those gates pass, the correct public
+result remains `state=blocked` and `liveProductEvidence=false`.
 
 See the [bounded attempt audit](../09-reviews/2026-09-01-m5-2-real-codex-event-pump-attempt-audit.md)
 and [real behavior record](../09-reviews/2026-09-01-m5-2-real-codex-event-pump-behavior.md).

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -7,6 +8,39 @@ import test from "node:test";
 import { sha256Digest } from "../src/canonical-json.mjs";
 import { runCoordinatorDrivenNoPlanScenario } from
   "../src/validation/coordinator-driven-no-plan-scenario.mjs";
+import { projectM52EventPumpCodexGateResult } from
+  "../src/validation/m5-2-event-pump-codex-gate.mjs";
+
+function git(repoPath, ...args) {
+  return execFileSync("git", ["-C", repoPath, ...args], {
+    encoding: "utf8",
+    env: {
+      PATH: process.env.PATH ?? "",
+      LANG: "C",
+      GIT_CONFIG_NOSYSTEM: "1",
+      GIT_AUTHOR_NAME: "ThreadMesh Test",
+      GIT_AUTHOR_EMAIL: "threadmesh@example.invalid",
+      GIT_COMMITTER_NAME: "ThreadMesh Test",
+      GIT_COMMITTER_EMAIL: "threadmesh@example.invalid",
+    },
+  }).trim();
+}
+
+function createRealEffectsSource(t) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "threadmesh-real-effects-source-"));
+  const fixtureDirectory = path.join(root, "test", "fixtures");
+  fs.mkdirSync(fixtureDirectory, { recursive: true });
+  fs.copyFileSync(
+    new URL("fixtures/independent-git-verifier-target.test.mjs", import.meta.url),
+    path.join(fixtureDirectory, "independent-git-verifier-target.test.mjs"),
+  );
+  fs.writeFileSync(path.join(root, "README.md"), "bounded real-effects source\n");
+  git(root, "init", "--quiet");
+  git(root, "add", ".");
+  git(root, "commit", "--quiet", "--no-gpg-sign", "-m", "source base");
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  return { root, sha: git(root, "rev-parse", "HEAD") };
+}
 
 test("one pump autonomously closes A to R to same-A to V to dependent", async (t) => {
   const artifactsDirectory = fs.mkdtempSync(
@@ -101,6 +135,7 @@ test("one pump autonomously closes A to R to same-A to V to dependent", async (t
   assert.equal(result.bindings.receiverDecisions, 4);
   assert.equal(result.bindings.contextAdmissions, 4);
   assert.equal(result.verification.externalIndependentVerifier, false);
+  assert.equal(result.verification.processIsolatedVerifier, false);
   assert.equal(result.verification.signer, "fixture-owned-ephemeral-key");
   assert.equal(result.verification.nativeVerifierSessionIndependent, true);
   assert.match(result.verification.nativeVerifierTurnIdDigest, /^sha256:[a-f0-9]{64}$/u);
@@ -163,6 +198,111 @@ test("one pump autonomously closes A to R to same-A to V to dependent", async (t
   assert.equal(result.cleanup.runRootRemoved, true);
   assert.ok(result.cleanup.roles.every(({ deleted, absenceVerified }) =>
     deleted && absenceVerified));
+});
+
+test("real-effects path keeps reviewer context blind and binds model finding", async (t) => {
+  const artifactsDirectory = fs.mkdtempSync(
+    path.join(os.tmpdir(), "threadmesh-real-effects-artifacts-"),
+  );
+  t.after(() => fs.rmSync(artifactsDirectory, { recursive: true, force: true }));
+  const source = createRealEffectsSource(t);
+
+  const result = await runCoordinatorDrivenNoPlanScenario({
+    artifactsDirectory,
+    realEffects: true,
+    sourceRoot: source.root,
+    validatedBaseSha: source.sha,
+    temporaryParent: artifactsDirectory,
+  });
+
+  assert.equal(result.state, "passed-full-functional-in-process-fixture");
+  assert.equal(result.liveProductEvidence, false);
+  assert.equal(result.gitEffects.realBoundedWorktrees, true);
+  assert.match(result.gitEffects.implementationSha, /^[a-f0-9]{40}$/u);
+  assert.match(result.gitEffects.fixSha, /^[a-f0-9]{40}$/u);
+  assert.notEqual(result.gitEffects.implementationSha, result.gitEffects.fixSha);
+  assert.equal(result.gitEffects.directDescendant, true);
+  assert.equal(result.gitEffects.reviewerDetached, true);
+  assert.equal(result.gitEffects.verifierDetached, true);
+  assert.equal(result.verification.externalIndependentVerifier, false);
+  assert.equal(result.verification.processIsolatedVerifier, true);
+  assert.equal(result.verification.signer,
+    "process-isolated-child-owned-ephemeral-key");
+  assert.equal(result.verification.signatureVerified, true);
+  assert.equal(result.verification.resultDigestBound, true);
+  assert.equal(result.runtime.modelSelectedToolCalls, 14);
+  assert.deepEqual(result.nativeTurnManifest.records.map(({ actions }) =>
+    actions.map(({ tool }) => tool)), [
+    ["threadmesh_commit_candidate", "threadmesh_publish_artifact"],
+    ["threadmesh_decide_offer"],
+    ["threadmesh_review_read_artifact", "threadmesh_report_review_finding"],
+    ["threadmesh_decide_offer"],
+    ["threadmesh_commit_candidate", "threadmesh_publish_dependency"],
+    ["threadmesh_decide_offer"],
+    ["threadmesh_read_verification_chain", "threadmesh_verify_exact_chain"],
+    ["threadmesh_decide_offer"],
+    ["threadmesh_check_finalized_dependency",
+      "threadmesh_activate_verified_dependency"],
+  ]);
+  const worktrees = Object.fromEntries(result.sessionManifest.records.map(
+    ({ role, worktreeDigest }) => [role, worktreeDigest],
+  ));
+  assert.notEqual(worktrees.r, worktrees.a);
+  assert.notEqual(worktrees.v, worktrees.a);
+  assert.notEqual(worktrees.r, worktrees.v);
+  assert.equal(result.cleanup.complete, true);
+  assert.equal(result.cleanup.verifierServiceClosed, true);
+  assert.equal(result.cleanup.gitFixture.complete, true);
+  assert.equal(result.cleanup.runRootRemoved, true);
+  assert.equal(git(source.root, "rev-parse", "HEAD"), source.sha);
+  assert.equal(git(source.root, "status", "--porcelain"), "");
+
+  const projected = projectM52EventPumpCodexGateResult(result);
+  assert.equal(projected.state, "blocked");
+  assert.equal(projected.liveProductEvidence, false);
+  assert.equal(projected.verificationMode,
+    "process-isolated-child-service-signed");
+  assert.deepEqual(projected.remainingGates, [
+    "independent-verifier-service",
+    "real-bounded-git-worktree-effects",
+    "manual-relay-polling-baseline",
+    "minimum-critical-negative-restart",
+    "cross-process-os-kill-and-long-turn-lease-heartbeat",
+    "global-selection-chain",
+    "real-codex-product-run",
+  ]);
+});
+
+test("real-effects path rejects a model-reported finding not present in checkout", async (t) => {
+  const artifactsDirectory = fs.mkdtempSync(
+    path.join(os.tmpdir(), "threadmesh-real-effects-tamper-"),
+  );
+  t.after(() => fs.rmSync(artifactsDirectory, { recursive: true, force: true }));
+  const source = createRealEffectsSource(t);
+
+  await assert.rejects(
+    () => runCoordinatorDrivenNoPlanScenario({
+      artifactsDirectory,
+      realEffects: true,
+      sourceRoot: source.root,
+      validatedBaseSha: source.sha,
+      temporaryParent: artifactsDirectory,
+      injectRealReviewFindingTamper: true,
+    }),
+    (error) => {
+      assert.equal(error?.code, "threadmesh_codex_live_context_terminal_reconciled");
+      assert.equal(error?.originCode,
+        "threadmesh_real_effect_review_finding_not_reproduced");
+      assert.equal(error.cleanup?.complete, true);
+      assert.equal(error.cleanup?.roles.length, 5);
+      assert.equal(error.cleanup?.verifierServiceClosed, true);
+      assert.equal(error.cleanup?.gitFixture.complete, true);
+      assert.equal(error.cleanup?.runRootRemoved, true);
+      return true;
+    },
+  );
+  assert.equal(git(source.root, "rev-parse", "HEAD"), source.sha);
+  assert.equal(git(source.root, "status", "--porcelain"), "");
 });
 
 test("public manifest rejects a runtime selection binding not present in SQLite", async (t) => {

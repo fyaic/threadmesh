@@ -150,13 +150,13 @@ nine bound native turns, zero later runner prompts or direct activations, an
 irrelevant zero-turn control, and exact cleanup.
 
 This exposed an execution-order imbalance rather than a change in product
-direction. The behavioral checkpoint is now passed. The immediate checkpoint
-is to reuse the existing bounded Git-worktree and verifier foundations inside
-that correlated live path, then add the manual baseline and minimum critical
-negative/restart evidence. New substrate, generalized recovery, cross-harness,
-or presentation work remains frozen. The completed run correctly remains
-`blocked` and `liveProductEvidence=false` while verifier custody and Git effects
-are simulated; it demonstrates behavior, not M5.2 closure.
+direction. The behavioral checkpoint is passed. The existing bounded
+Git-worktree and child-verifier foundations are now wired into that correlated
+path, but a successful live rerun is pending after a reproducible local DNS/TLS
+failure. The manual baseline and minimum critical negative/restart evidence
+remain next. New substrate, generalized recovery, cross-harness, or
+presentation work remains frozen. No partial integration attempt is promoted
+to M5.2 evidence.
 
 - [x] Ship a one-command local demo with generated identities, grants, example
   sessions, and an inspector
@@ -181,9 +181,15 @@ are simulated; it demonstrates behavior, not M5.2 closure.
     prompts or direct activations, exact real session/turn/dispatch bindings,
     dependent ordering, an irrelevant zero-turn control, and exact cleanup.
     Simulated verifier and Git effects remain explicitly labeled.
+  - [x] Reuse the existing bounded Git topology and process-isolated child
+    verifier in the correlated event-pump implementation, with exact cleanup
+    and no new coordinator or verifier subsystem.
+  - [ ] Retain one successful live Codex traversal of that real-effects path;
+    current reruns are blocked by a reproducible local DNS/TLS endpoint error.
   - [ ] M5.2 closure: reuse the existing bounded Git and verifier foundations
-    in the same correlated run, add the manual baseline and minimum critical
-    negative/restart evidence, and keep raw product data out of public output.
+    in one successful correlated run, add the manual baseline and minimum
+    critical negative/restart evidence, and keep raw product data out of public
+    output.
   - [ ] M5.3: pass three fresh relevant runs plus the manual baseline,
     irrelevant, stale/unverified, restart, and cleanup matrix.
 - [ ] Repeat the loop across Codex and one ACP-compatible harness

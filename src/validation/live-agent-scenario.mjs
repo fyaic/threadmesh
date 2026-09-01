@@ -988,6 +988,9 @@ export class CodexLiveAgentRuntime {
         turnStatus: classified.turnStatus,
         journal: journalProjection,
       };
+      if (typeof originCode === "string" && originCode.length > 0) {
+        terminal.originCode = originCode;
+      }
       throw terminal;
     }
   }
@@ -1527,7 +1530,9 @@ export class CodexLiveAgentRuntime {
         },
       }],
     };
-    const reconcile = async ({ baseline, journalProjection, startedTurnId = null }) => {
+    const reconcile = async ({
+      baseline, journalProjection, startedTurnId = null, originCode = null,
+    }) => {
       await turnRecovery.onOutcomeUnknown({
         prepared,
         adapterIdempotencyKey,
@@ -1547,6 +1552,9 @@ export class CodexLiveAgentRuntime {
           reasonCode,
         );
         ambiguous.recovery = { state: "ambiguous", reasonCode, journal: journalProjection };
+        if (typeof originCode === "string" && originCode.length > 0) {
+          ambiguous.originCode = originCode;
+        }
         throw ambiguous;
       }
       await turnRecovery.onTerminalReconciliation({
@@ -1565,6 +1573,9 @@ export class CodexLiveAgentRuntime {
         turnStatus: classified.turnStatus,
         journal: journalProjection,
       };
+      if (typeof originCode === "string" && originCode.length > 0) {
+        terminal.originCode = originCode;
+      }
       throw terminal;
     };
 
@@ -1725,6 +1736,11 @@ export class CodexLiveAgentRuntime {
         baseline,
         journalProjection,
         startedTurnId: started?.turnId ?? null,
+        originCode: /^[a-z][a-z0-9_]{0,127}$/u.test(error?.code ?? "")
+          ? error.code
+          : (/^[A-Za-z][A-Za-z0-9]{0,63}$/u.test(error?.name ?? "")
+            ? error.name
+            : "unclassified_error"),
       });
     }
   }

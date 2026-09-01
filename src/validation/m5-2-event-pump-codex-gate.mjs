@@ -48,6 +48,30 @@ const EXPECTED_ACTION_SEQUENCES = Object.freeze([
   Object.freeze(["threadmesh_decide_offer"]),
   EXPECTED_BUSINESS_SEQUENCES.dependent,
 ]);
+const REAL_EFFECT_EXPECTED_PHASES = Object.freeze([
+  ["a", "user-kickoff", "kickoff", 2],
+  ["r", "receiver-decision", "decision", 1],
+  ["r", "r-review", "admission", 2],
+  ["a", "receiver-decision", "decision", 1],
+  ["a", "same-a-fix", "admission", 2],
+  ["v", "receiver-decision", "decision", 1],
+  ["v", "v-verify", "admission", 2],
+  ["dependent", "receiver-decision", "decision", 1],
+  ["dependent", "dependent-gated-activation", "admission", 2],
+]);
+const REAL_EFFECT_EXPECTED_ACTION_SEQUENCES = Object.freeze([
+  Object.freeze(["threadmesh_commit_candidate", "threadmesh_publish_artifact"]),
+  Object.freeze(["threadmesh_decide_offer"]),
+  Object.freeze([
+    "threadmesh_review_read_artifact", "threadmesh_report_review_finding",
+  ]),
+  Object.freeze(["threadmesh_decide_offer"]),
+  Object.freeze(["threadmesh_commit_candidate", "threadmesh_publish_dependency"]),
+  Object.freeze(["threadmesh_decide_offer"]),
+  EXPECTED_BUSINESS_SEQUENCES.v,
+  Object.freeze(["threadmesh_decide_offer"]),
+  EXPECTED_BUSINESS_SEQUENCES.dependent,
+]);
 const EXPECTED_HANDLERS = Object.freeze([
   "handler.no-plan.review.v1",
   "handler.no-plan.same-a-fix.v1",
@@ -84,7 +108,7 @@ const CORE_RESULT_KEYS = Object.freeze([
   "completedRoles", "pendingRoles", "pendingReason", "pendingGates",
   "routeHandlerConfigs", "executedHandlerIds", "selectionBindings",
   "durableDispatchManifest", "nativeTurnManifest", "runnerTraceManifest",
-  "sessionManifest", "attention", "sameARef", "bindings", "verification",
+  "sessionManifest", "attention", "sameARef", "bindings", "verification", "gitEffects",
   "evidenceChain", "dependent", "ordering", "irrelevant", "runtime", "cleanup",
 ]);
 
@@ -104,7 +128,7 @@ export function projectM52EventPumpFailureCleanup(value) {
     "complete", "roles", "ownedJournalRemovedCount", "remainingJournalCount",
     "unknownJournalCount", "unknownJournalPathDigests", "journalRemovalFailures",
     "databaseRemovalFailures", "journalDirectoryRemoved", "runRootRemoved",
-    "coordinatorRemoved",
+    "coordinatorRemoved", "verifierServiceClosed", "gitFixture",
   ];
   const exactSchema = canonicalJson(Object.keys(source).sort()) ===
     canonicalJson(expectedKeys.sort());
@@ -126,7 +150,8 @@ export function projectM52EventPumpFailureCleanup(value) {
     Array.isArray(source.databaseRemovalFailures) &&
     source.databaseRemovalFailures.length === 0 &&
     source.journalDirectoryRemoved === true && source.runRootRemoved === true &&
-    source.coordinatorRemoved === true;
+    source.coordinatorRemoved === true && source.verifierServiceClosed === true &&
+    source.gitFixture?.complete === true;
   return Object.freeze({
     complete: closureComplete,
     rolesDeleted: roles.filter((role) => role?.deleted === true).length,
@@ -167,7 +192,7 @@ function integer(value, label) {
   return value;
 }
 
-function validateNativeTurnManifest(manifest) {
+function validateNativeTurnManifest(manifest, { realEffects = false } = {}) {
   exactObject(manifest, ["scope", "recordCount", "records", "manifestDigest"],
     "nativeTurnManifest");
   if (manifest.scope !== "sqlite-turn-receipt-and-binding-records" ||
@@ -183,7 +208,10 @@ function validateNativeTurnManifest(manifest) {
       "receiptDigest", "actionCount", "actionHeadDigest", "actions",
       "actionSequenceDigest", "executionState", "bindingDigest", "recordDigest",
     ], `nativeTurnManifest.records[${index}]`);
-    const [role, phase, bindingKind, actionCount] = EXPECTED_PHASES[index];
+    const phases = realEffects ? REAL_EFFECT_EXPECTED_PHASES : EXPECTED_PHASES;
+    const sequences = realEffects
+      ? REAL_EFFECT_EXPECTED_ACTION_SEQUENCES : EXPECTED_ACTION_SEQUENCES;
+    const [role, phase, bindingKind, actionCount] = phases[index];
     const body = { ...record };
     delete body.recordDigest;
     if (
@@ -195,7 +223,7 @@ function validateNativeTurnManifest(manifest) {
     if (!Array.isArray(record.actions) || record.actions.length !== actionCount ||
         sha256Digest(record.actions) !== record.actionSequenceDigest ||
         canonicalJson(record.actions.map(({ tool }) => tool)) !==
-          canonicalJson(EXPECTED_ACTION_SEQUENCES[index])) {
+          canonicalJson(sequences[index])) {
       throw gateError("threadmesh_m52_event_pump_gate_result_invalid", "nativeTurnActions");
     }
     record.actions.forEach((action, ordinal) => {
@@ -345,12 +373,19 @@ function projectGateResult(coreResult, {
   operatorSuppliedCodexShapedRuntime = false,
 } = {}) {
   exactObject(coreResult, CORE_RESULT_KEYS, "result");
+  const gitEffects = exactObject(coreResult.gitEffects, [
+    "realBoundedWorktrees", "implementationSha", "fixSha", "directDescendant",
+    "reviewerDetached", "verifierDetached", "fixtureDefinitionDigest",
+  ], "gitEffects");
+  const realEffects = gitEffects.realBoundedWorktrees === true;
   if (coreResult.state !== "passed-full-functional-in-process-fixture" ||
       coreResult.autonomousEventPump !== true ||
       coreResult.autonomousEventPumpScope !== "in-process-functional-fixture") {
     throw gateError("threadmesh_m52_event_pump_gate_result_invalid", "coreState");
   }
-  const nativeRecords = validateNativeTurnManifest(coreResult.nativeTurnManifest);
+  const nativeRecords = validateNativeTurnManifest(
+    coreResult.nativeTurnManifest, { realEffects },
+  );
   const dispatchRecords = validateDispatchManifest(
     coreResult.durableDispatchManifest, coreResult.selectionBindings,
   );
@@ -399,7 +434,8 @@ function projectGateResult(coreResult, {
     "modelSelectedToolCalls",
   ], "runtime");
   exactObject(coreResult.verification, [
-    "mode", "externalIndependentVerifier", "signer", "nativeVerifierSessionIndependent",
+    "mode", "externalIndependentVerifier", "processIsolatedVerifier", "signer",
+    "nativeVerifierSessionIndependent",
     "nativeVerifierTurnIdDigest", "allLifecycleNativeTurnIdsDistinct",
     "lifecycleNativeTurnCount", "signatureVerified", "trustAnchorDigest",
     "resultDigestBound",
@@ -420,7 +456,7 @@ function projectGateResult(coreResult, {
     "complete", "roles", "ownedJournalRemovedCount", "remainingJournalCount",
     "unknownJournalCount", "unknownJournalPathDigests", "journalRemovalFailures",
     "databaseRemovalFailures", "journalDirectoryRemoved", "runRootRemoved",
-    "coordinatorRemoved",
+    "coordinatorRemoved", "verifierServiceClosed", "gitFixture",
   ], "cleanup");
   if (!Array.isArray(coreResult.cleanup.roles)) {
     throw gateError("threadmesh_m52_event_pump_gate_result_invalid", "cleanup.roles");
@@ -447,6 +483,8 @@ function projectGateResult(coreResult, {
       coreResult.cleanup.journalDirectoryRemoved !== true ||
       coreResult.cleanup.runRootRemoved !== true ||
       coreResult.cleanup.coordinatorRemoved !== true ||
+      coreResult.cleanup.verifierServiceClosed !== true ||
+      coreResult.cleanup.gitFixture?.complete !== true ||
       coreResult.cleanup.ownedJournalRemovedCount !== 0 ||
       coreResult.cleanup.remainingJournalCount !== 0) {
     throw gateError("threadmesh_m52_event_pump_gate_result_invalid", "cleanupClosure");
@@ -493,7 +531,7 @@ function projectGateResult(coreResult, {
     coreResult.bindings?.lifecycleActionPublications !== 4 ||
     coreResult.bindings?.receiverDecisions !== 4 ||
     coreResult.bindings?.contextAdmissions !== 4 ||
-    coreResult.runtime?.modelSelectedToolCalls !== 13
+    coreResult.runtime?.modelSelectedToolCalls !== (realEffects ? 14 : 13)
   ) throw gateError("threadmesh_m52_event_pump_gate_result_invalid", "exactBindings");
   const expectedOrder = [
     "v-verification-tool-selected", "verified-event-durable",
@@ -507,8 +545,13 @@ function projectGateResult(coreResult, {
     throw gateError("threadmesh_m52_event_pump_gate_result_invalid", "finalizationOrder");
   }
   if (coreResult.verification?.externalIndependentVerifier !== false ||
-      coreResult.verification?.mode !== "deterministic-in-process-trusted-signing" ||
-      coreResult.verification?.signer !== "fixture-owned-ephemeral-key" ||
+      coreResult.verification?.processIsolatedVerifier !== realEffects ||
+      coreResult.verification?.mode !== (realEffects
+        ? "process-isolated-child-service-signed"
+        : "deterministic-in-process-trusted-signing") ||
+      coreResult.verification?.signer !== (realEffects
+        ? "process-isolated-child-owned-ephemeral-key"
+        : "fixture-owned-ephemeral-key") ||
       coreResult.verification?.nativeVerifierSessionIndependent !== true ||
       coreResult.verification?.signatureVerified !== true ||
       coreResult.verification?.resultDigestBound !== true ||
@@ -529,6 +572,16 @@ function projectGateResult(coreResult, {
   ) {
     throw gateError("threadmesh_m52_event_pump_gate_result_invalid", "honestyBoundary");
   }
+  if (
+    gitEffects.directDescendant !== true ||
+    (realEffects && (
+      !/^[a-f0-9]{40}$/u.test(gitEffects.implementationSha ?? "") ||
+      !/^[a-f0-9]{40}$/u.test(gitEffects.fixSha ?? "") ||
+      gitEffects.implementationSha === gitEffects.fixSha ||
+      gitEffects.reviewerDetached !== true || gitEffects.verifierDetached !== true
+    ))
+  ) throw gateError("threadmesh_m52_event_pump_gate_result_invalid", "gitEffects");
+  digest(gitEffects.fixtureDefinitionDigest, "gitEffects.fixtureDefinitionDigest");
   digest(coreResult.verification.nativeVerifierTurnIdDigest,
     "verification.nativeVerifierTurnIdDigest");
   digest(coreResult.verification.trustAnchorDigest, "verification.trustAnchorDigest");
@@ -560,8 +613,9 @@ function projectGateResult(coreResult, {
     throw gateError("threadmesh_m52_event_pump_gate_result_invalid", "productProbe");
   }
   const remainingGates = [
-    "independent-verifier-service",
-    "real-bounded-git-worktree-effects",
+    "independent-verifier-service", "real-bounded-git-worktree-effects",
+    "manual-relay-polling-baseline", "minimum-critical-negative-restart",
+    ...EXPECTED_PENDING_GATES,
     ...(operatorSuppliedCodexShapedRuntime
       ? ["trusted-codex-binary-provenance"]
       : ["real-codex-product-run"]),
@@ -600,7 +654,9 @@ function projectGateResult(coreResult, {
     distinctReceiverRoles: true,
     dependentStartedAfterFinalization: true,
     irrelevantNativeTurns: 0,
-    verificationMode: "fixture-owned-ephemeral-key-not-independent",
+    verificationMode: realEffects
+      ? "process-isolated-child-service-signed"
+      : "fixture-owned-ephemeral-key-not-independent",
     remainingGates,
     evidence: Object.freeze({
       nativeTurnManifest: coreResult.nativeTurnManifest,
@@ -616,6 +672,8 @@ function projectGateResult(coreResult, {
       ).length,
       coordinatorRemoved: coreResult.cleanup.coordinatorRemoved,
       remainingJournalCount: coreResult.cleanup.remainingJournalCount,
+      verifierServiceClosed: coreResult.cleanup.verifierServiceClosed,
+      gitResourcesRemoved: coreResult.cleanup.gitFixture.complete === true,
     }),
   });
 }
@@ -698,6 +756,9 @@ export async function runM52EventPumpCodexGate({
 
 export async function runM52OperatorSuppliedCodexEventPumpGate({
   artifactsDirectory,
+  sourceRoot,
+  validatedBaseSha,
+  temporaryParent,
   command,
   args,
   env,
@@ -705,6 +766,8 @@ export async function runM52OperatorSuppliedCodexEventPumpGate({
   signal = null,
 } = {}) {
   if (!path.isAbsolute(artifactsDirectory ?? "") || !path.isAbsolute(command ?? "") ||
+      !path.isAbsolute(sourceRoot ?? "") || !path.isAbsolute(temporaryParent ?? "") ||
+      !/^[a-f0-9]{40}$/u.test(validatedBaseSha ?? "") ||
       (signal !== null && (
         typeof signal !== "object" || typeof signal.aborted !== "boolean"
       ))) {
@@ -725,6 +788,10 @@ export async function runM52OperatorSuppliedCodexEventPumpGate({
     artifactsDirectory,
     runtime,
     signal,
+    realEffects: true,
+    sourceRoot,
+    validatedBaseSha,
+    temporaryParent,
   });
   try {
     return projectM52OperatorSuppliedCodexEventPumpGateResult(coreResult, { probe });

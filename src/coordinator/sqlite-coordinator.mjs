@@ -87,18 +87,25 @@ const FINAL_GIT_EVIDENCE_TOOL = "threadmesh_verify_exact_chain";
 const LIFECYCLE_PUBLICATION_TOOLS = Object.freeze({
   threadmesh_publish_artifact: Object.freeze({
     eventType: "artifact-ready", materialKeys: Object.freeze(["commitSha"]),
+    actionEvidenceKeySets: Object.freeze([Object.freeze([])]),
   }),
   threadmesh_report_review_finding: Object.freeze({
     eventType: "review-failed", materialKeys: Object.freeze(["findingDigest"]),
+    actionEvidenceKeySets: Object.freeze([
+      Object.freeze([]),
+      Object.freeze(["counterexample", "reason", "resourcePath"]),
+    ]),
   }),
   threadmesh_publish_dependency: Object.freeze({
     eventType: "artifact-ready", materialKeys: Object.freeze(["commitSha"]),
+    actionEvidenceKeySets: Object.freeze([Object.freeze([])]),
   }),
   threadmesh_verify_exact_chain: Object.freeze({
     eventType: "dependency-satisfied",
     materialKeys: Object.freeze([
       "chainId", "expectedEvidenceChainHead", "expectedEvidenceChainRevision",
     ]),
+    actionEvidenceKeySets: Object.freeze([Object.freeze([])]),
   }),
 });
 const ATTENTION_OFFER_ROUTE_KEYS = Object.freeze([
@@ -3320,7 +3327,10 @@ export class SqliteCoordinator {
   // requester kickoff is a separate origin kind and cannot be adopted here.
   publishLifecycleFromCompletedAction(
     executionId,
-    { actionOrdinal = 0, expectedTool, event, expectedMaterial } = {},
+    {
+      actionOrdinal = 0, expectedTool, event, expectedMaterial,
+      expectedActionEvidence = {},
+    } = {},
     principal,
   ) {
     assertLifecycleEvent(event);
@@ -3335,6 +3345,18 @@ export class SqliteCoordinator {
       }
       const materialKeys = Object.keys(expectedMaterial ?? {}).sort();
       const expectedKeys = [...(specification?.materialKeys ?? [])].sort();
+      const evidenceKeys = expectedActionEvidence &&
+          typeof expectedActionEvidence === "object" &&
+          !Array.isArray(expectedActionEvidence)
+        ? Object.keys(expectedActionEvidence).sort()
+        : null;
+      const permittedEvidenceKeySets = specification?.actionEvidenceKeySets ?? [];
+      if (
+        evidenceKeys === null || evidenceKeys.some((key) =>
+          ["sourceEventId", "event", ...expectedKeys].includes(key)) ||
+        !permittedEvidenceKeySets.some((keys) =>
+          canonicalJson([...keys].sort()) === canonicalJson(evidenceKeys))
+      ) throw codedError("threadmesh_lifecycle_publication_action_mismatch");
       const expectedArguments = specification ? [
         execution.intent.eventId,
         execution.intent.messageId,
@@ -3342,6 +3364,7 @@ export class SqliteCoordinator {
         sourceEventId,
         event: boundedLifecycleActionEventBody(event),
         ...expectedMaterial,
+        ...expectedActionEvidence,
       })) : [];
       if (
         !["completed-turn-bound", "promoted"].includes(execution.intent.state) ||
@@ -8492,8 +8515,10 @@ export class SqliteCoordinator {
       const actionArgumentKeys = actionArguments && typeof actionArguments === "object"
         ? Object.keys(actionArguments).sort()
         : [];
-      const expectedArgumentKeys = publicationTool
-        ? ["sourceEventId", "event", ...publicationTool.materialKeys].sort()
+      const expectedArgumentKeySets = publicationTool
+        ? publicationTool.actionEvidenceKeySets.map((evidenceKeys) =>
+          ["sourceEventId", "event", ...publicationTool.materialKeys,
+            ...evidenceKeys].sort())
         : [];
       const message = this.db.prepare(
         `SELECT * FROM messages WHERE sender_incarnation_id = ? AND message_id = ?`,
@@ -8527,7 +8552,8 @@ export class SqliteCoordinator {
         execution.intent.turnStart?.turnId !== action.turnId ||
         execution.intent.actor.taskId !== event.sender.taskId ||
         execution.intent.actor.incarnationId !== event.sender.incarnationId ||
-        canonicalJson(actionArgumentKeys) !== canonicalJson(expectedArgumentKeys) ||
+        !expectedArgumentKeySets.some((keys) =>
+          canonicalJson(actionArgumentKeys) === canonicalJson(keys)) ||
         ![execution.intent.eventId, execution.intent.messageId]
           .includes(actionArguments?.sourceEventId) ||
         canonicalJson(actionArguments?.event) !==

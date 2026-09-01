@@ -885,3 +885,48 @@ test("admitted terminal failure leaves journal and an existing journal reconcile
   assert.equal(fake.state.nativeStarts, 1);
   assert.equal(fs.existsSync(value.filename), true);
 });
+
+test("admitted ambiguous reconciliation retains only the bounded origin code", async (t) => {
+  const fake = adapter({ mode: "terminal", recoveryStatus: "completed" });
+  const value = await fixture(t, fake, "admitted-ambiguous-origin");
+  const admission = prepared();
+  await assert.rejects(
+    () => value.runtime.runAdmittedToolTurn({
+      role: "r", phase: "review", cwd: "/private/reviewer", ref: value.ref,
+      prepared: admission, admissionBinding: createAdmittedTurnBinding(admission),
+      scenarioId: value.scenarioId, allowedToolNames: [BUSINESS_TOOL.name],
+      turnRecovery: recovery(value.filename, "admitted-ambiguous-origin"),
+      async onToolCall() { return {}; }, async onAdmissionReceipt() { return {}; },
+    }),
+    (error) => error?.code === "threadmesh_codex_live_context_reconciliation_ambiguous" &&
+      error?.originCode === "codex_app_server_exited" &&
+      error?.recovery?.reasonCode === "codex-native-turn-completed-observation-only" &&
+      !Object.hasOwn(error, "cause"),
+  );
+  assert.equal(fake.state.nativeStarts, 1);
+  assert.equal(fs.existsSync(value.filename), true);
+});
+
+test("admitted ambiguous reconciliation normalizes an unsafe origin code", async (t) => {
+  const fake = adapter({ mode: "terminal", recoveryStatus: "completed" });
+  const original = fake.runAutonomousToolTurn.bind(fake);
+  fake.runAutonomousToolTurn = async (options) => {
+    try { return await original(options); } catch (error) {
+      error.code = `unsafe\n${"x".repeat(256)}`;
+      throw error;
+    }
+  };
+  const value = await fixture(t, fake, "admitted-unsafe-origin");
+  const admission = prepared();
+  await assert.rejects(
+    () => value.runtime.runAdmittedToolTurn({
+      role: "r", phase: "review", cwd: "/private/reviewer", ref: value.ref,
+      prepared: admission, admissionBinding: createAdmittedTurnBinding(admission),
+      scenarioId: value.scenarioId, allowedToolNames: [BUSINESS_TOOL.name],
+      turnRecovery: recovery(value.filename, "admitted-unsafe-origin"),
+      async onToolCall() { return {}; }, async onAdmissionReceipt() { return {}; },
+    }),
+    (error) => error?.code === "threadmesh_codex_live_context_reconciliation_ambiguous" &&
+      error?.originCode === "Error",
+  );
+});
