@@ -207,9 +207,9 @@ test("event-pump gate keeps an internal branded-runtime identity boundary withou
 
 test("operator-supplied Codex-shaped probe is strict but proves no binary provenance", () => {
   const probe = {
-    userAgent: "codex_cli_rs/0.145.0 (operator supplied)",
+    userAgent: "threadmesh-codex-app-server-adapter/0.145.0 (Mac OS 26.5.1; arm64) dumb (threadmesh-codex-app-server-adapter; 0.0.0)",
     platformFamily: "unix",
-    platformOs: "darwin",
+    platformOs: "macos",
   };
   probe.snapshotDigest = sha256Digest(probe);
   const projected = projectOperatorSuppliedCodexProbe(probe);
@@ -218,7 +218,11 @@ test("operator-supplied Codex-shaped probe is strict but proves no binary proven
   assert.equal(Object.hasOwn(projected, "binaryProvenanceVerified"), false);
 
   for (const changed of [
-    { ...probe, userAgent: "spoofed-codex/0.145.0" },
+    { ...probe, userAgent: probe.userAgent.replace("threadmesh-", "spoofed-") },
+    { ...probe, userAgent: probe.userAgent.replace("; 0.0.0)", "; 1.0.0)") },
+    { ...probe, userAgent: `${probe.userAgent}\nspoofed` },
+    { ...probe, platformFamily: "windows" },
+    { ...probe, platformOs: "darwin" },
     { ...probe, snapshotDigest: `sha256:${"6".repeat(64)}` },
     { ...probe, binaryPath: "/private/codex" },
   ]) {
@@ -249,9 +253,9 @@ test("an injected runtime cannot spoof Codex product evidence in the public proj
   assert.equal(result.remainingGates.includes("real-codex-product-run"), true);
 
   const rawProbe = {
-    userAgent: "codex_cli_rs/0.145.0 (operator supplied)",
+    userAgent: "threadmesh-codex-app-server-adapter/0.145.0 (Mac OS 26.5.1; arm64) dumb (threadmesh-codex-app-server-adapter; 0.0.0)",
     platformFamily: "unix",
-    platformOs: "darwin",
+    platformOs: "macos",
   };
   rawProbe.snapshotDigest = sha256Digest(rawProbe);
   const operatorResult = projectM52OperatorSuppliedCodexEventPumpGateResult(
