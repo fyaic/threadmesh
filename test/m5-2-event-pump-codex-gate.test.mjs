@@ -13,6 +13,7 @@ import {
   isCodexLiveAgentRuntime,
 } from "../src/validation/live-agent-scenario.mjs";
 import {
+  projectM52OperatorSuppliedCodexEventPumpGateResult,
   projectOperatorSuppliedCodexProbe,
   projectM52EventPumpCodexGateResult,
   runM52EventPumpCodexGate,
@@ -186,7 +187,7 @@ test("event-pump gate projector rejects summary, action, identity, and trust dri
   }
 });
 
-test("event-pump gate exposes an unforgeable runtime brand without model use", async (t) => {
+test("event-pump gate keeps an internal branded-runtime identity boundary without model use", async (t) => {
   const plainSpoof = {
     probe() {}, createRole() {}, runTurn() {}, runReceiverDecisionTurn() {},
     runAdmittedToolTurn() {}, deleteRole() {},
@@ -234,6 +235,8 @@ test("an injected runtime cannot spoof Codex product evidence in the public proj
   });
   const core = structuredClone(source);
   core.runtime.productBoundary = "injected-codex-runtime";
+  core.runtime.adapterInvocationAuditAvailable = false;
+  core.runtime.planSurfaceUsed = null;
   core.deterministicPolicyOracle = false;
   const probe = {
     userAgentDigest: sha256Digest("codex_cli_rs/999.999.999"),
@@ -244,6 +247,23 @@ test("an injected runtime cannot spoof Codex product evidence in the public proj
   assert.equal(result.evidenceClass, "injected-runtime-event-pump-gate");
   assert.equal(result.liveProductEvidence, false);
   assert.equal(result.remainingGates.includes("real-codex-product-run"), true);
+
+  const rawProbe = {
+    userAgent: "codex_cli_rs/0.145.0 (operator supplied)",
+    platformFamily: "unix",
+    platformOs: "darwin",
+  };
+  rawProbe.snapshotDigest = sha256Digest(rawProbe);
+  const operatorResult = projectM52OperatorSuppliedCodexEventPumpGateResult(
+    core, { probe: rawProbe },
+  );
+  assert.equal(operatorResult.product, "operator-supplied-codex-shaped-executable");
+  assert.equal(operatorResult.evidenceClass,
+    "operator-supplied-codex-shaped-event-pump-gate");
+  assert.equal(operatorResult.liveProductEvidence, false);
+  assert.equal(operatorResult.remainingGates.includes(
+    "trusted-codex-binary-provenance",
+  ), true);
 });
 
 test("event-pump gate CLI distinguishes help, blocked, and preflight exits", () => {

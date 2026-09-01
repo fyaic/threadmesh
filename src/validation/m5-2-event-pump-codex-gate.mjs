@@ -449,9 +449,7 @@ function projectGateResult(coreResult, {
     coreResult.bindings?.lifecycleActionPublications !== 4 ||
     coreResult.bindings?.receiverDecisions !== 4 ||
     coreResult.bindings?.contextAdmissions !== 4 ||
-    coreResult.runtime?.modelSelectedToolCalls !== 13 ||
-    coreResult.runtime?.planSurfaceUsed !== false ||
-    coreResult.runtime?.adapterInvocationAuditAvailable !== true
+    coreResult.runtime?.modelSelectedToolCalls !== 13
   ) throw gateError("threadmesh_m52_event_pump_gate_result_invalid", "exactBindings");
   const expectedOrder = [
     "v-verification-tool-selected", "verified-event-durable",
@@ -499,6 +497,16 @@ function projectGateResult(coreResult, {
   const deterministic = productBoundary === "deterministic-fake-codex-app-server";
   if (coreResult.deterministicPolicyOracle !== deterministic) {
     throw gateError("threadmesh_m52_event_pump_gate_result_invalid", "policyOracle");
+  }
+  const auditStateValid = deterministic
+    ? coreResult.runtime.adapterInvocationAuditAvailable === true &&
+      coreResult.runtime.planSurfaceUsed === false
+    : (coreResult.runtime.adapterInvocationAuditAvailable === false &&
+        coreResult.runtime.planSurfaceUsed === null) ||
+      (coreResult.runtime.adapterInvocationAuditAvailable === true &&
+        coreResult.runtime.planSurfaceUsed === false);
+  if (!auditStateValid) {
+    throw gateError("threadmesh_m52_event_pump_gate_result_invalid", "runtimeAuditBoundary");
   }
   if (!deterministic) {
     exactObject(productProbe, ["userAgentDigest", "snapshotDigest"], "productProbe");
@@ -593,6 +601,16 @@ export function projectOperatorSuppliedCodexProbe(probe) {
   });
 }
 
+export function projectM52OperatorSuppliedCodexEventPumpGateResult(
+  coreResult,
+  { probe } = {},
+) {
+  return projectGateResult(coreResult, {
+    productProbe: projectOperatorSuppliedCodexProbe(probe),
+    operatorSuppliedCodexShapedRuntime: true,
+  });
+}
+
 export async function runM52EventPumpCodexGate({ artifactsDirectory, runtime = null } = {}) {
   if (!path.isAbsolute(artifactsDirectory ?? "") ||
       (runtime !== null && (
@@ -643,14 +661,11 @@ export async function runM52OperatorSuppliedCodexEventPumpGate({
   if (!isCodexLiveAgentRuntime(runtime)) {
     throw gateError("threadmesh_m52_event_pump_gate_runtime_authenticity_invalid");
   }
-  const productProbe = projectOperatorSuppliedCodexProbe(
-    await runtime.probe(artifactsDirectory),
-  );
+  const probe = await runtime.probe(artifactsDirectory);
+  projectOperatorSuppliedCodexProbe(probe);
   const coreResult = await runCoordinatorDrivenNoPlanScenario({
     artifactsDirectory,
     runtime,
   });
-  return projectGateResult(coreResult, {
-    productProbe, operatorSuppliedCodexShapedRuntime: true,
-  });
+  return projectM52OperatorSuppliedCodexEventPumpGateResult(coreResult, { probe });
 }
