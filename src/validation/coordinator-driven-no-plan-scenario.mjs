@@ -744,18 +744,13 @@ export async function runCoordinatorDrivenNoPlanScenario({
   });
   const realReviewReproduce = Object.freeze({
     ...TOOLS.reviewReproduce,
-    description: `${TOOLS.reviewReproduce.description} Use only the content returned by the preceding read tool; do not infer a finding from this schema.`,
+    description: `${TOOLS.reviewReproduce.description} Inspect the exact detached reviewer checkout and return independently reproduced finding evidence.`,
     inputSchema: Object.freeze({
       type: "object", additionalProperties: false,
       properties: Object.freeze({
         sourceEventId: Object.freeze({ const: artifactEvent.messageId }),
-        resourcePath: Object.freeze({ type: "string", minLength: 1, maxLength: 200 }),
-        counterexample: Object.freeze({ type: "string", minLength: 1, maxLength: 256 }),
-        reason: Object.freeze({ type: "string", minLength: 1, maxLength: 1000 }),
       }),
-      required: Object.freeze([
-        "sourceEventId", "resourcePath", "counterexample", "reason",
-      ]),
+      required: Object.freeze(["sourceEventId"]),
     }),
   });
   const realReviewPublish = Object.freeze({
@@ -844,8 +839,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
   });
   const routeHandlerConfigs = Object.freeze([
     Object.freeze({ ...ROUTE_HANDLER_CONFIGS[0], businessTools: Object.freeze([
-      scenarioTools.reviewRead,
-      ...(realEffects ? [scenarioTools.reviewReproduce] : []),
+      ...(realEffects ? [scenarioTools.reviewReproduce] : [scenarioTools.reviewRead]),
       scenarioTools.review,
     ]) }),
     Object.freeze({ ...ROUTE_HANDLER_CONFIGS[1], businessTools: Object.freeze([
@@ -982,21 +976,22 @@ export async function runCoordinatorDrivenNoPlanScenario({
     refs.r = await runtime.createRole({
       role: "r", cwd: roleCwds.r,
       tools: [
-        scenarioTools.rDecision, scenarioTools.reviewRead,
-        ...(realEffects ? [scenarioTools.reviewReproduce] : []), scenarioTools.review,
+        scenarioTools.rDecision,
+        ...(realEffects ? [scenarioTools.reviewReproduce] : [scenarioTools.reviewRead]),
+        scenarioTools.review,
       ],
       phaseTools: {
         "receiver-decision": [scenarioTools.rDecision],
         "r-review": [
-          scenarioTools.reviewRead,
-          ...(realEffects ? [scenarioTools.reviewReproduce] : []), scenarioTools.review,
+          ...(realEffects ? [scenarioTools.reviewReproduce] : [scenarioTools.reviewRead]),
+          scenarioTools.review,
         ],
       },
       protectedPhases: {
         "receiver-decision": "receiver-decision", "r-review": "admitted-tool",
       },
       instructions: realEffects
-        ? "Review only coordinator-admitted context. In the admitted review turn, call every offered tool exactly once and in order: read the artifact, reproduce a finding using only the returned content, then publish by copying the returned findingDigest. Do not stop after an intermediate tool result."
+        ? "Review only coordinator-admitted context. In the admitted review turn, call every offered tool exactly once and in order: reproduce the finding from the detached checkout, then publish by copying the returned findingDigest. Do not stop after the first tool result."
         : "Review only coordinator-admitted context.",
       scenarioId: "coordinator_driven_no_plan",
     });
@@ -1188,18 +1183,18 @@ export async function runCoordinatorDrivenNoPlanScenario({
             };
           }
           if (realEffects && selectedTool === TOOLS.reviewReproduce.name) {
-            const candidate = {
-              resourcePath: value?.resourcePath,
-              counterexample: value?.counterexample,
-            };
+            const checkout = gitFixture.verifyReviewerCheckout({ implementationSha });
             const content = fs.readFileSync(
               path.join(reviewerCheckout.worktree, REAL_EFFECT_RESOURCE), "utf8",
             );
+            const candidate = {
+              resourcePath: REAL_EFFECT_RESOURCE,
+              counterexample: REAL_EFFECT_IMPLEMENTATION.trim(),
+            };
             if (
-              candidate.resourcePath !== REAL_EFFECT_RESOURCE ||
-              candidate.counterexample !== REAL_EFFECT_IMPLEMENTATION.trim() ||
+              value?.sourceEventId !== artifactEvent.messageId ||
               !content.includes(candidate.counterexample) ||
-              typeof value?.reason !== "string" || value.reason.length < 1
+              checkout.subjectSha !== implementationSha
             ) throw scenarioError("threadmesh_real_effect_review_finding_not_reproduced");
             finding = Object.freeze(candidate);
             findingDigest = independentGitFindingDigest(finding);
@@ -1208,7 +1203,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
               commitSha: implementationSha,
               resourcePath: candidate.resourcePath,
               contentDigest: sha256Digest(content),
-              reasonDigest: sha256Digest(value.reason),
+              findingDigest,
             });
             return { findingDigest, reproducible: true };
           }
@@ -1222,7 +1217,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
           const execution = coordinator.getTurnExecution(
             activation.businessExecutionId, principal(actors.r),
           );
-          const publicationOrdinal = realEffects ? 2 : 1;
+          const publicationOrdinal = 1;
           payloads["review-failed"].turnId = execution.actions[publicationOrdinal].turnId;
           payloads["review-failed"].toolCallDigest =
             execution.actions[publicationOrdinal].actionDigest;

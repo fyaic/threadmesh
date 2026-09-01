@@ -52,7 +52,7 @@ const EXPECTED_ACTION_SEQUENCES = Object.freeze([
 const REAL_EFFECT_EXPECTED_PHASES = Object.freeze([
   ["a", "user-kickoff", "kickoff", 2],
   ["r", "receiver-decision", "decision", 1],
-  ["r", "r-review", "admission", 3],
+  ["r", "r-review", "admission", 2],
   ["a", "receiver-decision", "decision", 1],
   ["a", "same-a-fix", "admission", 2],
   ["v", "receiver-decision", "decision", 1],
@@ -64,8 +64,7 @@ const REAL_EFFECT_EXPECTED_ACTION_SEQUENCES = Object.freeze([
   Object.freeze(["threadmesh_commit_candidate", "threadmesh_publish_artifact"]),
   Object.freeze(["threadmesh_decide_offer"]),
   Object.freeze([
-    "threadmesh_review_read_artifact", "threadmesh_reproduce_review_finding",
-    "threadmesh_report_review_finding",
+    "threadmesh_reproduce_review_finding", "threadmesh_report_review_finding",
   ]),
   Object.freeze(["threadmesh_decide_offer"]),
   Object.freeze(["threadmesh_commit_candidate", "threadmesh_publish_dependency"]),
@@ -532,7 +531,7 @@ function projectGateResult(coreResult, {
     coreResult.bindings?.lifecycleActionPublications !== 4 ||
     coreResult.bindings?.receiverDecisions !== 4 ||
     coreResult.bindings?.contextAdmissions !== 4 ||
-    coreResult.runtime?.modelSelectedToolCalls !== (realEffects ? 15 : 13)
+    coreResult.runtime?.modelSelectedToolCalls !== (realEffects ? 14 : 13)
   ) throw gateError("threadmesh_m52_event_pump_gate_result_invalid", "exactBindings");
   const expectedOrder = [
     "v-verification-tool-selected", "verified-event-durable",
