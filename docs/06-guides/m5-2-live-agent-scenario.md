@@ -6,8 +6,8 @@ scenario. It does not yet provide M5.2 pass evidence.
 
 ## Current gate
 
-The deterministic fixture runs the happy path through a real isolated SQLite
-v7 coordinator. Live Codex now performs an auth-preserving capability probe
+The deterministic fixtures run bounded paths through a real isolated SQLite
+v8 coordinator. Live Codex now performs an auth-preserving capability probe
 and then delegates to the real-product gate. The probe is evidence that the
 transport is reachable, never evidence that the scenario passed. Kimi remains
 a no-model capability preflight and fails closed as `blocked`.
@@ -31,6 +31,62 @@ It also registers an authorized-but-irrelevant task, persists an
 `irrelevant-skip` cursor commit, and proves zero claims and zero native model
 turns for that control. This is a scripted integration fixture, not evidence of
 model initiative or an independent verifier service.
+
+## Autonomous no-plan fixture
+
+The newer coordinator-driven fixture removes the scripted phase dispatcher.
+Run its focused evidence test from the repository root:
+
+```sh
+node --test test/coordinator-driven-no-plan-scenario.test.mjs
+```
+
+There is exactly one explicit user kickoff for A. One bounded in-process event
+pump then reads exact next SQLite attention events and drives:
+
+```text
+A implementation → R review → same-A fix → V verification → dependent
+```
+
+The fixture records all of the following:
+
+- `initialUserStartPrompts=1`;
+- `activationDispatchesByFixtureRunner=0`;
+- `rawPhasePromptsSubmittedByFixtureRunner=0`;
+- `humanRelayCount=0` and `pollingCount=0`;
+- the same native A reference for kickoff and fix;
+- a separate V native session and model-selected verification turn;
+- trusted finalization persisted before the dependent business turn starts;
+- zero dependent turns and effects when finalization is injected to fail;
+- zero claims and zero turns for the authorized but irrelevant route;
+- every offered cursor committed and every exact scenario artifact removed.
+
+This is the first fixture that demonstrates the product shape the project calls
+session initiative: later sessions act because durable authorized lifecycle
+state becomes relevant, not because the user or runner submits the next phase.
+It remains deterministic policy-mediated behavior, not emergent intelligence.
+
+The boundary fields are part of the evidence, not caveats hidden in prose:
+
+- `liveProductEvidence=false`;
+- `deterministicPolicyOracle=true`;
+- `externalIndependentVerifier=false`;
+- `signer=fixture-owned-ephemeral-key`;
+- `eventPumpSelectionDurable=false` as of `3b91dcf`.
+
+The implementation landed through
+[#118](https://github.com/fyaic/threadmesh/pull/118) at
+`2a0d8550abc1a8c5dcebceb86d0372ea8d337b4d`,
+[#119](https://github.com/fyaic/threadmesh/pull/119) at
+`d37cb428ea84b0683dac24787889e259a0a18c71`, and
+[#120](https://github.com/fyaic/threadmesh/pull/120) at
+`3b91dcff82622a0fed936e8295b77905777c6ada`.
+
+Durable event-pump selection after coordinator restart, a cross-process pump
+lease, OS-level kill recovery, and equivalent real Codex and Kimi runs are
+still pending. Passing this fixture must not be transcribed as a live-product
+pass or an external-verifier pass. See the
+[exact evidence record](../09-reviews/2026-09-01-m5-2-autonomous-fixture.md).
 
 The deterministic runner now closes and reopens the coordinator at five fixed
 checkpoints: operation-bound native start, event creation, adapter receipt,
@@ -184,3 +240,7 @@ deleted or overwritten. Product live mode must never use the fixture runtime
 under a Codex or Kimi label. Kimi quota or authentication problems are
 reported as blocked preconditions; they must not be rewritten as successful
 compatibility evidence.
+
+At `3b91dcf`, the repository baseline is 345 tests, 55 schema cases, and 7
+transition cases. These are three separate validation counts; documentation
+lint also passes.

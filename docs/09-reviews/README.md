@@ -19,11 +19,18 @@ The checked-in gate manifest currently remains `awaiting`. It cannot become
 accepted until two qualifying public records exist and pass
 `npm run validate:review-gate`.
 
+## Deterministic autonomous evidence
+
+- [M5.2 coordinator-driven no-plan autonomous fixture](2026-09-01-m5-2-autonomous-fixture.md)
+- [Deterministic M5 attention-router vertical slice](2026-08-31-attention-router-slice.md)
+
+These records demonstrate bounded coordinator and harness behavior. They do
+not count as live-product or independent external-verifier evidence.
+
 ## Real product evidence
 
 - [Real Codex A/R/same-A/V model-tool canary](2026-09-01-m5-2-real-codex-canary.md)
 - [Real Codex attention seam: M5.1 live evidence](2026-08-31-codex-attention-live.md)
-- [Deterministic M5 attention-router vertical slice](2026-08-31-attention-router-slice.md)
 - [Real Codex attention validation guide](../06-guides/codex-attention-validation.md)
 - [Reader-oriented real agent case portfolio](../06-guides/real-world-cases.md)
 - [End-to-end A-to-B demonstration](../06-guides/end-to-end-demo.md)

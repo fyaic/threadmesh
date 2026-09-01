@@ -73,6 +73,34 @@ sequence.
 [Reproduce the Pi-to-Kimi path](docs/06-guides/pi-to-kimi-demo.md) ·
 [Inspect the bounded evidence](docs/09-reviews/2026-08-25-pi-integration-kit-validation.md)
 
+## Autonomous lifecycle fixture
+
+The current deterministic fixture demonstrates a deeper form of session
+initiative than a one-message handoff. The user starts A once; after that,
+durable lifecycle attention drives the bounded chain
+`A → R → same-A → V → dependent`. The fixture runner dispatches no phase,
+submits no phase prompt, relays no message manually, and polls no session.
+ThreadMesh routes only exact next events, while each receiving session selects
+its registered decision and business tools. An authorized but irrelevant
+session receives no claim and runs no turn.
+
+This matters because useful work can continue across session boundaries without
+the user noticing and copying every intermediate dependency. It is evidence of
+bounded, policy-mediated session initiative—not a claim of emergent intelligence.
+The dependent turn starts only after the accepted event and fixture-trusted
+finalization are durable; an injected finalization failure starts zero dependent
+turns. Every created role, journal, SQLite file, and private run directory is
+then checked and removed exactly.
+
+The evidence boundary is intentionally narrow. The result reports
+`liveProductEvidence=false`, `deterministicPolicyOracle=true`,
+`externalIndependentVerifier=false`, a fixture-owned ephemeral signer, and
+`selectionDurable=false`. Durable pump restart, a cross-process lease, OS-kill
+recovery, and the equivalent real Codex and Kimi product runs remain pending.
+
+[Read the exact fixture evidence](docs/09-reviews/2026-09-01-m5-2-autonomous-fixture.md) ·
+[Read the M5.2 scenario guide](docs/06-guides/m5-2-live-agent-scenario.md)
+
 ## Quickstart
 
 ### 1. Run the closed-loop attention-router demo
@@ -257,13 +285,13 @@ peer content or as a production security boundary.
   install Ajv and native `better-sqlite3`.
 - **Reference runtime:** authenticated JSON-RPC + SQLite coordinator for local,
   trusted-process experiments.
-- **Validation:** 284 unit/subtests plus schema, transition, documentation, and
-  link checks; real Pi, Codex, and Kimi evidence recorded.
+- **Validation:** 345 tests, plus 55 schema cases and 7 transition cases;
+  documentation lint passes. These are separate counts, not one combined total.
 - **Default:** proactive coordination remains off unless a maintainer explicitly
   opts into the bounded experimental profile.
-- **Next mainline:** use the completed trusted-chain unlock seam with persistent
-  Codex roles, run the implementation/review/same-session-fix/verification
-  case, then repeat one role through ACP.
+- **Next mainline:** make event-pump selection restart-durable with a
+  cross-process lease, add OS-kill recovery, then run the same autonomous chain
+  through real Codex and Kimi products.
 
 [Current status](docs/10-planning/project-status.md) ·
 [roadmap](ROADMAP.md) ·
