@@ -43,6 +43,17 @@ function printHelp() {
 }
 
 let ownedArtifacts = null;
+const shutdownController = new AbortController();
+let shutdownSignal = null;
+const requestShutdown = (signal) => {
+  if (shutdownSignal !== null) return;
+  shutdownSignal = signal;
+  shutdownController.abort(Object.freeze({ signal }));
+};
+const onSigint = () => requestShutdown("SIGINT");
+const onSigterm = () => requestShutdown("SIGTERM");
+process.on("SIGINT", onSigint);
+process.on("SIGTERM", onSigterm);
 try {
   const parsed = options(process.argv.slice(2));
   if (parsed.help) {
@@ -85,10 +96,14 @@ try {
     result = await runM52OperatorSuppliedCodexEventPumpGate({
       artifactsDirectory,
       command,
+      signal: shutdownController.signal,
       ...(parsed.model ? { model: parsed.model } : {}),
     });
   } else {
-    result = await runM52EventPumpCodexGate({ artifactsDirectory });
+    result = await runM52EventPumpCodexGate({
+      artifactsDirectory,
+      signal: shutdownController.signal,
+    });
   }
   console.log(JSON.stringify(result, null, 2));
   process.exitCode = result.state === "blocked" ? 2 : (result.state === "failed" ? 1 : 3);
@@ -107,11 +122,15 @@ try {
     ? null : projectM52EventPumpFailureCleanup(error.cleanup);
   console.error(JSON.stringify({
     state: preflight ? "not-run" : "failed",
-    code: error?.code ?? "threadmesh_m52_event_pump_runner_failed",
+    code: shutdownSignal === null
+      ? (error?.code ?? "threadmesh_m52_event_pump_runner_failed")
+      : `threadmesh_m52_event_pump_runner_${shutdownSignal.toLowerCase()}`,
     liveAck: LIVE_ACK,
     ...(cleanup === null ? {} : { cleanup }),
   }, null, 2));
   process.exitCode = preflight ? 3 : 1;
 } finally {
+  process.off("SIGINT", onSigint);
+  process.off("SIGTERM", onSigterm);
   if (ownedArtifacts !== null) fs.rmSync(ownedArtifacts, { recursive: true, force: true });
 }
