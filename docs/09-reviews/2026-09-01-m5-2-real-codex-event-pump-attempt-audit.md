@@ -2,9 +2,9 @@
 
 Date: 2026-09-01
 
-Current reviewed `main`: `c17c83755c32647eae1a4ed70a075ff56bfc84a5`
+Latest attempted `main`: `e052299c3c0ff4f07f9a27dd23da421fbd95170a`
 
-Classification: three non-completing live attempts; no real autonomous pass
+Classification: four non-completing live attempts; no real autonomous pass
 
 ## Why this record exists
 
@@ -21,10 +21,13 @@ paused run into product evidence.
 | 1 | Product-probe validation rejected the observed adapter-owned product shape | Preflight rejection only; the mismatch was later addressed by [#126](https://github.com/fyaic/threadmesh/pull/126) | Not started | Not asserted by this record |
 | 2 | `threadmesh_durable_turn_intent_evidence_invalid` rejected a numeric Codex `completedAt` value | A real adapter boundary mismatch; Unix-second normalization was later addressed by [#127](https://github.com/fyaic/threadmesh/pull/127) | Not established | Not asserted by this record |
 | 3 | Operator paused the run after the five role sessions had bootstrapped | Five session bootstraps; coordinator counts remained task `0`, turn intent `0`, pump dispatch `0`, and audit event `0` | Not started | The signal path did not run normal cleanup; a one-off exact operator cleanup deleted and absence-confirmed five of five owned sessions and removed the temporary SQLite, WAL, journal, and run-root resources |
+| 4 | The first user-kickoff turn reached lifecycle publication, then failed `threadmesh_lifecycle_publication_action_mismatch` | Five registered tasks; one durable kickoff turn intent; no event-pump dispatch; the live model's selected tool arguments did not reproduce the coordinator-bound lifecycle material | Not started | Normal scenario cleanup deleted and absence-confirmed five of five sessions and removed the coordinator database, journals, and run root |
 
 The fixes in #126 and #127 do not retroactively change the evidence class of
-attempts 1 or 2. Attempt 3 is bootstrap and cleanup evidence only. None of the
-three attempts produced a completed `state=blocked` event-pump gate result.
+attempts 1 or 2. Attempt 3 is bootstrap and cleanup evidence only. Attempt 4
+is the first retained real kickoff/action-binding failure after all five tasks
+registered. None of the four attempts produced a completed `state=blocked`
+event-pump gate result.
 
 ## What the combined work established
 
@@ -36,7 +39,12 @@ three attempts produced a completed `state=blocked` event-pump gate result.
 - zero-to-five partially created role sessions can be represented honestly in
   cleanup evidence;
 - the interrupted attempt's exact ownership could be reconstructed for a
-  one-off cleanup without deleting unrelated user tasks.
+  one-off cleanup without deleting unrelated user tasks;
+- merged [#129](https://github.com/fyaic/threadmesh/pull/129) converts
+  `SIGINT`/`SIGTERM` into a cooperative shutdown checked after each role
+  bootstrap, after kickoff, and between event-pump dispatches;
+- attempt 4 exercised the normal five-role cleanup path successfully after a
+  post-bootstrap live failure, without one-off operator cleanup.
 
 These are valuable fail-closed and cleanup results. They are not evidence that
 real Codex sessions completed the proactive lifecycle chain.
@@ -59,14 +67,22 @@ cleanup behavior. The execution order was imbalanced: generalized durability,
 verification, Git evidence, and recovery work advanced before one uninterrupted
 real proactive chain was retained.
 
-Non-mainline expansion is now frozen. The next checkpoint is one fresh run on
-the existing `c17c837` surface with one user kickoff, zero runner phase or
-business prompts, zero runner direct activation dispatches, exact real
-session/turn/dispatch bindings, an irrelevant zero-turn control, and exact
-cleanup. Only a blocker observed by that run may interrupt this checkpoint.
-The missing bounded SIGINT/SIGTERM cleanup path is already observed and may be
-fixed before the rerun; it must not expand into a general process-supervision
-workstream.
+Non-mainline expansion is now frozen. The bounded signal cleanup fix is merged,
+and attempt 4 proved the normal post-bootstrap cleanup path. The next checkpoint
+is one fresh run after the exact tool-contract correction, with one user
+kickoff, zero runner phase or business prompts, zero runner direct activation
+dispatches, exact real session/turn/dispatch bindings, an irrelevant zero-turn
+control, and exact cleanup. Only a blocker observed by that run may interrupt
+this checkpoint.
+
+Attempt 4 then exposed the next direct blocker: the live model was asked to
+select `threadmesh_publish_artifact`, but the registered dynamic-tool schema
+did not tell it the exact coordinator-owned event and material required by the
+durable lifecycle binding. The bounded correction is to expose those already
+authorized arguments through phase-specific JSON Schemas. It does not relax
+the exact binding, add a new protocol field, or let final prose authorize an
+effect. A fresh run, not deterministic fixtures, must show whether this closes
+the blocker.
 
 A completed chain would still report `state=blocked` and
 `liveProductEvidence=false` while verifier custody and Git effects remain
