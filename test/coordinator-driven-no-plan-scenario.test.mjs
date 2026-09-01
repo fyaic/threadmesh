@@ -137,6 +137,28 @@ test("one pump autonomously closes A to R to same-A to V to dependent", async (t
     deleted && absenceVerified));
 });
 
+test("public manifest rejects a runtime selection binding not present in SQLite", async (t) => {
+  const artifactsDirectory = fs.mkdtempSync(
+    path.join(os.tmpdir(), "threadmesh-coordinator-selection-mismatch-"),
+  );
+  t.after(() => fs.rmSync(artifactsDirectory, { recursive: true, force: true }));
+
+  await assert.rejects(
+    () => runCoordinatorDrivenNoPlanScenario({
+      artifactsDirectory,
+      injectSelectionBindingMismatch: true,
+    }),
+    (error) => {
+      assert.equal(
+        error?.code,
+        "threadmesh_durable_dispatch_runtime_correlation_invalid",
+      );
+      assert.equal(error.cleanup?.complete, true);
+      return true;
+    },
+  );
+});
+
 test("failed trusted finalization starts no dependent business turn", async (t) => {
   const artifactsDirectory = fs.mkdtempSync(
     path.join(os.tmpdir(), "threadmesh-coordinator-finalization-failure-"),

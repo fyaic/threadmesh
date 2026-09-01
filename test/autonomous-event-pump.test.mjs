@@ -72,6 +72,54 @@ test("pump freezes startup registrations and one lifecycle start drains to idle"
   });
 });
 
+test("pump snapshots and deeply freezes plural business tools with a stable registry digest", () => {
+  const registered = registration();
+  registered.routes[0].businessTools = [{
+    type: "function",
+    name: "threadmesh_pump_first",
+    description: "first protected effect",
+    inputSchema: {
+      type: "object",
+      properties: { value: { type: "string" } },
+      required: ["value"],
+      additionalProperties: false,
+    },
+  }, {
+    type: "function",
+    name: "threadmesh_pump_second",
+    description: "second protected effect",
+    inputSchema: {
+      type: "object",
+      properties: { confirmed: { type: "boolean" } },
+      required: ["confirmed"],
+      additionalProperties: false,
+    },
+  }];
+  delete registered.routes[0].businessTool;
+  const originalToolNames = registered.routes[0].businessTools.map(({ name }) => name);
+  const pump = createAutonomousEventPump({
+    coordinator: {}, runtime: {}, scenarioId: "scenario-plural-tools",
+    chainId: "chain-plural-tools", recoveryDirectory: "/tmp", maxEvents: 2,
+  }).registerReceiver(registered);
+
+  registered.routes[0].businessTools[0].name = "threadmesh_caller_mutated";
+  registered.routes[0].businessTools[0].inputSchema.properties.value.type = "number";
+  registered.routes[0].businessTools.push({ name: "threadmesh_caller_extra" });
+  pump.start();
+  const registryDigest = pump.registryDigest;
+  const sealedTools = pump.registrations[0].routes[0].businessTools;
+
+  assert.deepEqual(sealedTools.map(({ name }) => name), originalToolNames);
+  assert.equal(sealedTools[0].inputSchema.properties.value.type, "string");
+  assert.equal(Object.isFrozen(sealedTools), true);
+  assert.equal(Object.isFrozen(sealedTools[0]), true);
+  assert.equal(Object.isFrozen(sealedTools[0].inputSchema), true);
+  assert.equal(Object.isFrozen(sealedTools[0].inputSchema.properties.value), true);
+  assert.throws(() => { sealedTools[0].name = "threadmesh_post_start_mutation"; }, TypeError);
+  assert.throws(() => { sealedTools.push({ name: "threadmesh_post_start_extra" }); }, TypeError);
+  assert.equal(pump.registryDigest, registryDigest);
+});
+
 test("settled completed-bound head blocks without looking ahead or starting another turn", async () => {
   let attentionReads = 0;
   let pendingReads = 0;

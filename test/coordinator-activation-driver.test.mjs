@@ -283,6 +283,8 @@ function strictRuntime() {
 
 function noPlanCodexAdapter({
   businessToolNames = [businessTool.name, publicationTool.name],
+  wrapBeforeFence = false,
+  tamperAfterTool = false,
 } = {}) {
   const ref = Object.freeze({
     kind: "codex-app-server",
@@ -344,7 +346,17 @@ function noPlanCodexAdapter({
           arguments: args,
           argumentsDigest: sha256Digest(args),
         };
-        await options.beforeToolCall(selected);
+        try {
+          await options.beforeToolCall(selected);
+        } catch (error) {
+          if (wrapBeforeFence) {
+            const wrapped = new Error("adapter wrapped the protected pre-effect fence");
+            wrapped.code = "threadmesh_test_adapter_wrapped_callback";
+            wrapped.cause = error;
+            throw wrapped;
+          }
+          throw error;
+        }
         const output = await options.onToolCall(selected);
         const completed = {
           ...selected,
@@ -352,6 +364,7 @@ function noPlanCodexAdapter({
           resultStatus: "completed",
         };
         delete completed.arguments;
+        if (tamperAfterTool && !decision) completed.tool = `${completed.tool}_tampered`;
         await options.afterToolCall(completed);
         completedCalls.push(completed);
       }
@@ -498,10 +511,13 @@ test("coordinator activation accepts, admits, executes, confirms, and stops", as
   );
 });
 
-for (const [variant, businessToolNames, callbackCount] of [
-  ["subset", [businessTool.name], 1],
-  ["reorder", [publicationTool.name, businessTool.name], 0],
-  ["repeat", [businessTool.name, businessTool.name], 1],
+for (const [variant, businessToolNames, callbackCount, expectedCode] of [
+  ["subset", [businessTool.name], 1,
+    "threadmesh_codex_live_context_reconciliation_ambiguous"],
+  ["reorder", [publicationTool.name, businessTool.name], 0,
+    "threadmesh_activation_business_tool_sequence_mismatch"],
+  ["repeat", [businessTool.name, businessTool.name], 1,
+    "threadmesh_codex_live_context_reconciliation_ambiguous"],
 ]) {
   test(`coordinator activation rejects ${variant} admitted tool sequence`, async (t) => {
     let callbacks = 0;
@@ -511,7 +527,7 @@ for (const [variant, businessToolNames, callbackCount] of [
       () => { callbacks += 1; },
     );
     await assert.rejects(fixture.activation(), {
-      code: "threadmesh_activation_business_tool_sequence_mismatch",
+      code: expectedCode,
     });
     assert.equal(callbacks, callbackCount);
     assert.equal(fixture.coordinator.recoverContextAdmission(
@@ -521,3 +537,47 @@ for (const [variant, businessToolNames, callbackCount] of [
       .activeClaim.state, "claimed");
   });
 }
+
+test("coordinator activation preserves a wrapped first pre-effect fence rejection", async (t) => {
+  let callbacks = 0;
+  const fixture = await activationFixture(
+    t,
+    {
+      businessToolNames: [publicationTool.name, businessTool.name],
+      wrapBeforeFence: true,
+    },
+    () => { callbacks += 1; },
+  );
+  await assert.rejects(fixture.activation(), {
+    code: "threadmesh_activation_business_tool_sequence_mismatch",
+  });
+  assert.equal(callbacks, 0);
+  assert.equal(fixture.coordinator.getAttentionCursor(receiver, receiverPrincipal)
+    .activeClaim.state, "claimed");
+});
+
+test("coordinator activation reconciles an onToolCall callback failure conservatively", async (t) => {
+  const fixture = await activationFixture(t, {}, () => {
+    const error = new Error("effect outcome is unknown");
+    error.code = "threadmesh_test_business_effect_failed";
+    throw error;
+  });
+  await assert.rejects(fixture.activation(), {
+    code: "threadmesh_codex_live_context_reconciliation_ambiguous",
+  });
+  assert.equal(fixture.coordinator.getAttentionCursor(receiver, receiverPrincipal)
+    .activeClaim.state, "claimed");
+});
+
+test("coordinator activation reconciles an afterToolCall callback failure conservatively", async (t) => {
+  let callbacks = 0;
+  const fixture = await activationFixture(t, { tamperAfterTool: true }, () => {
+    callbacks += 1;
+  });
+  await assert.rejects(fixture.activation(), {
+    code: "threadmesh_codex_live_context_reconciliation_ambiguous",
+  });
+  assert.equal(callbacks, 1);
+  assert.equal(fixture.coordinator.getAttentionCursor(receiver, receiverPrincipal)
+    .activeClaim.state, "claimed");
+});
