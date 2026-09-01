@@ -1249,7 +1249,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
         handlerConfigDigest: sha256Digest(registeredRoute),
         routeDigest: row.route_digest,
         dispatchIntentDigest: row.dispatch_intent_digest,
-        outcome: row.state,
+        dispatchState: row.state,
         selectionDigest: row.selection_digest,
         checkpointCount: checkpoints.length,
         checkpointHeadDigest: checkpoints.at(-1).checkpoint_digest,

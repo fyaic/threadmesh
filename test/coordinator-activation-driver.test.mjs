@@ -518,6 +518,8 @@ for (const [variant, businessToolNames, callbackCount, expectedCode] of [
     "threadmesh_activation_business_tool_sequence_mismatch"],
   ["repeat", [businessTool.name, businessTool.name], 1,
     "threadmesh_codex_live_context_reconciliation_ambiguous"],
+  ["extra", [businessTool.name, publicationTool.name, businessTool.name], 2,
+    "threadmesh_codex_live_context_reconciliation_ambiguous"],
 ]) {
   test(`coordinator activation rejects ${variant} admitted tool sequence`, async (t) => {
     let callbacks = 0;

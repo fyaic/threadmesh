@@ -73,6 +73,9 @@ test("one pump autonomously closes A to R to same-A to V to dependent", async (t
     record.checkpointCount >= 2 &&
     /^sha256:[a-f0-9]{64}$/u.test(record.checkpointHeadDigest) &&
     /^sha256:[a-f0-9]{64}$/u.test(record.dispatchIntentDigest)));
+  assert.ok(result.durableDispatchManifest.records.every((record) =>
+    ["published", "skipped"].includes(record.dispatchState) &&
+    !Object.hasOwn(record, "outcome")));
   assert.match(result.durableDispatchManifest.manifestDigest,
     /^sha256:[a-f0-9]{64}$/u);
   assert.equal(result.durableDispatchManifest.scope,
