@@ -807,7 +807,7 @@ test("v5 migrates append-only to exact v6 and header/action tampering fails rest
       "threadmesh_turn_execution_storage_tampered",
     );
     const v5 = SQLITE_SCHEMA_MIGRATIONS.find(({ version }) => version === 5);
-    assert.equal(SQLITE_SCHEMA_VERSION, 8);
+    assert.equal(SQLITE_SCHEMA_VERSION, 10);
     assert.equal(v5.checksum, "sha256:ec846132a72bb7001029548400bff8c5781fadcdec7b8eedc5aec43b2422ec8e");
     assert.ok(SQLITE_SCHEMA_MIGRATIONS.find(({ version }) => version === 6).manifest.constraints);
     assert.equal(

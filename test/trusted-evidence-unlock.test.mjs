@@ -1016,7 +1016,7 @@ test("v6 migrates append-only to v7 without changing the committed v6 checksum",
       filename: temporary.filename,
       clock: () => NOW,
     });
-    assert.equal(SQLITE_SCHEMA_VERSION, 8);
+    assert.equal(SQLITE_SCHEMA_VERSION, 10);
     assert.equal(
       v6Checksum,
       "sha256:66bdfb81983288ea288970214c831731ecd8227907867958339454a2015f4563",

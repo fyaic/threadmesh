@@ -24,9 +24,11 @@ test("one pump autonomously closes A to R to same-A to V to dependent", async (t
   assert.equal(result.eventPumpSkips, 1);
   assert.equal(result.eventPumpSelectionRecordCount, 5);
   assert.match(result.eventPumpSelectionHeadDigest, /^sha256:[a-f0-9]{64}$/u);
-  assert.equal(result.eventPumpSelectionChainValid, true);
-  assert.equal(result.eventPumpSelectionChainScope, "in-process-self-checked");
-  assert.equal(result.eventPumpSelectionDurable, false);
+  assert.equal(result.eventPumpSelectionChainValid, null);
+  assert.equal(result.eventPumpSelectionChainScope, "global-chain-not-implemented");
+  assert.equal(result.eventPumpSelectionDurable, true);
+  assert.equal(result.durablePerDispatchRecordsValid, true);
+  assert.equal(result.durablePerDispatchRecordCount, 5);
   assert.equal(result.eventPumpTerminalState, "idle");
   assert.equal(result.eventPumpAwaitingPromotion, false);
   assert.equal(result.autonomousEventPump, true);
@@ -37,8 +39,8 @@ test("one pump autonomously closes A to R to same-A to V to dependent", async (t
   assert.deepEqual(result.completedRoles, ["a-kickoff", "r", "same-a", "v", "dependent"]);
   assert.deepEqual(result.pendingRoles, []);
   assert.deepEqual(result.pendingGates, [
-    "durable-pump-restart-checkpoint",
-    "cross-process-concurrent-pump-lease",
+    "cross-process-os-kill-and-long-turn-lease-heartbeat",
+    "global-selection-chain",
   ]);
   assert.equal(result.routeHandlerConfigs.length, 5);
   assert.equal(new Set(result.routeHandlerConfigs.map(({ handlerId }) => handlerId)).size, 5);

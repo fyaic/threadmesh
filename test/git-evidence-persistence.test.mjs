@@ -574,7 +574,7 @@ test("migrates v4 append-only without changing its checksum or existing task dat
   database = new Database(temporary.filename, { readonly: true });
   try {
     assert.equal(database.pragma("user_version", { simple: true }), SQLITE_SCHEMA_VERSION);
-    assert.equal(SQLITE_SCHEMA_VERSION, 8);
+    assert.equal(SQLITE_SCHEMA_VERSION, 10);
     assert.equal(database.prepare(
       "SELECT checksum FROM schema_migrations WHERE version = 4",
     ).pluck().get(), v4Checksum);

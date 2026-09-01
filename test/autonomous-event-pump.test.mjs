@@ -25,10 +25,14 @@ function registration() {
 
 test("pump freezes startup registrations and one lifecycle start drains to idle", async () => {
   const coordinator = {
+    listPendingEventPumpPublications() { return []; },
     getAttentionCursor() {
       return { cursor: { committedCursor: 0, revision: 0 }, activeClaim: null };
     },
     readAttentionEvents() { return { events: [] }; },
+    verifyEventPumpDispatchRecords() {
+      return { valid: true, scope: "durable-per-dispatch", recordCount: 0 };
+    },
   };
   const mutableRegistration = registration();
   const pump = createAutonomousEventPump({
@@ -53,8 +57,9 @@ test("pump freezes startup registrations and one lifecycle start drains to idle"
   assert.equal(pump.registrations[0].routes[0].handlerId, "handler.pump.business.v1");
   assert.equal(result.state, "idle");
   assert.equal(result.processed, 0);
-  assert.equal(result.selectionChainValid, true);
-  assert.equal(result.selectionChainScope, "in-process-self-checked");
+  assert.equal(result.durablePerDispatchRecordsValid, true);
+  assert.equal(result.selectionChainValid, null);
+  assert.equal(result.selectionChainScope, "global-chain-not-implemented");
   const alternateRegistration = registration();
   alternateRegistration.routes[0].handlerId = "handler.pump.business.v2";
   const alternate = createAutonomousEventPump({
@@ -83,6 +88,7 @@ test("settled completed-bound head blocks without looking ahead or starting anot
     senderIncarnationId: "inc-source-01",
   };
   const coordinator = {
+    listPendingEventPumpPublications() { return []; },
     getAttentionCursor() {
       return {
         cursor: { committedCursor: 0, revision: 2 },
@@ -94,6 +100,10 @@ test("settled completed-bound head blocks without looking ahead or starting anot
       assert.equal(options.afterCursor, 0);
       assert.equal(options.limit, 1);
       return { events: [head, later] };
+    },
+    getEventPumpDispatch() { return null; },
+    verifyEventPumpDispatchRecords() {
+      return { valid: true, scope: "durable-per-dispatch", recordCount: 0 };
     },
     listPending() { pendingReads += 1; throw new Error("must not read later pending work"); },
   };
@@ -146,42 +156,11 @@ test("pump refreshes coordinator grant authority again immediately before admiss
     createdAt: "2026-09-01T08:00:00.000Z",
     expiresAt: "2026-09-01T09:00:00.000Z",
   };
-  const grantRow = {
-    grant_id: grant.grantId,
-    grant_version: grant.grantVersion,
-    relationship_id: grant.relationshipId,
-    source_task_id: source.taskId,
-    source_incarnation_id: source.incarnationId,
-    target_task_id: target.taskId,
-    target_incarnation_id: target.incarnationId,
-    revoked_at: null,
-    grant_json: JSON.stringify(grant),
-  };
   let grantReads = 0;
   let runtimeStarts = 0;
   const coordinator = {
+    listPendingEventPumpPublications() { return []; },
     clock: () => now,
-    db: {
-      prepare(sql) {
-        if (sql.includes("FROM grants")) return {
-          get() {
-            grantReads += 1;
-            return grantReads === 1
-              ? grantRow
-              : { ...grantRow, revoked_at: "2026-09-01T08:00:01.000Z" };
-          },
-        };
-        if (sql.includes("FROM messages")) return {
-          get() { return { grantId: grant.grantId, grantVersion: grant.grantVersion }; },
-        };
-        return { get(taskId, incarnationId) {
-          return {
-            taskId, incarnationId, retiredAt: null, runId: null,
-            objectiveVersion: 1, checkpoint: null,
-          };
-        } };
-      },
-    },
     getAttentionCursor() {
       return { cursor: { committedCursor: 0, revision: 0 }, activeClaim: null };
     },
@@ -193,7 +172,29 @@ test("pump refreshes coordinator grant authority again immediately before admiss
         senderIncarnationId: source.incarnationId,
       }] };
     },
-    listPending() { return { messages: [{ envelope }] }; },
+    getEventPumpDispatch() { return null; },
+    getEventPumpRouteAuthority() {
+      grantReads += 1;
+      if (grantReads === 2) {
+        const error = new Error("grant revoked");
+        error.code = "threadmesh_event_pump_grant_snapshot_invalid";
+        throw error;
+      }
+      return {
+        event: { eventDigest: `sha256:${"b".repeat(64)}` },
+        envelope,
+        grant,
+        sourceTask: { ...source, objectiveVersion: 1 },
+        targetTask: { ...target, objectiveVersion: 1 },
+        authorityDigest: `sha256:${"c".repeat(64)}`,
+      };
+    },
+    claimEventPumpDispatch() {
+      return {
+        acquired: true,
+        dispatch: { dispatchId: "dispatch-refresh", leaseEpoch: 1 },
+      };
+    },
   };
   const registered = registration();
   registered.receiver = target;
