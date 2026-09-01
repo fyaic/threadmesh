@@ -7038,6 +7038,49 @@ export class SqliteCoordinator {
     }).immediate();
   }
 
+  completeEventPumpPublication(
+    dispatchId,
+    { pumpIdentityDigest, handlerId } = {},
+    principal,
+  ) {
+    this.#assertAttentionId(dispatchId, "threadmesh_event_pump_dispatch_invalid");
+    this.#assertAttentionId(handlerId, "threadmesh_event_pump_handler_invalid");
+    if (!/^sha256:[a-f0-9]{64}$/u.test(pumpIdentityDigest ?? "")) {
+      throw codedError("threadmesh_event_pump_identity_invalid");
+    }
+    return this.db.transaction(() => {
+      const current = this.#eventPumpDispatchRow(dispatchId);
+      assertTaskPrincipal(
+        principal, current.receiver_task_id, current.receiver_incarnation_id,
+      );
+      if (current.pump_identity_digest !== pumpIdentityDigest) {
+        throw codedError("threadmesh_event_pump_identity_conflict");
+      }
+      if (current.handler_id !== handlerId) {
+        throw codedError("threadmesh_event_pump_handler_conflict");
+      }
+      if (current.state === "published") {
+        return { dispatch: this.#projectEventPumpDispatch(current), replay: true };
+      }
+      if (
+        current.state !== "completed-bound" ||
+        current.turn_execution_id === null ||
+        current.selection_digest === null
+      ) throw codedError("threadmesh_event_pump_publication_state_conflict");
+      const updated = this.db.prepare(
+        `UPDATE event_pump_dispatches
+         SET state = 'published', revision = revision + 1, updated_at = ?
+         WHERE dispatch_id = ? AND revision = ? AND state = 'completed-bound'`,
+      ).run(nowIso(this.clock), dispatchId, current.revision);
+      if (updated.changes !== 1) {
+        throw codedError("threadmesh_event_pump_publication_state_conflict");
+      }
+      const row = this.#eventPumpDispatchRow(dispatchId);
+      this.#appendEventPumpCheckpoint(row, "published");
+      return { dispatch: this.#projectEventPumpDispatch(row), replay: false };
+    }).immediate();
+  }
+
   getEventPumpDispatch(
     receiver,
     { eventCursor, eventId, pumpIdentityDigest } = {},
@@ -7643,7 +7686,7 @@ export class SqliteCoordinator {
       }).slice("sha256:".length)}`;
       if (
         row.dispatch_id !== expectedDispatchId || event.eventDigest !== row.event_digest ||
-        !["selected", "completed-bound", "skipped"].includes(row.state) ||
+        !["selected", "completed-bound", "published", "skipped"].includes(row.state) ||
         !/^sha256:[a-f0-9]{64}$/u.test(row.event_digest) ||
         !/^sha256:[a-f0-9]{64}$/u.test(row.registry_digest) ||
         !/^sha256:[a-f0-9]{64}$/u.test(row.pump_identity_digest) ||
@@ -7700,9 +7743,9 @@ export class SqliteCoordinator {
           handlerId: row.handler_id,
           routeDigest: row.route_digest,
           dispatchIntentDigest: row.dispatch_intent_digest,
-          kind: row.state === "completed-bound"
-            ? "coordinator-activation" : "durable-route-skip",
-          outcome: row.state,
+          kind: row.state === "skipped"
+            ? "durable-route-skip" : "coordinator-activation",
+          outcome: row.state === "skipped" ? "skipped" : "completed-bound",
           ownerId: row.owner_id,
           leaseEpoch: row.lease_epoch,
           turnExecutionId: row.turn_execution_id,

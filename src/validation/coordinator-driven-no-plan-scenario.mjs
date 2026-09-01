@@ -1192,10 +1192,10 @@ export async function runCoordinatorDrivenNoPlanScenario({
       pollingCount: 0,
       completedRoles: ["a-kickoff", "r", "same-a", "v", "dependent"],
       pendingRoles: [],
-      pendingReason: "Durable pump restart and cross-process lease remain outside this fixture.",
+      pendingReason: "OS-kill/long-turn lease heartbeat and a global selection chain remain outside this fixture.",
       pendingGates: [
-        "cross-process-concurrent-pump-lease",
-        "post-turn-pre-settle-exactly-once",
+        "cross-process-os-kill-and-long-turn-lease-heartbeat",
+        "global-selection-chain",
       ],
       routeHandlerConfigs: ROUTE_HANDLER_CONFIGS,
       executedHandlerIds: selectionBindings

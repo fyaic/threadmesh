@@ -47,6 +47,14 @@ function eventFromEnvelope(envelope, eventType) {
   };
 }
 
+function publicSelectionRecord(dispatch, routeData) {
+  return Object.freeze({
+    ...dispatch.selectionRecord,
+    handlerConfigDigest: sha256Digest(routeData),
+    recordDigest: dispatch.selectionDigest,
+  });
+}
+
 /**
  * A bounded, next-only dispatcher over coordinator-owned durable attention events.
  * Receiver policy is registered once before start; callers cannot dispatch phases.
@@ -229,9 +237,12 @@ export class AutonomousEventPump {
         const target = { registration, cursorState, event, durableDispatch };
         const completedBound = cursorState.activeClaim?.eventId === event.eventId &&
           cursorState.activeClaim?.state === "completed-bound";
-        if (durableDispatch?.state === "completed-bound" ||
+        if (durableDispatch?.state === "published" ||
             (!durableDispatch && completedBound)) blocked.push(target);
-        else candidates.push(target);
+        else candidates.push({
+          ...target,
+          publicationPending: durableDispatch?.state === "completed-bound",
+        });
       }
     }
     candidates.sort((left, right) => left.event.cursor - right.event.cursor ||
@@ -306,33 +317,45 @@ export class AutonomousEventPump {
       });
       const routeDigest = sha256Digest(routeProjection);
       await this.faultInjector("pre-record", { observed, routeProjection });
-      const claimed = this.coordinator.claimEventPumpDispatch(
-        taskRef(registration.receiver),
-        {
-          eventCursor: observed.cursor,
-          eventId: observed.eventId,
-          eventDigest: authority.event.eventDigest,
-          registryDigest: this.registryDigest,
-          scenarioId: this.scenarioId,
-          chainId: this.chainId,
-          pumpIdentityDigest: this.pumpIdentityDigest,
-          handlerId: routeData.handlerId,
-          routeDigest,
-          ownerId: this.ownerId,
-          leaseMs: this.leaseMs,
-        },
-        registration.principal,
-      );
-      if (!claimed.acquired) {
-        if (claimed.dispatch.state === "completed-bound") {
-          return Object.freeze({ state: "blocked-completed-bound", awaitingPromotion: true });
+      const recoveringPublication = candidate.publicationPending === true;
+      const claimed = recoveringPublication
+        ? { acquired: false, dispatch: candidate.durableDispatch }
+        : this.coordinator.claimEventPumpDispatch(
+          taskRef(registration.receiver),
+          {
+            eventCursor: observed.cursor,
+            eventId: observed.eventId,
+            eventDigest: authority.event.eventDigest,
+            registryDigest: this.registryDigest,
+            scenarioId: this.scenarioId,
+            chainId: this.chainId,
+            pumpIdentityDigest: this.pumpIdentityDigest,
+            handlerId: routeData.handlerId,
+            routeDigest,
+            ownerId: this.ownerId,
+            leaseMs: this.leaseMs,
+          },
+          registration.principal,
+        );
+      if (recoveringPublication) {
+        if (cursorState.activeClaim?.eventId !== observed.eventId ||
+            cursorState.activeClaim?.state !== "completed-bound" ||
+            claimed.dispatch.handlerId !== routeData.handlerId ||
+            claimed.dispatch.routeDigest !== routeDigest) {
+          throw coded("threadmesh_event_pump_publication_recovery_binding_invalid");
         }
-        return Object.freeze({ state: "blocked-durable-lease", dispatch: claimed.dispatch });
+      } else {
+        if (!claimed.acquired) {
+          return Object.freeze({ state: "blocked-durable-lease", dispatch: claimed.dispatch });
+        }
+        await this.faultInjector("post-record-pre-turn", {
+          observed, routeProjection, dispatch: claimed.dispatch,
+        });
       }
-      await this.faultInjector("post-record-pre-turn", {
-        observed, routeProjection, dispatch: claimed.dispatch,
-      });
       if (routeProjection.state !== "offered") {
+        if (recoveringPublication) {
+          throw coded("threadmesh_event_pump_publication_recovery_route_invalid");
+        }
         const settled = this.coordinator.settleEventPumpDispatch(
           claimed.dispatch.dispatchId,
           {
@@ -354,11 +377,12 @@ export class AutonomousEventPump {
           registration.principal,
         );
         this.skips += 1;
-        this.selectionRecords.push(settled.dispatch.selectionRecord);
+        const selectionRecord = publicSelectionRecord(settled.dispatch, routeData);
+        this.selectionRecords.push(selectionRecord);
         this.selectionHeadDigest = settled.dispatch.selectionDigest;
         return Object.freeze({
           state: "skipped", routeProjection, skipped,
-          selectionRecord: settled.dispatch.selectionRecord,
+          selectionRecord,
         });
       }
       const admissionAuthority = this.coordinator.getEventPumpRouteAuthority(
@@ -391,20 +415,28 @@ export class AutonomousEventPump {
         onBusinessToolCall: routeRegistration.onBusinessToolCall,
         afterAdmissionPrepared: routeRegistration.afterAdmissionPrepared,
       });
-      await this.faultInjector("post-turn-pre-settle", {
-        observed, routeProjection, activation, dispatch: claimed.dispatch,
-      });
-      const settled = this.coordinator.settleEventPumpDispatch(
-        claimed.dispatch.dispatchId,
-        {
-          ownerId: this.ownerId,
-          leaseEpoch: claimed.dispatch.leaseEpoch,
-          pumpIdentityDigest: this.pumpIdentityDigest,
-          outcome: "completed-bound",
-          turnExecutionId: activation.businessExecutionId ?? activation.decisionExecutionId,
-        },
-        registration.principal,
-      );
+      if (recoveringPublication && activation.replay !== true) {
+        throw coded("threadmesh_event_pump_publication_recovery_started_turn");
+      }
+      let settled;
+      if (recoveringPublication) {
+        settled = { dispatch: claimed.dispatch, replay: true };
+      } else {
+        await this.faultInjector("post-turn-pre-settle", {
+          observed, routeProjection, activation, dispatch: claimed.dispatch,
+        });
+        settled = this.coordinator.settleEventPumpDispatch(
+          claimed.dispatch.dispatchId,
+          {
+            ownerId: this.ownerId,
+            leaseEpoch: claimed.dispatch.leaseEpoch,
+            pumpIdentityDigest: this.pumpIdentityDigest,
+            outcome: "completed-bound",
+            turnExecutionId: activation.businessExecutionId ?? activation.decisionExecutionId,
+          },
+          registration.principal,
+        );
+      }
       await this.faultInjector("post-settle-pre-publication", {
         observed, routeProjection, activation, dispatch: settled.dispatch,
       });
@@ -414,12 +446,22 @@ export class AutonomousEventPump {
         lifecycleEvent,
         routeProjection,
       });
+      const published = this.coordinator.completeEventPumpPublication(
+        settled.dispatch.dispatchId,
+        {
+          pumpIdentityDigest: this.pumpIdentityDigest,
+          handlerId: routeData.handlerId,
+        },
+        registration.principal,
+      );
       this.dispatches += 1;
-      this.selectionRecords.push(settled.dispatch.selectionRecord);
-      this.selectionHeadDigest = settled.dispatch.selectionDigest;
+      const selectionRecord = publicSelectionRecord(published.dispatch, routeData);
+      this.selectionRecords.push(selectionRecord);
+      this.selectionHeadDigest = published.dispatch.selectionDigest;
       return Object.freeze({
-        state: "dispatched", activation, routeProjection,
-        selectionRecord: settled.dispatch.selectionRecord,
+        state: recoveringPublication ? "recovered-publication" : "dispatched",
+        activation, routeProjection,
+        selectionRecord,
       });
     } finally {
       this.running = false;

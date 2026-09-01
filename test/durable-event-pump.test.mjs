@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { generateKeyPairSync } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -54,6 +55,18 @@ const grant = {
   expiresAt: "2026-09-01T10:00:00.000Z",
 };
 
+function verificationTrustAnchor() {
+  const { publicKey } = generateKeyPairSync("ed25519");
+  return Object.freeze({
+    keyId: "threadmesh://durable-pump-test/key/1",
+    algorithm: "ed25519",
+    actorId: "durable-pump-verifier",
+    trustDomain: "threadmesh://durable-pump-test",
+    policyId: "threadmesh://durable-pump-test/policy/1",
+    publicKeyPem: publicKey.export({ type: "spki", format: "pem" }),
+  });
+}
+
 function fixture() {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "threadmesh-durable-pump-"));
   return {
@@ -64,8 +77,10 @@ function fixture() {
   };
 }
 
-function open(filename, clock) {
-  return new SqliteCoordinator({ filename, clock: () => clock.value });
+function open(filename, clock, verificationTrustAnchors = []) {
+  return new SqliteCoordinator({
+    filename, clock: () => clock.value, verificationTrustAnchors,
+  });
 }
 
 function setup(coordinator) {
@@ -88,7 +103,7 @@ function setup(coordinator) {
     authenticationId: "authn_durable_pump",
     decidedAt: grant.createdAt,
   }, owner);
-  publishEvent(coordinator, {
+  return publishEvent(coordinator, {
     suffix: "01",
     sourceEventId: "event_durable_pump_source_01",
     commitSha: "1".repeat(40),
@@ -257,6 +272,7 @@ function publishEvent(coordinator, sourceEvent) {
     event,
     expectedMaterial: { commitSha },
   }, senderPrincipal);
+  return execution;
 }
 
 function completedTurn(turnId, tool, argumentsValue, output) {
@@ -369,7 +385,9 @@ function offeredRuntime({ scenarioId, role, businessPhase, businessTool, busines
   };
 }
 
-function registerOffered(pump, businessTool, businessOutput) {
+function registerOffered(
+  pump, businessTool, businessOutput, onLifecyclePublication = async () => {},
+) {
   return pump.registerReceiver({
     receiver: activationReceiver,
     principal: receiverPrincipal,
@@ -384,9 +402,104 @@ function registerOffered(pump, businessTool, businessOutput) {
       businessPhase: "offered-review",
       businessTool,
       async onBusinessToolCall() { return businessOutput; },
-      async onLifecyclePublication() {},
+      onLifecyclePublication,
     }],
   });
+}
+
+function preparePromotionChain(coordinator, implementationExecution, trustAnchor) {
+  const implementer = {
+    ...sender,
+    threadId: senderRef.threadId,
+    snapshotDigest: senderRef.snapshotDigest,
+  };
+  const reviewer = {
+    ...receiver,
+    threadId: receiverRef.threadId,
+    snapshotDigest: receiverRef.snapshotDigest,
+  };
+  const verifier = {
+    taskId: "task_pump_verifier",
+    incarnationId: "inc_pump_verifier_01",
+    threadId: "thread-pump-verifier",
+    snapshotDigest: `sha256:${"c".repeat(64)}`,
+  };
+  coordinator.registerTask({
+    ...verifier,
+    harness: "codex",
+    state: "idle",
+    adapterRef: {
+      kind: "codex-app-server",
+      threadId: verifier.threadId,
+      snapshotDigest: verifier.snapshotDigest,
+    },
+  }, owner);
+  coordinator.createGitEvidenceRequirement({
+    chainId: "chain_durable_pump_publication",
+    validatedBaseSha: "0".repeat(40),
+    fixtureSeedSha: "9".repeat(40),
+    fixtureDefinitionDigest: sha256Digest("durable-pump-fixture"),
+    trustedTestBlobDigest: sha256Digest("durable-pump-test"),
+    implementer,
+    reviewer,
+    verifier,
+    preconfiguredTrustAnchorDigest: sha256Digest(trustAnchor),
+  }, owner);
+  const action = implementationExecution.actions[0];
+  const promoted = coordinator.promoteTurnExecutionWithGitEvidenceRecord(
+    implementationExecution.executionId,
+    {
+      stage: "implementation",
+      payload: {
+        actor: implementer,
+        turnId: action.turnId,
+        toolCallDigest: action.actionDigest,
+        commitSha: "1".repeat(40),
+        parentSha: "9".repeat(40),
+        treeSha: "8".repeat(40),
+        diffDigest: sha256Digest("durable-pump-implementation-diff"),
+        testEvidenceDigest: sha256Digest("durable-pump-implementation-test"),
+      },
+      expectedEvidenceChainRevision: 0,
+      expectedEvidenceChainHead: null,
+      expectedRevision: 5,
+    },
+    senderPrincipal,
+  );
+  return promoted.evidenceState;
+}
+
+function publicationPromoter({ coordinator, evidenceState, findingDigest, effects }) {
+  return async ({ activation }) => {
+    const execution = coordinator.getTurnExecution(
+      activation.businessExecutionId, receiverPrincipal,
+    );
+    const action = execution.actions[0];
+    const promoted = coordinator.promoteTurnExecutionWithGitEvidenceRecord(
+      activation.businessExecutionId,
+      {
+        stage: "review-failed",
+        payload: {
+          actor: activationReceiver,
+          turnId: action.turnId,
+          toolCallDigest: action.actionDigest,
+          implementationSha: "1".repeat(40),
+          findingDigest,
+          reproductionEvidenceDigest: sha256Digest("durable-pump-reproduction"),
+        },
+        expectedEvidenceChainRevision: evidenceState.recordCount,
+        expectedEvidenceChainHead: evidenceState.headDigest,
+        expectedRevision: 5,
+      },
+      receiverPrincipal,
+    );
+    const cursor = coordinator.getAttentionCursor(receiver, receiverPrincipal).cursor;
+    coordinator.promoteAttentionHandler(activation.claim.claimEpoch, {
+      expectedClaimRevision: activation.claim.revision,
+      expectedCursorRevision: cursor.revision,
+    }, receiverPrincipal);
+    effects.push(promoted.evidenceRecord.recordDigest);
+  };
 }
 
 test("durable pre-dispatch selection restarts at the exact head and takes over an expired lease", async () => {
@@ -612,7 +725,7 @@ test("offered dispatch restarts once and completed-bound head never looks ahead"
       eventId: events[0].eventId,
       pumpIdentityDigest: second.pumpIdentityDigest,
     }, receiverPrincipal);
-    assert.equal(firstDispatch.state, "completed-bound");
+    assert.equal(firstDispatch.state, "published");
     assert.equal(firstDispatch.leaseEpoch, 2);
     assert.equal(coordinator.getEventPumpDispatch(receiver, {
       eventCursor: events[1].cursor,
@@ -651,6 +764,135 @@ test("offered dispatch restarts once and completed-bound head never looks ahead"
     temporary.cleanup();
   }
 });
+
+for (const faultStage of ["post-turn-pre-settle", "post-settle-pre-publication"]) {
+  test(`${faultStage} restart replays publication and promotion without a new turn`, async () => {
+    const temporary = fixture();
+    const clock = { value: START };
+    const scenarioId = `scenario_durable_recovery_${faultStage.replaceAll("-", "_")}`;
+    const chainId = "chain_durable_pump_publication";
+    const role = "reviewer";
+    const businessPhase = "offered-review";
+    const businessTool = Object.freeze({
+      type: "function",
+      name: "threadmesh_report_review_finding",
+      description: "Record one recovery-bound review finding.",
+      inputSchema: Object.freeze({ type: "object", additionalProperties: false }),
+    });
+    const findingDigest = sha256Digest(`finding-${faultStage}`);
+    const businessOutput = Object.freeze({ findingDigest, blocking: true });
+    const trustAnchor = verificationTrustAnchor();
+    let coordinator = open(temporary.filename, clock, [trustAnchor]);
+    try {
+      const implementationExecution = setup(coordinator);
+      const evidenceState = preparePromotionChain(
+        coordinator, implementationExecution, trustAnchor,
+      );
+      const firstRuntime = offeredRuntime({
+        scenarioId, role, businessPhase, businessTool, businessOutput,
+      });
+      const first = registerOffered(createAutonomousEventPump({
+        coordinator,
+        runtime: firstRuntime,
+        scenarioId,
+        chainId,
+        recoveryDirectory: temporary.recoveryDirectory,
+        ownerId: `owner-first-${faultStage}`,
+        leaseMs: 100,
+        faultInjector: async (stage) => {
+          if (stage === faultStage) {
+            throw Object.assign(new Error(`injected ${faultStage}`), {
+              code: `test_${faultStage.replaceAll("-", "_")}`,
+            });
+          }
+        },
+      }), businessTool, businessOutput).start();
+      await assert.rejects(() => first.drainOnce(), {
+        code: `test_${faultStage.replaceAll("-", "_")}`,
+      });
+      assert.deepEqual(firstRuntime.state, {
+        decisionTurns: 1, businessTurns: 1, rawTurns: 0,
+      });
+      const event = coordinator.readAttentionEvents(
+        receiver, { afterCursor: 0, limit: 1 }, receiverPrincipal,
+      ).events[0];
+      const afterFault = coordinator.getEventPumpDispatch(receiver, {
+        eventCursor: event.cursor,
+        eventId: event.eventId,
+        pumpIdentityDigest: first.pumpIdentityDigest,
+      }, receiverPrincipal);
+      assert.equal(afterFault.state,
+        faultStage === "post-turn-pre-settle" ? "selected" : "completed-bound");
+      assert.equal(coordinator.getAttentionCursor(
+        receiver, receiverPrincipal,
+      ).activeClaim.state, "completed-bound");
+
+      coordinator.close();
+      coordinator = null;
+      clock.value += 101;
+      coordinator = open(temporary.filename, clock, [trustAnchor]);
+      const effects = [];
+      const secondRuntime = offeredRuntime({
+        scenarioId, role, businessPhase, businessTool, businessOutput,
+      });
+      const second = registerOffered(createAutonomousEventPump({
+        coordinator,
+        runtime: secondRuntime,
+        scenarioId,
+        chainId,
+        recoveryDirectory: temporary.recoveryDirectory,
+        ownerId: `owner-second-${faultStage}`,
+        leaseMs: 100,
+      }), businessTool, businessOutput, publicationPromoter({
+        coordinator, evidenceState, findingDigest, effects,
+      })).start();
+      const recovered = await second.drainOnce();
+      assert.equal(recovered.state,
+        faultStage === "post-turn-pre-settle" ? "dispatched" : "recovered-publication");
+      assert.equal(recovered.activation.replay, true);
+      assert.deepEqual(secondRuntime.state, {
+        decisionTurns: 0, businessTurns: 0, rawTurns: 0,
+      });
+      assert.equal(effects.length, 1);
+      assert.equal(coordinator.getGitEvidenceChain(chainId, owner).state.recordCount, 2);
+      const cursor = coordinator.getAttentionCursor(receiver, receiverPrincipal);
+      assert.equal(cursor.cursor.committedCursor, event.cursor);
+      assert.equal(cursor.cursor.commitCount, 1);
+      assert.equal(cursor.activeClaim, null);
+      const published = coordinator.getEventPumpDispatch(receiver, {
+        eventCursor: event.cursor,
+        eventId: event.eventId,
+        pumpIdentityDigest: second.pumpIdentityDigest,
+      }, receiverPrincipal);
+      assert.equal(published.state, "published");
+
+      coordinator.close();
+      coordinator = open(temporary.filename, clock, [trustAnchor]);
+      const terminalRuntime = offeredRuntime({
+        scenarioId, role, businessPhase, businessTool, businessOutput,
+      });
+      const terminal = registerOffered(createAutonomousEventPump({
+        coordinator,
+        runtime: terminalRuntime,
+        scenarioId,
+        chainId,
+        recoveryDirectory: temporary.recoveryDirectory,
+        ownerId: `owner-terminal-${faultStage}`,
+      }), businessTool, businessOutput, async () => {
+        throw new Error("published dispatch must not replay publication");
+      }).start();
+      const idle = await terminal.runUntilIdle();
+      assert.equal(idle.state, "idle");
+      assert.equal(idle.processed, 0);
+      assert.deepEqual(terminalRuntime.state, {
+        decisionTurns: 0, businessTurns: 0, rawTurns: 0,
+      });
+    } finally {
+      coordinator?.close();
+      temporary.cleanup();
+    }
+  });
+}
 
 test("scenario and chain identity drift cannot adopt a durable selected dispatch", async () => {
   const temporary = fixture();

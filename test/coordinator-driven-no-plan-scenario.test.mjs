@@ -39,8 +39,8 @@ test("one pump autonomously closes A to R to same-A to V to dependent", async (t
   assert.deepEqual(result.completedRoles, ["a-kickoff", "r", "same-a", "v", "dependent"]);
   assert.deepEqual(result.pendingRoles, []);
   assert.deepEqual(result.pendingGates, [
-    "cross-process-concurrent-pump-lease",
-    "post-turn-pre-settle-exactly-once",
+    "cross-process-os-kill-and-long-turn-lease-heartbeat",
+    "global-selection-chain",
   ]);
   assert.equal(result.routeHandlerConfigs.length, 5);
   assert.equal(new Set(result.routeHandlerConfigs.map(({ handlerId }) => handlerId)).size, 5);
