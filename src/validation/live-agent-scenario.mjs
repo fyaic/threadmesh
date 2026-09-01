@@ -1606,6 +1606,7 @@ export class CodexLiveAgentRuntime {
     });
     let nativeStartRequested = false;
     let started = null;
+    let localCallbackError = null;
     const selectedCalls = [];
     const completedCalls = [];
     const outputDigests = [];
@@ -1639,42 +1640,57 @@ export class CodexLiveAgentRuntime {
           await onTurnStarted(metadata);
         },
         beforeToolCall: async (metadata) => {
-          if (metadata?.threadId !== ref.threadId ||
-              metadata?.turnId !== started?.turnId ||
-              !allowedToolNames.includes(metadata?.tool)) {
-            throw scenarioError("threadmesh_live_admitted_turn_tool_mismatch");
+          try {
+            if (metadata?.threadId !== ref.threadId ||
+                metadata?.turnId !== started?.turnId ||
+                !allowedToolNames.includes(metadata?.tool)) {
+              throw scenarioError("threadmesh_live_admitted_turn_tool_mismatch");
+            }
+            const selected = selectedToolCallProjection(metadata);
+            if (selected.ordinal !== selectedCalls.length) {
+              throw scenarioError("threadmesh_live_admitted_turn_tool_mismatch");
+            }
+            selectedCalls.push(selected);
+            await beforeToolCall(metadata);
+          } catch (error) {
+            localCallbackError = error;
+            throw error;
           }
-          const selected = selectedToolCallProjection(metadata);
-          if (selected.ordinal !== selectedCalls.length) {
-            throw scenarioError("threadmesh_live_admitted_turn_tool_mismatch");
-          }
-          selectedCalls.push(selected);
-          await beforeToolCall(metadata);
         },
         onToolCall: async (metadata) => {
-          const ordinal = metadata?.ordinal;
-          if (
-            !Number.isInteger(ordinal) || ordinal < 0 ||
-            canonicalJson(selectedToolCallProjection(metadata)) !==
-              canonicalJson(selectedCalls[ordinal]) ||
-            outputDigests[ordinal] !== undefined
-          ) throw scenarioError("threadmesh_live_admitted_turn_tool_mismatch");
-          const output = await onToolCall(metadata);
-          outputDigests[ordinal] = sha256Digest(output);
-          return output;
+          try {
+            const ordinal = metadata?.ordinal;
+            if (
+              !Number.isInteger(ordinal) || ordinal < 0 ||
+              canonicalJson(selectedToolCallProjection(metadata)) !==
+                canonicalJson(selectedCalls[ordinal]) ||
+              outputDigests[ordinal] !== undefined
+            ) throw scenarioError("threadmesh_live_admitted_turn_tool_mismatch");
+            const output = await onToolCall(metadata);
+            outputDigests[ordinal] = sha256Digest(output);
+            return output;
+          } catch (error) {
+            localCallbackError = error;
+            throw error;
+          }
         },
         afterToolCall: async (metadata) => {
-          if (metadata?.threadId !== ref.threadId ||
-              metadata?.turnId !== started?.turnId ||
-              !allowedToolNames.includes(metadata?.tool)) {
-            throw scenarioError("threadmesh_live_admitted_turn_tool_mismatch");
+          try {
+            if (metadata?.threadId !== ref.threadId ||
+                metadata?.turnId !== started?.turnId ||
+                !allowedToolNames.includes(metadata?.tool)) {
+              throw scenarioError("threadmesh_live_admitted_turn_tool_mismatch");
+            }
+            completedCalls.push(completedToolCallProjection(
+              metadata,
+              selectedCalls[completedCalls.length],
+              outputDigests[completedCalls.length],
+            ));
+            await afterToolCall(metadata);
+          } catch (error) {
+            localCallbackError = error;
+            throw error;
           }
-          completedCalls.push(completedToolCallProjection(
-            metadata,
-            selectedCalls[completedCalls.length],
-            outputDigests[completedCalls.length],
-          ));
-          await afterToolCall(metadata);
         },
         timeoutMs: 180_000,
       });
@@ -1689,12 +1705,18 @@ export class CodexLiveAgentRuntime {
       if (canonicalJson(receipt) !== canonicalJson(completed.receipt)) {
         throw scenarioError("threadmesh_live_admitted_turn_receipt_invalid");
       }
-      const admissionConfirmation = await onAdmissionReceipt({
-        prepared,
-        receipt,
-        evidence: completed.evidence,
-        turn: completed,
-      });
+      let admissionConfirmation;
+      try {
+        admissionConfirmation = await onAdmissionReceipt({
+          prepared,
+          receipt,
+          evidence: completed.evidence,
+          turn: completed,
+        });
+      } catch (error) {
+        localCallbackError = error;
+        throw error;
+      }
       const retired = retireM52LiveTurnJournal({
         filename: turnRecovery.filename,
         expectedScenarioId: scenarioId,
@@ -1707,6 +1729,7 @@ export class CodexLiveAgentRuntime {
         recoveryJournal: Object.freeze({ ...journalProjection, ...retired }),
       });
     } catch (error) {
+      if (localCallbackError === error) throw error;
       if (!nativeStartRequested) throw error;
       return reconcile({
         baseline,

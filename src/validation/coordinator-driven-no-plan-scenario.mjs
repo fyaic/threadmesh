@@ -1183,6 +1183,48 @@ export async function runCoordinatorDrivenNoPlanScenario({
       handlerConfigDigest: record.handlerConfigDigest,
       recordDigest: record.recordDigest,
     }));
+    const durableDispatchRecords = coordinator.db.prepare(
+      `SELECT dispatch_id, receiver_task_id, receiver_incarnation_id,
+              event_cursor, event_digest, registry_digest, pump_identity_digest,
+              handler_id, route_digest, dispatch_intent_digest, state,
+              selection_record_json, selection_digest
+       FROM event_pump_dispatches
+       ORDER BY event_cursor, receiver_task_id, receiver_incarnation_id`,
+    ).all().map((row) => {
+      const checkpoints = coordinator.db.prepare(
+        `SELECT sequence, state, previous_checkpoint_digest, checkpoint_digest
+         FROM event_pump_checkpoints WHERE dispatch_id = ? ORDER BY sequence`,
+      ).all(row.dispatch_id);
+      if (
+        checkpoints.length < 2 ||
+        checkpoints.some((checkpoint, index) =>
+          checkpoint.sequence !== index + 1 ||
+          checkpoint.previous_checkpoint_digest !==
+            (index === 0 ? null : checkpoints[index - 1].checkpoint_digest)) ||
+        checkpoints.at(-1).state !== row.state
+      ) throw new Error("threadmesh_durable_dispatch_manifest_invalid");
+      const selectionRecord = JSON.parse(row.selection_record_json);
+      if (sha256Digest(selectionRecord) !== row.selection_digest) {
+        throw new Error("threadmesh_durable_dispatch_manifest_invalid");
+      }
+      return {
+        receiverDigest: sha256Digest({
+          taskId: row.receiver_task_id,
+          incarnationId: row.receiver_incarnation_id,
+        }),
+        eventCursor: row.event_cursor,
+        eventDigest: row.event_digest,
+        registryDigest: row.registry_digest,
+        pumpIdentityDigest: row.pump_identity_digest,
+        handlerId: row.handler_id,
+        routeDigest: row.route_digest,
+        dispatchIntentDigest: row.dispatch_intent_digest,
+        outcome: row.state,
+        selectionDigest: row.selection_digest,
+        checkpointCount: checkpoints.length,
+        checkpointHeadDigest: checkpoints.at(-1).checkpoint_digest,
+      };
+    });
     result = {
       state: "passed-full-functional-in-process-fixture",
       liveProductEvidence: false,
@@ -1192,10 +1234,11 @@ export async function runCoordinatorDrivenNoPlanScenario({
         phasePromptsSubmittedByRunner: 0,
         runnerDirectActivationDispatches: 0,
         logicalEventPumpLifecycleStarts: 1,
-        pumpProtectedTurnStarts:
+        pumpProtectedBoundNativeTurns:
           protectedDecisionTurnCount + protectedAdmissionTurnCount,
-        nativeTurnStarts: nativeTurnBindingCount,
-        source: "sqlite-exact-turn-and-binding-records",
+        boundNativeTurns: nativeTurnBindingCount,
+        runnerOwnedCounterSource: "scenario-entry-and-no-dispatch-call-sites",
+        boundTurnSource: "sqlite-exact-turn-and-binding-records",
       },
       deterministicPolicyOracle: true,
       activationDispatchesByFixtureRunner: 0,
@@ -1228,10 +1271,10 @@ export async function runCoordinatorDrivenNoPlanScenario({
         .map(({ handlerId }) => handlerId),
       selectionBindings,
       durableDispatchManifest: {
-        scope: "per-dispatch-records-not-global-chain",
-        recordCount: selectionBindings.length,
-        recordDigests: selectionBindings.map(({ recordDigest }) => recordDigest),
-        manifestDigest: sha256Digest(selectionBindings),
+        scope: "sqlite-correlated-snapshot-not-global-chain",
+        recordCount: durableDispatchRecords.length,
+        records: durableDispatchRecords,
+        manifestDigest: sha256Digest(durableDispatchRecords),
       },
       attention: {
         cursors: attentionCursors,

@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import { sha256Digest } from "../canonical-json.mjs";
+import { canonicalJson, sha256Digest } from "../canonical-json.mjs";
 import { renderRegisteredPeerOffer } from "../rendering/context-admission.mjs";
 import {
   createAdmittedTurnBinding,
@@ -154,6 +154,7 @@ export async function runCoordinatorActivation({
     typeof onBusinessToolCall !== "function" ||
     typeof recoveryDirectory !== "string" || recoveryDirectory.length < 1
   ) throw coded("threadmesh_activation_input_invalid");
+  const requiredBusinessToolNames = admittedBusinessTools.map(({ name }) => name);
   let coordinator = initialCoordinator;
   const cursorState = coordinator.getAttentionCursor(receiver, principal);
   const observed = exactNextEvent(coordinator, receiver, principal, cursorState);
@@ -376,7 +377,7 @@ export async function runCoordinatorActivation({
   let businessExecution = getExecution(coordinator, businessExecutionId, principal);
   let businessTurn = null;
   if (recoveredAdmission.state !== "completed") {
-    const allowedToolNames = admittedBusinessTools.map(({ name }) => name);
+    const allowedToolNames = requiredBusinessToolNames;
     const adapterIdempotencyKey = `idem_threadmesh_admitted_${sha256Digest({
       scenarioId,
       role,
@@ -428,6 +429,10 @@ export async function runCoordinatorActivation({
         );
       },
       beforeToolCall: async (selected) => {
+        if (
+          selected?.ordinal >= requiredBusinessToolNames.length ||
+          selected?.tool !== requiredBusinessToolNames[selected?.ordinal]
+        ) throw coded("threadmesh_activation_business_tool_sequence_mismatch");
         businessExecution = coordinator.recordModelSelectedTurnToolAction(
           businessExecutionId,
           {
@@ -444,6 +449,10 @@ export async function runCoordinatorActivation({
       },
       onToolCall: onBusinessToolCall,
       afterToolCall: async (completed) => {
+        if (
+          completed?.ordinal >= requiredBusinessToolNames.length ||
+          completed?.tool !== requiredBusinessToolNames[completed?.ordinal]
+        ) throw coded("threadmesh_activation_business_tool_sequence_mismatch");
         businessExecution = coordinator.completeModelSelectedTurnToolAction(
           businessExecutionId,
           {
@@ -462,6 +471,14 @@ export async function runCoordinatorActivation({
         if (sha256Digest(receipt) !== sha256Digest(turn.receipt)) {
           throw coded("threadmesh_activation_admission_receipt_mismatch");
         }
+        const completedToolNames = turn.toolCalls?.map(({ ordinal, tool }, index) =>
+          ordinal === index ? tool : null);
+        const persistedToolNames = businessExecution.actions
+          .map(({ ordinal, name }, index) => ordinal === index ? name : null);
+        if (
+          canonicalJson(completedToolNames) !== canonicalJson(requiredBusinessToolNames) ||
+          canonicalJson(persistedToolNames) !== canonicalJson(requiredBusinessToolNames)
+        ) throw coded("threadmesh_activation_business_tool_sequence_mismatch");
         businessExecution = coordinator.bindCompletedTurnExecution(
           businessExecutionId,
           {

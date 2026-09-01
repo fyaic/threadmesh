@@ -23,9 +23,10 @@ test("one pump autonomously closes A to R to same-A to V to dependent", async (t
     phasePromptsSubmittedByRunner: 0,
     runnerDirectActivationDispatches: 0,
     logicalEventPumpLifecycleStarts: 1,
-    pumpProtectedTurnStarts: 8,
-    nativeTurnStarts: 9,
-    source: "sqlite-exact-turn-and-binding-records",
+    pumpProtectedBoundNativeTurns: 8,
+    boundNativeTurns: 9,
+    runnerOwnedCounterSource: "scenario-entry-and-no-dispatch-call-sites",
+    boundTurnSource: "sqlite-exact-turn-and-binding-records",
   });
   assert.equal(result.deterministicPolicyOracle, true);
   assert.equal(result.activationDispatchesByFixtureRunner, 0);
@@ -65,12 +66,17 @@ test("one pump autonomously closes A to R to same-A to V to dependent", async (t
   ]);
   assert.equal(result.selectionBindings.length, 5);
   assert.equal(result.durableDispatchManifest.recordCount, 5);
-  assert.equal(result.durableDispatchManifest.recordDigests.length, 5);
-  assert.equal(new Set(result.durableDispatchManifest.recordDigests).size, 5);
+  assert.equal(result.durableDispatchManifest.records.length, 5);
+  assert.equal(new Set(result.durableDispatchManifest.records
+    .map(({ selectionDigest }) => selectionDigest)).size, 5);
+  assert.ok(result.durableDispatchManifest.records.every((record) =>
+    record.checkpointCount >= 2 &&
+    /^sha256:[a-f0-9]{64}$/u.test(record.checkpointHeadDigest) &&
+    /^sha256:[a-f0-9]{64}$/u.test(record.dispatchIntentDigest)));
   assert.match(result.durableDispatchManifest.manifestDigest,
     /^sha256:[a-f0-9]{64}$/u);
   assert.equal(result.durableDispatchManifest.scope,
-    "per-dispatch-records-not-global-chain");
+    "sqlite-correlated-snapshot-not-global-chain");
   assert.ok(result.selectionBindings.every((binding) =>
     /^handler\.no-plan\./u.test(binding.handlerId) &&
     /^sha256:[a-f0-9]{64}$/u.test(binding.handlerConfigDigest) &&

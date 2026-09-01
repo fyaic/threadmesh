@@ -281,7 +281,9 @@ function strictRuntime() {
   };
 }
 
-function noPlanCodexAdapter() {
+function noPlanCodexAdapter({
+  businessToolNames = [businessTool.name, publicationTool.name],
+} = {}) {
   const ref = Object.freeze({
     kind: "codex-app-server",
     threadId: receiver.threadId,
@@ -325,7 +327,11 @@ function noPlanCodexAdapter() {
       });
       const decision = options.dynamicTools[0].name === "threadmesh_decide_offer";
       const completedCalls = [];
-      for (const [ordinal, dynamicTool] of options.dynamicTools.entries()) {
+      const selectedTools = decision
+        ? options.dynamicTools
+        : businessToolNames.map((name) =>
+            options.dynamicTools.find((tool) => tool.name === name) ?? { name });
+      for (const [ordinal, dynamicTool] of selectedTools.entries()) {
         const args = decision
           ? { messageId: lifecycleEvent.messageId, decision: "accepted" }
           : {};
@@ -380,7 +386,7 @@ function noPlanCodexAdapter() {
   };
 }
 
-test("coordinator activation accepts, admits, executes, confirms, and stops", async (t) => {
+async function activationFixture(t, adapterOptions, observeBusinessCall = () => {}) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "threadmesh-activation-driver-"));
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
   const coordinator = new SqliteCoordinator({
@@ -421,7 +427,7 @@ test("coordinator activation accepts, admits, executes, confirms, and stops", as
     now: NOW,
   });
   assert.deepEqual(routeProjection.envelope, projectLifecycleEventToEnvelope(lifecycleEvent));
-  const adapter = noPlanCodexAdapter();
+  const adapter = noPlanCodexAdapter(adapterOptions);
   const runtime = new CodexLiveAgentRuntime({ command: "/fake/codex", adapter });
   const ref = await runtime.createRole({
     role: "receiver",
@@ -438,7 +444,7 @@ test("coordinator activation accepts, admits, executes, confirms, and stops", as
     instructions: "Use only the currently admitted ThreadMesh tool.",
     scenarioId: "scenario_activation",
   });
-  const result = await runCoordinatorActivation({
+  const activation = () => runCoordinatorActivation({
     coordinator,
     runtime,
     receiver,
@@ -451,12 +457,21 @@ test("coordinator activation accepts, admits, executes, confirms, and stops", as
     chainId: "chain_activation",
     recoveryDirectory: directory,
     businessTools: [businessTool, publicationTool],
-    async onBusinessToolCall({ tool }) {
+    async onBusinessToolCall(metadata) {
+      observeBusinessCall(metadata);
+      const { tool } = metadata;
       return tool === businessTool.name
         ? { effect: "recorded" }
         : { published: true };
     },
   });
+  return { activation, adapter, coordinator, directory, ref };
+}
+
+test("coordinator activation accepts, admits, executes, confirms, and stops", async (t) => {
+  const fixture = await activationFixture(t);
+  const { adapter, coordinator } = fixture;
+  const result = await fixture.activation();
 
   assert.equal(result.state, "completed");
   assert.equal(result.decision, "accepted");
@@ -482,3 +497,27 @@ test("coordinator activation accepts, admits, executes, confirms, and stops", as
     1,
   );
 });
+
+for (const [variant, businessToolNames, callbackCount] of [
+  ["subset", [businessTool.name], 1],
+  ["reorder", [publicationTool.name, businessTool.name], 0],
+  ["repeat", [businessTool.name, businessTool.name], 1],
+]) {
+  test(`coordinator activation rejects ${variant} admitted tool sequence`, async (t) => {
+    let callbacks = 0;
+    const fixture = await activationFixture(
+      t,
+      { businessToolNames },
+      () => { callbacks += 1; },
+    );
+    await assert.rejects(fixture.activation(), {
+      code: "threadmesh_activation_business_tool_sequence_mismatch",
+    });
+    assert.equal(callbacks, callbackCount);
+    assert.equal(fixture.coordinator.recoverContextAdmission(
+      sender.incarnationId, lifecycleEvent.messageId, receiverPrincipal,
+    ).state, "in-flight");
+    assert.equal(fixture.coordinator.getAttentionCursor(receiver, receiverPrincipal)
+      .activeClaim.state, "claimed");
+  });
+}
