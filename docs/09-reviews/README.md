@@ -31,9 +31,12 @@ not count as live-product or independent external-verifier evidence.
 ## Live attempt audits
 
 - [M5.2 real Codex event-pump attempt audit](2026-09-01-m5-2-real-codex-event-pump-attempt-audit.md)
+- [Real Codex autonomous event-pump behavior](2026-09-01-m5-2-real-codex-event-pump-behavior.md)
 
 Attempt audits preserve preflight, failure, interruption, and cleanup facts.
-They do not count as a real-product pass or a completed blocked gate result.
+The sixth event-pump attempt completed the real autonomous behavioral chain and
+returned the expected blocked product-gate classification; it does not close
+M5.2 while Git effects and verifier custody remain simulated.
 
 ## Real product evidence
 

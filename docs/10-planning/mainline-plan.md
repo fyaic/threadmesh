@@ -25,9 +25,9 @@ kickoff while the runner supplies no later phase prompt or direct activation?
 
 The older product canary proved real multi-tool turns, same-A reuse, a bounded
 Git chain, controls, and cleanup, but its four prompts were runner-submitted.
-The newer event-pump gate has not completed a live chain. Its first three
-attempts stopped at product-probe validation, timestamp evidence validation,
-and an operator pause after five-session bootstrap. A fourth fresh attempt on
+The newer event-pump gate has now completed a live behavioral chain. Its first
+three attempts stopped at product-probe validation, timestamp evidence
+validation, and an operator pause after five-session bootstrap. A fourth on
 `e052299` registered all five tasks and started the sole kickoff, then failed
 the exact lifecycle-action binding before any event-pump dispatch because the
 dynamic-tool schema did not expose the coordinator-bound arguments. A fifth
@@ -35,28 +35,26 @@ attempt on `cbdccfb` validated that correction and autonomously reached reviewer
 acceptance, admitted two-tool review, `review-failed`, irrelevant skip, and
 same-A acceptance. Its admitted fix turn ended in conservative ambiguous
 reconciliation. Both runs used normal five-of-five deletion, absence checks,
-and exact temporary-resource cleanup.
+and exact temporary-resource cleanup. A sixth attempt on `f98c56b` completed
+the full real `A -> R -> same-A -> V -> dependent` chain with one kickoff, nine
+bound native turns, zero later runner prompts/direct activations, an irrelevant
+zero-turn control, and exact cleanup.
 
 Execute in this order:
 
-1. The bounded signal cleanup and exact phase-tool contract gaps are closed by
-   #129 and #130. Extend only the admitted business-turn operation window from
-   180 to 300 seconds, preserving reconcile-only ambiguous outcomes, then run
-   the event-pump surface fresh. Do not add another prerequisite that was not
-   exposed by a live run.
-2. Retain exact real session, native-turn, model-action, durable-dispatch,
-   dependent-ordering, irrelevant-control, and cleanup evidence. The required
-   behavioral counts are one kickoff, zero runner phase/business prompts or
-   direct activation dispatches, eight protected receiver turns, and nine total
-   bound native turns.
-3. Publish the bounded attempt as `blocked`, `failed`, or `not-run`. A completed
-   chain remains `blocked` and `liveProductEvidence=false` while verifier
-   custody and Git effects are simulated.
-4. Only after that chain is retained, reuse the existing bounded Git worktree
-   and verifier foundations in the same correlated run, add the manual
-   relay/polling baseline and minimum critical negative/restart case, and close
-   #91 when its original product outcome is satisfied.
-5. Then resume repetition, Kimi parity, and production-hardening evidence.
+1. Treat the real behavioral chain as passed and retain its exact evidence; do
+   not rerun it merely to polish counts or prose.
+2. Reuse the existing bounded Git worktree foundation so A's implementation
+   and same-A fix become observable commits in the same correlated event-pump
+   run. Do not design a new Git subsystem.
+3. Move verifier signing custody to the existing child-verifier boundary and
+   bind finalization to the real commits, finding, and test result. Keep the
+   dependent locked until that attestation is accepted.
+4. Add the manual relay/polling baseline and the minimum critical
+   negative/restart case required by #91; publish the result without upgrading
+   simulated or operator-supplied evidence.
+5. Close #91 only when its original outcome is satisfied, then resume
+   repetition, Kimi parity, and production-hardening evidence.
 
 Mainline guardrail: do not add a new substrate or generalize an existing one
 unless the current live chain demonstrates that it is the blocking condition.
@@ -67,7 +65,8 @@ paused. Small PRs remain acceptable; scope, not PR size, is the constraint.
 The detailed historical gates remain in the
 [real Codex scenario plan](m5-2-real-codex-scenario.md). The
 [event-pump attempt audit](../09-reviews/2026-09-01-m5-2-real-codex-event-pump-attempt-audit.md)
-is the canonical live-attempt status until a fresh run supersedes it.
+and the [behavior record](../09-reviews/2026-09-01-m5-2-real-codex-event-pump-behavior.md)
+are the canonical live status.
 
 ## Product sequence — 2026-08-28
 

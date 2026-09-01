@@ -1,10 +1,11 @@
 # Project status
 
 > Snapshot: 2026-09-01 at `main` commit
-> `c17c83755c32647eae1a4ed70a075ff56bfc84a5`. Technical evidence includes the
+> `f98c56b83057b43f8b9618d6f69e1b2f481f77bd`. Technical evidence includes the
 > deterministic no-plan autonomous fixture, the earlier runner-sequenced real
-> Codex canary, and three non-completing event-pump attempts. None is a real
-> autonomous M5.2 product pass.
+> Codex canary, five fail-closed event-pump attempts, and one completed real
+> autonomous behavioral chain. M5.2 remains blocked on real Git effects,
+> independent verifier custody, a manual baseline, and critical closure cases.
 
 ## Executive summary
 
@@ -41,8 +42,8 @@ until this outcome is demonstrated.
 |---|---|---|
 | Research and problem framing | Codex deep dive, community signals, ecosystem comparison, ADRs | Established |
 | Community adoption | No external stars, forks, watchers, issue comments, or independent setup result as of 2026-08-28 | Unvalidated |
-| Active product outcome | One-command lifecycle-event and dependency-handoff loop with an inspector | Deterministic autonomous A/R/same-A/V/dependent fixture merged; real Codex M5.1 seam passed; real autonomous M5.2 product loop pending |
-| Protocol draft | 14 JSON Schemas; 55 schema cases; 7 transition cases; 378 tests | Executable draft; counts are reported separately |
+| Active product outcome | One-command lifecycle-event and dependency-handoff loop with an inspector | Real Codex A/R/same-A/V/dependent behavioral chain completed after one kickoff; independent Git/verifier closure pending |
+| Protocol draft | 14 JSON Schemas; 55 schema cases; 7 transition cases; 379 tests | Executable draft; counts are reported separately |
 | Minimal adapter SDK | `@fyaic/threadmesh` `0.1.0-alpha.0`; six bounded client methods, per-turn proactive bridge, about 20 kB tarball, packed-consumer execution | Real Pi clean-consumer pass; not published to npm |
 | Local binding | Schema-validated JSON-RPC, transport-derived principals, typed errors | Executable local reference |
 | Local persistence | SQLite v10 registry, lifecycle state, append-only Git evidence, and durable per-dispatch event-pump selection/publication checkpoints | Experimental; global cross-dispatch pump chain absent |
@@ -62,7 +63,7 @@ until this outcome is demonstrated.
 | M5.2 Git evidence foundation | Independent temporary bare repo and role worktrees, same-worktree implementer fix, SQLite v5 evidence chains, SQLite v6 turn/cursor recovery, SQLite v7 bound verifier-only atomic unlock, private signed-result recovery journal, five controlled coordinator-reopen checkpoints, and a preconfigured-key child verifier bound to exact commits/finding/test | Deterministic safety, persistence, model-action receipt, authority, and coordinator-reopen recovery seams passed; integrated process-crash recovery and coordinator-driven real loop pending |
 | M5.2 real Codex model/tool canary | Five persistent roles; four real A/R/same-A/V turns; seven model-selected tool calls; exact two-commit chain; same-A identity/worktree; dependent and irrelevant zero-turn controls; five-of-five cleanup on base `1155fc8` | Canary completed; intentionally `blocked` with `liveProductEvidence=false` because the runner submitted four phase prompts and ThreadMesh performed no lifecycle handoff |
 | M5.2 autonomous no-plan fixture | One user kickoff; durable SQLite attention drives A→R→same-A→V→dependent; zero fixture-runner activation dispatches or phase/business prompts; zero manual relay and polling; pump starts protected receiver turns; trusted finalization precedes dependent turn; exact cleanup | Deterministic in-process fixture at `711da66`; per-dispatch recovery durable, global chain absent; OS kill/heartbeat/live products/external verifier pending |
-| M5.2 real event-pump attempts | Five attempts: three pre-chain stops; exact lifecycle-action mismatch after kickoff; then a real autonomous partial chain through reviewer review and same-A acceptance before ambiguous admitted-fix reconciliation | First real event-pump initiative evidence, but no complete chain; attempts 4–5 used normal five-of-five deletion, absence verification, and exact temporary-resource cleanup; M5.2 remains open |
+| M5.2 real event-pump attempts | Six attempts: five bounded fail-closed stops, then one complete real Codex A/R/same-A/V/dependent chain with one kickoff, nine bound turns, eight business tool calls, zero later runner prompts/direct activations, an irrelevant zero-turn control, and exact cleanup | Behavioral checkpoint passed; result remains honestly `blocked`/`liveProductEvidence=false` because Git effects and verifier custody are simulated; M5.2 remains open |
 | Gemini CLI headless | Official package 0.56.0 integrity, required flags, isolated-home cleanup | Real no-model preflight passed |
 | Gemini live model behavior | Exact marker script requires explicit provider key | Not authorized, not run |
 | Multi-product admission | One mailbox/acceptance/claim/evidence path across ACP, Codex, and Gemini fakes | Merged experimental implementation |
@@ -283,23 +284,23 @@ durable, but a global cross-dispatch chain is absent and reports
 See the [autonomous fixture evidence](../09-reviews/2026-09-01-m5-2-autonomous-fixture.md)
 and [durable recovery record](../09-reviews/2026-09-01-m5-2-durable-pump-recovery.md).
 
-Three event-pump live attempts did not complete the chain. The first rejected
-the observed product-probe shape; the second rejected numeric Codex completion
-time evidence; the third was operator-paused after all five role sessions
-bootstrapped but before any coordinator task, turn intent, pump dispatch, or
-audit event existed. The third attempt then deleted and absence-confirmed all
-five owned sessions and removed its exact temporary resources through a
-one-off operator cleanup; normal signal cleanup did not run. These attempts
-establish preflight, adapter-boundary, and cleanup facts only. See the
-[attempt audit](../09-reviews/2026-09-01-m5-2-real-codex-event-pump-attempt-audit.md).
+Six event-pump live attempts are retained. The first five failed closed at
+successively narrower probe, adapter, lifecycle-binding, and turn-operation
+boundaries. The sixth completed the real `A -> R -> same-A -> V -> dependent`
+chain with one kickoff, nine bound native turns, zero later runner prompts or
+direct activations, an irrelevant zero-turn control, and exact five-session and
+temporary-resource cleanup. See the
+[attempt audit](../09-reviews/2026-09-01-m5-2-real-codex-event-pump-attempt-audit.md)
+and [behavior record](../09-reviews/2026-09-01-m5-2-real-codex-event-pump-behavior.md).
 
-The sequencing decision is now explicit: retain the existing substrate and run
-one fresh real Codex proactive chain before extending it. OS-kill and heartbeat
-matrices, a global cross-dispatch chain, external verifier and real Git closure,
-Kimi parity, and further presentation work stay frozen unless the live run
-shows one is its direct blocker. A completed chain with simulated verifier or
-Git effects is still `blocked` and `liveProductEvidence=false`; it is the next
-behavioral checkpoint, not M5.2 completion.
+The sequencing decision is now explicit: retain the proven path and reuse the
+existing bounded Git-worktree and verifier foundations inside it. Add the
+manual baseline and minimum critical negative/restart evidence; do not build a
+new substrate. OS-kill and heartbeat matrices, a global cross-dispatch chain,
+Kimi parity, new harnesses, and further presentation work remain frozen. The
+completed chain is still `blocked` and `liveProductEvidence=false` because its
+Git effects and verifier custody are simulated; it clears the behavioral
+checkpoint, not M5.2.
 
 The Codex context-admission turn now uses the same private pre-turn baseline,
 fsynced journal, exact client key, and read-first restart boundary. The journal
