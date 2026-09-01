@@ -84,6 +84,7 @@ export const REGISTERED_PEER_DECISION_TOOL = Object.freeze({
 });
 const RECEIVER_DECISION_PHASE_CAPABILITY = Symbol("threadmesh.receiver-decision-phase");
 const PROTECTED_PHASE_POLICIES = new WeakMap();
+const CODEX_LIVE_AGENT_RUNTIMES = new WeakSet();
 const PROTECTED_PHASE_KINDS = Object.freeze([
   "receiver-decision",
   "admitted-tool",
@@ -686,6 +687,7 @@ export class CodexLiveAgentRuntime {
     this.adapter = adapter;
     this.roles = new Map();
     PROTECTED_PHASE_POLICIES.set(this, new Map());
+    CODEX_LIVE_AGENT_RUNTIMES.add(this);
   }
 
   async probe(cwd) {
@@ -1970,6 +1972,10 @@ export class CodexLiveAgentRuntime {
       identifierDigest: sha256Digest(ref.threadId),
     };
   }
+}
+
+export function isCodexLiveAgentRuntime(value) {
+  return CODEX_LIVE_AGENT_RUNTIMES.has(value);
 }
 
 function roleInstructions(role) {

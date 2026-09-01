@@ -61,9 +61,25 @@ function tool(name, description) {
 
 const TOOLS = Object.freeze({
   implementation: tool("threadmesh_publish_artifact", "Publish the bounded implementation."),
+  reviewRead: tool(
+    "threadmesh_review_read_artifact",
+    "Inspect the exact admitted artifact before reporting a finding.",
+  ),
   review: tool("threadmesh_report_review_finding", "Publish the exact review finding."),
+  fixApply: tool(
+    "threadmesh_apply_review_fix",
+    "Apply the admitted review finding in the persistent implementer task.",
+  ),
   fix: tool("threadmesh_publish_dependency", "Publish the bounded review fix."),
+  verifyRead: tool(
+    "threadmesh_read_verification_chain",
+    "Inspect the exact admitted evidence chain before requesting verification.",
+  ),
   verify: tool("threadmesh_verify_exact_chain", "Verify and sign the exact evidence chain."),
+  dependentCheck: tool(
+    "threadmesh_check_finalized_dependency",
+    "Read the exact finalized dependency state before requesting activation.",
+  ),
   dependent: tool(
     "threadmesh_activate_verified_dependency",
     "Request activation; the coordinator commits it only after trusted finalization.",
@@ -74,27 +90,27 @@ const ROUTE_HANDLER_CONFIGS = Object.freeze([
   Object.freeze({
     handlerId: "handler.no-plan.review.v1", receiverRole: "r",
     eventType: "artifact-ready", businessPhase: "r-review",
-    businessTool: TOOLS.review,
+    businessTools: Object.freeze([TOOLS.reviewRead, TOOLS.review]),
   }),
   Object.freeze({
     handlerId: "handler.no-plan.same-a-fix.v1", receiverRole: "a",
     eventType: "review-failed", businessPhase: "same-a-fix",
-    businessTool: TOOLS.fix,
+    businessTools: Object.freeze([TOOLS.fixApply, TOOLS.fix]),
   }),
   Object.freeze({
     handlerId: "handler.no-plan.verify.v1", receiverRole: "v",
     eventType: "artifact-ready", businessPhase: "v-verify",
-    businessTool: TOOLS.verify,
+    businessTools: Object.freeze([TOOLS.verifyRead, TOOLS.verify]),
   }),
   Object.freeze({
     handlerId: "handler.no-plan.dependent.v1", receiverRole: "dependent",
     eventType: "dependency-satisfied", businessPhase: "dependent-gated-activation",
-    businessTool: TOOLS.dependent,
+    businessTools: Object.freeze([TOOLS.dependentCheck, TOOLS.dependent]),
   }),
   Object.freeze({
     handlerId: "handler.no-plan.irrelevant.v1", receiverRole: "irrelevant",
     eventType: "artifact-ready", businessPhase: "irrelevant-never-runs",
-    businessTool: TOOLS.review,
+    businessTools: Object.freeze([TOOLS.reviewRead, TOOLS.review]),
   }),
 ]);
 
@@ -170,12 +186,13 @@ function completionBinding(turn, execution) {
 }
 
 function promoteStage(coordinator, executionId, stage, payload, revision, head, actor) {
+  const execution = coordinator.getTurnExecution(executionId, principal(actor));
   return coordinator.promoteTurnExecutionWithGitEvidenceRecord(executionId, {
     stage,
     payload,
     expectedEvidenceChainRevision: revision,
     expectedEvidenceChainHead: head,
-    expectedRevision: 5,
+    expectedRevision: execution.revision,
   }, principal(actor));
 }
 
@@ -443,6 +460,7 @@ function journalLikePaths(directory) {
 
 export async function runCoordinatorDrivenNoPlanScenario({
   artifactsDirectory,
+  runtime: providedRuntime = null,
   injectPriorRelevant = false,
   injectFinalizationFailure = false,
   injectPreverifiedTamper = null,
@@ -453,6 +471,13 @@ export async function runCoordinatorDrivenNoPlanScenario({
     "missing-finalization", "wrong-digest",
   ]);
   if (!path.isAbsolute(artifactsDirectory ?? "") ||
+      (providedRuntime !== null && (
+        typeof providedRuntime?.createRole !== "function" ||
+        typeof providedRuntime?.runTurn !== "function" ||
+        typeof providedRuntime?.runReceiverDecisionTurn !== "function" ||
+        typeof providedRuntime?.runAdmittedToolTurn !== "function" ||
+        typeof providedRuntime?.deleteRole !== "function"
+      )) ||
       typeof injectPriorRelevant !== "boolean" ||
       typeof injectFinalizationFailure !== "boolean" ||
       typeof injectSelectionBindingMismatch !== "boolean" ||
@@ -578,7 +603,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
   const verifiedActivationOrder = [];
   const cleanupRoles = [];
   try {
-    adapter = new DeterministicNoPlanCodexAdapter({
+    adapter = providedRuntime?.adapter ?? new DeterministicNoPlanCodexAdapter({
       decideTurn(canonicalInput) {
         const input = JSON.parse(canonicalInput);
         const selectedTool = input.dynamicTools[0]?.name;
@@ -607,27 +632,36 @@ export async function runCoordinatorDrivenNoPlanScenario({
             },
           }] };
         }
-        if (selectedTool === TOOLS.review.name) {
-          return { text: "Blocking review finding published.", toolCalls: [{
-            tool: selectedTool,
+        if (selectedTool === TOOLS.reviewRead.name) {
+          return { text: "Artifact inspected and blocking finding published.", toolCalls: [{
+            tool: TOOLS.reviewRead.name,
+            arguments: { sourceEventId: knownMessage.messageId },
+          }, {
+            tool: TOOLS.review.name,
             arguments: {
               sourceEventId: knownMessage.messageId,
               event: actionEventBody(reviewEvent), findingDigest,
             },
           }] };
         }
-        if (selectedTool === TOOLS.fix.name) {
-          return { text: "Same implementer task applied the fix.", toolCalls: [{
-            tool: selectedTool,
+        if (selectedTool === TOOLS.fixApply.name) {
+          return { text: "Same implementer task applied and published the fix.", toolCalls: [{
+            tool: TOOLS.fixApply.name,
+            arguments: { sourceEventId: knownMessage.messageId },
+          }, {
+            tool: TOOLS.fix.name,
             arguments: {
               sourceEventId: knownMessage.messageId,
               event: actionEventBody(fixEvent), commitSha: fixSha,
             },
           }] };
         }
-        if (selectedTool === TOOLS.verify.name) {
-          return { text: "Independent signed verification selected.", toolCalls: [{
-            tool: selectedTool,
+        if (selectedTool === TOOLS.verifyRead.name) {
+          return { text: "Evidence inspected and signed verification selected.", toolCalls: [{
+            tool: TOOLS.verifyRead.name,
+            arguments: { sourceEventId: knownMessage.messageId },
+          }, {
+            tool: TOOLS.verify.name,
             arguments: {
               sourceEventId: knownMessage.messageId,
               event: actionEventBody(verifiedEvent),
@@ -637,22 +671,27 @@ export async function runCoordinatorDrivenNoPlanScenario({
             },
           }] };
         }
-        if (selectedTool === TOOLS.dependent.name) {
-          return { text: "Dependency activation requested behind finalization gate.", toolCalls: [{
-            tool: selectedTool, arguments: {},
+        if (selectedTool === TOOLS.dependentCheck.name) {
+          return { text: "Finalization inspected before dependency activation.", toolCalls: [{
+            tool: TOOLS.dependentCheck.name, arguments: {},
+          }, {
+            tool: TOOLS.dependent.name, arguments: {},
           }] };
         }
         return { text: "No relevant action.", toolCalls: [] };
       },
     });
-    runtime = new CodexLiveAgentRuntime({ command: "/fake/codex", adapter });
+    runtime = providedRuntime ?? new CodexLiveAgentRuntime({ command: "/fake/codex", adapter });
     refs.a = await runtime.createRole({
       role: "a", cwd: artifactsDirectory,
-      tools: [TOOLS.implementation, REGISTERED_PEER_DECISION_TOOL, TOOLS.fix],
+      tools: [
+        TOOLS.implementation, REGISTERED_PEER_DECISION_TOOL,
+        TOOLS.fixApply, TOOLS.fix,
+      ],
       phaseTools: {
         "user-kickoff": [TOOLS.implementation],
         "receiver-decision": [REGISTERED_PEER_DECISION_TOOL],
-        "same-a-fix": [TOOLS.fix],
+        "same-a-fix": [TOOLS.fixApply, TOOLS.fix],
       },
       protectedPhases: {
         "receiver-decision": "receiver-decision", "same-a-fix": "admitted-tool",
@@ -662,9 +701,10 @@ export async function runCoordinatorDrivenNoPlanScenario({
     });
     refs.r = await runtime.createRole({
       role: "r", cwd: artifactsDirectory,
-      tools: [REGISTERED_PEER_DECISION_TOOL, TOOLS.review],
+      tools: [REGISTERED_PEER_DECISION_TOOL, TOOLS.reviewRead, TOOLS.review],
       phaseTools: {
-        "receiver-decision": [REGISTERED_PEER_DECISION_TOOL], "r-review": [TOOLS.review],
+        "receiver-decision": [REGISTERED_PEER_DECISION_TOOL],
+        "r-review": [TOOLS.reviewRead, TOOLS.review],
       },
       protectedPhases: {
         "receiver-decision": "receiver-decision", "r-review": "admitted-tool",
@@ -674,9 +714,10 @@ export async function runCoordinatorDrivenNoPlanScenario({
     });
     refs.v = await runtime.createRole({
       role: "v", cwd: artifactsDirectory,
-      tools: [REGISTERED_PEER_DECISION_TOOL, TOOLS.verify],
+      tools: [REGISTERED_PEER_DECISION_TOOL, TOOLS.verifyRead, TOOLS.verify],
       phaseTools: {
-        "receiver-decision": [REGISTERED_PEER_DECISION_TOOL], "v-verify": [TOOLS.verify],
+        "receiver-decision": [REGISTERED_PEER_DECISION_TOOL],
+        "v-verify": [TOOLS.verifyRead, TOOLS.verify],
       },
       protectedPhases: {
         "receiver-decision": "receiver-decision", "v-verify": "admitted-tool",
@@ -686,10 +727,12 @@ export async function runCoordinatorDrivenNoPlanScenario({
     });
     refs.dependent = await runtime.createRole({
       role: "dependent", cwd: artifactsDirectory,
-      tools: [REGISTERED_PEER_DECISION_TOOL, TOOLS.dependent],
+      tools: [
+        REGISTERED_PEER_DECISION_TOOL, TOOLS.dependentCheck, TOOLS.dependent,
+      ],
       phaseTools: {
         "receiver-decision": [REGISTERED_PEER_DECISION_TOOL],
-        "dependent-gated-activation": [TOOLS.dependent],
+        "dependent-gated-activation": [TOOLS.dependentCheck, TOOLS.dependent],
       },
       protectedPhases: {
         "receiver-decision": "receiver-decision",
@@ -700,7 +743,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
     });
     refs.irrelevant = await runtime.createRole({
       role: "irrelevant", cwd: artifactsDirectory,
-      tools: [REGISTERED_PEER_DECISION_TOOL],
+      tools: [REGISTERED_PEER_DECISION_TOOL, TOOLS.reviewRead, TOOLS.review],
       instructions: "Remain idle unless coordinator attention is relevant.",
       scenarioId: "coordinator_driven_no_plan",
     });
@@ -825,8 +868,11 @@ export async function runCoordinatorDrivenNoPlanScenario({
         targetTask: { ...actors.r, objectiveVersion: 1 },
         now: NOW,
         businessPhase: "r-review",
-        businessTool: TOOLS.review,
-        async onBusinessToolCall() {
+        businessTools: [TOOLS.reviewRead, TOOLS.review],
+        async onBusinessToolCall({ tool: selectedTool }) {
+          if (selectedTool === TOOLS.reviewRead.name) {
+            return { artifactDigest: digest("admitted-review-artifact") };
+          }
           return { findingDigest, blocking: true, implementationSha };
         },
         async onLifecyclePublication({ activation }) {
@@ -834,8 +880,8 @@ export async function runCoordinatorDrivenNoPlanScenario({
           const execution = coordinator.getTurnExecution(
             activation.businessExecutionId, principal(actors.r),
           );
-          payloads["review-failed"].turnId = execution.actions[0].turnId;
-          payloads["review-failed"].toolCallDigest = execution.actions[0].actionDigest;
+          payloads["review-failed"].turnId = execution.actions[1].turnId;
+          payloads["review-failed"].toolCallDigest = execution.actions[1].actionDigest;
           const promoted = promoteStage(
             coordinator, activation.businessExecutionId, "review-failed",
             payloads["review-failed"], evidenceRevision, evidenceHead, actors.r,
@@ -843,6 +889,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
           evidenceRevision = promoted.evidenceState.recordCount;
           evidenceHead = promoted.evidenceState.headDigest;
           coordinator.publishLifecycleFromCompletedAction(promoted.executionId, {
+            actionOrdinal: 1,
             expectedTool: TOOLS.review.name,
             event: reviewEvent,
             expectedMaterial: { findingDigest },
@@ -866,8 +913,11 @@ export async function runCoordinatorDrivenNoPlanScenario({
         targetTask: { ...actors.a, objectiveVersion: 1 },
         now: NOW,
         businessPhase: "same-a-fix",
-        businessTool: TOOLS.fix,
-        async onBusinessToolCall() {
+        businessTools: [TOOLS.fixApply, TOOLS.fix],
+        async onBusinessToolCall({ tool: selectedTool }) {
+          if (selectedTool === TOOLS.fixApply.name) {
+            return { appliedFindingDigest: findingDigest };
+          }
           return { commitSha: fixSha, parentSha: implementationSha };
         },
         async onLifecyclePublication({ activation }) {
@@ -875,8 +925,8 @@ export async function runCoordinatorDrivenNoPlanScenario({
           const execution = coordinator.getTurnExecution(
             activation.businessExecutionId, principal(actors.a),
           );
-          payloads.fix.turnId = execution.actions[0].turnId;
-          payloads.fix.toolCallDigest = execution.actions[0].actionDigest;
+          payloads.fix.turnId = execution.actions[1].turnId;
+          payloads.fix.toolCallDigest = execution.actions[1].actionDigest;
           const promoted = promoteStage(
             coordinator, activation.businessExecutionId, "fix", payloads.fix,
             evidenceRevision, evidenceHead, actors.a,
@@ -884,6 +934,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
           evidenceRevision = promoted.evidenceState.recordCount;
           evidenceHead = promoted.evidenceState.headDigest;
           coordinator.publishLifecycleFromCompletedAction(promoted.executionId, {
+            actionOrdinal: 1,
             expectedTool: TOOLS.fix.name,
             event: fixEvent,
             expectedMaterial: { commitSha: fixSha },
@@ -907,8 +958,11 @@ export async function runCoordinatorDrivenNoPlanScenario({
         targetTask: { ...actors.v, objectiveVersion: 1 },
         now: NOW,
         businessPhase: "v-verify",
-        businessTool: TOOLS.verify,
-        async onBusinessToolCall() {
+        businessTools: [TOOLS.verifyRead, TOOLS.verify],
+        async onBusinessToolCall({ tool: selectedTool }) {
+          if (selectedTool === TOOLS.verifyRead.name) {
+            return { evidenceHead, evidenceRevision };
+          }
           verifiedActivationOrder.push("v-verification-tool-selected");
           verification = createVerification({
             requirement, payloads, verifier: actors.v, dependent: actors.dependent,
@@ -919,6 +973,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
         async onLifecyclePublication({ activation }) {
           verifierActivation = activation;
           coordinator.publishLifecycleFromCompletedAction(activation.businessExecutionId, {
+            actionOrdinal: 1,
             expectedTool: TOOLS.verify.name,
             event: verifiedEvent,
             expectedMaterial: {
@@ -951,7 +1006,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
         },
         now: NOW,
         businessPhase: "dependent-gated-activation",
-        businessTool: TOOLS.dependent,
+        businessTools: [TOOLS.dependentCheck, TOOLS.dependent],
         async afterAdmissionPrepared() {
           verifiedActivationOrder.push("dependent-admission-prepared");
           if (injectPreverifiedTamper === "state-only") {
@@ -978,14 +1033,14 @@ export async function runCoordinatorDrivenNoPlanScenario({
           const verifierExecution = coordinator.getTurnExecution(
             verifierActivation.businessExecutionId, principal(actors.v),
           );
-          const action = verifierExecution.actions[0];
+          const action = verifierExecution.actions[1];
           if (action.resultDigest !== gitEvidenceVerificationResultDigest(verification)) {
             throw new Error("threadmesh_verifier_result_digest_mismatch");
           }
           finalized = coordinator.finalizeGitEvidenceDependency(
             verifierExecution.executionId,
             {
-              actionOrdinal: 0,
+              actionOrdinal: 1,
               verificationToolArguments: JSON.parse(action.argsJson),
               ...verification,
               dependencyId: "dependency_no_plan_verified",
@@ -1041,13 +1096,16 @@ export async function runCoordinatorDrivenNoPlanScenario({
           }
           verifiedActivationOrder.push("trusted-finalization-completed");
         },
-        async onBusinessToolCall() {
+        async onBusinessToolCall({ tool: selectedTool }) {
           const edge = coordinator.getDependencyEdge(
             "dependency_no_plan_verified", principal(actors.dependent),
           );
           const task = coordinator.getTask(taskRef(actors.dependent), owner);
           if (edge.version !== 1 || edge.status !== "satisfied" || task.state !== "ready") {
             throw new Error("threadmesh_dependent_pre_business_gate_unsatisfied");
+          }
+          if (selectedTool === TOOLS.dependentCheck.name) {
+            return { edgeStatus: edge.status, taskState: task.state };
           }
           verifiedActivationOrder.push("dependent-business-tool-selected");
           return { activationRequested: true, effectCommitted: true };
@@ -1091,7 +1149,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
         targetTask: { ...actors.irrelevant, objectiveVersion: 1 },
         now: NOW,
         businessPhase: "irrelevant-never-runs",
-        businessTool: TOOLS.review,
+        businessTools: [TOOLS.reviewRead, TOOLS.review],
         async onBusinessToolCall() { throw new Error("irrelevant business turn ran"); },
         async onLifecyclePublication() { throw new Error("irrelevant publication ran"); },
       }],
@@ -1185,6 +1243,118 @@ export async function runCoordinatorDrivenNoPlanScenario({
       dependentActivation.decisionTurnEvidence?.turnId,
       dependentActivation.businessTurnEvidence?.turnId,
     ];
+    const executionBindings = new Map([
+      [kickoff.execution.executionId, { role: "a", phase: "user-kickoff", kind: "kickoff" }],
+      [rActivation.decisionExecutionId, { role: "r", phase: "receiver-decision", kind: "decision" }],
+      [rActivation.businessExecutionId, { role: "r", phase: "r-review", kind: "admission" }],
+      [sameAActivation.decisionExecutionId, {
+        role: "a", phase: "receiver-decision", kind: "decision",
+      }],
+      [sameAActivation.businessExecutionId, {
+        role: "a", phase: "same-a-fix", kind: "admission",
+      }],
+      [verifierActivation.decisionExecutionId, {
+        role: "v", phase: "receiver-decision", kind: "decision",
+      }],
+      [verifierActivation.businessExecutionId, {
+        role: "v", phase: "v-verify", kind: "admission",
+      }],
+      [dependentActivation.decisionExecutionId, {
+        role: "dependent", phase: "receiver-decision", kind: "decision",
+      }],
+      [dependentActivation.businessExecutionId, {
+        role: "dependent", phase: "dependent-gated-activation", kind: "admission",
+      }],
+    ]);
+    const nativeTurnRecords = coordinator.db.prepare(
+      `SELECT i.execution_id, i.task_id, i.incarnation_id, i.state, i.turn_id,
+              i.adapter_ref_digest, i.tool_allowlist_digest, i.prompt_digest, i.receipt_digest,
+              i.action_count, i.action_head_digest,
+              d.binding_digest AS decision_binding_digest,
+              a.binding_digest AS admission_binding_digest,
+              a.turn_receipt_digest AS admission_turn_receipt_digest
+       FROM turn_execution_intents i
+       LEFT JOIN attention_route_decision_bindings d
+         ON d.receiver_decision_execution_id = i.execution_id
+       LEFT JOIN context_admission_turn_bindings a
+         ON a.execution_id = i.execution_id
+       WHERE i.scenario_id = ?
+       ORDER BY i.created_at, i.execution_id`,
+    ).all("coordinator_driven_no_plan").map((row) => {
+      const binding = executionBindings.get(row.execution_id);
+      if (
+        !binding || typeof row.turn_id !== "string" ||
+        !/^sha256:[a-f0-9]{64}$/u.test(row.receipt_digest ?? "") ||
+        !/^sha256:[a-f0-9]{64}$/u.test(row.action_head_digest ?? "") ||
+        (binding.kind === "decision" && !row.decision_binding_digest) ||
+        (binding.kind === "admission" && (
+          !row.admission_binding_digest ||
+          row.admission_turn_receipt_digest !== row.receipt_digest
+        )) ||
+        (binding.kind === "kickoff" && (
+          row.decision_binding_digest !== null || row.admission_binding_digest !== null
+        ))
+      ) throw scenarioError("threadmesh_native_turn_manifest_invalid");
+      const actions = coordinator.db.prepare(
+        `SELECT ordinal, tool_name, args_digest, selection_digest, result_digest,
+                result_status, previous_action_digest, action_digest
+         FROM turn_tool_actions WHERE execution_id = ? ORDER BY ordinal`,
+      ).all(row.execution_id).map((action) => ({
+        ordinal: action.ordinal,
+        tool: action.tool_name,
+        argumentsDigest: action.args_digest,
+        selectionDigest: action.selection_digest,
+        resultDigest: action.result_digest,
+        resultStatus: action.result_status,
+        previousActionDigest: action.previous_action_digest,
+        actionDigest: action.action_digest,
+      }));
+      if (actions.length !== row.action_count ||
+          actions.some((action, index) =>
+            action.ordinal !== index || action.resultStatus !== "completed" ||
+            action.previousActionDigest !==
+              (index === 0 ? null : actions[index - 1].selectionDigest) ||
+            action.actionDigest !== sha256Digest({
+              selectionDigest: action.selectionDigest,
+              resultDigest: action.resultDigest,
+              resultStatus: action.resultStatus,
+            })) || actions.at(-1)?.selectionDigest !== row.action_head_digest) {
+        throw scenarioError("threadmesh_native_turn_manifest_invalid");
+      }
+      const record = {
+        sequence: 0,
+        role: binding.role,
+        phase: binding.phase,
+        bindingKind: binding.kind,
+        executionDigest: sha256Digest(row.execution_id),
+        actorDigest: sha256Digest({
+          taskId: row.task_id, incarnationId: row.incarnation_id,
+        }),
+        adapterRefDigest: row.adapter_ref_digest,
+        turnDigest: sha256Digest(row.turn_id),
+        toolAllowlistDigest: row.tool_allowlist_digest,
+        promptDigest: row.prompt_digest,
+        receiptDigest: row.receipt_digest,
+        actionCount: row.action_count,
+        actionHeadDigest: row.action_head_digest,
+        actions,
+        actionSequenceDigest: sha256Digest(actions),
+        executionState: row.state,
+        bindingDigest: row.decision_binding_digest ??
+          row.admission_binding_digest ?? sha256Digest({
+            kind: "explicit-user-kickoff", executionId: row.execution_id,
+          }),
+      };
+      return record;
+    }).map((record, index) => {
+      const sequenced = { ...record, sequence: index + 1 };
+      return { ...sequenced, recordDigest: sha256Digest(sequenced) };
+    });
+    if (nativeTurnRecords.length !== 9 || executionBindings.size !== 9 ||
+        nativeTurnRecords.some(({ executionDigest }) =>
+          typeof executionDigest !== "string")) {
+      throw scenarioError("threadmesh_native_turn_manifest_invalid");
+    }
     const selectionBindings = pump.selectionRecords.map((record) => ({
       kind: record.kind,
       handlerId: record.handlerId,
@@ -1277,10 +1447,49 @@ export async function runCoordinatorDrivenNoPlanScenario({
         canonicalJson(durableDispatchCorrelation)) {
       throw scenarioError("threadmesh_durable_dispatch_runtime_correlation_invalid");
     }
+    const nativeTurnManifest = {
+      scope: "sqlite-turn-receipt-and-binding-records",
+      recordCount: nativeTurnRecords.length,
+      records: nativeTurnRecords,
+      manifestDigest: sha256Digest(nativeTurnRecords),
+    };
+    const durableDispatchManifest = {
+      scope: "sqlite-correlated-snapshot-not-global-chain",
+      recordCount: durableDispatchRecords.length,
+      records: durableDispatchRecords,
+      manifestDigest: sha256Digest(durableDispatchRecords),
+    };
+    const runnerTraceRecords = [{
+      sequence: 1,
+      event: "explicit-user-kickoff",
+      bindingDigest: nativeTurnRecords.find(
+        ({ bindingKind }) => bindingKind === "kickoff",
+      )?.recordDigest,
+    }, {
+      sequence: 2,
+      event: "event-pump-run-until-idle",
+      bindingDigest: durableDispatchManifest.manifestDigest,
+    }].map((record) => ({ ...record, recordDigest: sha256Digest(record) }));
+    const runnerTraceManifest = {
+      recordCount: runnerTraceRecords.length,
+      records: runnerTraceRecords,
+      manifestDigest: sha256Digest(runnerTraceRecords),
+    };
+    const sessionRecords = Object.entries(refs).map(([role, ref]) => ({
+      role,
+      refDigest: sha256Digest(ref),
+      worktreeDigest: sha256Digest({ cwd: artifactsDirectory }),
+    }));
+    const sessionManifest = {
+      recordCount: sessionRecords.length,
+      records: sessionRecords,
+      sameARefDigest: sessionRecords.find(({ role }) => role === "a")?.refDigest,
+      sameAWorktreeDigest: sessionRecords.find(({ role }) => role === "a")?.worktreeDigest,
+      manifestDigest: sha256Digest(sessionRecords),
+    };
     result = {
       state: "passed-full-functional-in-process-fixture",
       liveProductEvidence: false,
-      initialUserStartPrompts: 1,
       promptBoundary: {
         initialUserKickoffPrompts: 1,
         phasePromptsSubmittedByRunner: 0,
@@ -1292,7 +1501,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
         runnerOwnedCounterSource: "scenario-entry-and-no-dispatch-call-sites",
         boundTurnSource: "sqlite-exact-turn-and-binding-records",
       },
-      deterministicPolicyOracle: true,
+      deterministicPolicyOracle: providedRuntime === null,
       activationDispatchesByFixtureRunner: 0,
       eventPumpDispatches: pumpResult.dispatches,
       eventPumpSkips: pumpResult.skips,
@@ -1322,12 +1531,10 @@ export async function runCoordinatorDrivenNoPlanScenario({
         .filter(({ kind }) => kind === "coordinator-activation")
         .map(({ handlerId }) => handlerId),
       selectionBindings,
-      durableDispatchManifest: {
-        scope: "sqlite-correlated-snapshot-not-global-chain",
-        recordCount: durableDispatchRecords.length,
-        records: durableDispatchRecords,
-        manifestDigest: sha256Digest(durableDispatchRecords),
-      },
+      durableDispatchManifest,
+      nativeTurnManifest,
+      runnerTraceManifest,
+      sessionManifest,
       attention: {
         cursors: attentionCursors,
         activeClaimCount: activeAttentionClaimCount,
@@ -1361,7 +1568,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
         trustAnchorDigest: sha256Digest(trustAnchor),
         resultDigestBound: coordinator.getTurnExecution(
           verifierActivation.businessExecutionId, principal(actors.v),
-        ).actions[0].resultDigest === gitEvidenceVerificationResultDigest(verification),
+        ).actions[1].resultDigest === gitEvidenceVerificationResultDigest(verification),
       },
       evidenceChain: {
         recordCount: chain.state.recordCount,
@@ -1390,18 +1597,25 @@ export async function runCoordinatorDrivenNoPlanScenario({
         claimCount: coordinator.db.prepare(
           "SELECT COUNT(*) AS count FROM attention_handler_claims WHERE receiver_task_id = ?",
         ).get(actors.irrelevant.taskId).count,
-        turnCount: adapter.threads.get(refs.irrelevant.threadId).turns.length,
+        turnCount: coordinator.db.prepare(
+          "SELECT COUNT(*) AS count FROM turn_execution_intents WHERE task_id = ?",
+        ).get(actors.irrelevant.taskId).count,
         durableSkip: coordinator.getAttentionCursor(
           taskRef(actors.irrelevant), principal(actors.irrelevant),
         ).cursor.commitCount === 1,
       },
       runtime: {
-        planSurfaceUsed: adapter.invocations.some((entry) =>
-          ["plan", "deliverContext", "phasePrompt", "runnerPhasePrompts"]
-            .some((key) => Object.hasOwn(entry, key))),
-        modelSelectedToolCalls: [...adapter.threads.values()]
-          .reduce((count, thread) => count + thread.turns
-            .reduce((sum, turn) => sum + turn.toolCalls.length, 0), 0),
+        productBoundary: providedRuntime === null
+          ? "deterministic-fake-codex-app-server" : "injected-codex-runtime",
+        adapterInvocationAuditAvailable: Array.isArray(adapter?.invocations),
+        planSurfaceUsed: Array.isArray(adapter?.invocations)
+          ? adapter.invocations.some((entry) =>
+            ["plan", "deliverContext", "phasePrompt", "runnerPhasePrompts"]
+              .some((key) => Object.hasOwn(entry, key)))
+          : null,
+        modelSelectedToolCalls: nativeTurnRecords.reduce(
+          (count, record) => count + record.actionCount, 0,
+        ),
       },
     };
   } catch (error) {
@@ -1419,7 +1633,8 @@ export async function runCoordinatorDrivenNoPlanScenario({
           `SELECT COUNT(*) AS count FROM turn_execution_intents
            WHERE task_id = ? AND tool_allowlist_json = ?`,
         ).get(
-          actors.dependent.taskId, JSON.stringify([TOOLS.dependent.name]),
+          actors.dependent.taskId,
+          JSON.stringify([TOOLS.dependentCheck.name, TOOLS.dependent.name]),
         ).count,
         dependentBusinessToolActionCount: coordinator.db.prepare(
           "SELECT COUNT(*) AS count FROM turn_tool_actions WHERE tool_name = ?",

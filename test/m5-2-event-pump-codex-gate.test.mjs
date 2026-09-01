@@ -1,0 +1,294 @@
+import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import test from "node:test";
+
+import { sha256Digest } from "../src/canonical-json.mjs";
+import { runCoordinatorDrivenNoPlanScenario } from
+  "../src/validation/coordinator-driven-no-plan-scenario.mjs";
+import {
+  CodexLiveAgentRuntime,
+  isCodexLiveAgentRuntime,
+} from "../src/validation/live-agent-scenario.mjs";
+import {
+  projectM52OperatorSuppliedCodexEventPumpGateResult,
+  projectOperatorSuppliedCodexProbe,
+  projectM52EventPumpCodexGateResult,
+  runM52EventPumpCodexGate,
+} from "../src/validation/m5-2-event-pump-codex-gate.mjs";
+
+function artifacts(t, prefix) {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  return directory;
+}
+
+function resignNativeRecord(core, index) {
+  const record = core.nativeTurnManifest.records[index];
+  record.actionSequenceDigest = sha256Digest(record.actions);
+  const body = { ...record };
+  delete body.recordDigest;
+  record.recordDigest = sha256Digest(body);
+  core.nativeTurnManifest.manifestDigest = sha256Digest(core.nativeTurnManifest.records);
+}
+
+test("deterministic Codex gate is pump-driven but remains blocked on verifier custody", async (t) => {
+  const result = await runM52EventPumpCodexGate({
+    artifactsDirectory: artifacts(t, "threadmesh-m52-event-pump-gate-"),
+  });
+
+  assert.equal(result.state, "blocked");
+  assert.equal(result.code, "threadmesh_m52_independent_verifier_service_pending");
+  assert.equal(result.product, "deterministic-codex-fake");
+  assert.equal(result.evidenceClass, "deterministic-event-pump-codex-gate");
+  assert.equal(result.liveProductEvidence, false);
+  assert.equal(result.deterministicPolicyOracle, true);
+  assert.equal(result.userKickoffs, 1);
+  assert.equal(result.runnerPhasePrompts, 0);
+  assert.equal(result.runnerDirectActivationDispatches, 0);
+  assert.equal(result.pumpProtectedBoundNativeTurns, 8);
+  assert.equal(result.boundNativeTurns, 9);
+  assert.equal(result.eventPumpDispatches, 4);
+  assert.equal(result.eventPumpSkips, 1);
+  assert.equal(result.businessToolCalls, 8);
+  assert.equal(result.sameAPersistentRefAndWorkspace, true);
+  assert.equal(result.distinctReceiverRoles, true);
+  assert.equal(result.dependentStartedAfterFinalization, true);
+  assert.equal(result.irrelevantNativeTurns, 0);
+  assert.equal(result.verificationMode, "fixture-owned-ephemeral-key-not-independent");
+  assert.deepEqual(result.remainingGates, [
+    "independent-verifier-service", "real-bounded-git-worktree-effects",
+    "real-codex-product-run",
+  ]);
+  assert.equal(result.evidence.nativeTurnManifest.recordCount, 9);
+  assert.equal(result.evidence.durableDispatchManifest.recordCount, 5);
+  assert.equal(result.evidence.runnerTraceManifest.recordCount, 2);
+  assert.equal(result.evidence.sessionManifest.recordCount, 5);
+  assert.equal(result.cleanup.complete, true);
+  assert.equal(result.cleanup.rolesDeleted, 5);
+  assert.equal(result.cleanup.roleAbsenceChecks, 5);
+  assert.equal(JSON.stringify(result).includes("thread-deterministic"), false);
+  assert.equal(JSON.stringify(result).includes("turn-thread"), false);
+});
+
+test("event-pump gate projector rejects summary, action, identity, and trust drift", async (t) => {
+  const core = await runCoordinatorDrivenNoPlanScenario({
+    artifactsDirectory: artifacts(t, "threadmesh-m52-event-pump-projector-"),
+  });
+  assert.equal(projectM52EventPumpCodexGateResult(core).state, "blocked");
+
+  const cases = [
+    ["summary", (value) => { value.promptBoundary.phasePromptsSubmittedByRunner = 1; }],
+    ["receipt", (value) => {
+      value.nativeTurnManifest.records[2].receiptDigest = `sha256:${"0".repeat(64)}`;
+    }],
+    ["dispatch", (value) => {
+      value.durableDispatchManifest.records[0].selectionDigest =
+        value.durableDispatchManifest.records[1].selectionDigest;
+      value.durableDispatchManifest.manifestDigest =
+        sha256Digest(value.durableDispatchManifest.records);
+    }],
+    ["trace", (value) => {
+      value.runnerTraceManifest.records[1].event = "runner-phase-dispatch";
+      const body = { ...value.runnerTraceManifest.records[1] };
+      delete body.recordDigest;
+      value.runnerTraceManifest.records[1].recordDigest = sha256Digest(body);
+      value.runnerTraceManifest.manifestDigest =
+        sha256Digest(value.runnerTraceManifest.records);
+    }],
+    ["action-head", (value) => {
+      value.nativeTurnManifest.records[2].actionHeadDigest = `sha256:${"2".repeat(64)}`;
+      resignNativeRecord(value, 2);
+    }],
+    ["tool-name", (value) => {
+      value.nativeTurnManifest.records[2].actions[0].tool =
+        "threadmesh_report_review_finding";
+      resignNativeRecord(value, 2);
+    }],
+    ["tool-order", (value) => {
+      value.nativeTurnManifest.records[2].actions.reverse();
+      resignNativeRecord(value, 2);
+    }],
+    ["tool-ordinal", (value) => {
+      value.nativeTurnManifest.records[2].actions[0].ordinal = 1;
+      resignNativeRecord(value, 2);
+    }],
+    ["adapter-ref", (value) => {
+      value.nativeTurnManifest.records[2].adapterRefDigest = `sha256:${"3".repeat(64)}`;
+      resignNativeRecord(value, 2);
+    }],
+    ["same-a-turn", (value) => {
+      value.nativeTurnManifest.records[3].actorDigest = `sha256:${"4".repeat(64)}`;
+      resignNativeRecord(value, 3);
+    }],
+    ["identity", (value) => {
+      value.sessionManifest.sameARefDigest = `sha256:${"1".repeat(64)}`;
+    }],
+    ["trust", (value) => {
+      value.verification.externalIndependentVerifier = true;
+    }],
+    ["extra", (value) => {
+      value.nativeTurnManifest.records[0].rawTurnId = "private-turn-id";
+    }],
+    ["stale-top-level", (value) => {
+      value.initialUserStartPrompts = 1;
+    }],
+    ["unknown-top-level", (value) => {
+      value.untrustedSummary = true;
+    }],
+    ["unknown-cleanup", (value) => {
+      value.cleanup.rawPath = "/private/path";
+    }],
+    ["cleanup-unknown-count", (value) => {
+      value.cleanup.unknownJournalCount = 1;
+    }],
+    ["cleanup-unknown-path", (value) => {
+      value.cleanup.unknownJournalPathDigests = [`sha256:${"5".repeat(64)}`];
+    }],
+    ["cleanup-journal-failure", (value) => {
+      value.cleanup.journalRemovalFailures = [{ errorCode: "synthetic" }];
+    }],
+    ["cleanup-directory", (value) => {
+      value.cleanup.runRootRemoved = false;
+    }],
+    ["cleanup-role-duplicate", (value) => {
+      value.cleanup.roles[0].role = "a";
+    }],
+    ["attention-extra-role", (value) => {
+      value.attention.cursors.extra = structuredClone(value.attention.cursors.r);
+    }],
+    ["attention-active", (value) => {
+      value.attention.cursors.r.activeClaimEpoch = 2;
+    }],
+    ["attention-cursor", (value) => {
+      value.attention.cursors.r.committedCursor = 2;
+    }],
+    ["prompt-source", (value) => {
+      value.promptBoundary.boundTurnSource = "summary-owned-counter";
+    }],
+    ["selection-scope", (value) => {
+      value.eventPumpSelectionChainScope = "global";
+      value.eventPumpSelectionChainValid = true;
+    }],
+    ["fixture-scope", (value) => {
+      value.completedRoles.pop();
+    }],
+  ];
+  for (const [name, mutate] of cases) {
+    const changed = structuredClone(core);
+    mutate(changed);
+    assert.throws(
+      () => projectM52EventPumpCodexGateResult(changed),
+      { code: "threadmesh_m52_event_pump_gate_result_invalid" },
+      name,
+    );
+  }
+});
+
+test("event-pump gate keeps an internal branded-runtime identity boundary without model use", async (t) => {
+  const plainSpoof = {
+    probe() {}, createRole() {}, runTurn() {}, runReceiverDecisionTurn() {},
+    runAdmittedToolTurn() {}, deleteRole() {},
+  };
+  assert.equal(isCodexLiveAgentRuntime(plainSpoof), false);
+  const branded = new CodexLiveAgentRuntime({ command: "/not-started", adapter: {} });
+  assert.equal(isCodexLiveAgentRuntime(branded), true);
+
+  await assert.rejects(
+    () => runM52EventPumpCodexGate({
+      artifactsDirectory: artifacts(t, "threadmesh-m52-live-ready-input-"),
+      runtime: { async createRole() {} },
+    }),
+    { code: "threadmesh_m52_event_pump_gate_input_invalid" },
+  );
+});
+
+test("operator-supplied Codex-shaped probe is strict but proves no binary provenance", () => {
+  const probe = {
+    userAgent: "codex_cli_rs/0.145.0 (operator supplied)",
+    platformFamily: "unix",
+    platformOs: "darwin",
+  };
+  probe.snapshotDigest = sha256Digest(probe);
+  const projected = projectOperatorSuppliedCodexProbe(probe);
+  assert.equal(projected.userAgentDigest, sha256Digest(probe.userAgent));
+  assert.equal(projected.snapshotDigest, probe.snapshotDigest);
+  assert.equal(Object.hasOwn(projected, "binaryProvenanceVerified"), false);
+
+  for (const changed of [
+    { ...probe, userAgent: "spoofed-codex/0.145.0" },
+    { ...probe, snapshotDigest: `sha256:${"6".repeat(64)}` },
+    { ...probe, binaryPath: "/private/codex" },
+  ]) {
+    assert.throws(
+      () => projectOperatorSuppliedCodexProbe(changed),
+      { code: /threadmesh_m52_event_pump_gate_/u },
+    );
+  }
+});
+
+test("an injected runtime cannot spoof Codex product evidence in the public projector", async (t) => {
+  const source = await runCoordinatorDrivenNoPlanScenario({
+    artifactsDirectory: artifacts(t, "threadmesh-m52-injected-label-"),
+  });
+  const core = structuredClone(source);
+  core.runtime.productBoundary = "injected-codex-runtime";
+  core.runtime.adapterInvocationAuditAvailable = false;
+  core.runtime.planSurfaceUsed = null;
+  core.deterministicPolicyOracle = false;
+  const probe = {
+    userAgentDigest: sha256Digest("codex_cli_rs/999.999.999"),
+    snapshotDigest: sha256Digest({ userAgent: "spoof" }),
+  };
+  const result = projectM52EventPumpCodexGateResult(core, { productProbe: probe });
+  assert.equal(result.product, "injected-runtime");
+  assert.equal(result.evidenceClass, "injected-runtime-event-pump-gate");
+  assert.equal(result.liveProductEvidence, false);
+  assert.equal(result.remainingGates.includes("real-codex-product-run"), true);
+
+  const rawProbe = {
+    userAgent: "codex_cli_rs/0.145.0 (operator supplied)",
+    platformFamily: "unix",
+    platformOs: "darwin",
+  };
+  rawProbe.snapshotDigest = sha256Digest(rawProbe);
+  const operatorResult = projectM52OperatorSuppliedCodexEventPumpGateResult(
+    core, { probe: rawProbe },
+  );
+  assert.equal(operatorResult.product, "operator-supplied-codex-shaped-executable");
+  assert.equal(operatorResult.evidenceClass,
+    "operator-supplied-codex-shaped-event-pump-gate");
+  assert.equal(operatorResult.liveProductEvidence, false);
+  assert.equal(operatorResult.remainingGates.includes(
+    "trusted-codex-binary-provenance",
+  ), true);
+});
+
+test("event-pump gate CLI distinguishes help, blocked, and preflight exits", () => {
+  const script = path.resolve("scripts/run-m5-2-event-pump-gate.mjs");
+  const help = spawnSync(process.execPath, [script, "--help"], { encoding: "utf8" });
+  assert.equal(help.status, 0);
+  assert.match(help.stdout, /THREADMESH_CODEX_COMMAND/u);
+  assert.match(help.stdout, /operator-supplied and Codex-shaped/u);
+  assert.match(help.stdout, /blocked=2, failed=1, usage\/preflight\/not-run=3/u);
+
+  const blocked = spawnSync(process.execPath, [script, "--mode", "fake"], {
+    encoding: "utf8",
+  });
+  assert.equal(blocked.status, 2);
+  assert.equal(JSON.parse(blocked.stdout).state, "blocked");
+
+  const preflight = spawnSync(process.execPath, [script, "--mode", "live"], {
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      THREADMESH_M52_EVENT_PUMP_LIVE_ACK: "",
+      THREADMESH_CODEX_COMMAND: "/definitely/not/accessed/without/ack",
+    },
+  });
+  assert.equal(preflight.status, 3);
+  assert.equal(JSON.parse(preflight.stderr).code,
+    "threadmesh_m52_event_pump_runner_live_ack_required");
+});
