@@ -28,6 +28,13 @@ accepted until two qualifying public records exist and pass
 These records demonstrate bounded coordinator and harness behavior. They do
 not count as live-product or independent external-verifier evidence.
 
+## Live attempt audits
+
+- [M5.2 real Codex event-pump attempt audit](2026-09-01-m5-2-real-codex-event-pump-attempt-audit.md)
+
+Attempt audits preserve preflight, failure, interruption, and cleanup facts.
+They do not count as a real-product pass or a completed blocked gate result.
+
 ## Real product evidence
 
 - [Real Codex A/R/same-A/V model-tool canary](2026-09-01-m5-2-real-codex-canary.md)

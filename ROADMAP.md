@@ -112,16 +112,14 @@ importing coordinator, adapter, or validation internals.
 ## M5 — Attention and handoff router MVP
 
 The deterministic vertical slice passes locally and from a packed consumer,
-and M5.1 has a real two-session Codex pass. The next fixture slice now closes
-the full lifecycle chain after one user kickoff: `A → R → same-A → V →
-dependent`. It records zero fixture-runner activation dispatches and zero
-fixture-runner phase/business prompts, manual relay, or polling. The pump still
-starts the protected receiver decision and admitted business native turns.
-Trusted finalization precedes the dependent turn; a failed finalization starts
-zero dependent turns; the irrelevant control starts zero turns; exact cleanup
-passes.
+and M5.1 has a real two-session Codex pass. The fixture closes the full
+lifecycle chain after one user kickoff: `A → R → same-A → V → dependent`, with
+zero fixture-runner activation dispatches, phase/business prompts, manual
+relay, or polling. The pump starts protected receiver decision and admitted
+business turns. Trusted finalization precedes the dependent turn, the
+irrelevant control starts no turn, and exact cleanup passes.
 
-That slice was merged in four bounded steps:
+The retained foundation includes:
 
 - coordinator-owned decision/admission activation plumbing in
   [#118](https://github.com/fyaic/threadmesh/pull/118) at
@@ -135,16 +133,33 @@ That slice was merged in four bounded steps:
 - durable per-dispatch selection and publication recovery in
   [#122](https://github.com/fyaic/threadmesh/pull/122) at
   `711da6606ac8b0c326f199a96d1713bc7a6de68c`, including publication leasing,
-  fencing, and committed-orphan recovery.
+  fencing, and committed-orphan recovery;
+- protected exact multi-tool receiver turns in
+  [#124](https://github.com/fyaic/threadmesh/pull/124), and the operator-run
+  event-pump gate plus strict Codex evidence boundaries in
+  [#125](https://github.com/fyaic/threadmesh/pull/125)–
+  [#127](https://github.com/fyaic/threadmesh/pull/127).
 
-The result remains fixture evidence: `liveProductEvidence=false`,
+The completed chain remains fixture evidence: `liveProductEvidence=false`,
 `deterministicPolicyOracle=true`, `externalIndependentVerifier=false`, the
-signer is a fixture-owned ephemeral key, and per-dispatch selection/publication
-recovery is durable as of `711da66`. A global cross-dispatch selection chain is
-not implemented and reports `selectionChainValid=null`. M5.2 therefore remains
-open. Its next ordered gates are OS-kill recovery, long-turn lease heartbeat,
-and correlated real Codex then Kimi evidence with an external verifier. The
-M5.3 repetition matrix follows those gates.
+signer is a fixture-owned ephemeral key, and there is no global cross-dispatch
+selection chain. Three real Codex event-pump attempts then stopped at product
+probe validation, timestamp evidence validation, and an operator pause after
+five-session bootstrap respectively. The paused attempt recorded zero
+coordinator tasks, turn intents, and pump dispatches before all five owned
+sessions and exact temporary resources were cleaned. No attempt completed the
+real proactive chain.
+
+This exposed an execution-order imbalance rather than a change in product
+direction. The immediate checkpoint is now one fresh real Codex event-pump
+chain on the existing surface. New substrate, generalized recovery, verifier,
+Git, cross-harness, or presentation work is frozen unless that live run proves
+it is the direct blocker. A completed run remains `blocked` and
+`liveProductEvidence=false` while verifier custody and Git effects are
+simulated; it demonstrates behavior, not M5.2 closure.
+
+The paused attempt also exposed one bounded SIGINT/SIGTERM cleanup gap. Closing
+that exact gap before the rerun is in scope; general process supervision is not.
 
 - [x] Ship a one-command local demo with generated identities, grants, example
   sessions, and an inspector
@@ -164,10 +179,14 @@ M5.3 repetition matrix follows those gates.
     chain with trusted pre-turn finalization, zero irrelevant turns, and exact
     cleanup; persist each dispatch through selection, turn settlement, and
     publication recovery. This does not satisfy the real-product M5.2 gate.
-  - [ ] M5.2: complete the model-selected implementation -> review -> same-A
-    fix -> verify chain across persistent A/R/V sessions, including dependent
-    waiting-to-ready, irrelevant zero-turn-after-bootstrap, OS-kill recovery,
-    long-turn lease heartbeat, external verification, and exact cleanup checks.
+  - [ ] Real-chain checkpoint: retain one fresh Codex event-pump
+    A/R/same-A/V/dependent run with one kickoff, zero runner phase/business
+    prompts or direct activations, exact real session/turn/dispatch bindings,
+    dependent ordering, an irrelevant zero-turn control, and exact cleanup.
+    Simulated verifier and Git effects remain explicitly labeled.
+  - [ ] M5.2 closure: reuse the existing bounded Git and verifier foundations
+    in the same correlated run, add the manual baseline and minimum critical
+    negative/restart evidence, and keep raw product data out of public output.
   - [ ] M5.3: pass three fresh relevant runs plus the manual baseline,
     irrelevant, stale/unverified, restart, and cleanup matrix.
 - [ ] Repeat the loop across Codex and one ACP-compatible harness
@@ -220,3 +239,10 @@ prototype inference.
 - A general-purpose orchestrator, DAG engine, or agent-team framework.
 - New protocol intentions that are not required by the M5 closed loop.
 - Gemini live validation as a competing product mainline.
+- A global cross-dispatch chain, full OS-kill matrix, and long-turn heartbeat
+  until the real-chain checkpoint shows they block the user-visible behavior.
+- Kimi flagship-loop parity, new harnesses, external verifier service design,
+  and further Git-evidence generalization until the real Codex chain is
+  retained. Existing foundations remain available for reuse after that gate.
+- Inspector and README presentation polish that does not record new product
+  evidence.

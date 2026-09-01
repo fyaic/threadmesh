@@ -205,9 +205,10 @@ sandbox。不要用它处理任意恶意 peer 内容或充当生产安全边界�
 - 协议：可执行 `0.0-draft`，仍可能调整。
 - 包：`@fyaic/threadmesh@0.1.0-alpha.0`，可从 GitHub 安装；根 export 是精简 SDK，CLI 与显式 runtime subpath 会安装 Ajv 和原生 `better-sqlite3`。
 - 参考 runtime：authenticated JSON-RPC + SQLite coordinator，面向本地可信进程实验。
-- 验证：284 项 unit/subtest，加 schema、状态转换、文档与链接检查；已记录 Pi、Codex、Kimi 真实证据。
+- 验证：378 项测试，加 55 个 schema case、7 个状态转换 case、文档与链接检查；这些计数分别报告。
 - 默认策略：除非 maintainer 明确选择有边界实验 profile，否则主动协调保持关闭。
-- 下一主线：使用已完成的可信证据链原子解锁能力接入持久 Codex 角色，运行真实实现/评审/同会话修复/验证案例并与人工基线比较，再把其中一个角色迁移到 ACP。
+- 当前边界：确定性 event pump 已能在一次 kickoff 后驱动 A→R→同一个 A→V→dependent，但三次真实 Codex event-pump 尝试分别停在产品探测、时间证据和用户暂停于五个 session bootstrap，尚未形成真实主动链；第三次没有执行正常信号清理，随后通过一次性精确操作删除并确认了五个测试 session 与临时资源。
+- 下一主线：冻结非主线扩展，先在现有实现上完成并保留一次真实 Codex event-pump 主动链；只有真实运行暴露出的 blocker 可以插队。随后再恢复真实 Git/verifier 闭环、Kimi parity 与可靠性矩阵。
 
 [当前状态](docs/10-planning/project-status.md) · [路线图](ROADMAP.md) ·
 [协议草案](spec/README.md) · [验证记录](docs/09-reviews/README.md)

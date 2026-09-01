@@ -131,27 +131,37 @@ gate is one real Codex A -> R -> same-A -> V loop, with a waiting dependent and
 an authorized irrelevant control in the same correlated run. M5.2 remains
 open; a scripted fixture is never labeled as live initiative.
 
-The real product canary has now closed the isolated role/runtime portion: five
+The older real product canary closed the isolated role/runtime portion: five
 Codex roles completed four A -> R -> same-A -> V turns, selected seven bounded
 tool calls, produced the exact two-commit chain, preserved same-A identity, kept
 both controls at zero post-bootstrap turns, and passed five-of-five cleanup.
 It remains `blocked`, with `liveProductEvidence=false`, because the runner
 submitted all four phase prompts and ThreadMesh performed no lifecycle handoff.
 
-The remaining integrated blockers must close in order:
+The event-pump surface subsequently gained protected multi-tool turns, strict
+public evidence, an operator-run live entry point, observed Codex probe support,
+and timestamp normalization. Three live attempts still did not complete the
+proactive chain: product-probe rejection, timestamp-evidence rejection, and an
+operator pause after five-session bootstrap. The paused attempt recorded zero
+coordinator tasks, turn intents, and pump dispatches, then deleted and
+absence-confirmed all five sessions and removed exact temporary resources.
 
-1. observe the complete persisted Codex turn set and reconcile unknown starts
-   fail-closed;
-2. classify a turn by exact client identity; a missing client id is ambiguous
-   in the current slice. Unique-delta classification under a durable
-   exclusive-writer proof remains a future option;
-3. connect the proven real persistent roles and bounded callbacks to
-   coordinator attention, receiver-owned decision, admission, and lifecycle
-   transitions instead of runner phase sequencing;
-4. survive killed-runner boundaries without blind retry, replacement turns, or
-   duplicate effects;
-5. correlate native turns, admissions, lifecycle events, signed evidence,
-   dependent unlock, irrelevant zero-wake behavior, restart, and exact cleanup.
+The project has enough deterministic substrate to test the user-facing
+behavior. The next evidence must be real session initiative, not another
+substrate milestone. Execute in this order:
+
+1. close the observed bounded SIGINT/SIGTERM cleanup gap, then run one fresh
+   event-pump chain on the `c17c837` surface with no other new prerequisite
+   unless a live run exposes it;
+2. retain one kickoff, zero runner phase/business prompts and direct
+   activations, exact native turns and durable dispatches, same-A reuse,
+   dependent ordering, irrelevant zero turns, and exact cleanup;
+3. publish the honest bounded result—even a completed chain remains `blocked`
+   and `liveProductEvidence=false` while verifier and Git effects are simulated;
+4. only then reuse the existing bounded Git and verifier foundations in the
+   same correlated run and add the manual baseline plus minimum critical
+   negative/restart evidence;
+5. after #91 closes, resume repetition and Kimi parity.
 
 The acceptance run requires A to publish an implementation, R to discover and
 publish a reproducible finding, the original A session/worktree to fix it, and
@@ -160,9 +170,11 @@ finalization and `ready` afterward. The irrelevant task receives no claim,
 admission, native turn, publication, or dependency effect after its
 precreation/bootstrap baseline.
 
-Only a correlated real-product record may advance to Kimi parity and
-cross-harness repetition. Kimi remains post-gate and does not block the Codex
-critical path.
+OS-kill and heartbeat matrices, a global cross-dispatch chain, Kimi parity, new
+harnesses, external verifier service design, Git-evidence generalization, and
+presentation-only polish are paused unless the real chain proves one directly
+blocks it. Small PRs remain acceptable; every change must serve the live chain
+or an observed blocker.
 
 ## Roadmap: Now / Next / Later
 
@@ -184,11 +196,10 @@ under 15 minutes.
    events into eligible next-session attention. It must never convert receipt
    alone into a dependency unlock
    ([#90](https://github.com/fyaic/threadmesh/issues/90)).
-4. Promote the completed real Codex model/tool canary into the first integrated
-   coordinator-driven implementation/review/same-session-fix/verification
-   loop, including dependent and irrelevant controls. Only after that
-   correlated live-product pass, repeat it across Codex and one ACP harness
-   using the existing adapters
+4. Retain the first real event-pump-driven Codex initiative chain, then reuse
+   the existing Git and verifier foundations to close the correlated
+   implementation/review/same-session-fix/verification loop. Only afterward
+   repeat it across Codex and one ACP harness using the existing adapters
    ([#91](https://github.com/fyaic/threadmesh/issues/91),
    [#93](https://github.com/fyaic/threadmesh/issues/93)).
 5. Add a minimal inspector view for session status, dependency edges, recent
