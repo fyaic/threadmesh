@@ -102,22 +102,21 @@ publication recovery are durable per dispatch, with leased and fenced
 publication. There is still no global cross-dispatch selection chain:
 `selectionChainValid=null`.
 
-Three real Codex event-pump attempts have not yet produced a completed chain.
-The first stopped at product-probe validation; the second stopped at timestamp
-evidence validation; the third was operator-paused after five role sessions
-bootstrapped, while coordinator task, turn-intent, and pump-dispatch counts all
-remained zero. The five owned sessions were then deleted and absence-confirmed,
-and their exact temporary resources were removed through a one-off operator
-cleanup because the signal path did not run normal cleanup. This is preflight,
-adapter-boundary, and cleanup evidence—not real session initiative.
+The sixth real Codex event-pump attempt completed that same autonomous chain.
+After one kickoff, nine real bound native turns carried the work through R,
+the original A session, V, and the dependent. The runner supplied zero later
+phase prompts or direct activations; the irrelevant session ran zero turns;
+five of five temporary sessions and all coordinator artifacts were removed.
 
-The project now freezes non-mainline expansion. The next checkpoint is one
-fresh real Codex event-pump chain on the existing implementation. OS-kill and
-heartbeat matrices, a global chain, external verifier and real Git closure,
-Kimi parity, and further product polish follow only after that behavioral
-checkpoint, unless the live run proves one of them is the direct blocker.
+The completed result is deliberately classified `state=blocked` and
+`liveProductEvidence=false`: verifier custody and Git effects are still
+fixture-owned or simulated. This proves bounded real session initiative, not
+M5.2 or production closure. The next checkpoint reuses the existing Git and
+verifier foundations in this correlated path, then measures against a manual
+relay/polling baseline. Non-mainline expansion remains frozen.
 
 [Read the exact fixture evidence](docs/09-reviews/2026-09-01-m5-2-autonomous-fixture.md) ·
+[Read the real Codex behavior](docs/09-reviews/2026-09-01-m5-2-real-codex-event-pump-behavior.md) ·
 [Read the M5.2 scenario guide](docs/06-guides/m5-2-live-agent-scenario.md)
 
 ## Quickstart
@@ -304,14 +303,14 @@ peer content or as a production security boundary.
   install Ajv and native `better-sqlite3`.
 - **Reference runtime:** authenticated JSON-RPC + SQLite coordinator for local,
   trusted-process experiments.
-- **Validation:** 378 tests, plus 55 schema cases and 7 transition cases;
+- **Validation:** 379 tests, plus 55 schema cases and 7 transition cases;
   documentation lint passes. These are separate counts, not one combined total.
 - **Default:** proactive coordination remains off unless a maintainer explicitly
   opts into the bounded experimental profile.
-- **Next mainline:** complete and retain one fresh real Codex event-pump chain
-  with one kickoff, zero runner phase prompts or direct activations, an
-  irrelevant zero-turn control, and exact cleanup. Only then resume the
-  remaining M5.2 closure and Kimi parity gates.
+- **Next mainline:** reuse the existing bounded Git-worktree and verifier
+  foundations inside the now-proven real Codex event-pump chain; add a manual
+  relay/polling baseline and minimum critical negative/restart evidence. Kimi
+  parity and broader hardening follow after M5.2 closure.
 
 [Current status](docs/10-planning/project-status.md) ·
 [roadmap](ROADMAP.md) ·

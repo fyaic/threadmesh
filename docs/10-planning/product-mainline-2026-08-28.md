@@ -140,28 +140,25 @@ submitted all four phase prompts and ThreadMesh performed no lifecycle handoff.
 
 The event-pump surface subsequently gained protected multi-tool turns, strict
 public evidence, an operator-run live entry point, observed Codex probe support,
-and timestamp normalization. Three live attempts still did not complete the
-proactive chain: product-probe rejection, timestamp-evidence rejection, and an
-operator pause after five-session bootstrap. The paused attempt recorded zero
-coordinator tasks, turn intents, and pump dispatches, then deleted and
-absence-confirmed all five sessions and removed exact temporary resources.
+timestamp normalization, cooperative signal cleanup, exact phase-tool
+contracts, and a bounded admitted-turn window. Five attempts failed closed at
+successively narrower boundaries. A sixth completed the full real proactive
+chain with one kickoff, nine bound native turns, zero later runner prompts or
+direct activations, an irrelevant zero-turn control, and exact cleanup.
 
-The project has enough deterministic substrate to test the user-facing
-behavior. The next evidence must be real session initiative, not another
-substrate milestone. Execute in this order:
+Real session initiative is now retained. The next evidence must close the
+original workflow effect without replacing the proven path. Execute in this
+order:
 
-1. close the observed bounded SIGINT/SIGTERM cleanup gap, then run one fresh
-   event-pump chain on the `c17c837` surface with no other new prerequisite
-   unless a live run exposes it;
-2. retain one kickoff, zero runner phase/business prompts and direct
-   activations, exact native turns and durable dispatches, same-A reuse,
-   dependent ordering, irrelevant zero turns, and exact cleanup;
-3. publish the honest bounded result—even a completed chain remains `blocked`
-   and `liveProductEvidence=false` while verifier and Git effects are simulated;
-4. only then reuse the existing bounded Git and verifier foundations in the
-   same correlated run and add the manual baseline plus minimum critical
-   negative/restart evidence;
-5. after #91 closes, resume repetition and Kimi parity.
+1. preserve the sixth run as the behavioral baseline; do not repeat it for
+   presentation polish;
+2. reuse the existing bounded Git-worktree foundation so A's implementation and
+   same-A fix are observable commits in the same correlated run;
+3. reuse the child-verifier boundary so independently held signing custody binds
+   finalization to those commits, the finding, and the test result;
+4. add the manual baseline plus minimum critical negative/restart evidence and
+   close #91 only when its original product outcome passes;
+5. then resume repetition and Kimi parity.
 
 The acceptance run requires A to publish an implementation, R to discover and
 publish a reproducible finding, the original A session/worktree to fix it, and
@@ -171,10 +168,9 @@ admission, native turn, publication, or dependency effect after its
 precreation/bootstrap baseline.
 
 OS-kill and heartbeat matrices, a global cross-dispatch chain, Kimi parity, new
-harnesses, external verifier service design, Git-evidence generalization, and
-presentation-only polish are paused unless the real chain proves one directly
-blocks it. Small PRs remain acceptable; every change must serve the live chain
-or an observed blocker.
+harnesses, verifier/Git generalization, and presentation-only polish remain
+paused. Small PRs remain acceptable; every change must serve the integrated
+Git/verifier closure or an observed blocker.
 
 ## Roadmap: Now / Next / Later
 

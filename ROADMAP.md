@@ -140,26 +140,23 @@ The retained foundation includes:
   [#125](https://github.com/fyaic/threadmesh/pull/125)–
   [#127](https://github.com/fyaic/threadmesh/pull/127).
 
-The completed chain remains fixture evidence: `liveProductEvidence=false`,
+The deterministic chain remains fixture evidence: `liveProductEvidence=false`,
 `deterministicPolicyOracle=true`, `externalIndependentVerifier=false`, the
 signer is a fixture-owned ephemeral key, and there is no global cross-dispatch
-selection chain. Three real Codex event-pump attempts then stopped at product
-probe validation, timestamp evidence validation, and an operator pause after
-five-session bootstrap respectively. The paused attempt recorded zero
-coordinator tasks, turn intents, and pump dispatches before all five owned
-sessions and exact temporary resources were cleaned. No attempt completed the
-real proactive chain.
+selection chain. Five real Codex event-pump attempts then failed closed at
+successively narrower product boundaries. A sixth attempt completed the full
+real proactive `A -> R -> same-A -> V -> dependent` chain with one kickoff,
+nine bound native turns, zero later runner prompts or direct activations, an
+irrelevant zero-turn control, and exact cleanup.
 
 This exposed an execution-order imbalance rather than a change in product
-direction. The immediate checkpoint is now one fresh real Codex event-pump
-chain on the existing surface. New substrate, generalized recovery, verifier,
-Git, cross-harness, or presentation work is frozen unless that live run proves
-it is the direct blocker. A completed run remains `blocked` and
-`liveProductEvidence=false` while verifier custody and Git effects are
-simulated; it demonstrates behavior, not M5.2 closure.
-
-The paused attempt also exposed one bounded SIGINT/SIGTERM cleanup gap. Closing
-that exact gap before the rerun is in scope; general process supervision is not.
+direction. The behavioral checkpoint is now passed. The immediate checkpoint
+is to reuse the existing bounded Git-worktree and verifier foundations inside
+that correlated live path, then add the manual baseline and minimum critical
+negative/restart evidence. New substrate, generalized recovery, cross-harness,
+or presentation work remains frozen. The completed run correctly remains
+`blocked` and `liveProductEvidence=false` while verifier custody and Git effects
+are simulated; it demonstrates behavior, not M5.2 closure.
 
 - [x] Ship a one-command local demo with generated identities, grants, example
   sessions, and an inspector
@@ -179,7 +176,7 @@ that exact gap before the rerun is in scope; general process supervision is not.
     chain with trusted pre-turn finalization, zero irrelevant turns, and exact
     cleanup; persist each dispatch through selection, turn settlement, and
     publication recovery. This does not satisfy the real-product M5.2 gate.
-  - [ ] Real-chain checkpoint: retain one fresh Codex event-pump
+  - [x] Real-chain checkpoint: retain one fresh Codex event-pump
     A/R/same-A/V/dependent run with one kickoff, zero runner phase/business
     prompts or direct activations, exact real session/turn/dispatch bindings,
     dependent ordering, an irrelevant zero-turn control, and exact cleanup.
