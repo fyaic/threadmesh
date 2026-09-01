@@ -337,7 +337,7 @@ test("failure cleanup projection is bounded and omits raw role and path data", (
     rawError: "secret error text",
   });
   assert.deepEqual(projected, {
-    complete: true,
+    complete: false,
     rolesDeleted: 1,
     roleAbsenceChecks: 1,
     coordinatorRemoved: true,
@@ -347,4 +347,49 @@ test("failure cleanup projection is bounded and omits raw role and path data", (
   assert.equal(encoded.includes("raw-thread-id"), false);
   assert.equal(encoded.includes("/private/raw/path"), false);
   assert.equal(encoded.includes("secret error text"), false);
+
+  const fullCleanup = {
+    complete: false,
+    roles: ["a", "r", "v", "dependent", "irrelevant"].map((role) => ({
+      role, deleted: true, absenceVerified: true,
+    })),
+    ownedJournalRemovedCount: 0,
+    remainingJournalCount: 0,
+    unknownJournalCount: 0,
+    unknownJournalPathDigests: [],
+    journalRemovalFailures: [],
+    databaseRemovalFailures: [],
+    journalDirectoryRemoved: true,
+    runRootRemoved: true,
+    coordinatorRemoved: true,
+  };
+  assert.equal(projectM52EventPumpFailureCleanup(fullCleanup).complete, true);
+  assert.equal(projectM52EventPumpFailureCleanup({ complete: true }).complete, false);
+
+  const duplicates = structuredClone(fullCleanup);
+  duplicates.complete = true;
+  duplicates.roles[4].role = "a";
+  assert.deepEqual(projectM52EventPumpFailureCleanup(duplicates), {
+    complete: false,
+    rolesDeleted: 5,
+    roleAbsenceChecks: 5,
+    coordinatorRemoved: true,
+    remainingJournalCount: 0,
+  });
+
+  for (const mutate of [
+    (value) => { value.unknownJournalCount = 1; },
+    (value) => { value.unknownJournalPathDigests = [`sha256:${"7".repeat(64)}`]; },
+    (value) => { value.journalRemovalFailures = [{ errorCode: "synthetic" }]; },
+    (value) => { value.databaseRemovalFailures = [{ errorCode: "synthetic" }]; },
+    (value) => { value.runRootRemoved = false; },
+  ]) {
+    const contradictory = structuredClone(fullCleanup);
+    contradictory.complete = true;
+    mutate(contradictory);
+    assert.equal(projectM52EventPumpFailureCleanup(contradictory).complete, false);
+    assert.equal(JSON.stringify(
+      projectM52EventPumpFailureCleanup(contradictory),
+    ).includes("synthetic"), false);
+  }
 });

@@ -96,13 +96,38 @@ function gateError(code, detail = "") {
 
 export function projectM52EventPumpFailureCleanup(value) {
   const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
-  const roles = Array.isArray(source.roles) && source.roles.length <= 32
-    ? source.roles : [];
+  const roles = Array.isArray(source.roles) ? source.roles.slice(0, 5) : [];
   const remainingJournalCount = Number.isSafeInteger(source.remainingJournalCount) &&
       source.remainingJournalCount >= 0 && source.remainingJournalCount <= 10_000
     ? source.remainingJournalCount : null;
+  const expectedKeys = [
+    "complete", "roles", "ownedJournalRemovedCount", "remainingJournalCount",
+    "unknownJournalCount", "unknownJournalPathDigests", "journalRemovalFailures",
+    "databaseRemovalFailures", "journalDirectoryRemoved", "runRootRemoved",
+    "coordinatorRemoved",
+  ];
+  const exactSchema = canonicalJson(Object.keys(source).sort()) ===
+    canonicalJson(expectedKeys.sort());
+  const roleNames = roles.map((role) => role?.role).sort();
+  const rolesClosed = Array.isArray(source.roles) && source.roles.length === 5 &&
+    canonicalJson(roleNames) ===
+      canonicalJson(["a", "dependent", "irrelevant", "r", "v"]) &&
+    roles.every((role) => role?.deleted === true && role?.absenceVerified === true);
+  const ownedJournalRemovedCountValid =
+    Number.isSafeInteger(source.ownedJournalRemovedCount) &&
+    source.ownedJournalRemovedCount >= 0 && source.ownedJournalRemovedCount <= 10_000;
+  const closureComplete = exactSchema && rolesClosed && ownedJournalRemovedCountValid &&
+    remainingJournalCount === 0 && source.unknownJournalCount === 0 &&
+    Array.isArray(source.unknownJournalPathDigests) &&
+    source.unknownJournalPathDigests.length === 0 &&
+    Array.isArray(source.journalRemovalFailures) &&
+    source.journalRemovalFailures.length === 0 &&
+    Array.isArray(source.databaseRemovalFailures) &&
+    source.databaseRemovalFailures.length === 0 &&
+    source.journalDirectoryRemoved === true && source.runRootRemoved === true &&
+    source.coordinatorRemoved === true;
   return Object.freeze({
-    complete: source.complete === true,
+    complete: closureComplete,
     rolesDeleted: roles.filter((role) => role?.deleted === true).length,
     roleAbsenceChecks: roles.filter((role) => role?.absenceVerified === true).length,
     coordinatorRemoved: source.coordinatorRemoved === true,
