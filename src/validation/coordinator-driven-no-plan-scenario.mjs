@@ -18,9 +18,12 @@ import {
 } from "./live-agent-scenario.mjs";
 import { DeterministicNoPlanCodexAdapter } from
   "./deterministic-no-plan-codex-adapter.mjs";
+import { createBoundedGitLoopFixture } from "./bounded-git-loop-fixture.mjs";
 import {
+  INDEPENDENT_GIT_VERIFIER_TEST,
   independentGitClaimDigest,
   independentGitFindingDigest,
+  startIndependentGitVerifierService,
   verifyIndependentGitVerification,
 } from "./independent-git-verifier.mjs";
 
@@ -35,6 +38,10 @@ const DEPENDENT_ADAPTER_RECEIPT = Object.freeze({
 const owner = Object.freeze({ kind: "user", principalId: "owner_no_plan_scenario" });
 const sha = (character) => character.repeat(40);
 const digest = (value) => sha256Digest({ value });
+const REAL_EFFECT_RESOURCE = "artifact.txt";
+const REAL_EFFECT_SEED = "SEED\n";
+const REAL_EFFECT_IMPLEMENTATION = "BAD_COUNTEREXAMPLE\n";
+const REAL_EFFECT_FIX = "FIXED\n";
 
 function scenarioError(code) {
   const error = new Error(code);
@@ -99,10 +106,18 @@ function exactDecisionTool(messageId) {
 }
 
 const TOOLS = Object.freeze({
+  implementationCommit: tool(
+    "threadmesh_commit_candidate",
+    "Write and commit the exact bounded implementation or fix candidate, then return Git evidence.",
+  ),
   implementation: tool("threadmesh_publish_artifact", "Publish the bounded implementation."),
   reviewRead: tool(
     "threadmesh_review_read_artifact",
     "Inspect the exact admitted artifact before reporting a finding.",
+  ),
+  reviewReproduce: tool(
+    "threadmesh_reproduce_review_finding",
+    "Report a finding discovered from the detached reviewer checkout.",
   ),
   review: tool("threadmesh_report_review_finding", "Publish the exact review finding."),
   fixApply: tool(
@@ -398,7 +413,8 @@ function recordDependentAdapterReceipt(
 
 async function runKickoff({
   coordinator, runtime, actor, ref, event, args, cwd, recoveryDirectory,
-  ownedJournalPaths,
+  ownedJournalPaths, businessTools = [TOOLS.implementation],
+  publicationOrdinal = 0, onBusinessToolCall = null, prompt = null,
 }) {
   const actorPrincipal = principal(actor);
   const executionId = "intent_no_plan_user_kickoff";
@@ -411,8 +427,8 @@ async function runKickoff({
     eventId: "event_authenticated_user_kickoff",
     actor,
     adapterIdempotencyKey,
-    promptDigest: sha256Digest(`Implement and publish source ${event.messageId}.`),
-    allowedTools: [TOOLS.implementation.name],
+    promptDigest: sha256Digest(prompt ?? `Implement and publish source ${event.messageId}.`),
+    allowedTools: businessTools.map(({ name }) => name),
   }, 0, actorPrincipal);
   const filename = path.join(recoveryDirectory, `${executionId}.json`);
   ownedJournalPaths.add(filename);
@@ -421,9 +437,9 @@ async function runKickoff({
     phase: "user-kickoff",
     cwd,
     ref,
-    prompt: `Implement and publish source ${event.messageId}.`,
+    prompt: prompt ?? `Implement and publish source ${event.messageId}.`,
     scenarioId: "coordinator_driven_no_plan",
-    allowedToolNames: [TOOLS.implementation.name],
+    allowedToolNames: businessTools.map(({ name }) => name),
     turnRecovery: {
       filename, executionId,
       async onOutcomeUnknown() {}, async onTerminalReconciliation() {},
@@ -440,6 +456,9 @@ async function runKickoff({
       );
     },
     beforeToolCall: async (selected) => {
+      if (selected?.tool !== businessTools[selected?.ordinal]?.name) {
+        throw scenarioError("threadmesh_user_kickoff_tool_sequence_mismatch");
+      }
       execution = coordinator.recordModelSelectedTurnToolAction(executionId, {
         turnId: selected.turnId, callId: selected.callId, ordinal: selected.ordinal,
         name: selected.tool, arguments: selected.arguments,
@@ -447,7 +466,11 @@ async function runKickoff({
         expectedActionHeadDigest: execution.actionHeadDigest,
       }, actorPrincipal);
     },
-    async onToolCall() { return { commitSha: args.commitSha, published: true }; },
+    async onToolCall(selected) {
+      return onBusinessToolCall
+        ? onBusinessToolCall(selected)
+        : { commitSha: args.commitSha, published: true };
+    },
     afterToolCall: async (completed) => {
       execution = coordinator.completeModelSelectedTurnToolAction(executionId, {
         turnId: completed.turnId, callId: completed.callId, ordinal: completed.ordinal,
@@ -467,9 +490,14 @@ async function runKickoff({
     expectedRecordDigest: turn.recoveryJournal.recordDigest,
   });
   coordinator.publishLifecycleFromCompletedAction(executionId, {
+    actionOrdinal: publicationOrdinal,
     expectedTool: TOOLS.implementation.name,
     event,
-    expectedMaterial: { commitSha: args.commitSha },
+    expectedMaterial: {
+      commitSha: execution.actions[publicationOrdinal] === undefined
+        ? args.commitSha
+        : JSON.parse(execution.actions[publicationOrdinal].argsJson).commitSha,
+    },
   }, actorPrincipal);
   return { execution, turn };
 }
@@ -501,6 +529,10 @@ export async function runCoordinatorDrivenNoPlanScenario({
   artifactsDirectory,
   runtime: providedRuntime = null,
   signal = null,
+  realEffects = false,
+  sourceRoot = null,
+  validatedBaseSha = null,
+  temporaryParent = null,
   injectPriorRelevant = false,
   injectFinalizationFailure = false,
   injectPreverifiedTamper = null,
@@ -517,6 +549,12 @@ export async function runCoordinatorDrivenNoPlanScenario({
         typeof providedRuntime?.runReceiverDecisionTurn !== "function" ||
         typeof providedRuntime?.runAdmittedToolTurn !== "function" ||
         typeof providedRuntime?.deleteRole !== "function"
+      )) ||
+      typeof realEffects !== "boolean" ||
+      (realEffects && (
+        !path.isAbsolute(sourceRoot ?? "") ||
+        !/^[a-f0-9]{40}$/u.test(validatedBaseSha ?? "") ||
+        !path.isAbsolute(temporaryParent ?? "")
       )) ||
       (signal !== null && (
         typeof signal !== "object" || typeof signal.aborted !== "boolean"
@@ -539,15 +577,55 @@ export async function runCoordinatorDrivenNoPlanScenario({
   fs.mkdirSync(journalDirectory, { recursive: false, mode: 0o700 });
   const ownedJournalPaths = new Set();
   const databasePath = path.join(scenarioRunRoot, "coordinator-driven.sqlite");
-  const { publicKey, privateKey } = generateKeyPairSync("ed25519");
-  const trustAnchor = {
-    keyId: "threadmesh://independent-git-verifier/key/ephemeral",
-    algorithm: "ed25519",
-    actorId: "threadmesh-independent-git-verifier",
-    trustDomain: "threadmesh://independent-git-verifier",
-    policyId: "threadmesh://independent-git-verifier/policy/1",
-    publicKeyPem: publicKey.export({ type: "spki", format: "pem" }),
-  };
+  let gitFixture = null;
+  let verifierService = null;
+  let verifierServiceClosed = !realEffects;
+  let gitFixtureCleanup = Object.freeze({ complete: !realEffects });
+  let privateKey = null;
+  let trustAnchor;
+  try {
+    if (realEffects) {
+      gitFixture = createBoundedGitLoopFixture({
+        sourceRoot,
+        validatedBaseSha,
+        temporaryParent,
+        seedFiles: { [REAL_EFFECT_RESOURCE]: REAL_EFFECT_SEED },
+      });
+      verifierService = await startIndependentGitVerifierService();
+      trustAnchor = verifierService.trustAnchor;
+    } else {
+      const signing = generateKeyPairSync("ed25519");
+      privateKey = signing.privateKey;
+      trustAnchor = {
+        keyId: "threadmesh://independent-git-verifier/key/ephemeral",
+        algorithm: "ed25519",
+        actorId: "threadmesh-independent-git-verifier",
+        trustDomain: "threadmesh://independent-git-verifier",
+        policyId: "threadmesh://independent-git-verifier/policy/1",
+        publicKeyPem: signing.publicKey.export({ type: "spki", format: "pem" }),
+      };
+    }
+  } catch (error) {
+    try {
+      if (verifierService) {
+        await verifierService.close();
+        verifierServiceClosed = true;
+      }
+    } catch {}
+    gitFixtureCleanup = gitFixture?.cleanup() ?? gitFixtureCleanup;
+    try { fs.rmSync(scenarioRunRoot, { recursive: true }); } catch {}
+    error.cleanup = {
+      complete: verifierServiceClosed && gitFixtureCleanup.complete === true &&
+        !fs.existsSync(scenarioRunRoot),
+      roles: [],
+      verifierServiceClosed,
+      gitFixture: gitFixtureCleanup,
+      runRootRemoved: !fs.existsSync(scenarioRunRoot),
+      coordinatorRemoved: !fs.existsSync(databasePath),
+      remainingJournalCount: 0,
+    };
+    throw error;
+  }
   let coordinatorClockSequence = 0;
   const coordinator = new SqliteCoordinator({
     filename: databasePath,
@@ -572,19 +650,26 @@ export async function runCoordinatorDrivenNoPlanScenario({
     vd: grant("no_plan_v_dependent", actors.v, actors.dependent),
     ai: grant("no_plan_a_irrelevant", actors.a, actors.irrelevant),
   };
-  const implementationSha = sha("3");
-  const fixSha = sha("5");
-  const findingDigest = independentGitFindingDigest({
+  let implementationSha = realEffects ? null : sha("3");
+  let fixSha = realEffects ? null : sha("5");
+  let finding = realEffects ? null : Object.freeze({
     resourcePath: "artifact.txt",
     counterexample: "BAD_COUNTEREXAMPLE",
   });
+  let findingDigest = finding === null ? null : independentGitFindingDigest(finding);
+  let implementationEvidence = null;
+  let fixEvidence = null;
+  let reviewerCheckout = null;
+  let verifierCheckout = null;
   const artifactEvent = lifecycleEvent({
     eventType: "artifact-ready",
     messageId: "msg_no_plan_artifact_0001",
     sender: actors.a,
     target: actors.r,
     relationshipId: grants.ar.relationshipId,
-    content: `Candidate ${implementationSha} is ready for exact review.`,
+    content: realEffects
+      ? "A bounded Git candidate is ready for detached review."
+      : `Candidate ${implementationSha} is ready for exact review.`,
   });
   const reviewEvent = lifecycleEvent({
     eventType: "review-failed",
@@ -600,7 +685,9 @@ export async function runCoordinatorDrivenNoPlanScenario({
     sender: actors.a,
     target: actors.v,
     relationshipId: grants.av.relationshipId,
-    content: `Review fix ${fixSha} is ready for independent verification.`,
+    content: realEffects
+      ? "A direct-descendant Git fix is ready for independent verification."
+      : `Review fix ${fixSha} is ready for independent verification.`,
   });
   const verifiedEvent = {
     ...lifecycleEvent({
@@ -609,7 +696,9 @@ export async function runCoordinatorDrivenNoPlanScenario({
       sender: actors.v,
       target: actors.dependent,
       relationshipId: grants.vd.relationshipId,
-      content: "The exact signed evidence chain passed trusted fixture verification.",
+      content: realEffects
+        ? "The exact Git chain passed the preconfigured process-isolated verifier."
+        : "The exact signed evidence chain passed trusted fixture verification.",
     }),
     freshness: {
       expectedRunId: "run-no-plan-dependent",
@@ -638,26 +727,92 @@ export async function runCoordinatorDrivenNoPlanScenario({
     event: actionEventBody(artifactEvent),
     commitSha: implementationSha,
   };
+  const copyShaTool = (base, staticArguments) => Object.freeze({
+    ...base,
+    description: `${base.description} Copy the exact commitSha returned by the preceding commit tool.`,
+    inputSchema: Object.freeze({
+      type: "object",
+      additionalProperties: false,
+      properties: Object.freeze({
+        ...Object.fromEntries(Object.entries(staticArguments).map(
+          ([key, value]) => [key, Object.freeze({ const: value })],
+        )),
+        commitSha: Object.freeze({ type: "string", pattern: "^[a-f0-9]{40}$" }),
+      }),
+      required: Object.freeze([...Object.keys(staticArguments), "commitSha"]),
+    }),
+  });
+  const realReviewReproduce = Object.freeze({
+    ...TOOLS.reviewReproduce,
+    description: `${TOOLS.reviewReproduce.description} Use only the content returned by the preceding read tool; do not infer a finding from this schema.`,
+    inputSchema: Object.freeze({
+      type: "object", additionalProperties: false,
+      properties: Object.freeze({
+        sourceEventId: Object.freeze({ const: artifactEvent.messageId }),
+        resourcePath: Object.freeze({ type: "string", minLength: 1, maxLength: 200 }),
+        counterexample: Object.freeze({ type: "string", minLength: 1, maxLength: 256 }),
+        reason: Object.freeze({ type: "string", minLength: 1, maxLength: 1000 }),
+      }),
+      required: Object.freeze([
+        "sourceEventId", "resourcePath", "counterexample", "reason",
+      ]),
+    }),
+  });
+  const realReviewPublish = Object.freeze({
+    ...TOOLS.review,
+    description: `${TOOLS.review.description} Copy the exact findingDigest returned by the preceding reproduction tool.`,
+    inputSchema: Object.freeze({
+      type: "object", additionalProperties: false,
+      properties: Object.freeze({
+        sourceEventId: Object.freeze({ const: artifactEvent.messageId }),
+        event: Object.freeze({ const: actionEventBody(reviewEvent) }),
+        findingDigest: Object.freeze({ type: "string", pattern: "^sha256:[a-f0-9]{64}$" }),
+      }),
+      required: Object.freeze(["sourceEventId", "event", "findingDigest"]),
+    }),
+  });
+  const realCommitCandidate = Object.freeze({
+    ...TOOLS.implementationCommit,
+    inputSchema: Object.freeze({
+      type: "object", additionalProperties: false,
+      properties: Object.freeze({
+        phase: Object.freeze({ enum: Object.freeze(["implementation", "fix"]) }),
+        content: Object.freeze({
+          enum: Object.freeze([REAL_EFFECT_IMPLEMENTATION, REAL_EFFECT_FIX]),
+        }),
+        sourceEventId: Object.freeze({ type: "string", minLength: 1, maxLength: 512 }),
+      }),
+      required: Object.freeze(["phase", "content", "sourceEventId"]),
+    }),
+  });
   const scenarioTools = Object.freeze({
-    implementation: exactArgumentsTool(TOOLS.implementation, kickoffArgs),
+    implementationCommit: realEffects ? realCommitCandidate : null,
+    implementation: realEffects
+      ? copyShaTool(TOOLS.implementation, {
+        sourceEventId: artifactEvent.messageId,
+        event: actionEventBody(artifactEvent),
+      })
+      : exactArgumentsTool(TOOLS.implementation, kickoffArgs),
     rDecision: exactDecisionTool(artifactEvent.messageId),
     reviewRead: exactArgumentsTool(TOOLS.reviewRead, {
       sourceEventId: artifactEvent.messageId,
     }),
-    review: exactArgumentsTool(TOOLS.review, {
-      sourceEventId: artifactEvent.messageId,
-      event: actionEventBody(reviewEvent),
-      findingDigest,
+    reviewReproduce: realEffects ? realReviewReproduce : null,
+    review: realEffects ? realReviewPublish : exactArgumentsTool(TOOLS.review, {
+      sourceEventId: artifactEvent.messageId, event: actionEventBody(reviewEvent), findingDigest,
     }),
     aDecision: exactDecisionTool(reviewEvent.messageId),
-    fixApply: exactArgumentsTool(TOOLS.fixApply, {
-      sourceEventId: reviewEvent.messageId,
-    }),
-    fix: exactArgumentsTool(TOOLS.fix, {
-      sourceEventId: reviewEvent.messageId,
-      event: actionEventBody(fixEvent),
-      commitSha: fixSha,
-    }),
+    fixApply: realEffects
+      ? realCommitCandidate
+      : exactArgumentsTool(TOOLS.fixApply, { sourceEventId: reviewEvent.messageId }),
+    fix: realEffects
+      ? copyShaTool(TOOLS.fix, {
+        sourceEventId: reviewEvent.messageId,
+        event: actionEventBody(fixEvent),
+      })
+      : exactArgumentsTool(TOOLS.fix, {
+        sourceEventId: reviewEvent.messageId, event: actionEventBody(fixEvent), commitSha: fixSha,
+      }),
     vDecision: exactDecisionTool(fixEvent.messageId),
     verifyRead: exactArgumentsTool(TOOLS.verifyRead, {
       sourceEventId: fixEvent.messageId,
@@ -689,7 +844,9 @@ export async function runCoordinatorDrivenNoPlanScenario({
   });
   const routeHandlerConfigs = Object.freeze([
     Object.freeze({ ...ROUTE_HANDLER_CONFIGS[0], businessTools: Object.freeze([
-      scenarioTools.reviewRead, scenarioTools.review,
+      scenarioTools.reviewRead,
+      ...(realEffects ? [scenarioTools.reviewReproduce] : []),
+      scenarioTools.review,
     ]) }),
     Object.freeze({ ...ROUTE_HANDLER_CONFIGS[1], businessTools: Object.freeze([
       scenarioTools.fixApply, scenarioTools.fix,
@@ -716,6 +873,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
   let tamperedReopenRejectionCode = null;
   const verifiedActivationOrder = [];
   const cleanupRoles = [];
+  const roleCwds = {};
   try {
     throwIfShutdownRequested(signal);
     adapter = providedRuntime?.adapter ?? new DeterministicNoPlanCodexAdapter({
@@ -797,14 +955,19 @@ export async function runCoordinatorDrivenNoPlanScenario({
       },
     });
     runtime = providedRuntime ?? new CodexLiveAgentRuntime({ command: "/fake/codex", adapter });
+    roleCwds.a = realEffects ? gitFixture.implementerWorktree : artifactsDirectory;
     refs.a = await runtime.createRole({
-      role: "a", cwd: artifactsDirectory,
+      role: "a", cwd: roleCwds.a,
       tools: [
+        ...(realEffects ? [scenarioTools.implementationCommit] : []),
         scenarioTools.implementation, scenarioTools.aDecision,
-        scenarioTools.fixApply, scenarioTools.fix,
+        ...(!realEffects ? [scenarioTools.fixApply] : []), scenarioTools.fix,
       ],
       phaseTools: {
-        "user-kickoff": [scenarioTools.implementation],
+        "user-kickoff": [
+          ...(realEffects ? [scenarioTools.implementationCommit] : []),
+          scenarioTools.implementation,
+        ],
         "receiver-decision": [scenarioTools.aDecision],
         "same-a-fix": [scenarioTools.fixApply, scenarioTools.fix],
       },
@@ -815,12 +978,19 @@ export async function runCoordinatorDrivenNoPlanScenario({
       scenarioId: "coordinator_driven_no_plan",
     });
     throwIfShutdownRequested(signal);
+    roleCwds.r = realEffects ? gitFixture.root : artifactsDirectory;
     refs.r = await runtime.createRole({
-      role: "r", cwd: artifactsDirectory,
-      tools: [scenarioTools.rDecision, scenarioTools.reviewRead, scenarioTools.review],
+      role: "r", cwd: roleCwds.r,
+      tools: [
+        scenarioTools.rDecision, scenarioTools.reviewRead,
+        ...(realEffects ? [scenarioTools.reviewReproduce] : []), scenarioTools.review,
+      ],
       phaseTools: {
         "receiver-decision": [scenarioTools.rDecision],
-        "r-review": [scenarioTools.reviewRead, scenarioTools.review],
+        "r-review": [
+          scenarioTools.reviewRead,
+          ...(realEffects ? [scenarioTools.reviewReproduce] : []), scenarioTools.review,
+        ],
       },
       protectedPhases: {
         "receiver-decision": "receiver-decision", "r-review": "admitted-tool",
@@ -829,8 +999,9 @@ export async function runCoordinatorDrivenNoPlanScenario({
       scenarioId: "coordinator_driven_no_plan",
     });
     throwIfShutdownRequested(signal);
+    roleCwds.v = realEffects ? gitFixture.root : artifactsDirectory;
     refs.v = await runtime.createRole({
-      role: "v", cwd: artifactsDirectory,
+      role: "v", cwd: roleCwds.v,
       tools: [scenarioTools.vDecision, scenarioTools.verifyRead, scenarioTools.verify],
       phaseTools: {
         "receiver-decision": [scenarioTools.vDecision],
@@ -843,8 +1014,9 @@ export async function runCoordinatorDrivenNoPlanScenario({
       scenarioId: "coordinator_driven_no_plan",
     });
     throwIfShutdownRequested(signal);
+    roleCwds.dependent = realEffects ? gitFixture.root : artifactsDirectory;
     refs.dependent = await runtime.createRole({
-      role: "dependent", cwd: artifactsDirectory,
+      role: "dependent", cwd: roleCwds.dependent,
       tools: [
         scenarioTools.dependentDecision, scenarioTools.dependentCheck, scenarioTools.dependent,
       ],
@@ -860,8 +1032,9 @@ export async function runCoordinatorDrivenNoPlanScenario({
       scenarioId: "coordinator_driven_no_plan",
     });
     throwIfShutdownRequested(signal);
+    roleCwds.irrelevant = realEffects ? gitFixture.root : artifactsDirectory;
     refs.irrelevant = await runtime.createRole({
-      role: "irrelevant", cwd: artifactsDirectory,
+      role: "irrelevant", cwd: roleCwds.irrelevant,
       tools: [scenarioTools.rDecision, scenarioTools.reviewRead, scenarioTools.review],
       instructions: "Remain idle unless coordinator attention is relevant.",
       scenarioId: "coordinator_driven_no_plan",
@@ -904,10 +1077,16 @@ export async function runCoordinatorDrivenNoPlanScenario({
     }, owner);
     const requirement = coordinator.createGitEvidenceRequirement({
       chainId: "chain_coordinator_driven_no_plan",
-      validatedBaseSha: sha("1"),
-      fixtureSeedSha: sha("2"),
-      fixtureDefinitionDigest: digest("fixture-definition"),
-      trustedTestBlobDigest: digest("trusted-test"),
+      validatedBaseSha: realEffects ? validatedBaseSha : sha("1"),
+      fixtureSeedSha: realEffects ? gitFixture.seedSha : sha("2"),
+      fixtureDefinitionDigest: realEffects
+        ? gitFixture.fixtureDefinitionDigest : digest("fixture-definition"),
+      trustedTestBlobDigest: realEffects
+        ? sha256Digest(fs.readFileSync(
+          path.join(sourceRoot, ...INDEPENDENT_GIT_VERIFIER_TEST.resourcePath.split("/")),
+          "utf8",
+        ))
+        : digest("trusted-test"),
       implementer: actors.a,
       reviewer: actors.r,
       verifier: actors.v,
@@ -919,20 +1098,24 @@ export async function runCoordinatorDrivenNoPlanScenario({
     const payloads = {
       implementation: {
         actor: actors.a, turnId: null, toolCallDigest: null,
-        commitSha: implementationSha, parentSha: sha("2"), treeSha: sha("4"),
-        diffDigest: digest("implementation-diff"),
-        testEvidenceDigest: digest("implementation-test"),
+        commitSha: implementationSha,
+        parentSha: realEffects ? null : sha("2"),
+        treeSha: realEffects ? null : sha("4"),
+        diffDigest: realEffects ? null : digest("implementation-diff"),
+        testEvidenceDigest: realEffects ? null : digest("implementation-test"),
       },
       "review-failed": {
         actor: actors.r, turnId: null, toolCallDigest: null,
         implementationSha, findingDigest,
-        reproductionEvidenceDigest: digest("reproduction"),
+        reproductionEvidenceDigest: realEffects ? null : digest("reproduction"),
       },
       fix: {
         actor: actors.a, turnId: null, toolCallDigest: null,
-        commitSha: fixSha, parentSha: implementationSha, treeSha: sha("6"),
-        diffDigest: digest("fix-diff"), resolvesFindingDigest: findingDigest,
-        testEvidenceDigest: digest("fix-test"),
+        commitSha: fixSha, parentSha: implementationSha,
+        treeSha: realEffects ? null : sha("6"),
+        diffDigest: realEffects ? null : digest("fix-diff"),
+        resolvesFindingDigest: findingDigest,
+        testEvidenceDigest: realEffects ? null : digest("fix-test"),
       },
     };
     if (injectPriorRelevant) {
@@ -978,7 +1161,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
       receiver: actors.r,
       principal: principal(actors.r),
       role: "r",
-      cwd: artifactsDirectory,
+      cwd: realEffects ? path.join(gitFixture.root, "reviewer") : artifactsDirectory,
       ref: refs.r,
       routes: [{
         handlerId: routeHandlerConfigs[0].handlerId,
@@ -990,9 +1173,45 @@ export async function runCoordinatorDrivenNoPlanScenario({
         now: NOW,
         businessPhase: "r-review",
         businessTools: routeHandlerConfigs[0].businessTools,
-        async onBusinessToolCall({ tool: selectedTool }) {
+        async onBusinessToolCall({ tool: selectedTool, arguments: value }) {
           if (selectedTool === TOOLS.reviewRead.name) {
-            return { artifactDigest: digest("admitted-review-artifact") };
+            if (!realEffects) return { artifactDigest: digest("admitted-review-artifact") };
+            const checkout = gitFixture.verifyReviewerCheckout({ implementationSha });
+            return {
+              resourcePath: REAL_EFFECT_RESOURCE,
+              content: fs.readFileSync(
+                path.join(reviewerCheckout.worktree, REAL_EFFECT_RESOURCE), "utf8",
+              ),
+              commitSha: checkout.subjectSha,
+            };
+          }
+          if (realEffects && selectedTool === TOOLS.reviewReproduce.name) {
+            const candidate = {
+              resourcePath: value?.resourcePath,
+              counterexample: value?.counterexample,
+            };
+            const content = fs.readFileSync(
+              path.join(reviewerCheckout.worktree, REAL_EFFECT_RESOURCE), "utf8",
+            );
+            if (
+              candidate.resourcePath !== REAL_EFFECT_RESOURCE ||
+              candidate.counterexample !== REAL_EFFECT_IMPLEMENTATION.trim() ||
+              !content.includes(candidate.counterexample) ||
+              typeof value?.reason !== "string" || value.reason.length < 1
+            ) throw scenarioError("threadmesh_real_effect_review_finding_not_reproduced");
+            finding = Object.freeze(candidate);
+            findingDigest = independentGitFindingDigest(finding);
+            payloads["review-failed"].findingDigest = findingDigest;
+            payloads["review-failed"].reproductionEvidenceDigest = sha256Digest({
+              commitSha: implementationSha,
+              resourcePath: candidate.resourcePath,
+              contentDigest: sha256Digest(content),
+              reasonDigest: sha256Digest(value.reason),
+            });
+            return { findingDigest, reproducible: true };
+          }
+          if (realEffects && value?.findingDigest !== findingDigest) {
+            throw scenarioError("threadmesh_real_effect_review_publication_invalid");
           }
           return { findingDigest, blocking: true, implementationSha };
         },
@@ -1001,8 +1220,10 @@ export async function runCoordinatorDrivenNoPlanScenario({
           const execution = coordinator.getTurnExecution(
             activation.businessExecutionId, principal(actors.r),
           );
-          payloads["review-failed"].turnId = execution.actions[1].turnId;
-          payloads["review-failed"].toolCallDigest = execution.actions[1].actionDigest;
+          const publicationOrdinal = realEffects ? 2 : 1;
+          payloads["review-failed"].turnId = execution.actions[publicationOrdinal].turnId;
+          payloads["review-failed"].toolCallDigest =
+            execution.actions[publicationOrdinal].actionDigest;
           const promoted = promoteStage(
             coordinator, activation.businessExecutionId, "review-failed",
             payloads["review-failed"], evidenceRevision, evidenceHead, actors.r,
@@ -1010,7 +1231,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
           evidenceRevision = promoted.evidenceState.recordCount;
           evidenceHead = promoted.evidenceState.headDigest;
           coordinator.publishLifecycleFromCompletedAction(promoted.executionId, {
-            actionOrdinal: 1,
+            actionOrdinal: publicationOrdinal,
             expectedTool: TOOLS.review.name,
             event: reviewEvent,
             expectedMaterial: { findingDigest },
@@ -1023,7 +1244,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
       receiver: actors.a,
       principal: principal(actors.a),
       role: "a",
-      cwd: artifactsDirectory,
+      cwd: realEffects ? gitFixture.implementerWorktree : artifactsDirectory,
       ref: refs.a,
       routes: [{
         handlerId: routeHandlerConfigs[1].handlerId,
@@ -1035,9 +1256,28 @@ export async function runCoordinatorDrivenNoPlanScenario({
         now: NOW,
         businessPhase: "same-a-fix",
         businessTools: routeHandlerConfigs[1].businessTools,
-        async onBusinessToolCall({ tool: selectedTool }) {
-          if (selectedTool === TOOLS.fixApply.name) {
+        async onBusinessToolCall({ tool: selectedTool, arguments: value }) {
+          if (selectedTool === (realEffects
+            ? TOOLS.implementationCommit.name : TOOLS.fixApply.name)) {
+            if (realEffects) {
+              if (
+                value?.phase !== "fix" || value?.content !== REAL_EFFECT_FIX ||
+                value?.sourceEventId !== reviewEvent.messageId || !implementationSha
+              ) {
+                throw scenarioError("threadmesh_real_effect_fix_invalid");
+              }
+              gitFixture.writeImplementerFile(
+                REAL_EFFECT_RESOURCE, value.content, { expectedHead: implementationSha },
+              );
+              fixEvidence = gitFixture.commitFix({ expectedParent: implementationSha });
+              fixSha = fixEvidence.subjectSha;
+              verifierCheckout = gitFixture.createVerifierCheckout({ fixSha });
+              return fixEvidence;
+            }
             return { appliedFindingDigest: findingDigest };
+          }
+          if (realEffects && value?.commitSha !== fixSha) {
+            throw scenarioError("threadmesh_real_effect_fix_publication_invalid");
           }
           return { commitSha: fixSha, parentSha: implementationSha };
         },
@@ -1046,6 +1286,18 @@ export async function runCoordinatorDrivenNoPlanScenario({
           const execution = coordinator.getTurnExecution(
             activation.businessExecutionId, principal(actors.a),
           );
+          if (realEffects) {
+            Object.assign(payloads.fix, {
+              commitSha: fixEvidence.subjectSha,
+              parentSha: fixEvidence.parentSha,
+              treeSha: fixEvidence.treeSha,
+              diffDigest: fixEvidence.diffDigest,
+              resolvesFindingDigest: findingDigest,
+              testEvidenceDigest: sha256Digest({
+                fixedResourceDigest: sha256Digest(REAL_EFFECT_FIX),
+              }),
+            });
+          }
           payloads.fix.turnId = execution.actions[1].turnId;
           payloads.fix.toolCallDigest = execution.actions[1].actionDigest;
           const promoted = promoteStage(
@@ -1068,7 +1320,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
       receiver: actors.v,
       principal: principal(actors.v),
       role: "v",
-      cwd: artifactsDirectory,
+      cwd: realEffects ? path.join(gitFixture.root, "verifier") : artifactsDirectory,
       ref: refs.v,
       routes: [{
         handlerId: routeHandlerConfigs[2].handlerId,
@@ -1085,10 +1337,46 @@ export async function runCoordinatorDrivenNoPlanScenario({
             return { evidenceHead, evidenceRevision };
           }
           verifiedActivationOrder.push("v-verification-tool-selected");
-          verification = createVerification({
-            requirement, payloads, verifier: actors.v, dependent: actors.dependent,
-            trustAnchor, privateKey,
-          });
+          if (realEffects) {
+            gitFixture.verifyVerifierCheckout({ fixSha });
+            const request = {
+              repoPath: gitFixture.bareRepository,
+              chain: {
+                chainId: requirement.chainId,
+                requirementDigest: requirement.requirementDigest,
+                validatedBaseSha: requirement.validatedBaseSha,
+                fixtureSeedSha: requirement.fixtureSeedSha,
+                fixtureDefinitionDigest: requirement.fixtureDefinitionDigest,
+              },
+              implementation: {
+                sha: implementationEvidence.subjectSha,
+                treeSha: implementationEvidence.treeSha,
+                diffDigest: implementationEvidence.diffDigest,
+              },
+              fix: {
+                sha: fixEvidence.subjectSha,
+                treeSha: fixEvidence.treeSha,
+                diffDigest: fixEvidence.diffDigest,
+              },
+              finding: { ...finding, digest: findingDigest },
+              trustedTest: {
+                resourcePath: INDEPENDENT_GIT_VERIFIER_TEST.resourcePath,
+                blobDigest: requirement.trustedTestBlobDigest,
+              },
+              subject: {
+                messageId: verifiedEvent.messageId,
+                senderIncarnationId: actors.v.incarnationId,
+                receiver: taskRef(actors.dependent),
+              },
+            };
+            const response = await verifierService.verify(request);
+            verification = { request, response, expectedTrustAnchor: trustAnchor };
+          } else {
+            verification = createVerification({
+              requirement, payloads, verifier: actors.v, dependent: actors.dependent,
+              trustAnchor, privateKey,
+            });
+          }
           return verification;
         },
         async onLifecyclePublication({ activation }) {
@@ -1279,12 +1567,65 @@ export async function runCoordinatorDrivenNoPlanScenario({
     const kickoff = await runKickoff({
       coordinator, runtime, actor: actors.a, ref: refs.a,
       event: artifactEvent, args: kickoffArgs,
-      cwd: artifactsDirectory, recoveryDirectory: journalDirectory,
+      cwd: realEffects ? gitFixture.implementerWorktree : artifactsDirectory,
+      recoveryDirectory: journalDirectory,
       ownedJournalPaths,
+      businessTools: realEffects
+        ? [scenarioTools.implementationCommit, scenarioTools.implementation]
+        : [scenarioTools.implementation],
+      publicationOrdinal: realEffects ? 1 : 0,
+      prompt: realEffects ? [
+        `Implement and publish source ${artifactEvent.messageId}.`,
+        `First call ${TOOLS.implementationCommit.name} with phase=implementation,`,
+        `sourceEventId=${artifactEvent.messageId}, and the exact candidate content`,
+        JSON.stringify(REAL_EFFECT_IMPLEMENTATION),
+        `Then call ${TOOLS.implementation.name} and copy the returned subjectSha as commitSha.`,
+      ].join(" ") : null,
+      async onBusinessToolCall({ tool: selectedTool, arguments: value }) {
+        if (!realEffects) return { commitSha: implementationSha, published: true };
+        if (selectedTool === TOOLS.implementationCommit.name) {
+          if (
+            value?.phase !== "implementation" ||
+            value?.content !== REAL_EFFECT_IMPLEMENTATION ||
+            value?.sourceEventId !== artifactEvent.messageId
+          ) {
+            throw scenarioError("threadmesh_real_effect_implementation_invalid");
+          }
+          gitFixture.writeImplementerFile(
+            REAL_EFFECT_RESOURCE, value.content, { expectedHead: gitFixture.seedSha },
+          );
+          implementationEvidence = gitFixture.commitImplementation({
+            expectedParent: gitFixture.seedSha,
+          });
+          implementationSha = implementationEvidence.subjectSha;
+          reviewerCheckout = gitFixture.createReviewerCheckout({ implementationSha });
+          return implementationEvidence;
+        }
+        if (selectedTool === TOOLS.implementation.name &&
+            value?.commitSha === implementationSha) {
+          return { commitSha: implementationSha, published: true };
+        }
+        throw scenarioError("threadmesh_real_effect_implementation_publication_invalid");
+      },
     });
     throwIfShutdownRequested(signal);
-    payloads.implementation.turnId = kickoff.execution.actions[0].turnId;
-    payloads.implementation.toolCallDigest = kickoff.execution.actions[0].actionDigest;
+    const kickoffPublicationOrdinal = realEffects ? 1 : 0;
+    if (realEffects) {
+      Object.assign(payloads.implementation, {
+        commitSha: implementationEvidence.subjectSha,
+        parentSha: implementationEvidence.parentSha,
+        treeSha: implementationEvidence.treeSha,
+        diffDigest: implementationEvidence.diffDigest,
+        testEvidenceDigest: sha256Digest({
+          implementationResourceDigest: sha256Digest(REAL_EFFECT_IMPLEMENTATION),
+        }),
+      });
+      payloads["review-failed"].implementationSha = implementationSha;
+      payloads.fix.parentSha = implementationSha;
+    }
+    payloads.implementation.turnId = kickoff.execution.actions[kickoffPublicationOrdinal].turnId;
+    payloads.implementation.toolCallDigest =
+      kickoff.execution.actions[kickoffPublicationOrdinal].actionDigest;
     const promotedKickoff = promoteStage(
       coordinator, kickoff.execution.executionId, "implementation",
       payloads.implementation, evidenceRevision, evidenceHead, actors.a,
@@ -1596,7 +1937,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
     const sessionRecords = Object.entries(refs).map(([role, ref]) => ({
       role,
       refDigest: sha256Digest(ref),
-      worktreeDigest: sha256Digest({ cwd: artifactsDirectory }),
+      worktreeDigest: sha256Digest({ cwd: roleCwds[role] ?? artifactsDirectory }),
     }));
     const sessionManifest = {
       recordCount: sessionRecords.length,
@@ -1671,9 +2012,13 @@ export async function runCoordinatorDrivenNoPlanScenario({
         ]).size === 3,
       bindings: counts,
       verification: {
-        mode: "deterministic-in-process-trusted-signing",
-        externalIndependentVerifier: false,
-        signer: "fixture-owned-ephemeral-key",
+        mode: realEffects
+          ? "process-isolated-child-service-signed"
+          : "deterministic-in-process-trusted-signing",
+        externalIndependentVerifier: realEffects,
+        signer: realEffects
+          ? "process-isolated-child-owned-ephemeral-key"
+          : "fixture-owned-ephemeral-key",
         nativeVerifierSessionIndependent:
           refs.v.threadId !== refs.a.threadId && refs.v.threadId !== refs.r.threadId,
         nativeVerifierTurnIdDigest: sha256Digest(
@@ -1687,6 +2032,15 @@ export async function runCoordinatorDrivenNoPlanScenario({
         resultDigestBound: coordinator.getTurnExecution(
           verifierActivation.businessExecutionId, principal(actors.v),
         ).actions[1].resultDigest === gitEvidenceVerificationResultDigest(verification),
+      },
+      gitEffects: {
+        realBoundedWorktrees: realEffects,
+        implementationSha: payloads.implementation.commitSha,
+        fixSha: payloads.fix.commitSha,
+        directDescendant: payloads.fix.parentSha === payloads.implementation.commitSha,
+        reviewerDetached: realEffects ? reviewerCheckout?.evidence.detached === true : false,
+        verifierDetached: realEffects ? verifierCheckout?.evidence.detached === true : false,
+        fixtureDefinitionDigest: requirement.fixtureDefinitionDigest,
       },
       evidenceChain: {
         recordCount: chain.state.recordCount,
@@ -1772,7 +2126,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
       for (const [role, ref] of Object.entries(refs).reverse()) {
         try {
           cleanupRoles.push({ role, ...(await runtime.deleteRole({
-            role, ref, cwd: artifactsDirectory,
+            role, ref, cwd: roleCwds[role] ?? artifactsDirectory,
           })) });
         } catch (error) {
           cleanupRoles.push({ role, deleted: false, absenceVerified: false, error: error.code });
@@ -1792,6 +2146,20 @@ export async function runCoordinatorDrivenNoPlanScenario({
       failure ??= error;
     }
     coordinator.close();
+    if (verifierService) {
+      try {
+        const closed = await verifierService.close();
+        verifierServiceClosed = closed?.closed === true && closed?.childExited === true;
+      } catch (error) {
+        failure ??= error;
+      }
+    }
+    if (gitFixture) {
+      gitFixtureCleanup = gitFixture.cleanup();
+      if (gitFixtureCleanup.complete !== true && failure === undefined) {
+        failure = scenarioError("threadmesh_real_effect_git_cleanup_incomplete");
+      }
+    }
   }
   const journalRemovalFailures = [];
   let ownedJournalRemovedCount = 0;
@@ -1859,10 +2227,13 @@ export async function runCoordinatorDrivenNoPlanScenario({
   const cleanup = {
     complete: cleanupRoles.length === Object.keys(refs).length &&
       cleanupRoles.every(({ deleted, absenceVerified }) => deleted && absenceVerified) &&
+      verifierServiceClosed && gitFixtureCleanup.complete === true &&
       remainingOwnedJournals.length === 0 && unknownJournalPaths.length === 0 &&
       journalRemovalFailures.length === 0 && databaseRemovalFailures.length === 0 &&
       journalDirectoryRemoved && runRootRemoved && !fs.existsSync(databasePath),
     roles: cleanupRoles,
+    verifierServiceClosed,
+    gitFixture: gitFixtureCleanup,
     ownedJournalRemovedCount,
     remainingJournalCount: remainingOwnedJournals.length,
     unknownJournalCount: unknownJournalPaths.length,

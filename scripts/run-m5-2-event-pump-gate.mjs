@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { execFileSync } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
 import process from "node:process";
@@ -95,6 +96,13 @@ try {
     }
     result = await runM52OperatorSuppliedCodexEventPumpGate({
       artifactsDirectory,
+      sourceRoot: execFileSync("git", ["rev-parse", "--show-toplevel"], {
+        encoding: "utf8", stdio: ["ignore", "pipe", "pipe"],
+      }).trim(),
+      validatedBaseSha: execFileSync("git", ["rev-parse", "HEAD"], {
+        encoding: "utf8", stdio: ["ignore", "pipe", "pipe"],
+      }).trim(),
+      temporaryParent: os.tmpdir(),
       command,
       signal: shutdownController.signal,
       ...(parsed.model ? { model: parsed.model } : {}),

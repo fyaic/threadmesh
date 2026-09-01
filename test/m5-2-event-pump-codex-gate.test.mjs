@@ -362,6 +362,8 @@ test("failure cleanup projection is bounded and omits raw role and path data", (
     journalDirectoryRemoved: true,
     runRootRemoved: true,
     coordinatorRemoved: true,
+    verifierServiceClosed: true,
+    gitFixture: { complete: true },
   };
   assert.equal(projectM52EventPumpFailureCleanup(fullCleanup).complete, true);
   assert.equal(projectM52EventPumpFailureCleanup({ complete: true }).complete, false);
