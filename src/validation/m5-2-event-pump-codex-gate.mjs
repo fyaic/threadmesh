@@ -654,8 +654,13 @@ export function projectM52OperatorSuppliedCodexEventPumpGateResult(
   });
 }
 
-export async function runM52EventPumpCodexGate({ artifactsDirectory, runtime = null } = {}) {
+export async function runM52EventPumpCodexGate({
+  artifactsDirectory, runtime = null, signal = null,
+} = {}) {
   if (!path.isAbsolute(artifactsDirectory ?? "") ||
+      (signal !== null && (
+        typeof signal !== "object" || typeof signal.aborted !== "boolean"
+      )) ||
       (runtime !== null && (
         typeof runtime?.probe !== "function" ||
         typeof runtime?.createRole !== "function" ||
@@ -681,6 +686,7 @@ export async function runM52EventPumpCodexGate({ artifactsDirectory, runtime = n
   const coreResult = await runCoordinatorDrivenNoPlanScenario({
     artifactsDirectory,
     runtime,
+    signal,
   });
   try {
     return projectM52EventPumpCodexGateResult(coreResult, { productProbe });
@@ -696,8 +702,12 @@ export async function runM52OperatorSuppliedCodexEventPumpGate({
   args,
   env,
   model,
+  signal = null,
 } = {}) {
-  if (!path.isAbsolute(artifactsDirectory ?? "") || !path.isAbsolute(command ?? "")) {
+  if (!path.isAbsolute(artifactsDirectory ?? "") || !path.isAbsolute(command ?? "") ||
+      (signal !== null && (
+        typeof signal !== "object" || typeof signal.aborted !== "boolean"
+      ))) {
     throw gateError("threadmesh_m52_event_pump_gate_input_invalid");
   }
   const runtime = new CodexLiveAgentRuntime({
@@ -714,6 +724,7 @@ export async function runM52OperatorSuppliedCodexEventPumpGate({
   const coreResult = await runCoordinatorDrivenNoPlanScenario({
     artifactsDirectory,
     runtime,
+    signal,
   });
   try {
     return projectM52OperatorSuppliedCodexEventPumpGateResult(coreResult, { probe });

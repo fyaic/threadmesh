@@ -42,6 +42,12 @@ function scenarioError(code) {
   return error;
 }
 
+function throwIfShutdownRequested(signal) {
+  if (signal?.aborted === true) {
+    throw scenarioError("threadmesh_coordinator_driven_shutdown_requested");
+  }
+}
+
 function principal(actor) {
   return { kind: "task", taskId: actor.taskId, incarnationId: actor.incarnationId };
 }
@@ -461,6 +467,7 @@ function journalLikePaths(directory) {
 export async function runCoordinatorDrivenNoPlanScenario({
   artifactsDirectory,
   runtime: providedRuntime = null,
+  signal = null,
   injectPriorRelevant = false,
   injectFinalizationFailure = false,
   injectPreverifiedTamper = null,
@@ -477,6 +484,9 @@ export async function runCoordinatorDrivenNoPlanScenario({
         typeof providedRuntime?.runReceiverDecisionTurn !== "function" ||
         typeof providedRuntime?.runAdmittedToolTurn !== "function" ||
         typeof providedRuntime?.deleteRole !== "function"
+      )) ||
+      (signal !== null && (
+        typeof signal !== "object" || typeof signal.aborted !== "boolean"
       )) ||
       typeof injectPriorRelevant !== "boolean" ||
       typeof injectFinalizationFailure !== "boolean" ||
@@ -603,6 +613,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
   const verifiedActivationOrder = [];
   const cleanupRoles = [];
   try {
+    throwIfShutdownRequested(signal);
     adapter = providedRuntime?.adapter ?? new DeterministicNoPlanCodexAdapter({
       decideTurn(canonicalInput) {
         const input = JSON.parse(canonicalInput);
@@ -699,6 +710,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
       instructions: "Use only the current coordinator-admitted dynamic tool.",
       scenarioId: "coordinator_driven_no_plan",
     });
+    throwIfShutdownRequested(signal);
     refs.r = await runtime.createRole({
       role: "r", cwd: artifactsDirectory,
       tools: [REGISTERED_PEER_DECISION_TOOL, TOOLS.reviewRead, TOOLS.review],
@@ -712,6 +724,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
       instructions: "Review only coordinator-admitted context.",
       scenarioId: "coordinator_driven_no_plan",
     });
+    throwIfShutdownRequested(signal);
     refs.v = await runtime.createRole({
       role: "v", cwd: artifactsDirectory,
       tools: [REGISTERED_PEER_DECISION_TOOL, TOOLS.verifyRead, TOOLS.verify],
@@ -725,6 +738,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
       instructions: "Verify only the exact coordinator-bound evidence chain.",
       scenarioId: "coordinator_driven_no_plan",
     });
+    throwIfShutdownRequested(signal);
     refs.dependent = await runtime.createRole({
       role: "dependent", cwd: artifactsDirectory,
       tools: [
@@ -741,12 +755,14 @@ export async function runCoordinatorDrivenNoPlanScenario({
       instructions: "Request activation; trust only coordinator finalization state.",
       scenarioId: "coordinator_driven_no_plan",
     });
+    throwIfShutdownRequested(signal);
     refs.irrelevant = await runtime.createRole({
       role: "irrelevant", cwd: artifactsDirectory,
       tools: [REGISTERED_PEER_DECISION_TOOL, TOOLS.reviewRead, TOOLS.review],
       instructions: "Remain idle unless coordinator attention is relevant.",
       scenarioId: "coordinator_driven_no_plan",
     });
+    throwIfShutdownRequested(signal);
     actors.a = registerTask(coordinator, actors.a, refs.a);
     actors.r = registerTask(coordinator, actors.r, refs.r);
     actors.v = registerTask(coordinator, actors.v, refs.v);
@@ -848,6 +864,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
     const pump = createAutonomousEventPump({
       coordinator,
       runtime,
+      signal,
       scenarioId: "coordinator_driven_no_plan",
       chainId: "chain_coordinator_driven_no_plan",
       recoveryDirectory: journalDirectory,
@@ -1166,6 +1183,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
       cwd: artifactsDirectory, recoveryDirectory: journalDirectory,
       ownedJournalPaths,
     });
+    throwIfShutdownRequested(signal);
     payloads.implementation.turnId = kickoff.execution.actions[0].turnId;
     payloads.implementation.toolCallDigest = kickoff.execution.actions[0].actionDigest;
     const promotedKickoff = promoteStage(
@@ -1176,6 +1194,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
     evidenceHead = promotedKickoff.evidenceState.headDigest;
     coordinator.submit(projectLifecycleEventToEnvelope(irrelevantEvent), principal(actors.a));
     const pumpResult = await pump.runUntilIdle();
+    throwIfShutdownRequested(signal);
     if (!rActivation || !sameAActivation || !verifierActivation ||
         !dependentActivation || !finalized || !dependentActivationCommitted) {
       throw new Error("threadmesh_event_pump_expected_activations_missing");

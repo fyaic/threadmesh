@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
+import { sha256Digest } from "../src/canonical-json.mjs";
 import { runCoordinatorDrivenNoPlanScenario } from
   "../src/validation/coordinator-driven-no-plan-scenario.mjs";
 
@@ -319,4 +320,59 @@ test("cleanup preserves caller-owned journal-like files and reports them", async
       .filter((name) => name.startsWith(".threadmesh-coordinator-driven-run-")),
     [],
   );
+});
+
+test("a bounded shutdown after role bootstrap cleans every created role and run resource", async (t) => {
+  const controller = new AbortController();
+  const created = [];
+  const deleted = [];
+  const runtime = {
+    async createRole({ role }) {
+      const ref = {
+        kind: "codex-app-server",
+        threadId: `shutdown-thread-${role}`,
+        snapshotDigest: sha256Digest({ role, boundary: "shutdown" }),
+      };
+      created.push({ role, ref });
+      if (created.length === 5) controller.abort();
+      return ref;
+    },
+    async deleteRole({ role, ref }) {
+      deleted.push({ role, ref });
+      return { deleted: true, absenceVerified: true };
+    },
+    async runTurn() {
+      throw new Error("shutdown must occur before a native turn");
+    },
+    async runReceiverDecisionTurn() {
+      throw new Error("shutdown must occur before a receiver decision");
+    },
+    async runAdmittedToolTurn() {
+      throw new Error("shutdown must occur before an admitted turn");
+    },
+  };
+  const artifactsDirectory = fs.mkdtempSync(path.join(
+    os.tmpdir(), "threadmesh-coordinator-signal-cleanup-",
+  ));
+  t.after(() => fs.rmSync(artifactsDirectory, { recursive: true, force: true }));
+
+  let failure;
+  try {
+    await runCoordinatorDrivenNoPlanScenario({
+      artifactsDirectory,
+      runtime,
+      signal: controller.signal,
+    });
+  } catch (error) {
+    failure = error;
+  }
+
+  assert.equal(failure?.code, "threadmesh_coordinator_driven_shutdown_requested");
+  assert.deepEqual(created.map(({ role }) => role), ["a", "r", "v", "dependent", "irrelevant"]);
+  assert.deepEqual(deleted.map(({ role }) => role), ["irrelevant", "dependent", "v", "r", "a"]);
+  assert.equal(failure.cleanup?.complete, true);
+  assert.equal(failure.cleanup?.roles.length, 5);
+  assert.equal(failure.cleanup?.remainingJournalCount, 0);
+  assert.equal(failure.cleanup?.coordinatorRemoved, true);
+  assert.equal(failure.cleanup?.runRootRemoved, true);
 });

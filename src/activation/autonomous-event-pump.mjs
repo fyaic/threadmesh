@@ -63,14 +63,17 @@ export class AutonomousEventPump {
   constructor({
     coordinator, runtime, scenarioId, chainId, recoveryDirectory, maxEvents = 16,
     ownerId = `pump-owner-${randomUUID()}`, leaseMs = 30_000,
-    faultInjector = async () => {},
+    faultInjector = async () => {}, signal = null,
   }) {
     if (!coordinator || !runtime || typeof scenarioId !== "string" ||
         typeof chainId !== "string" || typeof recoveryDirectory !== "string" ||
         !Number.isInteger(maxEvents) || maxEvents < 1 || maxEvents > 1_000 ||
         typeof ownerId !== "string" || ownerId.length < 1 ||
         !Number.isInteger(leaseMs) || leaseMs < 1 || leaseMs > 300_000 ||
-        typeof faultInjector !== "function") {
+        typeof faultInjector !== "function" ||
+        (signal !== null && (
+          typeof signal !== "object" || typeof signal.aborted !== "boolean"
+        ))) {
       throw coded("threadmesh_event_pump_input_invalid");
     }
     this.coordinator = coordinator;
@@ -82,6 +85,7 @@ export class AutonomousEventPump {
     this.ownerId = ownerId;
     this.leaseMs = leaseMs;
     this.faultInjector = faultInjector;
+    this.signal = signal;
     PUMP_REGISTRY.set(this, { entries: [], projection: null, digest: null });
     this.started = false;
     this.running = false;
@@ -89,6 +93,12 @@ export class AutonomousEventPump {
     this.skips = 0;
     this.selectionRecords = [];
     this.selectionHeadDigest = null;
+  }
+
+  #throwIfShutdownRequested() {
+    if (this.signal?.aborted === true) {
+      throw coded("threadmesh_event_pump_shutdown_requested");
+    }
   }
 
   registerReceiver(registration) {
@@ -292,6 +302,7 @@ export class AutonomousEventPump {
     if (this.running) throw coded("threadmesh_event_pump_concurrent_drain");
     this.running = true;
     try {
+      this.#throwIfShutdownRequested();
       this.#assertRegistry();
       const candidate = this.#nextCandidate();
       if (!candidate) return Object.freeze({ state: "idle" });
@@ -517,6 +528,7 @@ export class AutonomousEventPump {
         onBusinessToolCall: routeRegistration.onBusinessToolCall,
         afterAdmissionPrepared: routeRegistration.afterAdmissionPrepared,
       });
+      this.#throwIfShutdownRequested();
       if (recoveringPublication && activation.replay !== true) {
         throw coded("threadmesh_event_pump_publication_recovery_started_turn");
       }
@@ -597,6 +609,7 @@ export class AutonomousEventPump {
     if (!this.started) this.start();
     let processed = 0;
     while (processed < this.maxEvents) {
+      this.#throwIfShutdownRequested();
       const result = await this.drainOnce();
       if (result.state === "idle") {
         const dispatches = this.selectionRecords.filter(
