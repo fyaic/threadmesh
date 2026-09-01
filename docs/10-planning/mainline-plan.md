@@ -17,42 +17,49 @@ experiments are explicitly labeled and do not satisfy it.
 
 ## Active critical path — 2026-09-01
 
-M5.2 is the only implementation critical path. The real Codex model/tool
-canary has completed the bounded A -> R -> same-A -> V sequence, but the next
-releasable outcome remains one correlated **integrated real Codex** gate. A
-waiting dependent must become ready only from the trusted chain, while an
-authorized but irrelevant task must receive no native turn after the
-precreation/bootstrap baseline.
+M5.2 remains the only implementation critical path, but its next checkpoint is
+behavioral evidence rather than infrastructure closure. The repository now has
+enough deterministic substrate to ask the product question directly: can real
+Codex sessions complete `A -> R -> same-A -> V -> dependent` after one user
+kickoff while the runner supplies no later phase prompt or direct activation?
+
+The older product canary proved real multi-tool turns, same-A reuse, a bounded
+Git chain, controls, and cleanup, but its four prompts were runner-submitted.
+The newer event-pump gate has not completed a live chain. Its three attempts
+stopped at product-probe validation, timestamp evidence validation, and an
+operator pause after five-session bootstrap respectively. The paused attempt
+had zero coordinator tasks, turn intents, and pump dispatches before five of
+five sessions and exact temporary resources were cleaned.
 
 Execute in this order:
 
-1. Connect the proven real role runtime to coordinator attention, receiver
-   decisions, context admission, lifecycle publication, and v7 finalization;
-   remove runner-directed phase sequencing.
-2. Bind every live start, selected tool, result, receipt, admission, and
-   lifecycle transition to the existing durable journals and exact identities.
-3. Pass killed-runner recovery at every unknown native-turn boundary without a
-   replacement turn or duplicate external effect.
-4. Run the integrated A -> R -> same-A -> V lifecycle with the dependent and
-   irrelevant controls in the same isolated scenario and retain correlated
-   private and public evidence.
-5. Publish the bounded case record and update the inspector/demo only after the
-   live result is classified as `passed`, `blocked`, `failed`, or `not-run`.
+1. Close the already observed bounded SIGINT/SIGTERM cleanup gap, then run the
+   current `c17c837` event-pump surface fresh. Do not add another prerequisite
+   that was not exposed by a live run.
+2. Retain exact real session, native-turn, model-action, durable-dispatch,
+   dependent-ordering, irrelevant-control, and cleanup evidence. The required
+   behavioral counts are one kickoff, zero runner phase/business prompts or
+   direct activation dispatches, eight protected receiver turns, and nine total
+   bound native turns.
+3. Publish the bounded attempt as `blocked`, `failed`, or `not-run`. A completed
+   chain remains `blocked` and `liveProductEvidence=false` while verifier
+   custody and Git effects are simulated.
+4. Only after that chain is retained, reuse the existing bounded Git worktree
+   and verifier foundations in the same correlated run, add the manual
+   relay/polling baseline and minimum critical negative/restart case, and close
+   #91 when its original product outcome is satisfied.
+5. Then resume repetition, Kimi parity, and production-hardening evidence.
 
-The real multi-tool runtime, same-A reuse, exact Git chain, negative controls,
-and cleanup have now passed as a product canary. Six integrated blockers remain:
-coordinator attention routing, receiver-owned decisions, context-admission
-receipts, durable recovery checkpoints, independent verifier attestation, and
-dependency finalization. In the current recovery seam, a missing client id is
-always ambiguous; unique-delta classification under a durable exclusive-writer
-proof is a future option, not an accepted path. The detailed go/no-go checks live in the
-[real Codex scenario plan](m5-2-real-codex-scenario.md).
+Mainline guardrail: do not add a new substrate or generalize an existing one
+unless the current live chain demonstrates that it is the blocking condition.
+OS-kill matrices, long-turn heartbeat, a global cross-dispatch chain, new
+harnesses, A2A/Cotal work, hosted operation, and presentation-only polish are
+paused. Small PRs remain acceptable; scope, not PR size, is the constraint.
 
-The [real canary record](../09-reviews/2026-09-01-m5-2-real-codex-canary.md)
-also remains below the initiative claim: its four phase prompts came from the
-runner and `lifecycleHandoffsByThreadMesh=false`. Kimi compatibility and
-cross-harness repetition start only after the integrated Codex gate is
-recorded; they do not delay or substitute for that gate.
+The detailed historical gates remain in the
+[real Codex scenario plan](m5-2-real-codex-scenario.md). The
+[event-pump attempt audit](../09-reviews/2026-09-01-m5-2-real-codex-event-pump-attempt-audit.md)
+is the canonical live-attempt status until a fresh run supersedes it.
 
 ## Product sequence — 2026-08-28
 

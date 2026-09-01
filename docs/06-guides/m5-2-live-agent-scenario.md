@@ -7,10 +7,11 @@ scenario. It does not yet provide M5.2 pass evidence.
 ## Current gate
 
 The deterministic fixtures run bounded paths through a real isolated SQLite
-v8 coordinator. Live Codex now performs an auth-preserving capability probe
-and then delegates to the real-product gate. The probe is evidence that the
-transport is reachable, never evidence that the scenario passed. Kimi remains
-a no-model capability preflight and fails closed as `blocked`.
+v10 coordinator. At `c17c837`, the operator-supplied Codex-shaped path has a
+strict probe, protected multi-tool receiver turns, an event-pump-driven live
+entry point, timestamp normalization, and bounded failure cleanup. The command
+surface being available is not evidence that the proactive chain passed. Kimi
+remains a no-model capability preflight for this M5.2 path.
 The fixture machine-verifies this sequence:
 
 1. a lifecycle event is durably created;
@@ -173,7 +174,44 @@ after review. The in-process test signer is trusted only inside this fixture and
 independent product verification, process-crash recovery, or a live
 integration.
 
-## Real product gate
+## Real event-pump attempt audit
+
+Run the current live entry point only with explicit maintainer authorization:
+
+```sh
+export THREADMESH_M52_EVENT_PUMP_LIVE_ACK=maintainer-approved-threadmesh-m52-event-pump-live
+export THREADMESH_CODEX_COMMAND=/absolute/path/to/codex
+node scripts/run-m5-2-event-pump-gate.mjs --mode live --artifacts-dir /fresh/owned/directory
+```
+
+The first three attempts did not complete the event-pump chain:
+
+| Attempt | Stop | Chain evidence | Cleanup evidence |
+|---|---|---|---|
+| 1 | Product probe invalid | Preflight rejection only | Not asserted by this record |
+| 2 | Timestamp evidence invalid | Adapter-boundary defect only | Not asserted by this record |
+| 3 | Operator paused after five session bootstraps | Coordinator task/turn-intent/dispatch counts were `0/0/0`; chain not started | Normal signal cleanup did not run; one-off exact operator cleanup deleted and absence-confirmed five of five sessions and removed temporary resources |
+
+[#126](https://github.com/fyaic/threadmesh/pull/126) and
+[#127](https://github.com/fyaic/threadmesh/pull/127) fixed the first two observed
+boundaries, but do not retroactively upgrade those attempts. None is a
+completed `state=blocked` gate result. Attempt 3 must be rerun fresh because its
+owned sessions and temporary state no longer exist.
+
+The missing bounded SIGINT/SIGTERM cleanup path is an observed rerun blocker.
+Fixing that exact path is in scope; building a general process supervisor is
+not.
+
+The next checkpoint is one uninterrupted real chain with one kickoff, zero
+runner phase/business prompts or direct activation dispatches, eight protected
+receiver turns, nine total bound native turns, exact dependent ordering, an
+irrelevant zero-turn control, and exact cleanup. If the real turn chain
+completes while verifier custody and Git effects remain simulated, the correct
+public result is still `state=blocked` and `liveProductEvidence=false`.
+
+See the [bounded attempt audit](../09-reviews/2026-09-01-m5-2-real-codex-event-pump-attempt-audit.md).
+
+## Historical real product gate
 
 Live commands require an explicit acknowledgement before even a no-model
 probe:
@@ -259,6 +297,6 @@ under a Codex or Kimi label. Kimi quota or authentication problems are
 reported as blocked preconditions; they must not be rewritten as successful
 compatibility evidence.
 
-At `711da66`, the repository baseline is 360 tests, 55 schema cases, and 7
+At `c17c837`, the repository baseline is 378 tests, 55 schema cases, and 7
 transition cases. These are three separate validation counts; documentation
 lint also passes.

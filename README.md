@@ -100,8 +100,22 @@ The evidence boundary is intentionally narrow. The result reports
 As of [#122](https://github.com/fyaic/threadmesh/pull/122), selection and
 publication recovery are durable per dispatch, with leased and fenced
 publication. There is still no global cross-dispatch selection chain:
-`selectionChainValid=null`. OS-kill recovery, long-turn lease heartbeat, and
-the equivalent real Codex and Kimi product runs remain pending.
+`selectionChainValid=null`.
+
+Three real Codex event-pump attempts have not yet produced a completed chain.
+The first stopped at product-probe validation; the second stopped at timestamp
+evidence validation; the third was operator-paused after five role sessions
+bootstrapped, while coordinator task, turn-intent, and pump-dispatch counts all
+remained zero. The five owned sessions were then deleted and absence-confirmed,
+and their exact temporary resources were removed through a one-off operator
+cleanup because the signal path did not run normal cleanup. This is preflight,
+adapter-boundary, and cleanup evidence—not real session initiative.
+
+The project now freezes non-mainline expansion. The next checkpoint is one
+fresh real Codex event-pump chain on the existing implementation. OS-kill and
+heartbeat matrices, a global chain, external verifier and real Git closure,
+Kimi parity, and further product polish follow only after that behavioral
+checkpoint, unless the live run proves one of them is the direct blocker.
 
 [Read the exact fixture evidence](docs/09-reviews/2026-09-01-m5-2-autonomous-fixture.md) ·
 [Read the M5.2 scenario guide](docs/06-guides/m5-2-live-agent-scenario.md)
@@ -290,13 +304,14 @@ peer content or as a production security boundary.
   install Ajv and native `better-sqlite3`.
 - **Reference runtime:** authenticated JSON-RPC + SQLite coordinator for local,
   trusted-process experiments.
-- **Validation:** 360 tests, plus 55 schema cases and 7 transition cases;
+- **Validation:** 378 tests, plus 55 schema cases and 7 transition cases;
   documentation lint passes. These are separate counts, not one combined total.
 - **Default:** proactive coordination remains off unless a maintainer explicitly
   opts into the bounded experimental profile.
-- **Next mainline:** exercise the durable pump through OS kill and long-turn
-  lease renewal, then run the same autonomous chain through real Codex and Kimi
-  products with an external verifier.
+- **Next mainline:** complete and retain one fresh real Codex event-pump chain
+  with one kickoff, zero runner phase prompts or direct activations, an
+  irrelevant zero-turn control, and exact cleanup. Only then resume the
+  remaining M5.2 closure and Kimi parity gates.
 
 [Current status](docs/10-planning/project-status.md) ·
 [roadmap](ROADMAP.md) ·
