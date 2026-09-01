@@ -132,7 +132,28 @@ test("one pump autonomously closes A to R to same-A to V to dependent", async (t
   assert.ok(Date.parse(result.ordering.finalizationAt) <
     Date.parse(result.ordering.dependentBusinessStartedAt));
   assert.equal(result.runtime.planSurfaceUsed, false);
-  assert.equal(result.runtime.modelSelectedToolCalls, 9);
+  assert.equal(result.runtime.modelSelectedToolCalls, 13);
+  assert.equal(result.nativeTurnManifest.recordCount, 9);
+  assert.equal(result.nativeTurnManifest.records.filter(
+    ({ bindingKind }) => bindingKind === "decision",
+  ).length, 4);
+  assert.equal(result.nativeTurnManifest.records.filter(
+    ({ bindingKind }) => bindingKind === "admission",
+  ).length, 4);
+  assert.equal(result.runnerTraceManifest.recordCount, 2);
+  assert.deepEqual(result.runnerTraceManifest.records.map(({ event }) => event), [
+    "explicit-user-kickoff", "event-pump-run-until-idle",
+  ]);
+  assert.equal(result.sessionManifest.recordCount, 5);
+  assert.deepEqual(result.businessToolSequences, {
+    r: ["threadmesh_review_read_artifact", "threadmesh_report_review_finding"],
+    a: ["threadmesh_apply_review_fix", "threadmesh_publish_dependency"],
+    v: ["threadmesh_read_verification_chain", "threadmesh_verify_exact_chain"],
+    dependent: [
+      "threadmesh_check_finalized_dependency",
+      "threadmesh_activate_verified_dependency",
+    ],
+  });
   assert.equal(result.cleanup.complete, true);
   assert.equal(result.cleanup.remainingJournalCount, 0);
   assert.equal(result.cleanup.runRootRemoved, true);
