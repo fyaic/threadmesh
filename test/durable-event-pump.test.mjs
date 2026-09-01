@@ -77,6 +77,85 @@ function fixture() {
   };
 }
 
+function downgradePumpStateToLegacyV9(filename) {
+  const database = new Database(filename);
+  let snapshot;
+  try {
+    database.transaction(() => {
+      database.prepare(
+        "DELETE FROM event_pump_checkpoints WHERE state = 'publishing'",
+      ).run();
+      for (const dispatchId of database.prepare(
+        "SELECT dispatch_id FROM event_pump_dispatches ORDER BY dispatch_id",
+      ).pluck().all()) {
+        const checkpoints = database.prepare(
+          `SELECT * FROM event_pump_checkpoints
+           WHERE dispatch_id = ? ORDER BY sequence`,
+        ).all(dispatchId);
+        let previousCheckpointDigest = null;
+        for (const [index, checkpoint] of checkpoints.entries()) {
+          const sequence = index + 1;
+          const body = {
+            dispatchId: checkpoint.dispatch_id,
+            sequence,
+            state: checkpoint.state,
+            pumpIdentityDigest: checkpoint.pump_identity_digest,
+            dispatchIntentDigest: checkpoint.dispatch_intent_digest,
+            ownerId: checkpoint.owner_id,
+            leaseEpoch: checkpoint.lease_epoch,
+            leaseExpiresAt: checkpoint.lease_expires_at,
+            turnExecutionId: checkpoint.turn_execution_id,
+            selectionDigest: checkpoint.selection_digest,
+            previousCheckpointDigest,
+            recordedAt: checkpoint.recorded_at,
+          };
+          const checkpointDigest = sha256Digest(body);
+          database.prepare(
+            `UPDATE event_pump_checkpoints
+             SET sequence = ?, previous_checkpoint_digest = ?, checkpoint_digest = ?
+             WHERE dispatch_id = ? AND sequence = ?`,
+          ).run(
+            sequence, previousCheckpointDigest, checkpointDigest,
+            dispatchId, checkpoint.sequence,
+          );
+          previousCheckpointDigest = checkpointDigest;
+        }
+      }
+      database.exec(`
+        UPDATE event_pump_dispatches
+        SET revision = revision - 1
+        WHERE state = 'published';
+        DROP INDEX event_pump_dispatches_publication_lease;
+        ALTER TABLE event_pump_dispatches DROP COLUMN publication_lease_expires_at;
+        ALTER TABLE event_pump_dispatches DROP COLUMN publication_lease_epoch;
+        ALTER TABLE event_pump_dispatches DROP COLUMN publication_owner_id;
+        ALTER TABLE event_pump_checkpoints DROP COLUMN publication_lease_expires_at;
+        ALTER TABLE event_pump_checkpoints DROP COLUMN publication_lease_epoch;
+        ALTER TABLE event_pump_checkpoints DROP COLUMN publication_owner_id;
+        ALTER TABLE event_pump_checkpoints DROP COLUMN digest_version;
+        DELETE FROM schema_migrations WHERE version = 10;
+        PRAGMA user_version = 9;
+      `);
+      const dispatch = database.prepare(
+        "SELECT * FROM event_pump_dispatches ORDER BY dispatch_id LIMIT 1",
+      ).get();
+      snapshot = {
+        dispatch,
+        v9Checksum: database.prepare(
+          "SELECT checksum FROM schema_migrations WHERE version = 9",
+        ).pluck().get(),
+        checkpointDigests: database.prepare(
+          `SELECT checkpoint_digest FROM event_pump_checkpoints
+           WHERE dispatch_id = ? ORDER BY sequence`,
+        ).pluck().all(dispatch.dispatch_id),
+      };
+    }).immediate();
+  } finally {
+    database.close();
+  }
+  return snapshot;
+}
+
 function open(filename, clock, verificationTrustAnchors = []) {
   return new SqliteCoordinator({
     filename, clock: () => clock.value, verificationTrustAnchors,
@@ -1246,6 +1325,7 @@ test("restart rejects publication lease and publishing checkpoint tamper", async
       "2099-01-01T00:00:00.000Z"],
     ["event_pump_dispatches", "state", "published"],
     ["event_pump_checkpoints", "publication_owner_id", "tampered-checkpoint-owner"],
+    ["event_pump_checkpoints", "digest_version", 1],
   ];
   for (const [table, column, value] of mutations) {
     const temporary = fixture();
@@ -1442,46 +1522,111 @@ test("v8 migrates append-only to the durable event-pump schema", () => {
   }
 });
 
-test("v9 migrates append-only to publication leases without rewriting v9", () => {
-  const temporary = fixture();
-  let coordinator = open(temporary.filename, { value: START });
-  try {
-    setup(coordinator);
-    coordinator.close();
-    coordinator = null;
-    const database = new Database(temporary.filename);
-    const v9Checksum = database.prepare(
-      "SELECT checksum FROM schema_migrations WHERE version = 9",
-    ).pluck().get();
-    database.exec(`
-      DROP INDEX event_pump_dispatches_publication_lease;
-      ALTER TABLE event_pump_dispatches DROP COLUMN publication_lease_expires_at;
-      ALTER TABLE event_pump_dispatches DROP COLUMN publication_lease_epoch;
-      ALTER TABLE event_pump_dispatches DROP COLUMN publication_owner_id;
-      ALTER TABLE event_pump_checkpoints DROP COLUMN publication_lease_expires_at;
-      ALTER TABLE event_pump_checkpoints DROP COLUMN publication_lease_epoch;
-      ALTER TABLE event_pump_checkpoints DROP COLUMN publication_owner_id;
-      DELETE FROM schema_migrations WHERE version = 10;
-      PRAGMA user_version = 9;
-    `);
-    database.close();
+for (const legacyState of ["selected", "completed-bound", "published"]) {
+  test(`non-empty v9 ${legacyState} checkpoints migrate without rewriting legacy hashes`,
+    async () => {
+      const temporary = fixture();
+      const clock = { value: START };
+      let coordinator = open(temporary.filename, clock);
+      try {
+        setup(coordinator);
+        const scenarioId = `scenario_legacy_v9_${legacyState}`;
+        const chainId = `chain_legacy_v9_${legacyState}`;
+        if (legacyState === "selected") {
+          const pump = register(createAutonomousEventPump({
+            coordinator, runtime: {}, scenarioId, chainId,
+            recoveryDirectory: temporary.recoveryDirectory,
+            ownerId: `legacy-v9-owner-${legacyState}`,
+            faultInjector: async (stage) => {
+              if (stage === "post-record-pre-turn") {
+                throw Object.assign(new Error("legacy selected"), {
+                  code: "legacy_selected",
+                });
+              }
+            },
+          })).start();
+          await assert.rejects(() => pump.drainOnce(), { code: "legacy_selected" });
+        } else {
+          const businessTool = Object.freeze({
+            type: "function",
+            name: "threadmesh_durable_pump_review",
+            description: "Build a genuine non-empty legacy v9 pump state.",
+            inputSchema: Object.freeze({ type: "object", additionalProperties: false }),
+          });
+          const businessOutput = Object.freeze({
+            findingDigest: sha256Digest(`legacy-v9-${legacyState}`),
+          });
+          const runtime = offeredRuntime({
+            scenarioId, role: "reviewer", businessPhase: "offered-review",
+            businessTool, businessOutput,
+          });
+          const pump = registerOffered(createAutonomousEventPump({
+            coordinator, runtime, scenarioId, chainId,
+            recoveryDirectory: temporary.recoveryDirectory,
+            ownerId: `legacy-v9-owner-${legacyState}`,
+            faultInjector: async (stage) => {
+              if (legacyState === "completed-bound" &&
+                  stage === "post-settle-pre-publication") {
+                throw Object.assign(new Error("legacy completed"), {
+                  code: "legacy_completed",
+                });
+              }
+            },
+          }), businessTool, businessOutput).start();
+          if (legacyState === "completed-bound") {
+            await assert.rejects(() => pump.drainOnce(), { code: "legacy_completed" });
+          } else {
+            assert.equal((await pump.drainOnce()).state, "dispatched");
+          }
+        }
+        coordinator.close();
+        coordinator = null;
+        const legacy = downgradePumpStateToLegacyV9(temporary.filename);
 
-    coordinator = open(temporary.filename, { value: START });
-    assert.equal(coordinator.storageInfo().schemaVersion, 10);
-    assert.equal(coordinator.db.prepare(
-      "SELECT checksum FROM schema_migrations WHERE version = 9",
-    ).pluck().get(), v9Checksum);
-    assert.equal(v9Checksum, SQLITE_SCHEMA_MIGRATIONS.find(
-      ({ version }) => version === 9,
-    ).checksum);
-    assert.deepEqual(coordinator.db.prepare(
-      "SELECT publication_owner_id, publication_lease_epoch, publication_lease_expires_at FROM event_pump_dispatches",
-    ).all(), []);
-    assert.equal(coordinator.db.prepare(
-      "SELECT COUNT(*) FROM schema_migrations",
-    ).pluck().get(), 10);
-  } finally {
-    coordinator?.close();
-    temporary.cleanup();
-  }
-});
+        coordinator = open(temporary.filename, clock);
+        assert.equal(coordinator.storageInfo().schemaVersion, 10);
+        assert.equal(coordinator.db.prepare(
+          "SELECT checksum FROM schema_migrations WHERE version = 9",
+        ).pluck().get(), legacy.v9Checksum);
+        assert.equal(legacy.v9Checksum, SQLITE_SCHEMA_MIGRATIONS.find(
+          ({ version }) => version === 9,
+        ).checksum);
+        const migrated = coordinator.db.prepare(
+          "SELECT * FROM event_pump_dispatches WHERE dispatch_id = ?",
+        ).get(legacy.dispatch.dispatch_id);
+        for (const column of [
+          "dispatch_id", "receiver_task_id", "receiver_incarnation_id",
+          "event_cursor", "event_id", "event_digest", "registry_digest",
+          "scenario_id", "chain_id", "pump_identity_digest", "handler_id",
+          "route_digest", "dispatch_intent_digest", "state", "owner_id",
+          "lease_epoch", "lease_expires_at", "turn_execution_id",
+          "selection_record_json", "selection_digest", "created_at",
+        ]) assert.equal(migrated[column], legacy.dispatch[column], column);
+        const migratedDigests = coordinator.db.prepare(
+          `SELECT checkpoint_digest FROM event_pump_checkpoints
+           WHERE dispatch_id = ? ORDER BY sequence`,
+        ).pluck().all(legacy.dispatch.dispatch_id);
+        assert.deepEqual(
+          migratedDigests.slice(0, legacy.checkpointDigests.length),
+          legacy.checkpointDigests,
+        );
+        if (legacyState === "published") {
+          assert.equal(migratedDigests.length, legacy.checkpointDigests.length + 1);
+          assert.match(migrated.publication_owner_id, /^legacy-publication-/u);
+          assert.equal(migrated.publication_lease_epoch, 1);
+          assert.equal(migrated.publication_lease_expires_at, migrated.lease_expires_at);
+        } else {
+          assert.equal(migratedDigests.length, legacy.checkpointDigests.length);
+          assert.equal(migrated.publication_owner_id, null);
+          assert.equal(migrated.publication_lease_epoch, 0);
+          assert.equal(migrated.publication_lease_expires_at, null);
+        }
+        assert.equal(coordinator.db.prepare(
+          "SELECT COUNT(*) FROM schema_migrations",
+        ).pluck().get(), 10);
+      } finally {
+        coordinator?.close();
+        temporary.cleanup();
+      }
+    });
+}
