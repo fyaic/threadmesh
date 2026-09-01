@@ -13,6 +13,7 @@ import {
   isCodexLiveAgentRuntime,
 } from "../src/validation/live-agent-scenario.mjs";
 import {
+  projectOperatorSuppliedCodexProbe,
   projectM52EventPumpCodexGateResult,
   runM52EventPumpCodexGate,
 } from "../src/validation/m5-2-event-pump-codex-gate.mjs";
@@ -139,6 +140,40 @@ test("event-pump gate projector rejects summary, action, identity, and trust dri
     ["unknown-cleanup", (value) => {
       value.cleanup.rawPath = "/private/path";
     }],
+    ["cleanup-unknown-count", (value) => {
+      value.cleanup.unknownJournalCount = 1;
+    }],
+    ["cleanup-unknown-path", (value) => {
+      value.cleanup.unknownJournalPathDigests = [`sha256:${"5".repeat(64)}`];
+    }],
+    ["cleanup-journal-failure", (value) => {
+      value.cleanup.journalRemovalFailures = [{ errorCode: "synthetic" }];
+    }],
+    ["cleanup-directory", (value) => {
+      value.cleanup.runRootRemoved = false;
+    }],
+    ["cleanup-role-duplicate", (value) => {
+      value.cleanup.roles[0].role = "a";
+    }],
+    ["attention-extra-role", (value) => {
+      value.attention.cursors.extra = structuredClone(value.attention.cursors.r);
+    }],
+    ["attention-active", (value) => {
+      value.attention.cursors.r.activeClaimEpoch = 2;
+    }],
+    ["attention-cursor", (value) => {
+      value.attention.cursors.r.committedCursor = 2;
+    }],
+    ["prompt-source", (value) => {
+      value.promptBoundary.boundTurnSource = "summary-owned-counter";
+    }],
+    ["selection-scope", (value) => {
+      value.eventPumpSelectionChainScope = "global";
+      value.eventPumpSelectionChainValid = true;
+    }],
+    ["fixture-scope", (value) => {
+      value.completedRoles.pop();
+    }],
   ];
   for (const [name, mutate] of cases) {
     const changed = structuredClone(core);
@@ -169,6 +204,30 @@ test("event-pump gate exposes an unforgeable runtime brand without model use", a
   );
 });
 
+test("operator-supplied Codex-shaped probe is strict but proves no binary provenance", () => {
+  const probe = {
+    userAgent: "codex_cli_rs/0.145.0 (operator supplied)",
+    platformFamily: "unix",
+    platformOs: "darwin",
+  };
+  probe.snapshotDigest = sha256Digest(probe);
+  const projected = projectOperatorSuppliedCodexProbe(probe);
+  assert.equal(projected.userAgentDigest, sha256Digest(probe.userAgent));
+  assert.equal(projected.snapshotDigest, probe.snapshotDigest);
+  assert.equal(Object.hasOwn(projected, "binaryProvenanceVerified"), false);
+
+  for (const changed of [
+    { ...probe, userAgent: "spoofed-codex/0.145.0" },
+    { ...probe, snapshotDigest: `sha256:${"6".repeat(64)}` },
+    { ...probe, binaryPath: "/private/codex" },
+  ]) {
+    assert.throws(
+      () => projectOperatorSuppliedCodexProbe(changed),
+      { code: /threadmesh_m52_event_pump_gate_/u },
+    );
+  }
+});
+
 test("an injected runtime cannot spoof Codex product evidence in the public projector", async (t) => {
   const source = await runCoordinatorDrivenNoPlanScenario({
     artifactsDirectory: artifacts(t, "threadmesh-m52-injected-label-"),
@@ -192,6 +251,7 @@ test("event-pump gate CLI distinguishes help, blocked, and preflight exits", () 
   const help = spawnSync(process.execPath, [script, "--help"], { encoding: "utf8" });
   assert.equal(help.status, 0);
   assert.match(help.stdout, /THREADMESH_CODEX_COMMAND/u);
+  assert.match(help.stdout, /operator-supplied and Codex-shaped/u);
   assert.match(help.stdout, /blocked=2, failed=1, usage\/preflight\/not-run=3/u);
 
   const blocked = spawnSync(process.execPath, [script, "--mode", "fake"], {

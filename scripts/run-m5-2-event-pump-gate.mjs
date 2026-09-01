@@ -5,7 +5,7 @@ import process from "node:process";
 
 import {
   runM52EventPumpCodexGate,
-  runM52OfficialCodexEventPumpGate,
+  runM52OperatorSuppliedCodexEventPumpGate,
 } from
   "../src/validation/m5-2-event-pump-codex-gate.mjs";
 
@@ -35,6 +35,7 @@ function printHelp() {
     "    THREADMESH_CODEX_COMMAND=/absolute/path/to/codex \\",
     "    node scripts/run-m5-2-event-pump-gate.mjs --mode live [--model MODEL]",
     "  node scripts/run-m5-2-event-pump-gate.mjs --mode live --ack ACK --command /absolute/path/to/codex",
+    "  Live mode treats the command as operator-supplied and Codex-shaped; the probe does not prove binary provenance.",
     "",
     "Exit codes: blocked=2, failed=1, usage/preflight/not-run=3.",
   ].join("\n"));
@@ -80,7 +81,7 @@ try {
         code: "threadmesh_m52_event_pump_runner_command_invalid",
       });
     }
-    result = await runM52OfficialCodexEventPumpGate({
+    result = await runM52OperatorSuppliedCodexEventPumpGate({
       artifactsDirectory,
       command,
       ...(parsed.model ? { model: parsed.model } : {}),

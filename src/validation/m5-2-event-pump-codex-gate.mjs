@@ -57,6 +57,19 @@ const EXPECTED_DISPATCH_HANDLERS = Object.freeze([
   EXPECTED_HANDLERS[0], EXPECTED_HANDLERS[4], EXPECTED_HANDLERS[1],
   EXPECTED_HANDLERS[2], EXPECTED_HANDLERS[3],
 ]);
+const EXPECTED_CURSOR_STATE = Object.freeze({
+  r: Object.freeze({ taskId: "task_no_plan_r", incarnationId: "inc_no_plan_r_0001", cursor: 1, revision: 2 }),
+  a: Object.freeze({ taskId: "task_no_plan_a", incarnationId: "inc_no_plan_a_0001", cursor: 7, revision: 2 }),
+  v: Object.freeze({ taskId: "task_no_plan_v", incarnationId: "inc_no_plan_v_0001", cursor: 12, revision: 2 }),
+  dependent: Object.freeze({ taskId: "task_no_plan_dependent", incarnationId: "inc_no_plan_dependent_0001", cursor: 17, revision: 2 }),
+  irrelevant: Object.freeze({ taskId: "task_no_plan_irrelevant", incarnationId: "inc_no_plan_irrelevant_0001", cursor: 2, revision: 1 }),
+});
+const EXPECTED_COMPLETED_ROLES = Object.freeze([
+  "a-kickoff", "r", "same-a", "v", "dependent",
+]);
+const EXPECTED_PENDING_GATES = Object.freeze([
+  "cross-process-os-kill-and-long-turn-lease-heartbeat", "global-selection-chain",
+]);
 const CORE_RESULT_KEYS = Object.freeze([
   "state", "liveProductEvidence", "promptBoundary", "deterministicPolicyOracle",
   "activationDispatchesByFixtureRunner", "eventPumpDispatches", "eventPumpSkips",
@@ -285,7 +298,7 @@ function validateSessionManifest(manifest, nativeRecords) {
 
 function projectGateResult(coreResult, {
   productProbe = null,
-  officialCodexRuntime = false,
+  operatorSuppliedCodexShapedRuntime = false,
 } = {}) {
   exactObject(coreResult, CORE_RESULT_KEYS, "result");
   if (coreResult.state !== "passed-full-functional-in-process-fixture" ||
@@ -318,6 +331,21 @@ function projectGateResult(coreResult, {
       "receiver", "committedCursor", "commitCount", "commitHeadDigest", "revision",
       "activeClaimEpoch", "activeEventCursor",
     ], `attention.cursors.${role}`);
+    const expected = EXPECTED_CURSOR_STATE[role];
+    exactObject(cursor.receiver, ["taskId", "incarnationId"],
+      `attention.cursors.${role}.receiver`);
+    if (!expected || cursor.receiver.taskId !== expected.taskId ||
+        cursor.receiver.incarnationId !== expected.incarnationId ||
+        cursor.committedCursor !== expected.cursor || cursor.commitCount !== 1 ||
+        cursor.revision !== expected.revision || cursor.activeClaimEpoch !== null ||
+        cursor.activeEventCursor !== null) {
+      throw gateError("threadmesh_m52_event_pump_gate_result_invalid", "attentionCursorState");
+    }
+    digest(cursor.commitHeadDigest, "attention.commitHeadDigest");
+  }
+  if (canonicalJson(Object.keys(coreResult.attention.cursors).sort()) !==
+      canonicalJson(Object.keys(EXPECTED_CURSOR_STATE).sort())) {
+    throw gateError("threadmesh_m52_event_pump_gate_result_invalid", "attentionCursorRoles");
   }
   exactObject(coreResult.bindings, [
     "lifecycleActionPublications", "receiverDecisions", "contextAdmissions",
@@ -362,7 +390,23 @@ function projectGateResult(coreResult, {
     if (Object.hasOwn(role, "identifierDigest")) {
       digest(role.identifierDigest, "cleanup.identifierDigest");
     }
+    if (role.deleted !== true || role.absenceVerified !== true) {
+      throw gateError("threadmesh_m52_event_pump_gate_result_invalid", "cleanup.roleState");
+    }
   });
+  if (canonicalJson(coreResult.cleanup.roles.map(({ role }) => role).sort()) !==
+      canonicalJson(["a", "dependent", "irrelevant", "r", "v"]) ||
+      coreResult.cleanup.unknownJournalCount !== 0 ||
+      canonicalJson(coreResult.cleanup.unknownJournalPathDigests) !== "[]" ||
+      canonicalJson(coreResult.cleanup.journalRemovalFailures) !== "[]" ||
+      canonicalJson(coreResult.cleanup.databaseRemovalFailures) !== "[]" ||
+      coreResult.cleanup.journalDirectoryRemoved !== true ||
+      coreResult.cleanup.runRootRemoved !== true ||
+      coreResult.cleanup.coordinatorRemoved !== true ||
+      coreResult.cleanup.ownedJournalRemovedCount !== 0 ||
+      coreResult.cleanup.remainingJournalCount !== 0) {
+    throw gateError("threadmesh_m52_event_pump_gate_result_invalid", "cleanupClosure");
+  }
   if (
     promptBoundary.initialUserKickoffPrompts !== 1 ||
     promptBoundary.phasePromptsSubmittedByRunner !== 0 ||
@@ -370,6 +414,9 @@ function projectGateResult(coreResult, {
     promptBoundary.logicalEventPumpLifecycleStarts !== 1 ||
     promptBoundary.pumpProtectedBoundNativeTurns !== 8 ||
     promptBoundary.boundNativeTurns !== 9 ||
+    promptBoundary.runnerOwnedCounterSource !==
+      "scenario-entry-and-no-dispatch-call-sites" ||
+    promptBoundary.boundTurnSource !== "sqlite-exact-turn-and-binding-records" ||
     coreResult.activationDispatchesByFixtureRunner !== 0 ||
     coreResult.rawPhasePromptsSubmittedByFixtureRunner !== 0 ||
     coreResult.humanRelayCount !== 0 || coreResult.pollingCount !== 0
@@ -379,18 +426,32 @@ function projectGateResult(coreResult, {
     coreResult.eventPumpTerminalState !== "idle" ||
     coreResult.eventPumpSelectionDurable !== true ||
     coreResult.durablePerDispatchRecordsValid !== true ||
+    coreResult.eventPumpSelectionRecordCount !== 5 ||
+    coreResult.durablePerDispatchRecordCount !== 5 ||
+    coreResult.eventPumpSelectionChainValid !== null ||
+    coreResult.eventPumpSelectionChainScope !== "global-chain-not-implemented" ||
+    coreResult.eventPumpAwaitingPromotion !== false ||
     coreResult.attention?.allOfferedCursorsCommitted !== true ||
     coreResult.attention?.activeClaimCount !== 0 || coreResult.sameARef !== true ||
     coreResult.irrelevant?.claimCount !== 0 || coreResult.irrelevant?.turnCount !== 0 ||
     coreResult.irrelevant?.durableSkip !== true
   ) throw gateError("threadmesh_m52_event_pump_gate_result_invalid", "pumpClosure");
+  digest(coreResult.eventPumpSelectionHeadDigest, "eventPumpSelectionHeadDigest");
+  if (canonicalJson(coreResult.completedRoles) !== canonicalJson(EXPECTED_COMPLETED_ROLES) ||
+      canonicalJson(coreResult.pendingRoles) !== "[]" ||
+      coreResult.pendingReason !==
+        "OS-kill/long-turn lease heartbeat and a global selection chain remain outside this fixture." ||
+      canonicalJson(coreResult.pendingGates) !== canonicalJson(EXPECTED_PENDING_GATES)) {
+    throw gateError("threadmesh_m52_event_pump_gate_result_invalid", "fixtureScope");
+  }
   if (
     canonicalJson(coreResult.executedHandlerIds) !== canonicalJson(EXPECTED_HANDLERS.slice(0, 4)) ||
     coreResult.bindings?.lifecycleActionPublications !== 4 ||
     coreResult.bindings?.receiverDecisions !== 4 ||
     coreResult.bindings?.contextAdmissions !== 4 ||
     coreResult.runtime?.modelSelectedToolCalls !== 13 ||
-    coreResult.runtime?.planSurfaceUsed === true
+    coreResult.runtime?.planSurfaceUsed !== false ||
+    coreResult.runtime?.adapterInvocationAuditAvailable !== true
   ) throw gateError("threadmesh_m52_event_pump_gate_result_invalid", "exactBindings");
   const expectedOrder = [
     "v-verification-tool-selected", "verified-event-durable",
@@ -404,7 +465,9 @@ function projectGateResult(coreResult, {
     throw gateError("threadmesh_m52_event_pump_gate_result_invalid", "finalizationOrder");
   }
   if (coreResult.verification?.externalIndependentVerifier !== false ||
+      coreResult.verification?.mode !== "deterministic-in-process-trusted-signing" ||
       coreResult.verification?.signer !== "fixture-owned-ephemeral-key" ||
+      coreResult.verification?.nativeVerifierSessionIndependent !== true ||
       coreResult.verification?.signatureVerified !== true ||
       coreResult.verification?.resultDigestBound !== true ||
       coreResult.verification?.allLifecycleNativeTurnIdsDistinct !== true ||
@@ -424,6 +487,10 @@ function projectGateResult(coreResult, {
   ) {
     throw gateError("threadmesh_m52_event_pump_gate_result_invalid", "honestyBoundary");
   }
+  digest(coreResult.verification.nativeVerifierTurnIdDigest,
+    "verification.nativeVerifierTurnIdDigest");
+  digest(coreResult.verification.trustAnchorDigest, "verification.trustAnchorDigest");
+  digest(coreResult.evidenceChain.headDigest, "evidenceChain.headDigest");
   const productBoundary = coreResult.runtime?.productBoundary;
   if (!["deterministic-fake-codex-app-server", "injected-codex-runtime"].includes(
     productBoundary,
@@ -443,11 +510,14 @@ function projectGateResult(coreResult, {
   const remainingGates = [
     "independent-verifier-service",
     "real-bounded-git-worktree-effects",
-    ...(!officialCodexRuntime ? ["real-codex-product-run"] : []),
+    ...(operatorSuppliedCodexShapedRuntime
+      ? ["trusted-codex-binary-provenance"]
+      : ["real-codex-product-run"]),
   ];
   const product = deterministic
     ? "deterministic-codex-fake"
-    : (officialCodexRuntime ? "codex" : "injected-runtime");
+    : (operatorSuppliedCodexShapedRuntime
+      ? "operator-supplied-codex-shaped-executable" : "injected-runtime");
   return Object.freeze({
     schemaVersion: 1,
     state: "blocked",
@@ -455,8 +525,8 @@ function projectGateResult(coreResult, {
     product,
     evidenceClass: deterministic
       ? "deterministic-event-pump-codex-gate"
-      : (officialCodexRuntime
-        ? "real-codex-event-pump-gate-with-simulated-verifier"
+      : (operatorSuppliedCodexShapedRuntime
+        ? "operator-supplied-codex-shaped-event-pump-gate"
         : "injected-runtime-event-pump-gate"),
     liveProductEvidence: false,
     deterministicPolicyOracle: deterministic,
@@ -499,12 +569,14 @@ function projectGateResult(coreResult, {
 }
 
 export function projectM52EventPumpCodexGateResult(coreResult, { productProbe = null } = {}) {
-  return projectGateResult(coreResult, { productProbe, officialCodexRuntime: false });
+  return projectGateResult(coreResult, {
+    productProbe, operatorSuppliedCodexShapedRuntime: false,
+  });
 }
 
-function assertOfficialProbe(probe) {
+export function projectOperatorSuppliedCodexProbe(probe) {
   exactObject(probe, ["userAgent", "platformFamily", "platformOs", "snapshotDigest"],
-    "officialProductProbe");
+    "operatorSuppliedProductProbe");
   if (!/^codex_cli_rs\/[0-9]+\.[0-9]+\.[0-9]+(?:\s|\(|$)/u.test(probe.userAgent) ||
       typeof probe.platformFamily !== "string" || probe.platformFamily.length < 1 ||
       typeof probe.platformOs !== "string" || probe.platformOs.length < 1 ||
@@ -552,7 +624,7 @@ export async function runM52EventPumpCodexGate({ artifactsDirectory, runtime = n
   return projectM52EventPumpCodexGateResult(coreResult, { productProbe });
 }
 
-export async function runM52OfficialCodexEventPumpGate({
+export async function runM52OperatorSuppliedCodexEventPumpGate({
   artifactsDirectory,
   command,
   args,
@@ -571,10 +643,14 @@ export async function runM52OfficialCodexEventPumpGate({
   if (!isCodexLiveAgentRuntime(runtime)) {
     throw gateError("threadmesh_m52_event_pump_gate_runtime_authenticity_invalid");
   }
-  const productProbe = assertOfficialProbe(await runtime.probe(artifactsDirectory));
+  const productProbe = projectOperatorSuppliedCodexProbe(
+    await runtime.probe(artifactsDirectory),
+  );
   const coreResult = await runCoordinatorDrivenNoPlanScenario({
     artifactsDirectory,
     runtime,
   });
-  return projectGateResult(coreResult, { productProbe, officialCodexRuntime: true });
+  return projectGateResult(coreResult, {
+    productProbe, operatorSuppliedCodexShapedRuntime: true,
+  });
 }
