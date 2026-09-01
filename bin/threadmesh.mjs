@@ -22,7 +22,9 @@ if (command !== "demo" || args.some((arg) => arg !== "--json")) {
     } else {
       process.stdout.write("ThreadMesh attention-router demo passed.\n");
       process.stdout.write("  artifact-ready -> review-failed -> artifact-ready -> dependency-satisfied\n");
-      process.stdout.write("  manual relay actions: 0; model polling turns: 0; incorrect unlocks: 0\n");
+      process.stdout.write("  manual path lower bound: 9 user actions; ThreadMesh path: 1 kickoff\n");
+      process.stdout.write("  relay actions after kickoff: 0; model polling turns: 0; incorrect unlocks: 0\n");
+      process.stdout.write("  active receiver: checkpoint retained, 0 steer/interrupt/native-turn starts\n");
       process.stdout.write(renderAttentionRouterDemo(result));
     }
   } catch (error) {

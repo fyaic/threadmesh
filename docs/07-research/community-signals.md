@@ -1,8 +1,25 @@
 # Community signals around cross-task agent coordination
 
-> Research snapshot: 2026-08-28. GitHub issues are community reports unless an
+> Research snapshot: 2026-09-01. GitHub issues are community reports unless an
 > OpenAI contributor explicitly confirms product status. They are evidence of
 > demand and failure modes, not a stable API contract.
+
+## 2026-09-01 delivery-mode update
+
+The most useful new distinction is no longer whether Codex can retain queued
+work. Its public App Server surface now exposes persistent queue operations.
+The remaining gap reported in
+[#30499](https://github.com/openai/codex/issues/30499) is cross-task delivery:
+the send operation does not give the caller an explicit queue/checkpoint/steer
+mode, durable message identity, or inspectable delivery state, and an active
+target can still be redirected.
+
+This sharpens ThreadMesh's wedge. It should not build another generic queue. It
+should make the attention decision and admission contract portable: mailbox as
+truth, explicit checkpoint offer, zero implicit active-turn steer, and a state
+record explaining whether the event was retained, admitted, verified, or used
+to unlock work. The deterministic active-receiver case now makes this product
+claim executable; a real native active-target observation remains pending.
 
 ## 2026-08-28 observation update
 

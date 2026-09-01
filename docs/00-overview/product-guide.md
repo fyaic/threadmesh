@@ -1,11 +1,11 @@
 # What ThreadMesh is
 
-ThreadMesh is a permissioned coordination layer for agent tasks that run in
-separate sessions or harnesses.
+ThreadMesh is a permissioned attention and handoff layer for agent tasks that
+run in separate sessions or harnesses.
 
-Its job is narrow: let one task discover a pre-authorized relationship, offer a
-bounded piece of information to another task, and let the receiving harness
-decide whether that information enters its agent context.
+Its job is narrow: move completion, blockers, review findings, and verified
+dependency state to the right task without making the user copy results, poll
+unchanged state, or risk silently redirecting an active receiver.
 
 ThreadMesh does **not** merge chat histories, give agents global session access,
 or let one agent silently rewrite another agent's objective.
@@ -17,11 +17,12 @@ Imagine two coding-agent tasks running at the same time:
 - Agent A builds an artifact and computes its verified checksum.
 - Agent B prepares a release manifest and cannot finish without that checksum.
 
-Without a coordination layer, the user must notice the dependency, copy the
-checksum from A, find B, and paste it into the right session. A naïve automation
-can remove the manual step, but it may also inject stale or malicious text into
-B, contact the wrong incarnation of B, or interrupt work the user has since
-repurposed.
+Without a coordination layer, the user must notice the dependency, check A's
+status, copy the checksum, find B, and paste it into the right session. Repeat
+that across review and fix cycles, and the user becomes the clipboard, poller,
+and handoff scheduler. A naïve automation can remove the manual step, but it may
+also inject stale or malicious text into B, contact the wrong incarnation, or
+interrupt work the user has since repurposed.
 
 With ThreadMesh:
 
@@ -78,7 +79,9 @@ The repository is pre-alpha but executable:
 |---|---|
 | Portable harness API | Zero-runtime-dependency `@fyaic/threadmesh` SDK with register, discover, suggest, poll, decide, and a per-turn proactive tool bridge |
 | Reference control plane | Authenticated JSON-RPC binding and SQLite coordinator with grants, mailbox, claims, receipts, replay defense, and audit |
-| Deterministic demo | Control, relevant, and irrelevant A-to-B conditions run through the complete coordinator path |
+| Deterministic product demo | Four-handoff implementation/review/fix/dependency loop; manual lower bound 9 user actions versus 1 kickoff; active receiver remains running at a pending checkpoint; verified unlock and cleanup pass |
+| Real Codex lifecycle initiative | One kickoff advanced A→R→same-A→V→dependent through 9 native turns with 0 later runner prompts/direct activations and 0 irrelevant turns; retained run used simulated Git/verifier effects |
+| Real-effects integration | Bounded Git worktrees and process-isolated child verifier are merged into the event pump; deterministic positive and wrong-finding negative pass; fresh live traversal pending |
 | Codex App Server | The bounded two-stage proactive policy passed relevant 3/3 plus quiet control and irrelevant checks; it remains explicit opt-in |
 | Kimi Code ACP | A real accepted suggestion completed through the shared coordinator path with session cleanup verified |
 | Cross-harness proactive case | Real Codex A discovered and sent once; persistent Kimi Code B accepted and completed, with both resources cleaned |
@@ -91,10 +94,12 @@ safe handling of arbitrary untrusted peer prompts.
 
 ## Fastest way to understand the project
 
-1. Run the [end-to-end demonstration](../06-guides/end-to-end-demo.md).
-2. Read the [real agent case portfolio](../06-guides/real-world-cases.md).
-3. Check the [harness support matrix](harness-support.md).
-4. Read [context sovereignty](../01-concepts/context-sovereignty.md).
-5. Follow the [30-minute adapter guide](../06-guides/implement-an-adapter.md).
-6. Check [current project status](../10-planning/project-status.md) before using
+1. Watch the [76-second proof](../assets/demo/threadmesh-proof-walkthrough.mp4).
+2. Run the [attention-router demo](../06-guides/attention-router-demo.md).
+3. Read the [real agent case portfolio](../06-guides/real-world-cases.md).
+4. Compare the [manual baseline](../06-guides/manual-relay-baseline.md).
+5. Check the [harness support matrix](harness-support.md).
+6. Read [context sovereignty](../01-concepts/context-sovereignty.md).
+7. Follow the [30-minute adapter guide](../06-guides/implement-an-adapter.md).
+8. Check [current project status](../10-planning/project-status.md) before using
    experimental adapters.

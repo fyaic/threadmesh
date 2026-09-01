@@ -8,23 +8,26 @@ evidence. New readers do not need to read every numbered directory in order.
 1. [What ThreadMesh is](00-overview/product-guide.md)
 2. [See the real proactive-agent cases](06-guides/real-world-cases.md)
 3. [Run the closed-loop attention-router demo](06-guides/attention-router-demo.md)
-4. [Validate the real Codex attention seam](06-guides/codex-attention-validation.md)
-5. [Check harness support](00-overview/harness-support.md)
-6. [Read the active product mainline](10-planning/product-mainline-2026-08-28.md)
-7. [Current project status](10-planning/project-status.md)
-8. [Context sovereignty](01-concepts/context-sovereignty.md)
-9. [Reference architecture](02-architecture/reference-architecture.md)
-10. [Protocol overview](03-protocol/README.md)
-11. [Threat model](04-safety/threat-model.md)
-12. [30-minute adapter guide](06-guides/implement-an-adapter.md)
+4. [Compare manual relay with one kickoff](06-guides/manual-relay-baseline.md)
+5. [Inspect the active-session safety case](06-guides/non-interrupting-handoff.md)
+6. [Try the 15-minute operator challenge](06-guides/15-minute-operator-challenge.md)
+7. [Check harness support](00-overview/harness-support.md)
+8. [Read the active product mainline](10-planning/product-mainline-2026-08-28.md)
+9. [Current project status](10-planning/project-status.md)
+10. [Context sovereignty](01-concepts/context-sovereignty.md)
+11. [Reference architecture](02-architecture/reference-architecture.md)
+12. [Protocol overview](03-protocol/README.md)
+13. [Threat model](04-safety/threat-model.md)
+14. [30-minute adapter guide](06-guides/implement-an-adapter.md)
 
 ## Choose a path
 
 | Goal | Read or run |
 |---|---|
 | Understand the product | [Product guide](00-overview/product-guide.md) → [proactive coordination](01-concepts/proactive-coordination.md) |
-| See the intelligence effect | [Real case portfolio](06-guides/real-world-cases.md) → [Pi-to-Kimi demo](06-guides/pi-to-kimi-demo.md) |
-| Run it locally | [Attention-router demo](06-guides/attention-router-demo.md) → [real Codex attention validation](06-guides/codex-attention-validation.md) → [selective behavior demo](06-guides/end-to-end-demo.md) → [cross-harness conformance](06-guides/multi-product-admission-conformance.md) |
+| See the intelligence effect | [76-second walkthrough](assets/demo/threadmesh-proof-walkthrough.mp4) → [real case portfolio](06-guides/real-world-cases.md) |
+| Evaluate user value | [Manual baseline](06-guides/manual-relay-baseline.md) → [15-minute operator challenge](06-guides/15-minute-operator-challenge.md) |
+| Run it locally | [Attention-router demo](06-guides/attention-router-demo.md) → [active-session safety](06-guides/non-interrupting-handoff.md) → [real Codex attention validation](06-guides/codex-attention-validation.md) |
 | Integrate a harness | [Harness matrix](00-overview/harness-support.md) → [adapter guide](06-guides/implement-an-adapter.md) → [adapter contract](05-adapters/adapter-contract.md) |
 | Evaluate safety | [Context sovereignty](01-concepts/context-sovereignty.md) → [permission model](04-safety/permission-model.md) → [threat model](04-safety/threat-model.md) |
 | Inspect real evidence | [Design reviews](09-reviews/README.md) → [Pi integration record](09-reviews/2026-08-25-pi-integration-kit-validation.md) → [Codex-to-Kimi case](09-reviews/2026-08-25-codex-to-kimi-proactive.md) |

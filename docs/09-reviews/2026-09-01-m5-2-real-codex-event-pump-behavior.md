@@ -106,8 +106,9 @@ the [attempt audit](2026-09-01-m5-2-real-codex-event-pump-attempt-audit.md).
 
 ## Follow-on real-effects integration
 
-The next branch now reuses the existing bounded Git fixture and process-isolated
-child verifier in this same event-pump path. Four follow-on live attempts
+[#133](https://github.com/fyaic/threadmesh/pull/133) now reuses the existing
+bounded Git fixture and process-isolated child verifier in this same event-pump
+path on `main`. Four follow-on live attempts
 created real implementation commits and reached R, but none completed the
 integrated chain. The latest attempt coincided with a reproducible local
 DNS/TLS failure that resolved `chatgpt.com` to a Meta endpoint and presented a

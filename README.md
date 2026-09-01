@@ -19,10 +19,12 @@
 
 # ThreadMesh
 
-ThreadMesh is an experimental coordination protocol and JavaScript integration
-kit that lets one agent session notice an authorized dependency, decide whether
-to contact another session, and deliver a bounded suggestion without sharing
-global chat history or taking over the receiver.
+**Stop babysitting parallel coding agents.**
+
+ThreadMesh routes completion, blockers, review findings, and verified
+dependency state to the right agent session at a safe checkpoint—without making
+you copy results, spend model turns polling status, or let one session silently
+take over another.
 
 **The agent supplies the initiative. ThreadMesh supplies the boundary.**
 
@@ -31,12 +33,39 @@ global chat history or taking over the receiver.
 > release is suitable for local, trusted-process experiments—not production
 > authorization, hostile prompts, or multi-tenant deployment.
 
+## 76-second proof walkthrough
+
+<p align="center">
+  <a href="docs/assets/demo/threadmesh-proof-walkthrough.mp4">
+    <img src="docs/assets/demo/threadmesh-proof-walkthrough.gif" width="100%" alt="ThreadMesh evidence walkthrough: one kickoff, zero manual relay or polling, active receiver checkpoint, selective attention, and verified dependency unlock">
+  </a>
+</p>
+
+The walkthrough is generated from a fresh executable demo and retained real
+Codex evidence. It is not presented as a live screen recording. The local demo
+models the same four-handoff workflow two ways: the manual path requires at
+least one kickoff, four status checks, and four relay actions; the ThreadMesh
+path requires one kickoff and zero later relay or polling actions. Elapsed time
+and model tokens are deliberately marked **not measured** until a network-valid
+live baseline is retained.
+
+It also exercises the safety failure people worry about: when B is already
+running, the completion stays `pending` in a `checkpoint-offer`; B remains
+`running`, and the demo starts zero steer, interrupt, or native-turn operations.
+
+[Watch the MP4](docs/assets/demo/threadmesh-proof-walkthrough.mp4) ·
+[inspect asset provenance](docs/assets/demo/README.md) ·
+[run the proof yourself](docs/06-guides/attention-router-demo.md)
+
 ## Why this matters
 
-Running several agents in parallel creates a new coordination problem. Agent A
-may finish the exact input Agent B needs, but neither session knows when it is
-useful to speak. The user becomes a human message bus: notice the dependency,
-copy the result, find the right session, and explain why it matters.
+Running several agents in parallel often gives the user three extra jobs:
+
+- **clipboard:** notice A has the result B needs, then copy and explain it;
+- **poller:** repeatedly ask whether review, verification, or a dependency is
+  finished, consuming time and model quota even when nothing changed;
+- **traffic controller:** decide whether to queue, wake, steer, or interrupt B
+  without enough visibility into B's current work.
 
 ThreadMesh makes that handoff an explicit, portable capability:
 
@@ -47,9 +76,11 @@ ThreadMesh makes that handoff an explicit, portable capability:
 5. B's harness accepts, rejects, or defers it before model-context admission;
 6. the decision and delivery chain stays auditable.
 
-The intelligence is not “agents can send messages.” It is **selective
-initiative**: speaking when a dependency is real, staying quiet when it is not,
-and preserving the other session's agency.
+The intelligence is not “agents can send messages.” Transport is increasingly
+available from harness-native APIs, ACP, and A2A. ThreadMesh focuses on
+**selective initiative**: speak when a dependency is real, remain quiet when it
+is not, verify before unlocking downstream work, and preserve the receiver's
+agency.
 
 ## What proactive behavior looks like
 
@@ -110,12 +141,14 @@ five of five temporary sessions and all coordinator artifacts were removed.
 
 The completed result is deliberately classified `state=blocked` and
 `liveProductEvidence=false`: that retained run used fixture-owned or simulated
-Git and verification effects. The next branch now wires the existing bounded
-Git worktrees and process-isolated child verifier into the same correlated
-path. Its live rerun is pending after a reproducible local DNS/TLS failure; it
-has not been upgraded into product evidence. After that rerun, the remaining
-checkpoint is the manual relay/polling baseline and minimum critical
-negative/restart closure. Non-mainline expansion remains frozen.
+Git and verification effects. [#133](https://github.com/fyaic/threadmesh/pull/133)
+now binds the existing bounded Git worktrees and process-isolated child
+verifier into that correlated path on `main`. Its fresh real Codex rerun is
+pending after a reproducible local DNS/TLS endpoint failure; it has not been
+upgraded into product evidence. The deterministic manual-accounting baseline,
+active-receiver checkpoint negative, and 76-second evidence walkthrough are now
+the public product proof. New harness, transport, and generalized protocol work
+remains frozen until the live rerun and three external setup attempts close.
 
 [Read the exact fixture evidence](docs/09-reviews/2026-09-01-m5-2-autonomous-fixture.md) ·
 [Read the real Codex behavior](docs/09-reviews/2026-09-01-m5-2-real-codex-event-pump-behavior.md) ·
@@ -306,14 +339,14 @@ peer content or as a production security boundary.
   install Ajv and native `better-sqlite3`.
 - **Reference runtime:** authenticated JSON-RPC + SQLite coordinator for local,
   trusted-process experiments.
-- **Validation:** 379 tests, plus 55 schema cases and 7 transition cases;
+- **Validation:** 384 tests, plus 55 schema cases and 7 transition cases;
   documentation lint passes. These are separate counts, not one combined total.
 - **Default:** proactive coordination remains off unless a maintainer explicitly
   opts into the bounded experimental profile.
-- **Next mainline:** reuse the existing bounded Git-worktree and verifier
-  foundations inside the now-proven real Codex event-pump chain; add a manual
-  relay/polling baseline and minimum critical negative/restart evidence. Kimi
-  parity and broader hardening follow after M5.2 closure.
+- **Next mainline:** retain one network-valid real Codex traversal of the merged
+  real-effects path, run the measured manual baseline, and observe three
+  independent 15-minute setup attempts. Kimi parity and broader hardening
+  follow only after those product-proof gates.
 
 [Current status](docs/10-planning/project-status.md) ·
 [roadmap](ROADMAP.md) ·
@@ -325,8 +358,12 @@ peer content or as a production security boundary.
 | If you want to… | Start here |
 |---|---|
 | Understand the product | [What ThreadMesh is](docs/00-overview/product-guide.md) |
+| Watch the 76-second proof | [MP4 walkthrough](docs/assets/demo/threadmesh-proof-walkthrough.mp4) |
 | See real proactive behavior | [Real agent case portfolio](docs/06-guides/real-world-cases.md) |
 | Run the closed-loop local demo | [Attention-router demo](docs/06-guides/attention-router-demo.md) |
+| Audit the user-value baseline | [Manual relay/polling baseline](docs/06-guides/manual-relay-baseline.md) |
+| Audit non-interruption | [Active-session checkpoint case](docs/06-guides/non-interrupting-handoff.md) |
+| Try it as a new operator | [15-minute challenge](docs/06-guides/15-minute-operator-challenge.md) |
 | Compare selective model initiative | [End-to-end demo](docs/06-guides/end-to-end-demo.md) |
 | Add ThreadMesh to a harness | [Adapter implementation guide](docs/06-guides/implement-an-adapter.md) |
 | Evaluate a harness | [Harness support matrix](docs/00-overview/harness-support.md) |

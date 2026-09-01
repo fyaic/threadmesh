@@ -150,13 +150,15 @@ nine bound native turns, zero later runner prompts or direct activations, an
 irrelevant zero-turn control, and exact cleanup.
 
 This exposed an execution-order imbalance rather than a change in product
-direction. The behavioral checkpoint is passed. The existing bounded
-Git-worktree and child-verifier foundations are now wired into that correlated
-path, but a successful live rerun is pending after a reproducible local DNS/TLS
-failure. The manual baseline and minimum critical negative/restart evidence
-remain next. New substrate, generalized recovery, cross-harness, or
-presentation work remains frozen. No partial integration attempt is promoted
-to M5.2 evidence.
+direction. The behavioral checkpoint is passed. The bounded Git worktrees and
+process-isolated child verifier are now wired into the correlated path by
+[#133](https://github.com/fyaic/threadmesh/pull/133), with deterministic
+positive and wrong-finding negative coverage. A successful live rerun is
+pending after a reproducible local DNS/TLS failure. The public demo now includes
+executable manual-action accounting and an active-receiver checkpoint negative;
+elapsed time and token cost remain unmeasured. New substrate, generalized
+recovery, cross-harness, transport, and protocol expansion remains frozen. No
+partial integration attempt is promoted to M5.2 evidence.
 
 - [x] Ship a one-command local demo with generated identities, grants, example
   sessions, and an inspector
@@ -186,9 +188,14 @@ to M5.2 evidence.
     and no new coordinator or verifier subsystem.
   - [ ] Retain one successful live Codex traversal of that real-effects path;
     current reruns are blocked by a reproducible local DNS/TLS endpoint error.
-  - [ ] M5.2 closure: reuse the existing bounded Git and verifier foundations
-    in one successful correlated run, add the manual baseline and minimum
-    critical negative/restart evidence, and keep raw product data out of public
+  - [x] Add executable manual workflow accounting: one kickoff plus four checks
+    plus four relays is a nine-action lower bound, versus one ThreadMesh kickoff.
+    Keep elapsed time and tokens explicitly unmeasured.
+  - [x] Add the active-receiver negative: a completion remains pending at a
+    checkpoint while B stays running, with zero steer, interrupt, or native-turn
+    starts.
+  - [ ] M5.2 closure: complete one successful correlated real-effects run and a
+    measured manual/live baseline while keeping raw product data out of public
     output.
   - [ ] M5.3: pass three fresh relevant runs plus the manual baseline,
     irrelevant, stale/unverified, restart, and cleanup matrix.
@@ -196,6 +203,8 @@ to M5.2 evidence.
   ([#93](https://github.com/fyaic/threadmesh/issues/93)).
 - [x] Publish the bounded inspector and reproducible deterministic evidence
   record ([#92](https://github.com/fyaic/threadmesh/issues/92)).
+- [x] Publish a 76-second evidence walkthrough generated from fresh executable
+  demo output, with retained real Codex evidence and honest claim boundaries.
 
 The executable closure gates for the real-agent phases are in the
 [M5 real Codex loop plan](docs/10-planning/m5-real-codex-loop.md). A local
@@ -209,6 +218,7 @@ incorrect dependency unlocks.
 ## M6 — Independent adoption and ecosystem bridges
 
 - [ ] Collect three independent setup attempts and one completed real workflow.
+- [x] Publish the 15-minute operator challenge and structured report template.
 - [ ] Close [#79](https://github.com/fyaic/threadmesh/issues/79) with independent
   harness-author feedback.
 - [ ] Make ACP the preferred multi-harness gateway.

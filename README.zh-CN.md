@@ -19,10 +19,11 @@
 
 # ThreadMesh
 
-ThreadMesh 是一个实验性的 Agent 协调协议与 JavaScript 接入工具包。它让一个
-Agent session 在执行过程中发现经过授权的跨任务依赖，自主判断是否联系另一个
-session，并发送一条受约束的建议；同时不共享全局聊天记录，也不夺走接收方的
-上下文控制权。
+**不用再人工盯守多个并行 coding agent。**
+
+ThreadMesh 会把完成、阻塞、评审发现和经过验证的依赖状态，在安全 checkpoint
+路由给正确的 agent session：用户不用复制结果，不用消耗模型 turn 反复查询，也
+不会让一个 session 静默接管另一个 session 的当前工作。
 
 **Agent 提供主动性，ThreadMesh 提供边界。**
 
@@ -30,10 +31,34 @@ session，并发送一条受约束的建议；同时不共享全局聊天记录�
 > ThreadMesh 目前是 pre-alpha，主动能力默认关闭。现阶段适合本地、可信进程范围
 > 的实验，不应作为生产级授权、多租户隔离或处理恶意 peer prompt 的安全边界。
 
+## 76 秒证据演示
+
+<p align="center">
+  <a href="docs/assets/demo/threadmesh-proof-walkthrough.mp4">
+    <img src="docs/assets/demo/threadmesh-proof-walkthrough.gif" width="100%" alt="ThreadMesh 证据演示：一次启动、零人工转发和轮询、活跃接收方 checkpoint、选择性注意力与验证后依赖解锁">
+  </a>
+</p>
+
+这个演示由一次新鲜的可执行 demo 和已经保留的真实 Codex 证据生成，不冒充实时
+录屏。对于同一个四次交接工作流，人工路径的最低成本是 1 次启动、4 次状态查询、
+4 次复制转发，共至少 9 次用户操作；ThreadMesh 路径是 1 次启动，后续 0 次转发、
+0 次轮询。耗时和 token 尚未实测，必须等网络正常的真实基线，文档不会虚构数字。
+
+演示还覆盖最重要的安全负例：B 正在运行时，完成事件只会以
+`checkpoint-offer` 留在 mailbox，decision 保持 `pending`；B 仍是 `running`，
+不会触发 steer、interrupt 或新的 native turn。
+
+[观看 MP4](docs/assets/demo/threadmesh-proof-walkthrough.mp4) ·
+[查看演示资产证据边界](docs/assets/demo/README.md) ·
+[亲自运行](docs/06-guides/attention-router-demo.md)
+
 ## 为什么需要它
 
-当多个 Agent 并行工作时，用户往往被迫充当“人工消息总线”：发现 A 的结果正好是
-B 缺少的输入，从 A 复制内容，找到正确的 B session，再解释这条信息为什么重要。
+当多个 Agent 并行工作时，用户往往被迫承担三份额外工作：
+
+- 当“剪贴板”：发现 A 的结果正好是 B 缺少的输入，再复制、查找、解释；
+- 当“轮询器”：不断询问评审、验证或依赖是否完成，即使状态没变化也消耗额度；
+- 当“交通警察”：在不了解 B 当前工作的情况下决定排队、唤醒、转向还是打断。
 
 ThreadMesh 把这个过程抽象成一项可移植能力：
 
@@ -44,8 +69,9 @@ ThreadMesh 把这个过程抽象成一项可移植能力：
 5. B 的 harness 在 checkpoint 接受、拒绝或延迟，再决定是否进入模型上下文；
 6. 完整的决策、投递与清理链路可审计。
 
-这里的“智能”不只是 Agent 会发消息，而是**有选择的主动性**：依赖确实存在时
-主动联系，无关时保持安静，并尊重另一个 session 的自主权。
+这里的“智能”不只是 Agent 会发消息。传输能力正在被 harness 原生 API、ACP 和
+A2A 普及；ThreadMesh 关注的是**有选择的主动性**：依赖确实存在时主动联系，
+无关时保持安静，验证后才解锁下游，并尊重接收 session 的自主权。
 
 ## 已验证的主动性效果
 
@@ -205,10 +231,10 @@ sandbox。不要用它处理任意恶意 peer 内容或充当生产安全边界�
 - 协议：可执行 `0.0-draft`，仍可能调整。
 - 包：`@fyaic/threadmesh@0.1.0-alpha.0`，可从 GitHub 安装；根 export 是精简 SDK，CLI 与显式 runtime subpath 会安装 Ajv 和原生 `better-sqlite3`。
 - 参考 runtime：authenticated JSON-RPC + SQLite coordinator，面向本地可信进程实验。
-- 验证：378 项测试，加 55 个 schema case、7 个状态转换 case、文档与链接检查；这些计数分别报告。
+- 验证：384 项测试，加 55 个 schema case、7 个状态转换 case、文档检查；这些计数分别报告。
 - 默认策略：除非 maintainer 明确选择有边界实验 profile，否则主动协调保持关闭。
-- 当前边界：确定性 event pump 已能在一次 kickoff 后驱动 A→R→同一个 A→V→dependent，但三次真实 Codex event-pump 尝试分别停在产品探测、时间证据和用户暂停于五个 session bootstrap，尚未形成真实主动链；第三次没有执行正常信号清理，随后通过一次性精确操作删除并确认了五个测试 session 与临时资源。
-- 下一主线：冻结非主线扩展，先在现有实现上完成并保留一次真实 Codex event-pump 主动链；只有真实运行暴露出的 blocker 可以插队。随后再恢复真实 Git/verifier 闭环、Kimi parity 与可靠性矩阵。
+- 当前边界：第六次真实 Codex event-pump 已在一次 kickoff 后通过 9 个 native turn 完成 A→R→同一个 A→V→dependent，后续 runner phase prompt/direct activation 为 0，无关 session turn 为 0，清理 5/5；该次运行的 Git/verifier effect 是模拟的。真实 Git worktree 与 child verifier 已由 #133 合入同一路径，但组合后的新鲜 live 重跑仍受本机 DNS/TLS 故障阻塞。
+- 下一主线：在网络正常的 host 上保留一次真实 Codex real-effects 闭环，完成实测人工基线，并观察 3 位外部 operator 的 15 分钟上手过程。在这些产品证据前，继续冻结新 harness、transport 和泛化 protocol 扩展。
 
 [当前状态](docs/10-planning/project-status.md) · [路线图](ROADMAP.md) ·
 [协议草案](spec/README.md) · [验证记录](docs/09-reviews/README.md)
@@ -218,7 +244,11 @@ sandbox。不要用它处理任意恶意 peer 内容或充当生产安全边界�
 - [中文文档入口](docs/zh-CN/README.md)
 - [英文文档总览](docs/README.md)
 - [产品说明](docs/00-overview/product-guide.md)
+- [76 秒演示](docs/assets/demo/threadmesh-proof-walkthrough.mp4)
 - [真实 Agent 案例](docs/06-guides/real-world-cases.md)
+- [人工转发与轮询基线](docs/06-guides/manual-relay-baseline.md)
+- [活跃 session 不打断案例](docs/06-guides/non-interrupting-handoff.md)
+- [15 分钟外部上手挑战](docs/06-guides/15-minute-operator-challenge.md)
 - [贡献指南](CONTRIBUTING.md)
 - [GitHub Discussions](https://github.com/fyaic/threadmesh/discussions)
 - [GitHub Issues](https://github.com/fyaic/threadmesh/issues)

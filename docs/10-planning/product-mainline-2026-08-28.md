@@ -146,19 +146,22 @@ successively narrower boundaries. A sixth completed the full real proactive
 chain with one kickoff, nine bound native turns, zero later runner prompts or
 direct activations, an irrelevant zero-turn control, and exact cleanup.
 
-Real session initiative is now retained. The next evidence must close the
-original workflow effect without replacing the proven path. Execute in this
-order:
+Real session initiative is now retained, and #133 has merged the bounded Git
+worktrees plus process-isolated child verifier into the same event-pump path.
+The next evidence must close the original workflow effect without replacing
+the proven path. Execute in this order:
 
 1. preserve the sixth run as the behavioral baseline; do not repeat it for
    presentation polish;
-2. reuse the existing bounded Git-worktree foundation so A's implementation and
-   same-A fix are observable commits in the same correlated run;
-3. reuse the child-verifier boundary so independently held signing custody binds
-   finalization to those commits, the finding, and the test result;
-4. add the manual baseline plus minimum critical negative/restart evidence and
-   close #91 only when its original product outcome passes;
-5. then resume repetition and Kimi parity.
+2. retain one network-valid real Codex traversal of the merged real-effects
+   path; do not fuse the earlier behavioral run with later deterministic
+   integration evidence;
+3. run the measured manual/live baseline; the executable nine-action lower
+   bound is product framing, not a substitute for timing or token measurement;
+4. observe three external operators using only the README and 15-minute setup
+   challenge, fixing first-run friction before broadening scope;
+5. close #91 only when the original product outcome passes, then resume
+   repetition and Kimi parity.
 
 The acceptance run requires A to publish an implementation, R to discover and
 publish a reproducible finding, the original A session/worktree to fix it, and
@@ -168,9 +171,9 @@ admission, native turn, publication, or dependency effect after its
 precreation/bootstrap baseline.
 
 OS-kill and heartbeat matrices, a global cross-dispatch chain, Kimi parity, new
-harnesses, verifier/Git generalization, and presentation-only polish remain
-paused. Small PRs remain acceptable; every change must serve the integrated
-Git/verifier closure or an observed blocker.
+harnesses, verifier/Git generalization, and new transport/protocol surface
+remain paused. Small PRs remain acceptable; every change must serve the live
+closure, measured baseline, external setup gate, or an observed blocker.
 
 ## Roadmap: Now / Next / Later
 
@@ -202,6 +205,11 @@ under 15 minutes.
    events, routing reason, receiver disposition, and verification state.
 6. Record a 60–90 second README demo and a reproducible evidence document
    ([#92](https://github.com/fyaic/threadmesh/issues/92)).
+
+Items 1–3, 5, and 6 now have deterministic public evidence. Item 4 has retained
+real behavior plus merged real-effects integration; the fresh combined live run
+remains open. The README walkthrough is generated from executable output and
+labels its real-versus-deterministic evidence boundary.
 
 ### Next — prove independent adoption and ecosystem fit
 

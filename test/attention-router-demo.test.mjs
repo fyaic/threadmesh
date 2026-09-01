@@ -36,6 +36,40 @@ test("attention-router demo is deterministic, routes the review-fix sequence, an
     incorrectUnlocks: 0,
     durableReconciliations: 4,
   });
+  assert.deepEqual(first.comparison, {
+    classification: "modeled-workflow-accounting",
+    workflowHandoffs: 4,
+    manual: {
+      initialKickoffs: 1,
+      relayActions: 4,
+      statusChecks: 4,
+      totalUserActionsLowerBound: 9,
+    },
+    threadmesh: {
+      initialKickoffs: 1,
+      relayActions: 0,
+      statusChecks: 0,
+      totalUserActions: 1,
+    },
+    notMeasured: ["elapsed-time", "model-tokens"],
+  });
+  assert.deepEqual(first.safety, {
+    activeCheckpoint: {
+      eventType: "completed",
+      requestedDeliveryMode: "checkpoint-offer",
+      delivery: "durably-received",
+      receiverDecision: "pending",
+      receiverStateBefore: "running",
+      receiverStateAfter: "running",
+      steerRequests: 0,
+      interruptRequests: 0,
+      nativeTurnStarts: 0,
+      unsubscribedOffers: 0,
+      unsubscribedReasonCode: "attention-event-type-not-subscribed",
+    },
+    droppedWakeHints: 4,
+    durableReconciliations: 4,
+  });
   assert.deepEqual(first.dependency, {
     eventType: "dependency-satisfied",
     state: "satisfied",
@@ -76,7 +110,7 @@ test("repository CLI emits the bounded JSON result", () => {
     encoding: "utf8",
   });
   const result = JSON.parse(output);
-  assert.equal(Object.keys(result).length, 7);
+  assert.equal(Object.keys(result).length, 9);
   assert.equal(result.state, "passed");
   assert.equal(result.sequence.length, 4);
   assert.deepEqual(result.cleanup, { attempted: true, complete: true });

@@ -1,22 +1,24 @@
 # ThreadMesh 中文文档
 
-ThreadMesh 是一个面向多种 agent harness 的安全主动协调层。它让 agent 能够发现
-跨任务依赖并主动通信，同时保护接收任务的上下文主权。
+ThreadMesh 是一个面向多种 agent harness 的安全 attention 与 handoff 层。它让
+agent 在依赖真正满足时自行交接，用户不用复制、轮询，也不会随意打断另一个
+session。
 
 当前英文规范是 canonical source；中文目录负责解释核心理念并降低参与门槛。
 
 ## 推荐阅读
 
 1. [ThreadMesh 是什么](product-guide.md)
-2. [真实 Agent 主动协调案例总览](../06-guides/real-world-cases.md)
-3. [端到端 A→B 案例](../06-guides/end-to-end-demo.md)
-4. [Harness 支持与证据矩阵](../00-overview/harness-support.md)
-5. [真实 Pi→Kimi 案例](../06-guides/pi-to-kimi-demo.md)
-6. [愿景](vision.md)
-7. [安全模型](safety-model.md)
-8. [Codex 主动跨任务协调调研摘要](research-summary.md)
-9. [当前项目状态](../10-planning/project-status.md)
-10. [英文文档总览](../README.md)
+2. [76 秒证据演示](../assets/demo/threadmesh-proof-walkthrough.mp4)
+3. [真实 Agent 主动协调案例总览](../06-guides/real-world-cases.md)
+4. [人工转发与轮询基线](../06-guides/manual-relay-baseline.md)
+5. [活跃 session 不打断案例](../06-guides/non-interrupting-handoff.md)
+6. [Harness 支持与证据矩阵](../00-overview/harness-support.md)
+7. [愿景](vision.md)
+8. [安全模型](safety-model.md)
+9. [Codex 主动跨任务协调调研摘要](research-summary.md)
+10. [当前项目状态](../10-planning/project-status.md)
+11. [英文文档总览](../README.md)
 
 ## 一句话理解
 
@@ -46,8 +48,14 @@ Pi→Kimi 与 Codex→Kimi 的真实案例已经观察到 relevant 条件下的�
 
 ## 当前进度
 
-- 284 项 unit/subtest、14 个 schema 和状态转换测试通过。
-- control / relevant / irrelevant 的确定性 A→B 演示通过完整 coordinator 路径。
+- 384 项测试、55 个 schema case 和 7 个状态转换 case 通过。
+- 一键 demo 完成四次生命周期交接、验证后依赖解锁、活跃接收方 checkpoint 和
+  无关订阅零 offer；人工路径最低 9 次用户操作，ThreadMesh 路径 1 次 kickoff。
+- 第六次真实 Codex event-pump 在一次 kickoff 后通过 9 个 native turn 完成
+  A→R→同一个 A→V→dependent；后续 runner prompt/direct activation 为 0，
+  irrelevant turn 为 0，清理 5/5。该次 Git/verifier effect 是模拟的。
+- 真实 Git worktree 与 child verifier 已由 #133 合入同一路径；组合后的 live
+  重跑受当前 host 的 DNS/TLS 故障阻塞。
 - Codex 真实主动 A→B 曾把接收方结果从缺少依赖提升到完成，但重复可靠性不足，
   因此 proactive 默认关闭。
 - Kimi Code `0.38.0` 已完成真实 receiver-accepted suggestion，并验证 session
@@ -58,8 +66,8 @@ Pi→Kimi 与 Codex→Kimi 的真实案例已经观察到 relevant 条件下的�
   无关条件只发现不发送，对照条件零调用；随后 Pi 向真实 Kimi ACP task 提供一条
   非权威协调输入，完成 mailbox 接受、context admission、审计和全部清理。
 - Gemini CLI adapter 与无模型预检通过；真实 provider 调用未授权。
-- M1、M2 milestone 已关闭；最小可安装集成路径和真实 Pi→Kimi 技术验证已完成。
-  下一步是独立 harness 作者反馈，而不是扩张协议表面。
+- M1、M2 milestone 已关闭；下一步是 network-valid real-effects 重跑、实测
+  manual baseline 和三次外部 15 分钟上手，而不是扩张协议表面。
 - M0 的规范修复已完成，仍等待两份独立外部 review。
 
 ## 接入自己的 harness

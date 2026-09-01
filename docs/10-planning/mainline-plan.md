@@ -18,9 +18,10 @@ experiments are explicitly labeled and do not satisfy it.
 ## Active critical path — 2026-09-01
 
 M5.2 remains the only implementation critical path. The behavioral question is
-answered by the completed sixth Codex run; the active checkpoint is now a
-successful traversal of the same path with real bounded Git effects and the
-existing process-isolated child verifier.
+answered by the completed sixth Codex run. The bounded Git effects and existing
+process-isolated child verifier are integrated on `main` by #133. The active
+checkpoint is now a successful network-valid traversal of that merged path,
+followed by measured baseline and external first-run evidence.
 
 The older product canary proved real multi-tool turns, same-A reuse, a bounded
 Git chain, controls, and cleanup, but its four prompts were runner-submitted.
@@ -47,17 +48,21 @@ Execute in this order:
    verifier path. Wait for the currently reproducible local DNS/TLS endpoint
    failure to clear; do not bypass certificate validation or redesign the
    protocol around it.
-3. Add the manual relay/polling baseline and the minimum critical
-   negative/restart case required by #91; publish the result without upgrading
-   simulated or operator-supplied evidence.
-4. Close #91 only when its original outcome is satisfied, then resume
+3. Retain the measured manual/live baseline. The executable demo already
+   reports a nine-action manual lower bound versus one kickoff, but elapsed time
+   and tokens remain explicitly unmeasured.
+4. Observe three independent operators using only the README and 15-minute
+   challenge; convert friction into product or documentation fixes.
+5. Close #91 only when its original outcome is satisfied, then resume
    repetition, Kimi parity, and production-hardening evidence.
 
 Mainline guardrail: do not add a new substrate or generalize an existing one
 unless the current live chain demonstrates that it is the blocking condition.
 OS-kill matrices, long-turn heartbeat, a global cross-dispatch chain, new
-harnesses, A2A/Cotal work, hosted operation, and presentation-only polish are
-paused. Small PRs remain acceptable; scope, not PR size, is the constraint.
+harnesses, A2A/Cotal work, hosted operation, and new transport/protocol surface
+are paused. The evidence walkthrough is complete and must now be judged by
+external first-run attempts. Small PRs remain acceptable; scope, not PR size,
+is the constraint.
 
 The detailed historical gates remain in the
 [real Codex scenario plan](m5-2-real-codex-scenario.md). The
