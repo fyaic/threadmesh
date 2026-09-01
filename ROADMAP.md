@@ -111,25 +111,33 @@ importing coordinator, adapter, or validation internals.
 
 ## M5 — Attention and handoff router MVP
 
-The deterministic vertical slice now passes locally and from a packed consumer,
-and M5.1 has added a real two-session Codex pass: Agent A model-selected the
-dependency publication, durable cursor reconciliation resumed the pre-created
-Agent B once, and verified dependency state recovered after restart. This is a
-ThreadMesh logical wake with `idleWake: false` and a local verifier simulation;
-the full multi-role loop and repetition matrix remain the next gates.
+The deterministic vertical slice passes locally and from a packed consumer,
+and M5.1 has a real two-session Codex pass. The next fixture slice now closes
+the full lifecycle chain after one user kickoff: `A → R → same-A → V →
+dependent`. It records zero runner activation dispatches, phase prompts, manual
+relay, and polling. Trusted finalization precedes the dependent turn; a failed
+finalization starts zero dependent turns; the irrelevant control starts zero
+turns; exact cleanup passes.
 
-M5.2 is now the sole implementation critical path. Its ordered blockers are:
-complete persisted-turn observation, identity-safe reconciliation, real
-multi-tool role wiring, killed-runner recovery, and correlated live evidence
-plus exact cleanup. The gate is A implementation -> R review -> same-A fix -> V
-verification, with the dependent changing from `waiting` to `ready` only after
-trusted finalization and the irrelevant control receiving zero native turns.
-That zero-turn assertion begins after the precreation/bootstrap baseline. In
-the current reconciliation slice, a missing client id is always ambiguous;
-unique-delta classification with exclusive-writer proof is a future option.
-The merged scripted fixture remains `fixture` evidence, not `live-product`
-evidence. Kimi parity and cross-harness repetition follow the Codex gate and
-do not delay it.
+That slice was merged in three bounded steps:
+
+- coordinator-owned decision/admission activation plumbing in
+  [#118](https://github.com/fyaic/threadmesh/pull/118) at
+  `2a0d8550abc1a8c5dcebceb86d0372ea8d337b4d`;
+- the in-process autonomous event pump in
+  [#119](https://github.com/fyaic/threadmesh/pull/119) at
+  `d37cb428ea84b0683dac24787889e259a0a18c71`;
+- verifier finalization, dependent gating, and exact preverified provenance in
+  [#120](https://github.com/fyaic/threadmesh/pull/120) at
+  `3b91dcff82622a0fed936e8295b77905777c6ada`.
+
+The result remains fixture evidence: `liveProductEvidence=false`,
+`deterministicPolicyOracle=true`, `externalIndependentVerifier=false`, the
+signer is a fixture-owned ephemeral key, and `selectionDurable=false` as of
+`3b91dcf`. M5.2 therefore remains open. Its next ordered gates are durable pump
+selection across restart, a cross-process claimant lease, OS-kill recovery,
+and correlated real Codex then Kimi evidence. The M5.3 repetition matrix follows
+those gates.
 
 - [x] Ship a one-command local demo with generated identities, grants, example
   sessions, and an inspector
@@ -145,10 +153,13 @@ do not delay it.
   ([#91](https://github.com/fyaic/threadmesh/issues/91)):
   - [x] M5.1: prove the real Codex dependency wake/unlock seam using durable
     cursor reconciliation; the adapter remains `idleWake: false`.
+  - [x] M5.2 fixture: prove the no-plan single-kickoff A/R/same-A/V/dependent
+    chain with trusted pre-turn finalization, zero irrelevant turns, and exact
+    cleanup. This does not satisfy the real-product M5.2 gate.
   - [ ] M5.2: complete the model-selected implementation -> review -> same-A
     fix -> verify chain across persistent A/R/V sessions, including dependent
-    waiting-to-ready, irrelevant zero-turn-after-bootstrap, restart, and exact
-    cleanup checks.
+    waiting-to-ready, irrelevant zero-turn-after-bootstrap, durable pump
+    restart, cross-process lease, OS-kill recovery, and exact cleanup checks.
   - [ ] M5.3: pass three fresh relevant runs plus the manual baseline,
     irrelevant, stale/unverified, restart, and cleanup matrix.
 - [ ] Repeat the loop across Codex and one ACP-compatible harness
