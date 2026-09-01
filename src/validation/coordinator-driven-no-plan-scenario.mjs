@@ -995,7 +995,9 @@ export async function runCoordinatorDrivenNoPlanScenario({
       protectedPhases: {
         "receiver-decision": "receiver-decision", "r-review": "admitted-tool",
       },
-      instructions: "Review only coordinator-admitted context.",
+      instructions: realEffects
+        ? "Review only coordinator-admitted context. In the admitted review turn, call every offered tool exactly once and in order: read the artifact, reproduce a finding using only the returned content, then publish by copying the returned findingDigest. Do not stop after an intermediate tool result."
+        : "Review only coordinator-admitted context.",
       scenarioId: "coordinator_driven_no_plan",
     });
     throwIfShutdownRequested(signal);

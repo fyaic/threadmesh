@@ -1527,7 +1527,9 @@ export class CodexLiveAgentRuntime {
         },
       }],
     };
-    const reconcile = async ({ baseline, journalProjection, startedTurnId = null }) => {
+    const reconcile = async ({
+      baseline, journalProjection, startedTurnId = null, originCode = null,
+    }) => {
       await turnRecovery.onOutcomeUnknown({
         prepared,
         adapterIdempotencyKey,
@@ -1547,6 +1549,9 @@ export class CodexLiveAgentRuntime {
           reasonCode,
         );
         ambiguous.recovery = { state: "ambiguous", reasonCode, journal: journalProjection };
+        if (typeof originCode === "string" && originCode.length > 0) {
+          ambiguous.originCode = originCode;
+        }
         throw ambiguous;
       }
       await turnRecovery.onTerminalReconciliation({
@@ -1725,6 +1730,7 @@ export class CodexLiveAgentRuntime {
         baseline,
         journalProjection,
         startedTurnId: started?.turnId ?? null,
+        originCode: typeof error?.code === "string" ? error.code : error?.name ?? null,
       });
     }
   }
