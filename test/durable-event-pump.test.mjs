@@ -303,9 +303,10 @@ function offeredRuntime({ scenarioId, role, businessPhase, businessTool, busines
     },
     async runReceiverDecisionTurn(options) {
       state.decisionTurns += 1;
-      const turnId = "turn-durable-pump-decision";
+      const messageId = options.offer.envelope.messageId;
+      const turnId = `turn-durable-pump-decision-${messageId}`;
       const argumentsValue = {
-        messageId: "msg_durable_pump_01",
+        messageId,
         decision: "accepted",
       };
       await options.beforeTurnStart({
@@ -343,7 +344,9 @@ function offeredRuntime({ scenarioId, role, businessPhase, businessTool, busines
     },
     async runAdmittedToolTurn(options) {
       state.businessTurns += 1;
-      const turnId = "turn-durable-pump-business";
+      const turnId = `turn-durable-pump-business-${sha256Digest(
+        options.prepared,
+      ).slice(7, 19)}`;
       const argumentsValue = {};
       await options.beforeTurnStart({
         adapterIdempotencyKey: `idem_threadmesh_admitted_${sha256Digest({
@@ -894,6 +897,209 @@ for (const faultStage of ["post-turn-pre-settle", "post-settle-pre-publication"]
   });
 }
 
+test("publication lease admits one callback entrant across two same-identity pumps", async () => {
+  const temporary = fixture();
+  const clock = { value: START };
+  const scenarioId = "scenario_publication_lease_concurrency";
+  const chainId = "chain_publication_lease_concurrency";
+  const role = "reviewer";
+  const businessPhase = "offered-review";
+  const businessTool = Object.freeze({
+    type: "function",
+    name: "threadmesh_durable_pump_review",
+    description: "Exercise publication lease concurrency.",
+    inputSchema: Object.freeze({ type: "object", additionalProperties: false }),
+  });
+  const businessOutput = Object.freeze({ findingDigest: sha256Digest("concurrent") });
+  let releaseCallback;
+  let callbackEntered;
+  const entered = new Promise((resolve) => { callbackEntered = resolve; });
+  const release = new Promise((resolve) => { releaseCallback = resolve; });
+  let callbackEntrants = 0;
+  const coordinator = open(temporary.filename, clock);
+  try {
+    setup(coordinator);
+    const runtimeOne = offeredRuntime({
+      scenarioId, role, businessPhase, businessTool, businessOutput,
+    });
+    const runtimeTwo = offeredRuntime({
+      scenarioId, role, businessPhase, businessTool, businessOutput,
+    });
+    const makePump = (ownerId, runtime, callback) => registerOffered(
+      createAutonomousEventPump({
+        coordinator, runtime, scenarioId, chainId,
+        recoveryDirectory: temporary.recoveryDirectory,
+        ownerId, leaseMs: 1_000,
+      }), businessTool, businessOutput, callback,
+    ).start();
+    const first = makePump("publication-owner-one", runtimeOne, async () => {
+      callbackEntrants += 1;
+      callbackEntered();
+      await release;
+    });
+    const second = makePump("publication-owner-two", runtimeTwo, async () => {
+      callbackEntrants += 1;
+    });
+    const firstDrain = first.drainOnce();
+    await entered;
+    const loser = await second.drainOnce();
+    assert.equal(loser.state, "blocked-publication-lease");
+    assert.equal(callbackEntrants, 1);
+    assert.deepEqual(runtimeTwo.state, {
+      decisionTurns: 0, businessTurns: 0, rawTurns: 0,
+    });
+    releaseCallback();
+    assert.equal((await firstDrain).state, "dispatched");
+    assert.equal(callbackEntrants, 1);
+    const event = coordinator.readAttentionEvents(
+      receiver, { afterCursor: 0, limit: 1 }, receiverPrincipal,
+    ).events[0];
+    const dispatch = coordinator.getEventPumpDispatch(receiver, {
+      eventCursor: event.cursor,
+      eventId: event.eventId,
+      pumpIdentityDigest: first.pumpIdentityDigest,
+    }, receiverPrincipal);
+    assert.equal(dispatch.state, "published");
+    assert.equal(dispatch.ownerId, "publication-owner-one");
+    assert.equal(dispatch.leaseEpoch, 1);
+    assert.equal(dispatch.publicationOwnerId, "publication-owner-one");
+    assert.equal(dispatch.publicationLeaseEpoch, 1);
+  } finally {
+    coordinator.close();
+    temporary.cleanup();
+  }
+});
+
+test("post-callback crash completes the committed orphan before a later head", async () => {
+  const temporary = fixture();
+  const clock = { value: START };
+  const scenarioId = "scenario_post_callback_orphan";
+  const chainId = "chain_durable_pump_publication";
+  const role = "reviewer";
+  const businessPhase = "offered-review";
+  const businessTool = Object.freeze({
+    type: "function",
+    name: "threadmesh_report_review_finding",
+    description: "Exercise post-callback durable orphan recovery.",
+    inputSchema: Object.freeze({ type: "object", additionalProperties: false }),
+  });
+  const findingDigest = sha256Digest("post-callback-orphan");
+  const businessOutput = Object.freeze({ findingDigest, blocking: true });
+  const trustAnchor = verificationTrustAnchor();
+  const effects = [];
+  let coordinator = open(temporary.filename, clock, [trustAnchor]);
+  try {
+    const implementationExecution = setup(coordinator);
+    submitLaterEvent(coordinator);
+    const evidenceState = preparePromotionChain(
+      coordinator, implementationExecution, trustAnchor,
+    );
+    const firstRuntime = offeredRuntime({
+      scenarioId, role, businessPhase, businessTool, businessOutput,
+    });
+    const first = registerOffered(createAutonomousEventPump({
+      coordinator, runtime: firstRuntime, scenarioId, chainId,
+      recoveryDirectory: temporary.recoveryDirectory,
+      ownerId: "post-callback-owner-one", leaseMs: 100,
+      faultInjector: async (stage) => {
+        if (stage === "post-callback-pre-complete") {
+          throw Object.assign(new Error("post callback crash"), {
+            code: "test_post_callback_crash",
+          });
+        }
+      },
+    }), businessTool, businessOutput, publicationPromoter({
+      coordinator, evidenceState, findingDigest, effects,
+    })).start();
+    await assert.rejects(() => first.drainOnce(), { code: "test_post_callback_crash" });
+    assert.deepEqual(firstRuntime.state, {
+      decisionTurns: 1, businessTurns: 1, rawTurns: 0,
+    });
+    assert.equal(effects.length, 1);
+    const events = coordinator.readAttentionEvents(
+      receiver, { afterCursor: 0, limit: 2 }, receiverPrincipal,
+    ).events;
+    assert.equal(events.length, 2);
+    assert.equal(coordinator.getAttentionCursor(
+      receiver, receiverPrincipal,
+    ).cursor.committedCursor, events[0].cursor);
+    const orphan = coordinator.getEventPumpDispatch(receiver, {
+      eventCursor: events[0].cursor,
+      eventId: events[0].eventId,
+      pumpIdentityDigest: first.pumpIdentityDigest,
+    }, receiverPrincipal);
+    assert.equal(orphan.state, "publishing");
+    assert.equal(coordinator.getEventPumpDispatch(receiver, {
+      eventCursor: events[1].cursor,
+      eventId: events[1].eventId,
+      pumpIdentityDigest: first.pumpIdentityDigest,
+    }, receiverPrincipal), null);
+
+    coordinator.close();
+    coordinator = null;
+    clock.value += 101;
+    coordinator = open(temporary.filename, clock, [trustAnchor]);
+    let replayCallbacks = 0;
+    const secondRuntime = offeredRuntime({
+      scenarioId, role, businessPhase, businessTool, businessOutput,
+    });
+    const second = registerOffered(createAutonomousEventPump({
+      coordinator, runtime: secondRuntime, scenarioId, chainId,
+      recoveryDirectory: temporary.recoveryDirectory,
+      ownerId: "post-callback-owner-two", leaseMs: 100,
+    }), businessTool, businessOutput, async () => { replayCallbacks += 1; }).start();
+    const recovered = await second.drainOnce();
+    assert.equal(recovered.state, "recovered-committed-publication");
+    assert.equal(recovered.callbackReplayed, false);
+    assert.equal(replayCallbacks, 0);
+    assert.deepEqual(secondRuntime.state, {
+      decisionTurns: 0, businessTurns: 0, rawTurns: 0,
+    });
+    assert.equal(effects.length, 1);
+    assert.equal(coordinator.getGitEvidenceChain(chainId, owner).state.recordCount, 2);
+    const published = coordinator.getEventPumpDispatch(receiver, {
+      eventCursor: events[0].cursor,
+      eventId: events[0].eventId,
+      pumpIdentityDigest: second.pumpIdentityDigest,
+    }, receiverPrincipal);
+    assert.equal(published.state, "published");
+    assert.equal(published.ownerId, "post-callback-owner-one");
+    assert.equal(published.leaseEpoch, 1);
+    assert.equal(published.publicationOwnerId, "post-callback-owner-two");
+    assert.equal(published.publicationLeaseEpoch, 2);
+    assert.throws(() => coordinator.completeEventPumpPublication(
+      published.dispatchId,
+      {
+        pumpIdentityDigest: second.pumpIdentityDigest,
+        handlerId: "handler_durable_pump_offered",
+        publicationOwnerId: "post-callback-owner-one",
+        publicationLeaseEpoch: 1,
+      },
+      receiverPrincipal,
+    ), { code: "threadmesh_event_pump_publication_lease_fenced" });
+    assert.equal(coordinator.getEventPumpDispatch(receiver, {
+      eventCursor: events[1].cursor,
+      eventId: events[1].eventId,
+      pumpIdentityDigest: second.pumpIdentityDigest,
+    }, receiverPrincipal), null);
+
+    const later = await second.drainOnce();
+    assert.equal(later.state, "dispatched");
+    assert.equal(replayCallbacks, 1);
+    assert.deepEqual(secondRuntime.state, {
+      decisionTurns: 1, businessTurns: 1, rawTurns: 0,
+    });
+    assert.equal(coordinator.getEventPumpDispatch(receiver, {
+      eventCursor: events[1].cursor,
+      eventId: events[1].eventId,
+      pumpIdentityDigest: second.pumpIdentityDigest,
+    }, receiverPrincipal).state, "published");
+  } finally {
+    coordinator?.close();
+    temporary.cleanup();
+  }
+});
+
 test("scenario and chain identity drift cannot adopt a durable selected dispatch", async () => {
   const temporary = fixture();
   const clock = { value: START };
@@ -1032,6 +1238,68 @@ test("restart verifies the append-only dispatch checkpoint digest chain", async 
   }
 });
 
+test("restart rejects publication lease and publishing checkpoint tamper", async () => {
+  const mutations = [
+    ["event_pump_dispatches", "publication_owner_id", "tampered-publication-owner"],
+    ["event_pump_dispatches", "publication_lease_epoch", 77],
+    ["event_pump_dispatches", "publication_lease_expires_at",
+      "2099-01-01T00:00:00.000Z"],
+    ["event_pump_dispatches", "state", "published"],
+    ["event_pump_checkpoints", "publication_owner_id", "tampered-checkpoint-owner"],
+  ];
+  for (const [table, column, value] of mutations) {
+    const temporary = fixture();
+    const clock = { value: START };
+    let coordinator = open(temporary.filename, clock);
+    try {
+      setup(coordinator);
+      const scenarioId = `scenario_publication_tamper_${column}`;
+      const businessTool = Object.freeze({
+        type: "function",
+        name: "threadmesh_durable_pump_review",
+        description: "Create a publishing checkpoint for tamper validation.",
+        inputSchema: Object.freeze({ type: "object", additionalProperties: false }),
+      });
+      const businessOutput = Object.freeze({ findingDigest: sha256Digest(column) });
+      const runtime = offeredRuntime({
+        scenarioId, role: "reviewer", businessPhase: "offered-review",
+        businessTool, businessOutput,
+      });
+      const pump = registerOffered(createAutonomousEventPump({
+        coordinator, runtime, scenarioId,
+        chainId: `chain_publication_tamper_${column}`,
+        recoveryDirectory: temporary.recoveryDirectory,
+        ownerId: `publication-tamper-owner-${column}`,
+        leaseMs: 100,
+        faultInjector: async (stage) => {
+          if (stage === "post-callback-pre-complete") {
+            throw Object.assign(new Error("stop publishing"), { code: "stop" });
+          }
+        },
+      }), businessTool, businessOutput).start();
+      await assert.rejects(() => pump.drainOnce(), { code: "stop" });
+      coordinator.close();
+      coordinator = null;
+      const database = new Database(temporary.filename);
+      if (table === "event_pump_checkpoints") {
+        database.prepare(
+          `UPDATE ${table} SET ${column} = ?
+           WHERE sequence = (SELECT MAX(sequence) FROM event_pump_checkpoints)`,
+        ).run(value);
+      } else {
+        database.prepare(`UPDATE ${table} SET ${column} = ?`).run(value);
+      }
+      database.close();
+      assert.throws(() => open(temporary.filename, clock), {
+        code: "threadmesh_event_pump_storage_tampered",
+      });
+    } finally {
+      coordinator?.close();
+      temporary.cleanup();
+    }
+  }
+});
+
 test("restart rejects pump identity, registry, route, or handler mutation", async () => {
   for (const [column, value] of [
     ["registry_digest", `sha256:${"c".repeat(64)}`],
@@ -1073,7 +1341,7 @@ test("restart rejects pump identity, registry, route, or handler mutation", asyn
   }
 });
 
-test("v9 rejects event-pump DDL, index, and foreign-key drift", () => {
+test("v10 rejects event-pump DDL, index, and foreign-key drift", () => {
   const mutations = [
     (database) => database.exec(
       "ALTER TABLE event_pump_dispatches ADD COLUMN unexpected TEXT",
@@ -1082,6 +1350,11 @@ test("v9 rejects event-pump DDL, index, and foreign-key drift", () => {
       DROP INDEX event_pump_dispatches_state_lease;
       CREATE INDEX event_pump_dispatches_state_lease
         ON event_pump_dispatches (owner_id, lease_expires_at);
+    `),
+    (database) => database.exec(`
+      DROP INDEX event_pump_dispatches_publication_lease;
+      CREATE INDEX event_pump_dispatches_publication_lease
+        ON event_pump_dispatches (state, publication_lease_expires_at);
     `),
     (database) => database.exec(`
       PRAGMA foreign_keys = OFF;
@@ -1147,8 +1420,8 @@ test("v8 migrates append-only to the durable event-pump schema", () => {
     database.close();
 
     coordinator = open(temporary.filename, { value: START });
-    assert.equal(SQLITE_SCHEMA_VERSION, 9);
-    assert.equal(coordinator.storageInfo().schemaVersion, 9);
+    assert.equal(SQLITE_SCHEMA_VERSION, 10);
+    assert.equal(coordinator.storageInfo().schemaVersion, 10);
     assert.equal(coordinator.db.prepare(
       "SELECT checksum FROM schema_migrations WHERE version = 8",
     ).pluck().get(), v8Checksum);
@@ -1157,12 +1430,56 @@ test("v8 migrates append-only to the durable event-pump schema", () => {
     ).checksum);
     assert.equal(coordinator.db.prepare(
       "SELECT COUNT(*) FROM schema_migrations",
-    ).pluck().get(), 9);
+    ).pluck().get(), 10);
     assert.equal(coordinator.db.prepare("SELECT COUNT(*) FROM tasks").pluck().get(), taskCount);
     assert.deepEqual(coordinator.db.prepare(
       `SELECT name FROM sqlite_master
        WHERE type = 'table' AND name LIKE 'event_pump_%' ORDER BY name`,
     ).pluck().all(), ["event_pump_checkpoints", "event_pump_dispatches"]);
+  } finally {
+    coordinator?.close();
+    temporary.cleanup();
+  }
+});
+
+test("v9 migrates append-only to publication leases without rewriting v9", () => {
+  const temporary = fixture();
+  let coordinator = open(temporary.filename, { value: START });
+  try {
+    setup(coordinator);
+    coordinator.close();
+    coordinator = null;
+    const database = new Database(temporary.filename);
+    const v9Checksum = database.prepare(
+      "SELECT checksum FROM schema_migrations WHERE version = 9",
+    ).pluck().get();
+    database.exec(`
+      DROP INDEX event_pump_dispatches_publication_lease;
+      ALTER TABLE event_pump_dispatches DROP COLUMN publication_lease_expires_at;
+      ALTER TABLE event_pump_dispatches DROP COLUMN publication_lease_epoch;
+      ALTER TABLE event_pump_dispatches DROP COLUMN publication_owner_id;
+      ALTER TABLE event_pump_checkpoints DROP COLUMN publication_lease_expires_at;
+      ALTER TABLE event_pump_checkpoints DROP COLUMN publication_lease_epoch;
+      ALTER TABLE event_pump_checkpoints DROP COLUMN publication_owner_id;
+      DELETE FROM schema_migrations WHERE version = 10;
+      PRAGMA user_version = 9;
+    `);
+    database.close();
+
+    coordinator = open(temporary.filename, { value: START });
+    assert.equal(coordinator.storageInfo().schemaVersion, 10);
+    assert.equal(coordinator.db.prepare(
+      "SELECT checksum FROM schema_migrations WHERE version = 9",
+    ).pluck().get(), v9Checksum);
+    assert.equal(v9Checksum, SQLITE_SCHEMA_MIGRATIONS.find(
+      ({ version }) => version === 9,
+    ).checksum);
+    assert.deepEqual(coordinator.db.prepare(
+      "SELECT publication_owner_id, publication_lease_epoch, publication_lease_expires_at FROM event_pump_dispatches",
+    ).all(), []);
+    assert.equal(coordinator.db.prepare(
+      "SELECT COUNT(*) FROM schema_migrations",
+    ).pluck().get(), 10);
   } finally {
     coordinator?.close();
     temporary.cleanup();

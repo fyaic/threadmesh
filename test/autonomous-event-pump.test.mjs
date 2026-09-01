@@ -25,6 +25,7 @@ function registration() {
 
 test("pump freezes startup registrations and one lifecycle start drains to idle", async () => {
   const coordinator = {
+    listPendingEventPumpPublications() { return []; },
     getAttentionCursor() {
       return { cursor: { committedCursor: 0, revision: 0 }, activeClaim: null };
     },
@@ -87,6 +88,7 @@ test("settled completed-bound head blocks without looking ahead or starting anot
     senderIncarnationId: "inc-source-01",
   };
   const coordinator = {
+    listPendingEventPumpPublications() { return []; },
     getAttentionCursor() {
       return {
         cursor: { committedCursor: 0, revision: 2 },
@@ -157,6 +159,7 @@ test("pump refreshes coordinator grant authority again immediately before admiss
   let grantReads = 0;
   let runtimeStarts = 0;
   const coordinator = {
+    listPendingEventPumpPublications() { return []; },
     clock: () => now,
     getAttentionCursor() {
       return { cursor: { committedCursor: 0, revision: 0 }, activeClaim: null };

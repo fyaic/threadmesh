@@ -212,8 +212,34 @@ export class AutonomousEventPump {
   }
 
   #nextCandidate() {
+    const publicationRecoveries = [];
     const candidates = [];
     const blocked = [];
+    for (const registration of PUMP_REGISTRY.get(this).entries) {
+      for (const durableDispatch of this.coordinator.listPendingEventPumpPublications(
+        taskRef(registration.receiver),
+        { pumpIdentityDigest: this.pumpIdentityDigest },
+        registration.principal,
+      )) {
+        publicationRecoveries.push({
+          registration,
+          durableDispatch,
+          event: {
+            cursor: durableDispatch.eventCursor,
+            eventId: durableDispatch.eventId,
+          },
+          publicationRecovery: true,
+        });
+      }
+    }
+    publicationRecoveries.sort((left, right) =>
+      left.durableDispatch.eventCursor - right.durableDispatch.eventCursor ||
+      left.registration.receiver.taskId.localeCompare(
+        right.registration.receiver.taskId,
+      ));
+    if (publicationRecoveries[0]) {
+      return { ...publicationRecoveries[0], blocked: false };
+    }
     for (const registration of PUMP_REGISTRY.get(this).entries) {
       const cursorState = this.coordinator.getAttentionCursor(
         taskRef(registration.receiver), registration.principal,
@@ -239,10 +265,7 @@ export class AutonomousEventPump {
           cursorState.activeClaim?.state === "completed-bound";
         if (durableDispatch?.state === "published" ||
             (!durableDispatch && completedBound)) blocked.push(target);
-        else candidates.push({
-          ...target,
-          publicationPending: durableDispatch?.state === "completed-bound",
-        });
+        else candidates.push(target);
       }
     }
     candidates.sort((left, right) => left.event.cursor - right.event.cursor ||
@@ -273,7 +296,75 @@ export class AutonomousEventPump {
           }),
         });
       }
-      const { registration, cursorState, event: observed } = candidate;
+      const { registration } = candidate;
+      let cursorState = candidate.cursorState;
+      let observed = candidate.event;
+      const recoveringPublication = candidate.publicationRecovery === true;
+      let publicationClaim = null;
+      if (recoveringPublication) {
+        const routeRegistration = registration.routes.find(({ data }) =>
+          data.handlerId === candidate.durableDispatch.handlerId);
+        if (!routeRegistration) throw coded("threadmesh_event_pump_route_missing");
+        const recoveryInspection = this.coordinator.inspectEventPumpPublicationRecovery(
+          candidate.durableDispatch.dispatchId,
+          {
+            pumpIdentityDigest: this.pumpIdentityDigest,
+            handlerId: routeRegistration.data.handlerId,
+          },
+          registration.principal,
+        );
+        publicationClaim = this.coordinator.claimEventPumpPublication(
+          candidate.durableDispatch.dispatchId,
+          {
+            pumpIdentityDigest: this.pumpIdentityDigest,
+            handlerId: routeRegistration.data.handlerId,
+            ownerId: this.ownerId,
+            leaseMs: this.leaseMs,
+          },
+          registration.principal,
+        );
+        if (!publicationClaim.acquired) {
+          return Object.freeze({
+            state: "blocked-publication-lease",
+            dispatch: publicationClaim.dispatch,
+          });
+        }
+        if (recoveryInspection.state === "cursor-committed") {
+          const published = this.coordinator.completeEventPumpPublication(
+            publicationClaim.dispatch.dispatchId,
+            {
+              pumpIdentityDigest: this.pumpIdentityDigest,
+              handlerId: routeRegistration.data.handlerId,
+              publicationOwnerId: this.ownerId,
+              publicationLeaseEpoch: publicationClaim.dispatch.publicationLeaseEpoch,
+            },
+            registration.principal,
+          );
+          this.dispatches += 1;
+          const selectionRecord = publicSelectionRecord(
+            published.dispatch, routeRegistration.data,
+          );
+          this.selectionRecords.push(selectionRecord);
+          this.selectionHeadDigest = published.dispatch.selectionDigest;
+          return Object.freeze({
+            state: "recovered-committed-publication",
+            callbackReplayed: false,
+            selectionRecord,
+          });
+        }
+        cursorState = this.coordinator.getAttentionCursor(
+          taskRef(registration.receiver), registration.principal,
+        );
+        observed = this.coordinator.readAttentionEvents(
+          taskRef(registration.receiver),
+          { afterCursor: cursorState.cursor.committedCursor, limit: 1 },
+          registration.principal,
+        ).events[0];
+        if (!observed || observed.cursor !== candidate.durableDispatch.eventCursor ||
+            observed.eventId !== candidate.durableDispatch.eventId) {
+          throw coded("threadmesh_event_pump_publication_recovery_binding_invalid");
+        }
+      }
       if (candidate.durableDispatch?.state === "skipped") {
         const skipped = this.coordinator.advanceAttentionCursor(
           taskRef(registration.receiver),
@@ -317,7 +408,6 @@ export class AutonomousEventPump {
       });
       const routeDigest = sha256Digest(routeProjection);
       await this.faultInjector("pre-record", { observed, routeProjection });
-      const recoveringPublication = candidate.publicationPending === true;
       const claimed = recoveringPublication
         ? { acquired: false, dispatch: candidate.durableDispatch }
         : this.coordinator.claimEventPumpDispatch(
@@ -440,17 +530,40 @@ export class AutonomousEventPump {
       await this.faultInjector("post-settle-pre-publication", {
         observed, routeProjection, activation, dispatch: settled.dispatch,
       });
+      if (!publicationClaim) {
+        publicationClaim = this.coordinator.claimEventPumpPublication(
+          settled.dispatch.dispatchId,
+          {
+            pumpIdentityDigest: this.pumpIdentityDigest,
+            handlerId: routeData.handlerId,
+            ownerId: this.ownerId,
+            leaseMs: this.leaseMs,
+          },
+          registration.principal,
+        );
+      }
+      if (!publicationClaim.acquired) {
+        return Object.freeze({
+          state: "blocked-publication-lease",
+          dispatch: publicationClaim.dispatch,
+        });
+      }
       await routeRegistration.onLifecyclePublication({
         coordinator: this.coordinator,
         activation,
         lifecycleEvent,
         routeProjection,
       });
+      await this.faultInjector("post-callback-pre-complete", {
+        observed, routeProjection, activation, dispatch: publicationClaim.dispatch,
+      });
       const published = this.coordinator.completeEventPumpPublication(
         settled.dispatch.dispatchId,
         {
           pumpIdentityDigest: this.pumpIdentityDigest,
           handlerId: routeData.handlerId,
+          publicationOwnerId: this.ownerId,
+          publicationLeaseEpoch: publicationClaim.dispatch.publicationLeaseEpoch,
         },
         registration.principal,
       );
@@ -485,7 +598,10 @@ export class AutonomousEventPump {
           ...this.#durabilityProjection(),
         });
       }
-      if (["blocked-completed-bound", "blocked-durable-lease"].includes(result.state)) {
+      if ([
+        "blocked-completed-bound", "blocked-durable-lease",
+        "blocked-publication-lease",
+      ].includes(result.state)) {
         const dispatches = this.selectionRecords.filter(
           ({ outcome }) => outcome === "completed-bound",
         ).length;
