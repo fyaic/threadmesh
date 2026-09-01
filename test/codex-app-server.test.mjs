@@ -312,12 +312,79 @@ test("runs only an accepted suggestion and captures exact turn evidence", async 
     assert.equal(result.receipt.adapterOperationId, result.evidence.turnId);
     assert.equal(result.receipt.acceptedAt, "2026-08-20T09:00:01.000Z");
     assert.equal(result.evidence.turnStatus, "completed");
+    assert.equal(result.evidence.completedAt, "2026-08-20T09:00:00.000Z");
+    assert.equal(result.evidence.durationMs, 7);
     assert.equal(result.evidence.deltaCount, 1);
     assert.deepEqual(boundaries.map(([kind]) => kind), ["before", "started"]);
     assert.equal(boundaries[0][1].adapterIdempotencyKey, "idem_codex_adapter01");
     assert.equal(boundaries[0][1].threadId, created.threadId);
     assert.equal(boundaries[1][1].turnId, result.evidence.turnId);
     assert.equal(boundaries[1][1].adapterIdempotencyKey, "idem_codex_adapter01");
+  } finally {
+    fs.rmSync(state.directory, { recursive: true, force: true });
+  }
+});
+
+test("rejects invalid completed timestamps and durations at the adapter boundary", async () => {
+  const cases = [
+    ["FAKE_CODEX_COMPLETED_AT", "-1"],
+    ["FAKE_CODEX_COMPLETED_AT", "1.5"],
+    ["FAKE_CODEX_COMPLETED_AT", "9007199254740991"],
+    ["FAKE_CODEX_DURATION_MS", "-1"],
+    ["FAKE_CODEX_DURATION_MS", "1.5"],
+    ["FAKE_CODEX_DURATION_MS", "9007199254740992"],
+  ];
+  for (const [key, value] of cases) {
+    const state = temporaryState();
+    try {
+      const created = await adapter.createThread({
+        command: process.execPath,
+        args: [fixture],
+        cwd: root,
+        env: { ...state.env, [key]: value },
+      });
+      await assert.rejects(
+        adapter.runAcceptedSuggestion({
+          command: process.execPath,
+          args: [fixture],
+          cwd: root,
+          env: { ...state.env, [key]: value },
+          adapterRef: created,
+          envelope: envelope(),
+          admission: admission(),
+          adapterIdempotencyKey: `idem_invalid_${key}_${value}`,
+        }),
+        { code: "codex_app_server_turn_invalid" },
+      );
+    } finally {
+      fs.rmSync(state.directory, { recursive: true, force: true });
+    }
+  }
+});
+
+test("preserves null completed timestamp and duration evidence", async () => {
+  const state = temporaryState();
+  try {
+    const env = {
+      ...state.env,
+      FAKE_CODEX_COMPLETED_AT: "null",
+      FAKE_CODEX_DURATION_MS: "null",
+    };
+    const created = await adapter.createThread({
+      command: process.execPath, args: [fixture], cwd: root, env,
+    });
+    const result = await adapter.runAcceptedSuggestion({
+      command: process.execPath,
+      args: [fixture],
+      cwd: root,
+      env,
+      adapterRef: created,
+      envelope: envelope(),
+      admission: admission(),
+      adapterIdempotencyKey: "idem_null_turn_timing",
+    });
+    assert.equal(result.evidence.completedAt, null);
+    assert.equal(result.evidence.durationMs, null);
   } finally {
     fs.rmSync(state.directory, { recursive: true, force: true });
   }

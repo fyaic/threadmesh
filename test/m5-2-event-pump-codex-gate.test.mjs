@@ -13,6 +13,7 @@ import {
   isCodexLiveAgentRuntime,
 } from "../src/validation/live-agent-scenario.mjs";
 import {
+  projectM52EventPumpFailureCleanup,
   projectM52OperatorSuppliedCodexEventPumpGateResult,
   projectOperatorSuppliedCodexProbe,
   projectM52EventPumpCodexGateResult,
@@ -295,4 +296,116 @@ test("event-pump gate CLI distinguishes help, blocked, and preflight exits", () 
   assert.equal(preflight.status, 3);
   assert.equal(JSON.parse(preflight.stderr).code,
     "threadmesh_m52_event_pump_runner_live_ack_required");
+
+  const failureDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "threadmesh-m52-failure-"));
+  const rawToken = "RAW_FAILURE_PATH_TOKEN";
+  try {
+    fs.writeFileSync(path.join(failureDirectory, `${rawToken}.json`), "{}\n");
+    const failure = spawnSync(process.execPath, [
+      script, "--mode", "fake", "--artifacts-dir", failureDirectory,
+    ], { encoding: "utf8" });
+    assert.equal(failure.status, 1);
+    const output = JSON.parse(failure.stderr);
+    assert.equal(output.state, "failed");
+    assert.deepEqual(output.cleanup, {
+      complete: false,
+      rolesDeleted: 5,
+      roleAbsenceChecks: 5,
+      coordinatorRemoved: true,
+      remainingJournalCount: 0,
+    });
+    assert.equal(failure.stderr.includes(rawToken), false);
+    assert.equal(failure.stderr.includes(failureDirectory), false);
+    assert.equal(Object.hasOwn(output, "message"), false);
+  } finally {
+    fs.rmSync(failureDirectory, { recursive: true, force: true });
+  }
+});
+
+test("failure cleanup projection is bounded and omits raw role and path data", () => {
+  const projected = projectM52EventPumpFailureCleanup({
+    complete: true,
+    roles: [{
+      role: "a",
+      deleted: true,
+      absenceVerified: true,
+      threadId: "raw-thread-id",
+      path: "/private/raw/path",
+    }],
+    coordinatorRemoved: true,
+    remainingJournalCount: 0,
+    rawError: "secret error text",
+  });
+  assert.deepEqual(projected, {
+    complete: false,
+    rolesDeleted: 1,
+    roleAbsenceChecks: 1,
+    coordinatorRemoved: true,
+    remainingJournalCount: 0,
+  });
+  const encoded = JSON.stringify(projected);
+  assert.equal(encoded.includes("raw-thread-id"), false);
+  assert.equal(encoded.includes("/private/raw/path"), false);
+  assert.equal(encoded.includes("secret error text"), false);
+
+  const fullCleanup = {
+    complete: false,
+    roles: ["irrelevant", "dependent", "v", "r", "a"].map((role) => ({
+      role, deleted: true, absenceVerified: true,
+    })),
+    ownedJournalRemovedCount: 0,
+    remainingJournalCount: 0,
+    unknownJournalCount: 0,
+    unknownJournalPathDigests: [],
+    journalRemovalFailures: [],
+    databaseRemovalFailures: [],
+    journalDirectoryRemoved: true,
+    runRootRemoved: true,
+    coordinatorRemoved: true,
+  };
+  assert.equal(projectM52EventPumpFailureCleanup(fullCleanup).complete, true);
+  assert.equal(projectM52EventPumpFailureCleanup({ complete: true }).complete, false);
+  for (const roles of [[], ["a"], ["r", "a"]]) {
+    const partialCleanup = structuredClone(fullCleanup);
+    partialCleanup.roles = roles.map((role) => ({
+      role, deleted: true, absenceVerified: true,
+    }));
+    assert.equal(projectM52EventPumpFailureCleanup(partialCleanup).complete, true);
+  }
+
+  const duplicates = structuredClone(fullCleanup);
+  duplicates.complete = true;
+  duplicates.roles[0].role = "a";
+  assert.deepEqual(projectM52EventPumpFailureCleanup(duplicates), {
+    complete: false,
+    rolesDeleted: 5,
+    roleAbsenceChecks: 5,
+    coordinatorRemoved: true,
+    remainingJournalCount: 0,
+  });
+  for (const invalidRoles of [
+    [{ role: "unknown", deleted: true, absenceVerified: true }],
+    [...fullCleanup.roles, { role: "unknown", deleted: true, absenceVerified: true }],
+  ]) {
+    const invalid = structuredClone(fullCleanup);
+    invalid.complete = true;
+    invalid.roles = invalidRoles;
+    assert.equal(projectM52EventPumpFailureCleanup(invalid).complete, false);
+  }
+
+  for (const mutate of [
+    (value) => { value.unknownJournalCount = 1; },
+    (value) => { value.unknownJournalPathDigests = [`sha256:${"7".repeat(64)}`]; },
+    (value) => { value.journalRemovalFailures = [{ errorCode: "synthetic" }]; },
+    (value) => { value.databaseRemovalFailures = [{ errorCode: "synthetic" }]; },
+    (value) => { value.runRootRemoved = false; },
+  ]) {
+    const contradictory = structuredClone(fullCleanup);
+    contradictory.complete = true;
+    mutate(contradictory);
+    assert.equal(projectM52EventPumpFailureCleanup(contradictory).complete, false);
+    assert.equal(JSON.stringify(
+      projectM52EventPumpFailureCleanup(contradictory),
+    ).includes("synthetic"), false);
+  }
 });

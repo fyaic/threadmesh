@@ -164,6 +164,30 @@ function projectThread(response, initialization) {
   };
 }
 
+function projectCompletedAt(value) {
+  if (value === null || value === undefined) return null;
+  if (!Number.isSafeInteger(value) || value < 0) {
+    throw codedError("codex_app_server_turn_invalid", "completedAt");
+  }
+  const milliseconds = value * 1000;
+  if (!Number.isSafeInteger(milliseconds)) {
+    throw codedError("codex_app_server_turn_invalid", "completedAt");
+  }
+  const date = new Date(milliseconds);
+  if (!Number.isFinite(date.getTime())) {
+    throw codedError("codex_app_server_turn_invalid", "completedAt");
+  }
+  return date.toISOString();
+}
+
+function projectDurationMs(value) {
+  if (value === null || value === undefined) return null;
+  if (!Number.isSafeInteger(value) || value < 0) {
+    throw codedError("codex_app_server_turn_invalid", "durationMs");
+  }
+  return value;
+}
+
 function validateEnvelopeAdmission(envelope, admission) {
   assertProtocolObject("envelope", envelope);
   if (envelope.intent !== "suggest") {
@@ -1285,8 +1309,8 @@ export class CodexAppServerAdapter {
           threadId: adapterRef.threadId,
           turnId: activeTurnId,
           turnStatus: completed.turn.status,
-          completedAt: completed.turn.completedAt ?? null,
-          durationMs: completed.turn.durationMs ?? null,
+          completedAt: projectCompletedAt(completed.turn.completedAt),
+          durationMs: projectDurationMs(completed.turn.durationMs),
           userAgent: initialization.userAgent,
           snapshotDigest: initialization.snapshotDigest,
           serverRequestDeniedCount: peer.deniedRequestCount,

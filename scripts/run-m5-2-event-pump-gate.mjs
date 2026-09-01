@@ -4,6 +4,7 @@ import path from "node:path";
 import process from "node:process";
 
 import {
+  projectM52EventPumpFailureCleanup,
   runM52EventPumpCodexGate,
   runM52OperatorSuppliedCodexEventPumpGate,
 } from
@@ -102,10 +103,13 @@ try {
     "threadmesh_m52_event_pump_gate_product_probe_invalid",
   ]);
   const preflight = preflightCodes.has(error?.code);
+  const cleanup = error?.cleanup === undefined
+    ? null : projectM52EventPumpFailureCleanup(error.cleanup);
   console.error(JSON.stringify({
     state: preflight ? "not-run" : "failed",
     code: error?.code ?? "threadmesh_m52_event_pump_runner_failed",
     liveAck: LIVE_ACK,
+    ...(cleanup === null ? {} : { cleanup }),
   }, null, 2));
   process.exitCode = preflight ? 3 : 1;
 } finally {

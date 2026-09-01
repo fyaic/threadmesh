@@ -94,6 +94,48 @@ function gateError(code, detail = "") {
   return error;
 }
 
+export function projectM52EventPumpFailureCleanup(value) {
+  const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  const roles = Array.isArray(source.roles) ? source.roles.slice(0, 5) : [];
+  const remainingJournalCount = Number.isSafeInteger(source.remainingJournalCount) &&
+      source.remainingJournalCount >= 0 && source.remainingJournalCount <= 10_000
+    ? source.remainingJournalCount : null;
+  const expectedKeys = [
+    "complete", "roles", "ownedJournalRemovedCount", "remainingJournalCount",
+    "unknownJournalCount", "unknownJournalPathDigests", "journalRemovalFailures",
+    "databaseRemovalFailures", "journalDirectoryRemoved", "runRootRemoved",
+    "coordinatorRemoved",
+  ];
+  const exactSchema = canonicalJson(Object.keys(source).sort()) ===
+    canonicalJson(expectedKeys.sort());
+  const roleCreationOrder = ["a", "r", "v", "dependent", "irrelevant"];
+  const expectedCleanupOrder = roleCreationOrder.slice(0, roles.length).reverse();
+  const rolesClosed = Array.isArray(source.roles) && source.roles.length <= 5 &&
+    canonicalJson(roles.map((role) => role?.role)) ===
+      canonicalJson(expectedCleanupOrder) &&
+    roles.every((role) => role?.deleted === true && role?.absenceVerified === true);
+  const ownedJournalRemovedCountValid =
+    Number.isSafeInteger(source.ownedJournalRemovedCount) &&
+    source.ownedJournalRemovedCount >= 0 && source.ownedJournalRemovedCount <= 10_000;
+  const closureComplete = exactSchema && rolesClosed && ownedJournalRemovedCountValid &&
+    remainingJournalCount === 0 && source.unknownJournalCount === 0 &&
+    Array.isArray(source.unknownJournalPathDigests) &&
+    source.unknownJournalPathDigests.length === 0 &&
+    Array.isArray(source.journalRemovalFailures) &&
+    source.journalRemovalFailures.length === 0 &&
+    Array.isArray(source.databaseRemovalFailures) &&
+    source.databaseRemovalFailures.length === 0 &&
+    source.journalDirectoryRemoved === true && source.runRootRemoved === true &&
+    source.coordinatorRemoved === true;
+  return Object.freeze({
+    complete: closureComplete,
+    rolesDeleted: roles.filter((role) => role?.deleted === true).length,
+    roleAbsenceChecks: roles.filter((role) => role?.absenceVerified === true).length,
+    coordinatorRemoved: source.coordinatorRemoved === true,
+    remainingJournalCount,
+  });
+}
+
 function exactObject(value, keys, label) {
   if (!value || typeof value !== "object" || Array.isArray(value) ||
       canonicalJson(Object.keys(value).sort()) !== canonicalJson([...keys].sort())) {
@@ -640,7 +682,12 @@ export async function runM52EventPumpCodexGate({ artifactsDirectory, runtime = n
     artifactsDirectory,
     runtime,
   });
-  return projectM52EventPumpCodexGateResult(coreResult, { productProbe });
+  try {
+    return projectM52EventPumpCodexGateResult(coreResult, { productProbe });
+  } catch (error) {
+    if (error.cleanup === undefined) error.cleanup = coreResult.cleanup;
+    throw error;
+  }
 }
 
 export async function runM52OperatorSuppliedCodexEventPumpGate({
@@ -668,5 +715,10 @@ export async function runM52OperatorSuppliedCodexEventPumpGate({
     artifactsDirectory,
     runtime,
   });
-  return projectM52OperatorSuppliedCodexEventPumpGateResult(coreResult, { probe });
+  try {
+    return projectM52OperatorSuppliedCodexEventPumpGateResult(coreResult, { probe });
+  } catch (error) {
+    if (error.cleanup === undefined) error.cleanup = coreResult.cleanup;
+    throw error;
+  }
 }
