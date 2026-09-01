@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { createAutonomousEventPump } from
   "../activation/autonomous-event-pump.mjs";
-import { sha256Digest } from "../canonical-json.mjs";
+import { canonicalJson, sha256Digest } from "../canonical-json.mjs";
 import {
   gitEvidenceVerificationResultDigest,
   SqliteCoordinator,
@@ -35,6 +35,12 @@ const DEPENDENT_ADAPTER_RECEIPT = Object.freeze({
 const owner = Object.freeze({ kind: "user", principalId: "owner_no_plan_scenario" });
 const sha = (character) => character.repeat(40);
 const digest = (value) => sha256Digest({ value });
+
+function scenarioError(code) {
+  const error = new Error(code);
+  error.code = code;
+  return error;
+}
 
 function principal(actor) {
   return { kind: "task", taskId: actor.taskId, incarnationId: actor.incarnationId };
@@ -440,6 +446,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
   injectPriorRelevant = false,
   injectFinalizationFailure = false,
   injectPreverifiedTamper = null,
+  injectSelectionBindingMismatch = false,
 }) {
   const preverifiedTamperVariants = new Set([
     "state-only", "missing-receipt", "missing-satisfaction",
@@ -448,6 +455,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
   if (!path.isAbsolute(artifactsDirectory ?? "") ||
       typeof injectPriorRelevant !== "boolean" ||
       typeof injectFinalizationFailure !== "boolean" ||
+      typeof injectSelectionBindingMismatch !== "boolean" ||
       (injectPreverifiedTamper !== null &&
         !preverifiedTamperVariants.has(injectPreverifiedTamper))) {
     throw new Error("threadmesh_coordinator_driven_artifacts_invalid");
@@ -1126,6 +1134,21 @@ export async function runCoordinatorDrivenNoPlanScenario({
         "SELECT COUNT(*) AS count FROM context_admission_turn_bindings",
       ).get().count,
     };
+    const nativeTurnBindingCount = coordinator.db.prepare(
+      `SELECT COUNT(*) AS count FROM turn_execution_intents
+       WHERE turn_id IS NOT NULL AND state IN ('completed-turn-bound', 'promoted')`,
+    ).get().count;
+    const protectedDecisionTurnCount = coordinator.db.prepare(
+      `SELECT COUNT(*) AS count FROM attention_route_decision_bindings d
+       JOIN turn_execution_intents i
+         ON i.execution_id = d.receiver_decision_execution_id
+       WHERE i.turn_id IS NOT NULL`,
+    ).get().count;
+    const protectedAdmissionTurnCount = coordinator.db.prepare(
+      `SELECT COUNT(*) AS count FROM context_admission_turn_bindings b
+       JOIN turn_execution_intents i ON i.execution_id = b.execution_id
+       WHERE i.turn_id IS NOT NULL`,
+    ).get().count;
     const chain = coordinator.getGitEvidenceChain(requirement.chainId, owner);
     const dependency = coordinator.getDependencyEdge(
       "dependency_no_plan_verified", principal(actors.dependent),
@@ -1167,11 +1190,108 @@ export async function runCoordinatorDrivenNoPlanScenario({
       handlerId: record.handlerId,
       handlerConfigDigest: record.handlerConfigDigest,
       recordDigest: record.recordDigest,
+      registryDigest: record.registryDigest,
+      pumpIdentityDigest: record.pumpIdentityDigest,
+      routeDigest: record.routeDigest,
     }));
+    if (injectSelectionBindingMismatch && selectionBindings.length > 0) {
+      selectionBindings[0] = {
+        ...selectionBindings[0],
+        recordDigest: digest("injected-runtime-selection-binding-mismatch"),
+      };
+    }
+    const registeredRoutes = pump.registrations.flatMap(({ routes }) => routes);
+    const durableDispatchRecords = coordinator.db.prepare(
+      `SELECT dispatch_id, receiver_task_id, receiver_incarnation_id,
+              event_cursor, event_digest, registry_digest, pump_identity_digest,
+              handler_id, route_digest, dispatch_intent_digest, state,
+              selection_record_json, selection_digest
+       FROM event_pump_dispatches
+       ORDER BY created_at, dispatch_id`,
+    ).all().map((row) => {
+      const checkpoints = coordinator.db.prepare(
+        `SELECT sequence, state, previous_checkpoint_digest, checkpoint_digest
+         FROM event_pump_checkpoints WHERE dispatch_id = ? ORDER BY sequence`,
+      ).all(row.dispatch_id);
+      if (
+        checkpoints.length < 2 ||
+        checkpoints.some((checkpoint, index) =>
+          checkpoint.sequence !== index + 1 ||
+          checkpoint.previous_checkpoint_digest !==
+            (index === 0 ? null : checkpoints[index - 1].checkpoint_digest)) ||
+        checkpoints.at(-1).state !== row.state
+      ) throw new Error("threadmesh_durable_dispatch_manifest_invalid");
+      const selectionRecord = JSON.parse(row.selection_record_json);
+      const registeredRoute = registeredRoutes.find(
+        ({ handlerId }) => handlerId === row.handler_id,
+      );
+      if (
+        sha256Digest(selectionRecord) !== row.selection_digest ||
+        selectionRecord.handlerId !== row.handler_id ||
+        selectionRecord.registryDigest !== row.registry_digest ||
+        selectionRecord.pumpIdentityDigest !== row.pump_identity_digest ||
+        selectionRecord.routeDigest !== row.route_digest ||
+        !registeredRoute
+      ) {
+        throw scenarioError("threadmesh_durable_dispatch_manifest_invalid");
+      }
+      return {
+        kind: selectionRecord.kind,
+        receiverDigest: sha256Digest({
+          taskId: row.receiver_task_id,
+          incarnationId: row.receiver_incarnation_id,
+        }),
+        eventCursor: row.event_cursor,
+        eventDigest: row.event_digest,
+        registryDigest: row.registry_digest,
+        pumpIdentityDigest: row.pump_identity_digest,
+        handlerId: row.handler_id,
+        handlerConfigDigest: sha256Digest(registeredRoute),
+        routeDigest: row.route_digest,
+        dispatchIntentDigest: row.dispatch_intent_digest,
+        dispatchState: row.state,
+        selectionDigest: row.selection_digest,
+        checkpointCount: checkpoints.length,
+        checkpointHeadDigest: checkpoints.at(-1).checkpoint_digest,
+      };
+    });
+    const runtimeDispatchCorrelation = selectionBindings.map((record) => ({
+      kind: record.kind,
+      handlerId: record.handlerId,
+      handlerConfigDigest: record.handlerConfigDigest,
+      recordDigest: record.recordDigest,
+      registryDigest: record.registryDigest,
+      pumpIdentityDigest: record.pumpIdentityDigest,
+      routeDigest: record.routeDigest,
+    }));
+    const durableDispatchCorrelation = durableDispatchRecords.map((record) => ({
+      kind: record.kind,
+      handlerId: record.handlerId,
+      handlerConfigDigest: record.handlerConfigDigest,
+      recordDigest: record.selectionDigest,
+      registryDigest: record.registryDigest,
+      pumpIdentityDigest: record.pumpIdentityDigest,
+      routeDigest: record.routeDigest,
+    }));
+    if (canonicalJson(runtimeDispatchCorrelation) !==
+        canonicalJson(durableDispatchCorrelation)) {
+      throw scenarioError("threadmesh_durable_dispatch_runtime_correlation_invalid");
+    }
     result = {
       state: "passed-full-functional-in-process-fixture",
       liveProductEvidence: false,
       initialUserStartPrompts: 1,
+      promptBoundary: {
+        initialUserKickoffPrompts: 1,
+        phasePromptsSubmittedByRunner: 0,
+        runnerDirectActivationDispatches: 0,
+        logicalEventPumpLifecycleStarts: 1,
+        pumpProtectedBoundNativeTurns:
+          protectedDecisionTurnCount + protectedAdmissionTurnCount,
+        boundNativeTurns: nativeTurnBindingCount,
+        runnerOwnedCounterSource: "scenario-entry-and-no-dispatch-call-sites",
+        boundTurnSource: "sqlite-exact-turn-and-binding-records",
+      },
       deterministicPolicyOracle: true,
       activationDispatchesByFixtureRunner: 0,
       eventPumpDispatches: pumpResult.dispatches,
@@ -1202,6 +1322,12 @@ export async function runCoordinatorDrivenNoPlanScenario({
         .filter(({ kind }) => kind === "coordinator-activation")
         .map(({ handlerId }) => handlerId),
       selectionBindings,
+      durableDispatchManifest: {
+        scope: "sqlite-correlated-snapshot-not-global-chain",
+        recordCount: durableDispatchRecords.length,
+        records: durableDispatchRecords,
+        manifestDigest: sha256Digest(durableDispatchRecords),
+      },
       attention: {
         cursors: attentionCursors,
         activeClaimCount: activeAttentionClaimCount,

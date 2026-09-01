@@ -1606,6 +1606,9 @@ export class CodexLiveAgentRuntime {
     });
     let nativeStartRequested = false;
     let started = null;
+    let preEffectFenceRejected = false;
+    let preEffectFenceError = null;
+    let onToolCallOccurred = false;
     const selectedCalls = [];
     const completedCalls = [];
     const outputDigests = [];
@@ -1639,19 +1642,26 @@ export class CodexLiveAgentRuntime {
           await onTurnStarted(metadata);
         },
         beforeToolCall: async (metadata) => {
-          if (metadata?.threadId !== ref.threadId ||
-              metadata?.turnId !== started?.turnId ||
-              !allowedToolNames.includes(metadata?.tool)) {
-            throw scenarioError("threadmesh_live_admitted_turn_tool_mismatch");
+          try {
+            if (metadata?.threadId !== ref.threadId ||
+                metadata?.turnId !== started?.turnId ||
+                !allowedToolNames.includes(metadata?.tool)) {
+              throw scenarioError("threadmesh_live_admitted_turn_tool_mismatch");
+            }
+            const selected = selectedToolCallProjection(metadata);
+            if (selected.ordinal !== selectedCalls.length) {
+              throw scenarioError("threadmesh_live_admitted_turn_tool_mismatch");
+            }
+            selectedCalls.push(selected);
+            await beforeToolCall(metadata);
+          } catch (error) {
+            preEffectFenceRejected = true;
+            preEffectFenceError = error;
+            throw error;
           }
-          const selected = selectedToolCallProjection(metadata);
-          if (selected.ordinal !== selectedCalls.length) {
-            throw scenarioError("threadmesh_live_admitted_turn_tool_mismatch");
-          }
-          selectedCalls.push(selected);
-          await beforeToolCall(metadata);
         },
         onToolCall: async (metadata) => {
+          onToolCallOccurred = true;
           const ordinal = metadata?.ordinal;
           if (
             !Number.isInteger(ordinal) || ordinal < 0 ||
@@ -1707,6 +1717,7 @@ export class CodexLiveAgentRuntime {
         recoveryJournal: Object.freeze({ ...journalProjection, ...retired }),
       });
     } catch (error) {
+      if (preEffectFenceRejected && !onToolCallOccurred) throw preEffectFenceError;
       if (!nativeStartRequested) throw error;
       return reconcile({
         baseline,

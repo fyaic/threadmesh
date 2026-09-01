@@ -74,6 +74,12 @@ const businessTool = Object.freeze({
   description: "Record a harmless admitted activation effect.",
   inputSchema: Object.freeze({ type: "object", additionalProperties: false }),
 });
+const publicationTool = Object.freeze({
+  type: "function",
+  name: "threadmesh_activation_publish",
+  description: "Publish the admitted effect after preparing it.",
+  inputSchema: Object.freeze({ type: "object", additionalProperties: false }),
+});
 
 function completedBinding(actor, turnId, actions) {
   const receipt = {
@@ -275,7 +281,11 @@ function strictRuntime() {
   };
 }
 
-function noPlanCodexAdapter() {
+function noPlanCodexAdapter({
+  businessToolNames = [businessTool.name, publicationTool.name],
+  wrapBeforeFence = false,
+  tamperAfterTool = false,
+} = {}) {
   const ref = Object.freeze({
     kind: "codex-app-server",
     threadId: receiver.threadId,
@@ -318,27 +328,46 @@ function noPlanCodexAdapter() {
         adapterIdempotencyKey: options.adapterIdempotencyKey,
       });
       const decision = options.dynamicTools[0].name === "threadmesh_decide_offer";
-      const args = decision
-        ? { messageId: lifecycleEvent.messageId, decision: "accepted" }
-        : {};
-      const selected = {
-        threadId: ref.threadId,
-        turnId,
-        callId: `call-${turnId}`,
-        ordinal: 0,
-        tool: options.dynamicTools[0].name,
-        arguments: args,
-        argumentsDigest: sha256Digest(args),
-      };
-      await options.beforeToolCall(selected);
-      const output = await options.onToolCall(selected);
-      const completed = {
-        ...selected,
-        outputDigest: sha256Digest(output),
-        resultStatus: "completed",
-      };
-      delete completed.arguments;
-      await options.afterToolCall(completed);
+      const completedCalls = [];
+      const selectedTools = decision
+        ? options.dynamicTools
+        : businessToolNames.map((name) =>
+            options.dynamicTools.find((tool) => tool.name === name) ?? { name });
+      for (const [ordinal, dynamicTool] of selectedTools.entries()) {
+        const args = decision
+          ? { messageId: lifecycleEvent.messageId, decision: "accepted" }
+          : {};
+        const selected = {
+          threadId: ref.threadId,
+          turnId,
+          callId: `call-${turnId}-${ordinal}`,
+          ordinal,
+          tool: dynamicTool.name,
+          arguments: args,
+          argumentsDigest: sha256Digest(args),
+        };
+        try {
+          await options.beforeToolCall(selected);
+        } catch (error) {
+          if (wrapBeforeFence) {
+            const wrapped = new Error("adapter wrapped the protected pre-effect fence");
+            wrapped.code = "threadmesh_test_adapter_wrapped_callback";
+            wrapped.cause = error;
+            throw wrapped;
+          }
+          throw error;
+        }
+        const output = await options.onToolCall(selected);
+        const completed = {
+          ...selected,
+          outputDigest: sha256Digest(output),
+          resultStatus: "completed",
+        };
+        delete completed.arguments;
+        if (tamperAfterTool && !decision) completed.tool = `${completed.tool}_tampered`;
+        await options.afterToolCall(completed);
+        completedCalls.push(completed);
+      }
       return {
         state: "completed",
         text: "done",
@@ -363,14 +392,14 @@ function noPlanCodexAdapter() {
           notificationCount: 1,
           deltaCount: 1,
         },
-        toolCalls: [completed],
+        toolCalls: completedCalls,
         nonThreadMeshToolCalls: 0,
       };
     },
   };
 }
 
-test("coordinator activation accepts, admits, executes, confirms, and stops", async (t) => {
+async function activationFixture(t, adapterOptions, observeBusinessCall = () => {}) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "threadmesh-activation-driver-"));
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
   const coordinator = new SqliteCoordinator({
@@ -411,15 +440,15 @@ test("coordinator activation accepts, admits, executes, confirms, and stops", as
     now: NOW,
   });
   assert.deepEqual(routeProjection.envelope, projectLifecycleEventToEnvelope(lifecycleEvent));
-  const adapter = noPlanCodexAdapter();
+  const adapter = noPlanCodexAdapter(adapterOptions);
   const runtime = new CodexLiveAgentRuntime({ command: "/fake/codex", adapter });
   const ref = await runtime.createRole({
     role: "receiver",
     cwd: directory,
-    tools: [REGISTERED_PEER_DECISION_TOOL, businessTool],
+    tools: [REGISTERED_PEER_DECISION_TOOL, businessTool, publicationTool],
     phaseTools: {
       "receiver-decision": [REGISTERED_PEER_DECISION_TOOL],
-      "admitted-business": [businessTool],
+      "admitted-business": [businessTool, publicationTool],
     },
     protectedPhases: {
       "receiver-decision": "receiver-decision",
@@ -428,7 +457,7 @@ test("coordinator activation accepts, admits, executes, confirms, and stops", as
     instructions: "Use only the currently admitted ThreadMesh tool.",
     scenarioId: "scenario_activation",
   });
-  const result = await runCoordinatorActivation({
+  const activation = () => runCoordinatorActivation({
     coordinator,
     runtime,
     receiver,
@@ -440,15 +469,33 @@ test("coordinator activation accepts, admits, executes, confirms, and stops", as
     scenarioId: "scenario_activation",
     chainId: "chain_activation",
     recoveryDirectory: directory,
-    businessTool,
-    async onBusinessToolCall() { return { effect: "recorded" }; },
+    businessTools: [businessTool, publicationTool],
+    async onBusinessToolCall(metadata) {
+      observeBusinessCall(metadata);
+      const { tool } = metadata;
+      return tool === businessTool.name
+        ? { effect: "recorded" }
+        : { published: true };
+    },
   });
+  return { activation, adapter, coordinator, directory, ref };
+}
+
+test("coordinator activation accepts, admits, executes, confirms, and stops", async (t) => {
+  const fixture = await activationFixture(t);
+  const { adapter, coordinator } = fixture;
+  const result = await fixture.activation();
 
   assert.equal(result.state, "completed");
   assert.equal(result.decision, "accepted");
   assert.equal(result.admitted, true);
   assert.equal(result.claim.state, "completed-bound");
   assert.equal(adapter.state.starts, 2);
+  assert.deepEqual(
+    coordinator.getTurnExecution(result.businessExecutionId, receiverPrincipal)
+      .actions.map(({ name }) => name),
+    [businessTool.name, publicationTool.name],
+  );
   assert.equal(adapter.state.prompts[0].includes("RAW_CONTENT_MUST_ONLY_APPEAR"), false);
   assert.match(adapter.state.prompts[1], /RAW_CONTENT_MUST_ONLY_APPEAR/u);
   const admission = coordinator.recoverContextAdmission(
@@ -462,4 +509,77 @@ test("coordinator activation accepts, admits, executes, confirms, and stops", as
       .get().count,
     1,
   );
+});
+
+for (const [variant, businessToolNames, callbackCount, expectedCode] of [
+  ["subset", [businessTool.name], 1,
+    "threadmesh_codex_live_context_reconciliation_ambiguous"],
+  ["reorder", [publicationTool.name, businessTool.name], 0,
+    "threadmesh_activation_business_tool_sequence_mismatch"],
+  ["repeat", [businessTool.name, businessTool.name], 1,
+    "threadmesh_codex_live_context_reconciliation_ambiguous"],
+  ["extra", [businessTool.name, publicationTool.name, businessTool.name], 2,
+    "threadmesh_codex_live_context_reconciliation_ambiguous"],
+]) {
+  test(`coordinator activation rejects ${variant} admitted tool sequence`, async (t) => {
+    let callbacks = 0;
+    const fixture = await activationFixture(
+      t,
+      { businessToolNames },
+      () => { callbacks += 1; },
+    );
+    await assert.rejects(fixture.activation(), {
+      code: expectedCode,
+    });
+    assert.equal(callbacks, callbackCount);
+    assert.equal(fixture.coordinator.recoverContextAdmission(
+      sender.incarnationId, lifecycleEvent.messageId, receiverPrincipal,
+    ).state, "in-flight");
+    assert.equal(fixture.coordinator.getAttentionCursor(receiver, receiverPrincipal)
+      .activeClaim.state, "claimed");
+  });
+}
+
+test("coordinator activation preserves a wrapped first pre-effect fence rejection", async (t) => {
+  let callbacks = 0;
+  const fixture = await activationFixture(
+    t,
+    {
+      businessToolNames: [publicationTool.name, businessTool.name],
+      wrapBeforeFence: true,
+    },
+    () => { callbacks += 1; },
+  );
+  await assert.rejects(fixture.activation(), {
+    code: "threadmesh_activation_business_tool_sequence_mismatch",
+  });
+  assert.equal(callbacks, 0);
+  assert.equal(fixture.coordinator.getAttentionCursor(receiver, receiverPrincipal)
+    .activeClaim.state, "claimed");
+});
+
+test("coordinator activation reconciles an onToolCall callback failure conservatively", async (t) => {
+  const fixture = await activationFixture(t, {}, () => {
+    const error = new Error("effect outcome is unknown");
+    error.code = "threadmesh_test_business_effect_failed";
+    throw error;
+  });
+  await assert.rejects(fixture.activation(), {
+    code: "threadmesh_codex_live_context_reconciliation_ambiguous",
+  });
+  assert.equal(fixture.coordinator.getAttentionCursor(receiver, receiverPrincipal)
+    .activeClaim.state, "claimed");
+});
+
+test("coordinator activation reconciles an afterToolCall callback failure conservatively", async (t) => {
+  let callbacks = 0;
+  const fixture = await activationFixture(t, { tamperAfterTool: true }, () => {
+    callbacks += 1;
+  });
+  await assert.rejects(fixture.activation(), {
+    code: "threadmesh_codex_live_context_reconciliation_ambiguous",
+  });
+  assert.equal(callbacks, 1);
+  assert.equal(fixture.coordinator.getAttentionCursor(receiver, receiverPrincipal)
+    .activeClaim.state, "claimed");
 });

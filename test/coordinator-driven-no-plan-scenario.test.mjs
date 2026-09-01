@@ -18,6 +18,16 @@ test("one pump autonomously closes A to R to same-A to V to dependent", async (t
   assert.equal(result.state, "passed-full-functional-in-process-fixture");
   assert.equal(result.liveProductEvidence, false);
   assert.equal(result.initialUserStartPrompts, 1);
+  assert.deepEqual(result.promptBoundary, {
+    initialUserKickoffPrompts: 1,
+    phasePromptsSubmittedByRunner: 0,
+    runnerDirectActivationDispatches: 0,
+    logicalEventPumpLifecycleStarts: 1,
+    pumpProtectedBoundNativeTurns: 8,
+    boundNativeTurns: 9,
+    runnerOwnedCounterSource: "scenario-entry-and-no-dispatch-call-sites",
+    boundTurnSource: "sqlite-exact-turn-and-binding-records",
+  });
   assert.equal(result.deterministicPolicyOracle, true);
   assert.equal(result.activationDispatchesByFixtureRunner, 0);
   assert.equal(result.eventPumpDispatches, 4);
@@ -55,6 +65,21 @@ test("one pump autonomously closes A to R to same-A to V to dependent", async (t
     "handler.no-plan.dependent.v1",
   ]);
   assert.equal(result.selectionBindings.length, 5);
+  assert.equal(result.durableDispatchManifest.recordCount, 5);
+  assert.equal(result.durableDispatchManifest.records.length, 5);
+  assert.equal(new Set(result.durableDispatchManifest.records
+    .map(({ selectionDigest }) => selectionDigest)).size, 5);
+  assert.ok(result.durableDispatchManifest.records.every((record) =>
+    record.checkpointCount >= 2 &&
+    /^sha256:[a-f0-9]{64}$/u.test(record.checkpointHeadDigest) &&
+    /^sha256:[a-f0-9]{64}$/u.test(record.dispatchIntentDigest)));
+  assert.ok(result.durableDispatchManifest.records.every((record) =>
+    ["published", "skipped"].includes(record.dispatchState) &&
+    !Object.hasOwn(record, "outcome")));
+  assert.match(result.durableDispatchManifest.manifestDigest,
+    /^sha256:[a-f0-9]{64}$/u);
+  assert.equal(result.durableDispatchManifest.scope,
+    "sqlite-correlated-snapshot-not-global-chain");
   assert.ok(result.selectionBindings.every((binding) =>
     /^handler\.no-plan\./u.test(binding.handlerId) &&
     /^sha256:[a-f0-9]{64}$/u.test(binding.handlerConfigDigest) &&
@@ -113,6 +138,28 @@ test("one pump autonomously closes A to R to same-A to V to dependent", async (t
   assert.equal(result.cleanup.runRootRemoved, true);
   assert.ok(result.cleanup.roles.every(({ deleted, absenceVerified }) =>
     deleted && absenceVerified));
+});
+
+test("public manifest rejects a runtime selection binding not present in SQLite", async (t) => {
+  const artifactsDirectory = fs.mkdtempSync(
+    path.join(os.tmpdir(), "threadmesh-coordinator-selection-mismatch-"),
+  );
+  t.after(() => fs.rmSync(artifactsDirectory, { recursive: true, force: true }));
+
+  await assert.rejects(
+    () => runCoordinatorDrivenNoPlanScenario({
+      artifactsDirectory,
+      injectSelectionBindingMismatch: true,
+    }),
+    (error) => {
+      assert.equal(
+        error?.code,
+        "threadmesh_durable_dispatch_runtime_correlation_invalid",
+      );
+      assert.equal(error.cleanup?.complete, true);
+      return true;
+    },
+  );
 });
 
 test("failed trusted finalization starts no dependent business turn", async (t) => {

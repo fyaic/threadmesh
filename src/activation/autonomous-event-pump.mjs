@@ -96,14 +96,23 @@ export class AutonomousEventPump {
     const { receiver, principal, role, cwd, ref, routes } = registration ?? {};
     if (!receiver || !principal || typeof role !== "string" || typeof cwd !== "string" ||
         !ref || !Array.isArray(routes) || routes.length < 1 ||
-        routes.some((route) => !route?.grant ||
+        routes.some((route) => {
+          const businessTools = route?.businessTools ??
+            (route?.businessTool ? [route.businessTool] : null);
+          return !route?.grant ||
           typeof route.handlerId !== "string" || route.handlerId.length < 1 ||
           typeof route.eventType !== "string" ||
-          !Array.isArray(route.subscribedEventTypes) || !route.businessTool ||
+          !Array.isArray(route.subscribedEventTypes) ||
+          !Array.isArray(businessTools) || businessTools.length < 1 ||
+          businessTools.length > 4 ||
+          businessTools.some(({ name } = {}) =>
+            typeof name !== "string" || name.length < 1) ||
+          new Set(businessTools.map(({ name }) => name)).size !== businessTools.length ||
           typeof route.onBusinessToolCall !== "function" ||
           typeof route.onLifecyclePublication !== "function" ||
           (route.afterAdmissionPrepared !== undefined &&
-            typeof route.afterAdmissionPrepared !== "function"))) {
+            typeof route.afterAdmissionPrepared !== "function");
+        })) {
       throw coded("threadmesh_event_pump_registration_invalid");
     }
     const entries = PUMP_REGISTRY.get(this).entries;
@@ -122,7 +131,9 @@ export class AutonomousEventPump {
       relationshipId: route.grant.relationshipId,
       businessPhase: route.businessPhase,
       decisionPhase: route.decisionPhase ?? "receiver-decision",
-      businessTool: copy(route.businessTool),
+      ...(route.businessTools
+        ? { businessTools: copy(route.businessTools) }
+        : { businessTool: copy(route.businessTool) }),
     }));
     entries.push(Object.freeze({
       receiver: sealedReceiver,
@@ -502,6 +513,7 @@ export class AutonomousEventPump {
         businessPhase: routeData.businessPhase,
         decisionPhase: routeData.decisionPhase,
         businessTool: routeData.businessTool,
+        businessTools: routeData.businessTools,
         onBusinessToolCall: routeRegistration.onBusinessToolCall,
         afterAdmissionPrepared: routeRegistration.afterAdmissionPrepared,
       });
