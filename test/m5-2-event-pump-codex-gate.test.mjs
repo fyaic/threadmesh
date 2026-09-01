@@ -13,6 +13,7 @@ import {
   isCodexLiveAgentRuntime,
 } from "../src/validation/live-agent-scenario.mjs";
 import {
+  projectM52EventPumpFailureCleanup,
   projectM52OperatorSuppliedCodexEventPumpGateResult,
   projectOperatorSuppliedCodexProbe,
   projectM52EventPumpCodexGateResult,
@@ -295,4 +296,55 @@ test("event-pump gate CLI distinguishes help, blocked, and preflight exits", () 
   assert.equal(preflight.status, 3);
   assert.equal(JSON.parse(preflight.stderr).code,
     "threadmesh_m52_event_pump_runner_live_ack_required");
+
+  const failureDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "threadmesh-m52-failure-"));
+  const rawToken = "RAW_FAILURE_PATH_TOKEN";
+  try {
+    fs.writeFileSync(path.join(failureDirectory, `${rawToken}.json`), "{}\n");
+    const failure = spawnSync(process.execPath, [
+      script, "--mode", "fake", "--artifacts-dir", failureDirectory,
+    ], { encoding: "utf8" });
+    assert.equal(failure.status, 1);
+    const output = JSON.parse(failure.stderr);
+    assert.equal(output.state, "failed");
+    assert.deepEqual(output.cleanup, {
+      complete: false,
+      rolesDeleted: 5,
+      roleAbsenceChecks: 5,
+      coordinatorRemoved: true,
+      remainingJournalCount: 0,
+    });
+    assert.equal(failure.stderr.includes(rawToken), false);
+    assert.equal(failure.stderr.includes(failureDirectory), false);
+    assert.equal(Object.hasOwn(output, "message"), false);
+  } finally {
+    fs.rmSync(failureDirectory, { recursive: true, force: true });
+  }
+});
+
+test("failure cleanup projection is bounded and omits raw role and path data", () => {
+  const projected = projectM52EventPumpFailureCleanup({
+    complete: true,
+    roles: [{
+      role: "a",
+      deleted: true,
+      absenceVerified: true,
+      threadId: "raw-thread-id",
+      path: "/private/raw/path",
+    }],
+    coordinatorRemoved: true,
+    remainingJournalCount: 0,
+    rawError: "secret error text",
+  });
+  assert.deepEqual(projected, {
+    complete: true,
+    rolesDeleted: 1,
+    roleAbsenceChecks: 1,
+    coordinatorRemoved: true,
+    remainingJournalCount: 0,
+  });
+  const encoded = JSON.stringify(projected);
+  assert.equal(encoded.includes("raw-thread-id"), false);
+  assert.equal(encoded.includes("/private/raw/path"), false);
+  assert.equal(encoded.includes("secret error text"), false);
 });

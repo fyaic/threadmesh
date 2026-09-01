@@ -87,8 +87,8 @@ function completeTurn(turn) {
         id: turn.turnId,
         items: [],
         status: "completed",
-        completedAt: 1787216400,
-        durationMs: 7,
+        completedAt: JSON.parse(process.env.FAKE_CODEX_COMPLETED_AT ?? "1787216400"),
+        durationMs: JSON.parse(process.env.FAKE_CODEX_DURATION_MS ?? "7"),
       },
     },
   });

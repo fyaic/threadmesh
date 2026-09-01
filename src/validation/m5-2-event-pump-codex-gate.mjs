@@ -94,6 +94,22 @@ function gateError(code, detail = "") {
   return error;
 }
 
+export function projectM52EventPumpFailureCleanup(value) {
+  const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  const roles = Array.isArray(source.roles) && source.roles.length <= 32
+    ? source.roles : [];
+  const remainingJournalCount = Number.isSafeInteger(source.remainingJournalCount) &&
+      source.remainingJournalCount >= 0 && source.remainingJournalCount <= 10_000
+    ? source.remainingJournalCount : null;
+  return Object.freeze({
+    complete: source.complete === true,
+    rolesDeleted: roles.filter((role) => role?.deleted === true).length,
+    roleAbsenceChecks: roles.filter((role) => role?.absenceVerified === true).length,
+    coordinatorRemoved: source.coordinatorRemoved === true,
+    remainingJournalCount,
+  });
+}
+
 function exactObject(value, keys, label) {
   if (!value || typeof value !== "object" || Array.isArray(value) ||
       canonicalJson(Object.keys(value).sort()) !== canonicalJson([...keys].sort())) {
@@ -640,7 +656,12 @@ export async function runM52EventPumpCodexGate({ artifactsDirectory, runtime = n
     artifactsDirectory,
     runtime,
   });
-  return projectM52EventPumpCodexGateResult(coreResult, { productProbe });
+  try {
+    return projectM52EventPumpCodexGateResult(coreResult, { productProbe });
+  } catch (error) {
+    if (error.cleanup === undefined) error.cleanup = coreResult.cleanup;
+    throw error;
+  }
 }
 
 export async function runM52OperatorSuppliedCodexEventPumpGate({
@@ -668,5 +689,10 @@ export async function runM52OperatorSuppliedCodexEventPumpGate({
     artifactsDirectory,
     runtime,
   });
-  return projectM52OperatorSuppliedCodexEventPumpGateResult(coreResult, { probe });
+  try {
+    return projectM52OperatorSuppliedCodexEventPumpGateResult(coreResult, { probe });
+  } catch (error) {
+    if (error.cleanup === undefined) error.cleanup = coreResult.cleanup;
+    throw error;
+  }
 }
