@@ -114,12 +114,14 @@ importing coordinator, adapter, or validation internals.
 The deterministic vertical slice passes locally and from a packed consumer,
 and M5.1 has a real two-session Codex pass. The next fixture slice now closes
 the full lifecycle chain after one user kickoff: `A → R → same-A → V →
-dependent`. It records zero runner activation dispatches, phase prompts, manual
-relay, and polling. Trusted finalization precedes the dependent turn; a failed
-finalization starts zero dependent turns; the irrelevant control starts zero
-turns; exact cleanup passes.
+dependent`. It records zero fixture-runner activation dispatches and zero
+fixture-runner phase/business prompts, manual relay, or polling. The pump still
+starts the protected receiver decision and admitted business native turns.
+Trusted finalization precedes the dependent turn; a failed finalization starts
+zero dependent turns; the irrelevant control starts zero turns; exact cleanup
+passes.
 
-That slice was merged in three bounded steps:
+That slice was merged in four bounded steps:
 
 - coordinator-owned decision/admission activation plumbing in
   [#118](https://github.com/fyaic/threadmesh/pull/118) at
@@ -130,14 +132,19 @@ That slice was merged in three bounded steps:
 - verifier finalization, dependent gating, and exact preverified provenance in
   [#120](https://github.com/fyaic/threadmesh/pull/120) at
   `3b91dcff82622a0fed936e8295b77905777c6ada`.
+- durable per-dispatch selection and publication recovery in
+  [#122](https://github.com/fyaic/threadmesh/pull/122) at
+  `711da6606ac8b0c326f199a96d1713bc7a6de68c`, including publication leasing,
+  fencing, and committed-orphan recovery.
 
 The result remains fixture evidence: `liveProductEvidence=false`,
 `deterministicPolicyOracle=true`, `externalIndependentVerifier=false`, the
-signer is a fixture-owned ephemeral key, and `selectionDurable=false` as of
-`3b91dcf`. M5.2 therefore remains open. Its next ordered gates are durable pump
-selection across restart, a cross-process claimant lease, OS-kill recovery,
-and correlated real Codex then Kimi evidence. The M5.3 repetition matrix follows
-those gates.
+signer is a fixture-owned ephemeral key, and per-dispatch selection/publication
+recovery is durable as of `711da66`. A global cross-dispatch selection chain is
+not implemented and reports `selectionChainValid=null`. M5.2 therefore remains
+open. Its next ordered gates are OS-kill recovery, long-turn lease heartbeat,
+and correlated real Codex then Kimi evidence with an external verifier. The
+M5.3 repetition matrix follows those gates.
 
 - [x] Ship a one-command local demo with generated identities, grants, example
   sessions, and an inspector
@@ -155,11 +162,12 @@ those gates.
     cursor reconciliation; the adapter remains `idleWake: false`.
   - [x] M5.2 fixture: prove the no-plan single-kickoff A/R/same-A/V/dependent
     chain with trusted pre-turn finalization, zero irrelevant turns, and exact
-    cleanup. This does not satisfy the real-product M5.2 gate.
+    cleanup; persist each dispatch through selection, turn settlement, and
+    publication recovery. This does not satisfy the real-product M5.2 gate.
   - [ ] M5.2: complete the model-selected implementation -> review -> same-A
     fix -> verify chain across persistent A/R/V sessions, including dependent
-    waiting-to-ready, irrelevant zero-turn-after-bootstrap, durable pump
-    restart, cross-process lease, OS-kill recovery, and exact cleanup checks.
+    waiting-to-ready, irrelevant zero-turn-after-bootstrap, OS-kill recovery,
+    long-turn lease heartbeat, external verification, and exact cleanup checks.
   - [ ] M5.3: pass three fresh relevant runs plus the manual baseline,
     irrelevant, stale/unverified, restart, and cleanup matrix.
 - [ ] Repeat the loop across Codex and one ACP-compatible harness

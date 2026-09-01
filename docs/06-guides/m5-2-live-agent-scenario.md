@@ -50,9 +50,13 @@ A implementation → R review → same-A fix → V verification → dependent
 
 The fixture records all of the following:
 
-- `initialUserStartPrompts=1`;
-- `activationDispatchesByFixtureRunner=0`;
-- `rawPhasePromptsSubmittedByFixtureRunner=0`;
+- one user kickoff (`initialUserStartPrompts=1`);
+- zero fixture-runner activation dispatches and zero fixture-runner phase or
+  business prompts;
+- eight pump-protected receiver native turn starts: one decision and one
+  admitted business turn for each of R, same-A, V, and dependent;
+- nine lifecycle native turn starts in total after including the A kickoff,
+  each with a distinct bound native turn ID;
 - `humanRelayCount=0` and `pollingCount=0`;
 - the same native A reference for kickoff and fix;
 - a separate V native session and model-selected verification turn;
@@ -72,7 +76,10 @@ The boundary fields are part of the evidence, not caveats hidden in prose:
 - `deterministicPolicyOracle=true`;
 - `externalIndependentVerifier=false`;
 - `signer=fixture-owned-ephemeral-key`;
-- `eventPumpSelectionDurable=false` as of `3b91dcf`.
+- `eventPumpSelectionDurable=true` as of `711da66`;
+- `durablePerDispatchRecordsValid=true` for all five offered events;
+- `selectionChainValid=null` and
+  `selectionChainScope=global-chain-not-implemented`.
 
 The implementation landed through
 [#118](https://github.com/fyaic/threadmesh/pull/118) at
@@ -80,12 +87,23 @@ The implementation landed through
 [#119](https://github.com/fyaic/threadmesh/pull/119) at
 `d37cb428ea84b0683dac24787889e259a0a18c71`, and
 [#120](https://github.com/fyaic/threadmesh/pull/120) at
-`3b91dcff82622a0fed936e8295b77905777c6ada`.
+`3b91dcff82622a0fed936e8295b77905777c6ada`, and
+[#122](https://github.com/fyaic/threadmesh/pull/122) at
+`711da6606ac8b0c326f199a96d1713bc7a6de68c`.
 
-Durable event-pump selection after coordinator restart, a cross-process pump
-lease, OS-level kill recovery, and equivalent real Codex and Kimi runs are
-still pending. Passing this fixture must not be transcribed as a live-product
-pass or an external-verifier pass. See the
+The v9 SQLite migration adds durable dispatch and checkpoint records. The v10
+migration adds a separate publication lease/fence and version-2 checkpoint
+digests while preserving genuine v9 version-1 hashes. The focused recovery
+tests cover expired selection-lease takeover, restart after a bound native turn,
+restart after settlement but before publication, publication single-entry,
+stale-epoch fencing, and completion of a committed publication orphan without
+replaying its callback or looking ahead.
+
+These are durable per-dispatch guarantees, not a global ordering chain across
+dispatches. OS-level kill recovery, long-turn lease heartbeat, equivalent real
+Codex and Kimi runs, and an external verifier remain pending. Passing this
+fixture must not be transcribed as a live-product pass or an external-verifier
+pass. See the
 [exact evidence record](../09-reviews/2026-09-01-m5-2-autonomous-fixture.md).
 
 The deterministic runner now closes and reopens the coordinator at five fixed
@@ -241,6 +259,6 @@ under a Codex or Kimi label. Kimi quota or authentication problems are
 reported as blocked preconditions; they must not be rewritten as successful
 compatibility evidence.
 
-At `3b91dcf`, the repository baseline is 345 tests, 55 schema cases, and 7
+At `711da66`, the repository baseline is 360 tests, 55 schema cases, and 7
 transition cases. These are three separate validation counts; documentation
 lint also passes.
