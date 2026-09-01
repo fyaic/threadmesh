@@ -30,16 +30,20 @@ attempts stopped at product-probe validation, timestamp evidence validation,
 and an operator pause after five-session bootstrap. A fourth fresh attempt on
 `e052299` registered all five tasks and started the sole kickoff, then failed
 the exact lifecycle-action binding before any event-pump dispatch because the
-dynamic-tool schema did not expose the coordinator-bound arguments. Normal
-cleanup deleted and absence-confirmed all five sessions and removed the exact
-temporary resources.
+dynamic-tool schema did not expose the coordinator-bound arguments. A fifth
+attempt on `cbdccfb` validated that correction and autonomously reached reviewer
+acceptance, admitted two-tool review, `review-failed`, irrelevant skip, and
+same-A acceptance. Its admitted fix turn ended in conservative ambiguous
+reconciliation. Both runs used normal five-of-five deletion, absence checks,
+and exact temporary-resource cleanup.
 
 Execute in this order:
 
-1. The bounded SIGINT/SIGTERM cleanup gap is closed by #129. Expose the exact
-   already-authorized lifecycle arguments through phase-specific tool schemas,
-   then run the event-pump surface fresh. Do not add another prerequisite that
-   was not exposed by a live run.
+1. The bounded signal cleanup and exact phase-tool contract gaps are closed by
+   #129 and #130. Extend only the admitted business-turn operation window from
+   180 to 300 seconds, preserving reconcile-only ambiguous outcomes, then run
+   the event-pump surface fresh. Do not add another prerequisite that was not
+   exposed by a live run.
 2. Retain exact real session, native-turn, model-action, durable-dispatch,
    dependent-ordering, irrelevant-control, and cleanup evidence. The required
    behavioral counts are one kickoff, zero runner phase/business prompts or

@@ -1688,7 +1688,7 @@ export class CodexLiveAgentRuntime {
           ));
           await afterToolCall(metadata);
         },
-        timeoutMs: 180_000,
+        timeoutMs: 300_000,
       });
       assertExactCompletedToolTurn(turn, ref, started);
       assertExactToolCallCorrelation(turn, selectedCalls, completedCalls);
