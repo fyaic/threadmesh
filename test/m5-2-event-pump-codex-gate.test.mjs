@@ -61,6 +61,8 @@ test("deterministic Codex gate is pump-driven but remains blocked on verifier cu
   assert.equal(result.verificationMode, "fixture-owned-ephemeral-key-not-independent");
   assert.deepEqual(result.remainingGates, [
     "independent-verifier-service", "real-bounded-git-worktree-effects",
+    "manual-relay-polling-baseline", "minimum-critical-negative-restart",
+    "cross-process-os-kill-and-long-turn-lease-heartbeat", "global-selection-chain",
     "real-codex-product-run",
   ]);
   assert.equal(result.evidence.nativeTurnManifest.recordCount, 9);

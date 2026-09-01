@@ -2,10 +2,13 @@
 
 Date: 2026-09-01
 
-Latest attempted `main`: `f98c56b83057b43f8b9618d6f69e1b2f481f77bd`
+Latest completed behavioral `main`: `f98c56b83057b43f8b9618d6f69e1b2f481f77bd`
 
-Classification: six live attempts; attempt 6 completed the real autonomous
-behavioral chain, while the integrated M5.2 product gate remains blocked
+Latest real-effects integration attempt: `1845d86`
+
+Classification: ten live attempts; attempt 6 completed the real autonomous
+behavioral chain, while attempts 7–10 exercised the real Git/child-verifier
+integration without completing its end-to-end product gate
 
 ## Why this record exists
 
@@ -25,6 +28,10 @@ paused run into product evidence.
 | 4 | The first user-kickoff turn reached lifecycle publication, then failed `threadmesh_lifecycle_publication_action_mismatch` | Five registered tasks; one durable kickoff turn intent; no event-pump dispatch; the live model's selected tool arguments did not reproduce the coordinator-bound lifecycle material | Not started | Normal scenario cleanup deleted and absence-confirmed five of five sessions and removed the coordinator database, journals, and run root |
 | 5 | The chain reached the same-A admitted fix turn, then failed `threadmesh_codex_live_context_reconciliation_ambiguous` | Real kickoff publication; reviewer offer, acceptance, admission, and two-tool review; durable `review-failed`; irrelevant skip; same-A offer and acceptance; the admitted fix turn started but had no safely confirmable terminal result inside the existing product-operation window | Partial through `A -> R -> same-A acceptance`; verifier and dependent did not start | Normal scenario cleanup again deleted and absence-confirmed five of five sessions and removed the coordinator database, journals, and run root |
 | 6 | Completed the bounded event-pump scenario and returned the expected `state=blocked`, `code=threadmesh_m52_independent_verifier_service_pending` result | One kickoff; nine bound real Codex native turns; eight protected receiver turns; eight business tool calls; four published event-pump dispatches; one durable irrelevant skip; same-A identity/worktree reuse; verifier-finalization-before-dependent ordering | Complete `A -> R -> same-A -> V -> dependent`; zero runner phase prompts, direct activation dispatches, manual relay, polling, or irrelevant native turns | Normal scenario cleanup deleted and absence-confirmed five of five sessions, removed the coordinator, and left zero journals; the exact empty operator artifacts directory was then removed |
+| 7 | Real-effects R admitted turn ended before a business tool selection | A created and published a real bounded implementation commit; the event pump selected R | Partial through `A -> R admission start` | Normal cleanup deleted and absence-confirmed 5/5 sessions, stopped the child verifier, removed Git and coordinator resources, and left zero journals |
+| 8 | Real-effects R admitted turn ended after one completed detached-checkout read | Real A commit/publication and one R read action | Partial through `A -> R detached checkout read` | Same complete 5/5, verifier, Git, coordinator, and journal cleanup |
+| 9 | R receiver-decision turn was terminally reconciled | Real A commit/publication and autonomous R route selection | Partial through `A -> R decision start` | Same complete 5/5, verifier, Git, coordinator, and journal cleanup |
+| 10 | R accepted, then its admitted turn became ambiguous during a machine-observed DNS/TLS failure | Real A commit/publication, R acceptance, and R admission start | Partial through `A -> R admission start` | Same complete 5/5, verifier, Git, coordinator, and journal cleanup |
 
 The fixes in #126 and #127 do not retroactively change the evidence class of
 attempts 1 or 2. Attempt 3 is bootstrap and cleanup evidence only. Attempt 4
@@ -34,6 +41,14 @@ stopped conservatively at an ambiguous same-A admitted turn. None of the five
 attempts produced a completed `state=blocked` event-pump gate result. Attempt 6
 did. It is the first retained real behavioral pass of the autonomous chain, not
 an M5.2 completion claim.
+
+Attempts 7–10 run the branch that replaces simulated Git and fixture-owned
+signing with the existing bounded Git topology and child-owned verifier key.
+They establish partial real-effect execution and cleanup, not a completed
+real-effects chain. Attempt 10's Codex log recorded a certificate for
+`*.extern.facebook.com` while connecting to the ChatGPT Responses WebSocket;
+the system resolver and `curl` independently reproduced the wrong endpoint,
+and `codex doctor` reported the WebSocket failure. No TLS check was bypassed.
 
 ## What the combined work established
 
@@ -73,8 +88,9 @@ production reliability.
 
 ## What is not established
 
-- verifier custody and Git implementation/fix effects were not independently
-  real in an event-pump run;
+- verifier custody and real Git effects are wired into the event-pump branch,
+  but no successful live Codex run has yet traversed the complete integrated
+  chain;
 - the completed run demonstrates zero relay and polling by construction, but it
   does not yet include a timed manual-workflow baseline;
 - OS-kill recovery, long-turn lease heartbeat, a global cross-dispatch chain,
@@ -107,10 +123,9 @@ timeout/reconciliation path without a safely confirmable terminal observation.
 The bounded window correction in #131 closed that blocker without changing the
 reconciliation policy.
 
-The next mainline checkpoint is to reuse—not redesign—the existing bounded Git
-worktree and verifier foundations in this same correlated event-pump path, then
-add the manual relay/polling baseline and the minimum critical negative/restart
-case. Attempt 6 correctly reports `state=blocked` and
-`liveProductEvidence=false` because verifier custody and Git effects remain
-fixture-owned or simulated. It demonstrates real session initiative and clears
-the behavioral checkpoint; issue #91 and M5.2 remain open.
+The existing bounded Git worktree and child verifier are now wired into the
+same correlated event-pump path. The next checkpoint is one successful live
+rerun after the local DNS/TLS condition clears, followed by the manual
+relay/polling baseline and minimum critical negative/restart case. Attempt 6
+remains the behavioral checkpoint; attempts 7–10 do not upgrade it into an
+integrated product pass. Issue #91 and M5.2 remain open.

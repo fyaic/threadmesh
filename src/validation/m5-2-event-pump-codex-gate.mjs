@@ -12,7 +12,6 @@ const DIGEST = /^sha256:[a-f0-9]{64}$/u;
 const ADAPTER_OWNED_CODEX_USER_AGENT =
   /^threadmesh-codex-app-server-adapter\/[0-9]+\.[0-9]+\.[0-9]+ \(Mac OS [0-9]+(?:\.[0-9]+){1,3}; (?:arm64|x86_64)\) dumb \(threadmesh-codex-app-server-adapter; 0\.0\.0\)$/u;
 const BLOCKED_CODE = "threadmesh_m52_independent_verifier_service_pending";
-const REAL_EFFECTS_BLOCKED_CODE = "threadmesh_m52_trusted_codex_binary_provenance_pending";
 const EXPECTED_PHASES = Object.freeze([
   ["a", "user-kickoff", "kickoff", 1],
   ["r", "receiver-decision", "decision", 1],
@@ -64,7 +63,7 @@ const REAL_EFFECT_EXPECTED_ACTION_SEQUENCES = Object.freeze([
   Object.freeze(["threadmesh_commit_candidate", "threadmesh_publish_artifact"]),
   Object.freeze(["threadmesh_decide_offer"]),
   Object.freeze([
-    "threadmesh_reproduce_review_finding", "threadmesh_report_review_finding",
+    "threadmesh_review_read_artifact", "threadmesh_report_review_finding",
   ]),
   Object.freeze(["threadmesh_decide_offer"]),
   Object.freeze(["threadmesh_commit_candidate", "threadmesh_publish_dependency"]),
@@ -435,7 +434,8 @@ function projectGateResult(coreResult, {
     "modelSelectedToolCalls",
   ], "runtime");
   exactObject(coreResult.verification, [
-    "mode", "externalIndependentVerifier", "signer", "nativeVerifierSessionIndependent",
+    "mode", "externalIndependentVerifier", "processIsolatedVerifier", "signer",
+    "nativeVerifierSessionIndependent",
     "nativeVerifierTurnIdDigest", "allLifecycleNativeTurnIdsDistinct",
     "lifecycleNativeTurnCount", "signatureVerified", "trustAnchorDigest",
     "resultDigestBound",
@@ -544,7 +544,8 @@ function projectGateResult(coreResult, {
       coreResult.dependent?.effectCommittedAfterFinalization !== true) {
     throw gateError("threadmesh_m52_event_pump_gate_result_invalid", "finalizationOrder");
   }
-  if (coreResult.verification?.externalIndependentVerifier !== realEffects ||
+  if (coreResult.verification?.externalIndependentVerifier !== false ||
+      coreResult.verification?.processIsolatedVerifier !== realEffects ||
       coreResult.verification?.mode !== (realEffects
         ? "process-isolated-child-service-signed"
         : "deterministic-in-process-trusted-signing") ||
@@ -612,9 +613,9 @@ function projectGateResult(coreResult, {
     throw gateError("threadmesh_m52_event_pump_gate_result_invalid", "productProbe");
   }
   const remainingGates = [
-    ...(realEffects ? [] : [
-      "independent-verifier-service", "real-bounded-git-worktree-effects",
-    ]),
+    "independent-verifier-service", "real-bounded-git-worktree-effects",
+    "manual-relay-polling-baseline", "minimum-critical-negative-restart",
+    ...EXPECTED_PENDING_GATES,
     ...(operatorSuppliedCodexShapedRuntime
       ? ["trusted-codex-binary-provenance"]
       : ["real-codex-product-run"]),
@@ -626,7 +627,7 @@ function projectGateResult(coreResult, {
   return Object.freeze({
     schemaVersion: 1,
     state: "blocked",
-    code: realEffects ? REAL_EFFECTS_BLOCKED_CODE : BLOCKED_CODE,
+    code: BLOCKED_CODE,
     product,
     evidenceClass: deterministic
       ? "deterministic-event-pump-codex-gate"

@@ -109,14 +109,17 @@ phase prompts or direct activations; the irrelevant session ran zero turns;
 five of five temporary sessions and all coordinator artifacts were removed.
 
 The completed result is deliberately classified `state=blocked` and
-`liveProductEvidence=false`: verifier custody and Git effects are still
-fixture-owned or simulated. This proves bounded real session initiative, not
-M5.2 or production closure. The next checkpoint reuses the existing Git and
-verifier foundations in this correlated path, then measures against a manual
-relay/polling baseline. Non-mainline expansion remains frozen.
+`liveProductEvidence=false`: that retained run used fixture-owned or simulated
+Git and verification effects. The next branch now wires the existing bounded
+Git worktrees and process-isolated child verifier into the same correlated
+path. Its live rerun is pending after a reproducible local DNS/TLS failure; it
+has not been upgraded into product evidence. After that rerun, the remaining
+checkpoint is the manual relay/polling baseline and minimum critical
+negative/restart closure. Non-mainline expansion remains frozen.
 
 [Read the exact fixture evidence](docs/09-reviews/2026-09-01-m5-2-autonomous-fixture.md) ·
 [Read the real Codex behavior](docs/09-reviews/2026-09-01-m5-2-real-codex-event-pump-behavior.md) ·
+[Read the real-effects checkpoint](docs/09-reviews/2026-09-01-m5-2-real-effects-integration.md) ·
 [Read the M5.2 scenario guide](docs/06-guides/m5-2-live-agent-scenario.md)
 
 ## Quickstart

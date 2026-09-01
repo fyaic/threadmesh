@@ -17,11 +17,10 @@ experiments are explicitly labeled and do not satisfy it.
 
 ## Active critical path — 2026-09-01
 
-M5.2 remains the only implementation critical path, but its next checkpoint is
-behavioral evidence rather than infrastructure closure. The repository now has
-enough deterministic substrate to ask the product question directly: can real
-Codex sessions complete `A -> R -> same-A -> V -> dependent` after one user
-kickoff while the runner supplies no later phase prompt or direct activation?
+M5.2 remains the only implementation critical path. The behavioral question is
+answered by the completed sixth Codex run; the active checkpoint is now a
+successful traversal of the same path with real bounded Git effects and the
+existing process-isolated child verifier.
 
 The older product canary proved real multi-tool turns, same-A reuse, a bounded
 Git chain, controls, and cleanup, but its four prompts were runner-submitted.
@@ -44,16 +43,14 @@ Execute in this order:
 
 1. Treat the real behavioral chain as passed and retain its exact evidence; do
    not rerun it merely to polish counts or prose.
-2. Reuse the existing bounded Git worktree foundation so A's implementation
-   and same-A fix become observable commits in the same correlated event-pump
-   run. Do not design a new Git subsystem.
-3. Move verifier signing custody to the existing child-verifier boundary and
-   bind finalization to the real commits, finding, and test result. Keep the
-   dependent locked until that attestation is accepted.
-4. Add the manual relay/polling baseline and the minimum critical
+2. Retain one successful live rerun of the now-integrated bounded Git and child
+   verifier path. Wait for the currently reproducible local DNS/TLS endpoint
+   failure to clear; do not bypass certificate validation or redesign the
+   protocol around it.
+3. Add the manual relay/polling baseline and the minimum critical
    negative/restart case required by #91; publish the result without upgrading
    simulated or operator-supplied evidence.
-5. Close #91 only when its original outcome is satisfied, then resume
+4. Close #91 only when its original outcome is satisfied, then resume
    repetition, Kimi parity, and production-hardening evidence.
 
 Mainline guardrail: do not add a new substrate or generalize an existing one

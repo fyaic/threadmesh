@@ -988,6 +988,9 @@ export class CodexLiveAgentRuntime {
         turnStatus: classified.turnStatus,
         journal: journalProjection,
       };
+      if (typeof originCode === "string" && originCode.length > 0) {
+        terminal.originCode = originCode;
+      }
       throw terminal;
     }
   }
@@ -1570,6 +1573,9 @@ export class CodexLiveAgentRuntime {
         turnStatus: classified.turnStatus,
         journal: journalProjection,
       };
+      if (typeof originCode === "string" && originCode.length > 0) {
+        terminal.originCode = originCode;
+      }
       throw terminal;
     };
 
@@ -1730,7 +1736,11 @@ export class CodexLiveAgentRuntime {
         baseline,
         journalProjection,
         startedTurnId: started?.turnId ?? null,
-        originCode: typeof error?.code === "string" ? error.code : error?.name ?? null,
+        originCode: /^[a-z][a-z0-9_]{0,127}$/u.test(error?.code ?? "")
+          ? error.code
+          : (/^[A-Za-z][A-Za-z0-9]{0,63}$/u.test(error?.name ?? "")
+            ? error.name
+            : "unclassified_error"),
       });
     }
   }

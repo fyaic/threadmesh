@@ -3320,7 +3320,10 @@ export class SqliteCoordinator {
   // requester kickoff is a separate origin kind and cannot be adopted here.
   publishLifecycleFromCompletedAction(
     executionId,
-    { actionOrdinal = 0, expectedTool, event, expectedMaterial } = {},
+    {
+      actionOrdinal = 0, expectedTool, event, expectedMaterial,
+      expectedActionEvidence = {},
+    } = {},
     principal,
   ) {
     assertLifecycleEvent(event);
@@ -3335,6 +3338,15 @@ export class SqliteCoordinator {
       }
       const materialKeys = Object.keys(expectedMaterial ?? {}).sort();
       const expectedKeys = [...(specification?.materialKeys ?? [])].sort();
+      const evidenceKeys = expectedActionEvidence &&
+          typeof expectedActionEvidence === "object" &&
+          !Array.isArray(expectedActionEvidence)
+        ? Object.keys(expectedActionEvidence).sort()
+        : null;
+      if (
+        evidenceKeys === null || evidenceKeys.some((key) =>
+          ["sourceEventId", "event", ...expectedKeys].includes(key))
+      ) throw codedError("threadmesh_lifecycle_publication_action_mismatch");
       const expectedArguments = specification ? [
         execution.intent.eventId,
         execution.intent.messageId,
@@ -3342,6 +3354,7 @@ export class SqliteCoordinator {
         sourceEventId,
         event: boundedLifecycleActionEventBody(event),
         ...expectedMaterial,
+        ...expectedActionEvidence,
       })) : [];
       if (
         !["completed-turn-bound", "promoted"].includes(execution.intent.state) ||
@@ -8527,7 +8540,7 @@ export class SqliteCoordinator {
         execution.intent.turnStart?.turnId !== action.turnId ||
         execution.intent.actor.taskId !== event.sender.taskId ||
         execution.intent.actor.incarnationId !== event.sender.incarnationId ||
-        canonicalJson(actionArgumentKeys) !== canonicalJson(expectedArgumentKeys) ||
+        expectedArgumentKeys.some((key) => !actionArgumentKeys.includes(key)) ||
         ![execution.intent.eventId, execution.intent.messageId]
           .includes(actionArguments?.sourceEventId) ||
         canonicalJson(actionArguments?.event) !==

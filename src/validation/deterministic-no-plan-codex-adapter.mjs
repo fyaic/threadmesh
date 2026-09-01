@@ -102,12 +102,15 @@ function normalizeDecision(value, allowedTools) {
 export class DeterministicNoPlanCodexAdapter {
   constructor({
     decideTurn = () => ({ text: "No relevant action.", toolCalls: [] }),
+    resolveToolArguments = ({ arguments: value }) => value,
     clock = () => new Date("2026-09-01T00:00:00.000Z"),
   } = {}) {
-    if (typeof decideTurn !== "function" || typeof clock !== "function") {
+    if (typeof decideTurn !== "function" || typeof resolveToolArguments !== "function" ||
+        typeof clock !== "function") {
       fail("threadmesh_deterministic_adapter_configuration_invalid");
     }
     this.decideTurn = decideTurn;
+    this.resolveToolArguments = resolveToolArguments;
     this.clock = clock;
     this.threads = new Map();
     this.deletedThreadIds = new Set();
@@ -235,15 +238,31 @@ export class DeterministicNoPlanCodexAdapter {
     });
 
     try {
+      const priorOutputs = [];
       for (const [ordinal, selected] of decision.toolCalls.entries()) {
+        const resolvedArguments = await Reflect.apply(
+          this.resolveToolArguments,
+          undefined,
+          [{
+            canonicalInput,
+            ordinal,
+            tool: selected.tool,
+            arguments: copy(selected.arguments),
+            priorOutputs: copy(priorOutputs),
+          }],
+        );
+        if (!resolvedArguments || typeof resolvedArguments !== "object" ||
+            Array.isArray(resolvedArguments)) {
+          fail("threadmesh_deterministic_adapter_decision_invalid");
+        }
         const metadata = {
           threadId: thread.ref.threadId,
           turnId,
           callId: `call-${turnId}-${ordinal}`,
           ordinal,
           tool: selected.tool,
-          arguments: copy(selected.arguments),
-          argumentsDigest: sha256Digest(selected.arguments),
+          arguments: copy(resolvedArguments),
+          argumentsDigest: sha256Digest(resolvedArguments),
         };
         await options.beforeToolCall?.(metadata);
         const output = await options.onToolCall(metadata);
@@ -259,6 +278,7 @@ export class DeterministicNoPlanCodexAdapter {
         };
         await options.afterToolCall?.(completed);
         turn.toolCalls.push(Object.freeze(completed));
+        priorOutputs.push(copy(output));
       }
       turn.status = "completed";
     } catch (error) {

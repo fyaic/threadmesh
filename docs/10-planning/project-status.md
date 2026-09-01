@@ -1,11 +1,13 @@
 # Project status
 
-> Snapshot: 2026-09-01 at `main` commit
-> `f98c56b83057b43f8b9618d6f69e1b2f481f77bd`. Technical evidence includes the
+> Snapshot: 2026-09-01 after behavioral `main` commit
+> `f98c56b83057b43f8b9618d6f69e1b2f481f77bd` and real-effects integration
+> commit `1845d86`. Technical evidence includes the
 > deterministic no-plan autonomous fixture, the earlier runner-sequenced real
-> Codex canary, five fail-closed event-pump attempts, and one completed real
-> autonomous behavioral chain. M5.2 remains blocked on real Git effects,
-> independent verifier custody, a manual baseline, and critical closure cases.
+> Codex canary, nine fail-closed event-pump attempts, and one completed real
+> autonomous behavioral chain. Real Git and child-verifier wiring is complete,
+> but its successful Codex rerun, a manual baseline, and critical closure cases
+> remain pending.
 
 ## Executive summary
 
@@ -43,7 +45,7 @@ until this outcome is demonstrated.
 | Research and problem framing | Codex deep dive, community signals, ecosystem comparison, ADRs | Established |
 | Community adoption | No external stars, forks, watchers, issue comments, or independent setup result as of 2026-08-28 | Unvalidated |
 | Active product outcome | One-command lifecycle-event and dependency-handoff loop with an inspector | Real Codex A/R/same-A/V/dependent behavioral chain completed after one kickoff; independent Git/verifier closure pending |
-| Protocol draft | 14 JSON Schemas; 55 schema cases; 7 transition cases; 379 tests | Executable draft; counts are reported separately |
+| Protocol draft | 14 JSON Schemas; 55 schema cases; 7 transition cases; 383 tests | Executable draft; counts are reported separately |
 | Minimal adapter SDK | `@fyaic/threadmesh` `0.1.0-alpha.0`; six bounded client methods, per-turn proactive bridge, about 20 kB tarball, packed-consumer execution | Real Pi clean-consumer pass; not published to npm |
 | Local binding | Schema-validated JSON-RPC, transport-derived principals, typed errors | Executable local reference |
 | Local persistence | SQLite v10 registry, lifecycle state, append-only Git evidence, and durable per-dispatch event-pump selection/publication checkpoints | Experimental; global cross-dispatch pump chain absent |

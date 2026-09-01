@@ -3,6 +3,7 @@ import { execFileSync } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
 import process from "node:process";
+import { fileURLToPath } from "node:url";
 
 import {
   projectM52EventPumpFailureCleanup,
@@ -12,6 +13,7 @@ import {
   "../src/validation/m5-2-event-pump-codex-gate.mjs";
 
 const LIVE_ACK = "maintainer-approved-threadmesh-m52-event-pump-live";
+const REPOSITORY_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 function options(argv) {
   if (argv.length === 1 && ["--help", "-h"].includes(argv[0])) return { help: true };
@@ -96,10 +98,9 @@ try {
     }
     result = await runM52OperatorSuppliedCodexEventPumpGate({
       artifactsDirectory,
-      sourceRoot: execFileSync("git", ["rev-parse", "--show-toplevel"], {
-        encoding: "utf8", stdio: ["ignore", "pipe", "pipe"],
-      }).trim(),
+      sourceRoot: REPOSITORY_ROOT,
       validatedBaseSha: execFileSync("git", ["rev-parse", "HEAD"], {
+        cwd: REPOSITORY_ROOT,
         encoding: "utf8", stdio: ["ignore", "pipe", "pipe"],
       }).trim(),
       temporaryParent: os.tmpdir(),

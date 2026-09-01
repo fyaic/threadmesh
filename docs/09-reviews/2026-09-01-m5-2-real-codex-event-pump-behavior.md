@@ -103,3 +103,18 @@ still `state=blocked`.
 
 The complete attempt history, including five earlier fail-closed runs, is in
 the [attempt audit](2026-09-01-m5-2-real-codex-event-pump-attempt-audit.md).
+
+## Follow-on real-effects integration
+
+The next branch now reuses the existing bounded Git fixture and process-isolated
+child verifier in this same event-pump path. Four follow-on live attempts
+created real implementation commits and reached R, but none completed the
+integrated chain. The latest attempt coincided with a reproducible local
+DNS/TLS failure that resolved `chatgpt.com` to a Meta endpoint and presented a
+certificate valid only for `*.extern.facebook.com`; TLS verification remained
+enabled.
+
+This does not weaken the behavioral result above, and it does not establish a
+real-effects pass. See the
+[real-effects checkpoint](2026-09-01-m5-2-real-effects-integration.md) for the
+implemented boundary, cleanup evidence, and exact remaining work.
