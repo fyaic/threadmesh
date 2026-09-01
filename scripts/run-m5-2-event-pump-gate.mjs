@@ -3,13 +3,16 @@ import os from "node:os";
 import path from "node:path";
 import process from "node:process";
 
-import { CodexLiveAgentRuntime } from "../src/validation/live-agent-scenario.mjs";
-import { runM52EventPumpCodexGate } from
+import {
+  runM52EventPumpCodexGate,
+  runM52OfficialCodexEventPumpGate,
+} from
   "../src/validation/m5-2-event-pump-codex-gate.mjs";
 
 const LIVE_ACK = "maintainer-approved-threadmesh-m52-event-pump-live";
 
 function options(argv) {
+  if (argv.length === 1 && ["--help", "-h"].includes(argv[0])) return { help: true };
   const parsed = {};
   for (let index = 0; index < argv.length; index += 2) {
     const key = argv[index];
@@ -24,9 +27,26 @@ function options(argv) {
   return parsed;
 }
 
+function printHelp() {
+  console.log([
+    "Usage:",
+    "  node scripts/run-m5-2-event-pump-gate.mjs --mode fake [--artifacts-dir ABSOLUTE]",
+    "  THREADMESH_M52_EVENT_PUMP_LIVE_ACK=maintainer-approved-threadmesh-m52-event-pump-live \\",
+    "    THREADMESH_CODEX_COMMAND=/absolute/path/to/codex \\",
+    "    node scripts/run-m5-2-event-pump-gate.mjs --mode live [--model MODEL]",
+    "  node scripts/run-m5-2-event-pump-gate.mjs --mode live --ack ACK --command /absolute/path/to/codex",
+    "",
+    "Exit codes: blocked=2, failed=1, usage/preflight/not-run=3.",
+  ].join("\n"));
+}
+
 let ownedArtifacts = null;
 try {
   const parsed = options(process.argv.slice(2));
+  if (parsed.help) {
+    printHelp();
+    process.exitCode = 0;
+  } else {
   const mode = parsed.mode ?? "fake";
   if (!["fake", "live"].includes(mode)) {
     throw Object.assign(new Error("threadmesh_m52_event_pump_runner_mode_invalid"), {
@@ -36,13 +56,18 @@ try {
   const artifactsDirectory = parsed["artifacts-dir"]
     ? path.resolve(parsed["artifacts-dir"])
     : (ownedArtifacts = fs.mkdtempSync(path.join(os.tmpdir(), "threadmesh-m52-pump-gate-")));
-  let runtime = null;
+  let result;
   if (mode === "live") {
     const ack = parsed.ack ?? process.env.THREADMESH_M52_EVENT_PUMP_LIVE_ACK;
-    const command = parsed.command;
-    if (ack !== LIVE_ACK || !path.isAbsolute(command ?? "")) {
+    if (ack !== LIVE_ACK) {
       throw Object.assign(new Error("threadmesh_m52_event_pump_runner_live_ack_required"), {
         code: "threadmesh_m52_event_pump_runner_live_ack_required",
+      });
+    }
+    const command = parsed.command ?? process.env.THREADMESH_CODEX_COMMAND;
+    if (!path.isAbsolute(command ?? "")) {
+      throw Object.assign(new Error("threadmesh_m52_event_pump_runner_command_invalid"), {
+        code: "threadmesh_m52_event_pump_runner_command_invalid",
       });
     }
     let commandValid = false;
@@ -55,20 +80,33 @@ try {
         code: "threadmesh_m52_event_pump_runner_command_invalid",
       });
     }
-    runtime = new CodexLiveAgentRuntime({
+    result = await runM52OfficialCodexEventPumpGate({
+      artifactsDirectory,
       command,
       ...(parsed.model ? { model: parsed.model } : {}),
     });
+  } else {
+    result = await runM52EventPumpCodexGate({ artifactsDirectory });
   }
-  const result = await runM52EventPumpCodexGate({ artifactsDirectory, runtime });
   console.log(JSON.stringify(result, null, 2));
+  process.exitCode = result.state === "blocked" ? 2 : (result.state === "failed" ? 1 : 3);
+  }
 } catch (error) {
+  const preflightCodes = new Set([
+    "threadmesh_m52_event_pump_runner_usage_invalid",
+    "threadmesh_m52_event_pump_runner_mode_invalid",
+    "threadmesh_m52_event_pump_runner_live_ack_required",
+    "threadmesh_m52_event_pump_runner_command_invalid",
+    "threadmesh_m52_event_pump_gate_input_invalid",
+    "threadmesh_m52_event_pump_gate_product_probe_invalid",
+  ]);
+  const preflight = preflightCodes.has(error?.code);
   console.error(JSON.stringify({
-    state: "failed",
+    state: preflight ? "not-run" : "failed",
     code: error?.code ?? "threadmesh_m52_event_pump_runner_failed",
     liveAck: LIVE_ACK,
   }, null, 2));
-  process.exitCode = 1;
+  process.exitCode = preflight ? 3 : 1;
 } finally {
   if (ownedArtifacts !== null) fs.rmSync(ownedArtifacts, { recursive: true, force: true });
 }

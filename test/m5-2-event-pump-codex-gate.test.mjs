@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -8,6 +9,10 @@ import { sha256Digest } from "../src/canonical-json.mjs";
 import { runCoordinatorDrivenNoPlanScenario } from
   "../src/validation/coordinator-driven-no-plan-scenario.mjs";
 import {
+  CodexLiveAgentRuntime,
+  isCodexLiveAgentRuntime,
+} from "../src/validation/live-agent-scenario.mjs";
+import {
   projectM52EventPumpCodexGateResult,
   runM52EventPumpCodexGate,
 } from "../src/validation/m5-2-event-pump-codex-gate.mjs";
@@ -16,6 +21,15 @@ function artifacts(t, prefix) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
   return directory;
+}
+
+function resignNativeRecord(core, index) {
+  const record = core.nativeTurnManifest.records[index];
+  record.actionSequenceDigest = sha256Digest(record.actions);
+  const body = { ...record };
+  delete body.recordDigest;
+  record.recordDigest = sha256Digest(body);
+  core.nativeTurnManifest.manifestDigest = sha256Digest(core.nativeTurnManifest.records);
 }
 
 test("deterministic Codex gate is pump-driven but remains blocked on verifier custody", async (t) => {
@@ -57,7 +71,7 @@ test("deterministic Codex gate is pump-driven but remains blocked on verifier cu
   assert.equal(JSON.stringify(result).includes("turn-thread"), false);
 });
 
-test("event-pump gate projector rejects summary, receipt, dispatch, trace, and trust drift", async (t) => {
+test("event-pump gate projector rejects summary, action, identity, and trust drift", async (t) => {
   const core = await runCoordinatorDrivenNoPlanScenario({
     artifactsDirectory: artifacts(t, "threadmesh-m52-event-pump-projector-"),
   });
@@ -82,8 +96,30 @@ test("event-pump gate projector rejects summary, receipt, dispatch, trace, and t
       value.runnerTraceManifest.manifestDigest =
         sha256Digest(value.runnerTraceManifest.records);
     }],
-    ["sequence", (value) => {
-      value.businessToolSequences.r.reverse();
+    ["action-head", (value) => {
+      value.nativeTurnManifest.records[2].actionHeadDigest = `sha256:${"2".repeat(64)}`;
+      resignNativeRecord(value, 2);
+    }],
+    ["tool-name", (value) => {
+      value.nativeTurnManifest.records[2].actions[0].tool =
+        "threadmesh_report_review_finding";
+      resignNativeRecord(value, 2);
+    }],
+    ["tool-order", (value) => {
+      value.nativeTurnManifest.records[2].actions.reverse();
+      resignNativeRecord(value, 2);
+    }],
+    ["tool-ordinal", (value) => {
+      value.nativeTurnManifest.records[2].actions[0].ordinal = 1;
+      resignNativeRecord(value, 2);
+    }],
+    ["adapter-ref", (value) => {
+      value.nativeTurnManifest.records[2].adapterRefDigest = `sha256:${"3".repeat(64)}`;
+      resignNativeRecord(value, 2);
+    }],
+    ["same-a-turn", (value) => {
+      value.nativeTurnManifest.records[3].actorDigest = `sha256:${"4".repeat(64)}`;
+      resignNativeRecord(value, 3);
     }],
     ["identity", (value) => {
       value.sessionManifest.sameARefDigest = `sha256:${"1".repeat(64)}`;
@@ -93,6 +129,15 @@ test("event-pump gate projector rejects summary, receipt, dispatch, trace, and t
     }],
     ["extra", (value) => {
       value.nativeTurnManifest.records[0].rawTurnId = "private-turn-id";
+    }],
+    ["stale-top-level", (value) => {
+      value.initialUserStartPrompts = 1;
+    }],
+    ["unknown-top-level", (value) => {
+      value.untrustedSummary = true;
+    }],
+    ["unknown-cleanup", (value) => {
+      value.cleanup.rawPath = "/private/path";
     }],
   ];
   for (const [name, mutate] of cases) {
@@ -106,7 +151,15 @@ test("event-pump gate projector rejects summary, receipt, dispatch, trace, and t
   }
 });
 
-test("event-pump gate exposes a strict live-runtime injection boundary without starting it", async (t) => {
+test("event-pump gate exposes an unforgeable runtime brand without model use", async (t) => {
+  const plainSpoof = {
+    probe() {}, createRole() {}, runTurn() {}, runReceiverDecisionTurn() {},
+    runAdmittedToolTurn() {}, deleteRole() {},
+  };
+  assert.equal(isCodexLiveAgentRuntime(plainSpoof), false);
+  const branded = new CodexLiveAgentRuntime({ command: "/not-started", adapter: {} });
+  assert.equal(isCodexLiveAgentRuntime(branded), true);
+
   await assert.rejects(
     () => runM52EventPumpCodexGate({
       artifactsDirectory: artifacts(t, "threadmesh-m52-live-ready-input-"),
@@ -114,4 +167,48 @@ test("event-pump gate exposes a strict live-runtime injection boundary without s
     }),
     { code: "threadmesh_m52_event_pump_gate_input_invalid" },
   );
+});
+
+test("an injected runtime cannot spoof Codex product evidence in the public projector", async (t) => {
+  const source = await runCoordinatorDrivenNoPlanScenario({
+    artifactsDirectory: artifacts(t, "threadmesh-m52-injected-label-"),
+  });
+  const core = structuredClone(source);
+  core.runtime.productBoundary = "injected-codex-runtime";
+  core.deterministicPolicyOracle = false;
+  const probe = {
+    userAgentDigest: sha256Digest("codex_cli_rs/999.999.999"),
+    snapshotDigest: sha256Digest({ userAgent: "spoof" }),
+  };
+  const result = projectM52EventPumpCodexGateResult(core, { productProbe: probe });
+  assert.equal(result.product, "injected-runtime");
+  assert.equal(result.evidenceClass, "injected-runtime-event-pump-gate");
+  assert.equal(result.liveProductEvidence, false);
+  assert.equal(result.remainingGates.includes("real-codex-product-run"), true);
+});
+
+test("event-pump gate CLI distinguishes help, blocked, and preflight exits", () => {
+  const script = path.resolve("scripts/run-m5-2-event-pump-gate.mjs");
+  const help = spawnSync(process.execPath, [script, "--help"], { encoding: "utf8" });
+  assert.equal(help.status, 0);
+  assert.match(help.stdout, /THREADMESH_CODEX_COMMAND/u);
+  assert.match(help.stdout, /blocked=2, failed=1, usage\/preflight\/not-run=3/u);
+
+  const blocked = spawnSync(process.execPath, [script, "--mode", "fake"], {
+    encoding: "utf8",
+  });
+  assert.equal(blocked.status, 2);
+  assert.equal(JSON.parse(blocked.stdout).state, "blocked");
+
+  const preflight = spawnSync(process.execPath, [script, "--mode", "live"], {
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      THREADMESH_M52_EVENT_PUMP_LIVE_ACK: "",
+      THREADMESH_CODEX_COMMAND: "/definitely/not/accessed/without/ack",
+    },
+  });
+  assert.equal(preflight.status, 3);
+  assert.equal(JSON.parse(preflight.stderr).code,
+    "threadmesh_m52_event_pump_runner_live_ack_required");
 });

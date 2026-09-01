@@ -1268,7 +1268,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
     ]);
     const nativeTurnRecords = coordinator.db.prepare(
       `SELECT i.execution_id, i.task_id, i.incarnation_id, i.state, i.turn_id,
-              i.tool_allowlist_digest, i.prompt_digest, i.receipt_digest,
+              i.adapter_ref_digest, i.tool_allowlist_digest, i.prompt_digest, i.receipt_digest,
               i.action_count, i.action_head_digest,
               d.binding_digest AS decision_binding_digest,
               a.binding_digest AS admission_binding_digest,
@@ -1295,6 +1295,32 @@ export async function runCoordinatorDrivenNoPlanScenario({
           row.decision_binding_digest !== null || row.admission_binding_digest !== null
         ))
       ) throw scenarioError("threadmesh_native_turn_manifest_invalid");
+      const actions = coordinator.db.prepare(
+        `SELECT ordinal, tool_name, args_digest, selection_digest, result_digest,
+                result_status, previous_action_digest, action_digest
+         FROM turn_tool_actions WHERE execution_id = ? ORDER BY ordinal`,
+      ).all(row.execution_id).map((action) => ({
+        ordinal: action.ordinal,
+        tool: action.tool_name,
+        argumentsDigest: action.args_digest,
+        selectionDigest: action.selection_digest,
+        resultDigest: action.result_digest,
+        resultStatus: action.result_status,
+        previousActionDigest: action.previous_action_digest,
+        actionDigest: action.action_digest,
+      }));
+      if (actions.length !== row.action_count ||
+          actions.some((action, index) =>
+            action.ordinal !== index || action.resultStatus !== "completed" ||
+            action.previousActionDigest !==
+              (index === 0 ? null : actions[index - 1].selectionDigest) ||
+            action.actionDigest !== sha256Digest({
+              selectionDigest: action.selectionDigest,
+              resultDigest: action.resultDigest,
+              resultStatus: action.resultStatus,
+            })) || actions.at(-1)?.selectionDigest !== row.action_head_digest) {
+        throw scenarioError("threadmesh_native_turn_manifest_invalid");
+      }
       const record = {
         sequence: 0,
         role: binding.role,
@@ -1304,12 +1330,15 @@ export async function runCoordinatorDrivenNoPlanScenario({
         actorDigest: sha256Digest({
           taskId: row.task_id, incarnationId: row.incarnation_id,
         }),
+        adapterRefDigest: row.adapter_ref_digest,
         turnDigest: sha256Digest(row.turn_id),
         toolAllowlistDigest: row.tool_allowlist_digest,
         promptDigest: row.prompt_digest,
         receiptDigest: row.receipt_digest,
         actionCount: row.action_count,
         actionHeadDigest: row.action_head_digest,
+        actions,
+        actionSequenceDigest: sha256Digest(actions),
         executionState: row.state,
         bindingDigest: row.decision_binding_digest ??
           row.admission_binding_digest ?? sha256Digest({
@@ -1448,11 +1477,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
     };
     const sessionRecords = Object.entries(refs).map(([role, ref]) => ({
       role,
-      refDigest: sha256Digest({
-        kind: ref.kind,
-        threadId: ref.threadId,
-        snapshotDigest: ref.snapshotDigest,
-      }),
+      refDigest: sha256Digest(ref),
       worktreeDigest: sha256Digest({ cwd: artifactsDirectory }),
     }));
     const sessionManifest = {
@@ -1465,7 +1490,6 @@ export async function runCoordinatorDrivenNoPlanScenario({
     result = {
       state: "passed-full-functional-in-process-fixture",
       liveProductEvidence: false,
-      initialUserStartPrompts: 1,
       promptBoundary: {
         initialUserKickoffPrompts: 1,
         phasePromptsSubmittedByRunner: 0,
@@ -1511,12 +1535,6 @@ export async function runCoordinatorDrivenNoPlanScenario({
       nativeTurnManifest,
       runnerTraceManifest,
       sessionManifest,
-      businessToolSequences: Object.fromEntries(
-        ROUTE_HANDLER_CONFIGS.slice(0, 4).map(({ receiverRole, businessTools }) => [
-          receiverRole,
-          businessTools.map(({ name }) => name),
-        ]),
-      ),
       attention: {
         cursors: attentionCursors,
         activeClaimCount: activeAttentionClaimCount,

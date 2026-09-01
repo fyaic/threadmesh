@@ -56,8 +56,6 @@
     "validate:attention:fake": "node scripts/validate-products-e2e.mjs --fake-attention",
     "validate:proactive:fake": "node scripts/validate-products-e2e.mjs --fake-proactive",
     "validate:m5-2:fake": "node scripts/run-live-agent-scenario.mjs --mode dry-run --product fixture",
-    "validate:m5-2:event-pump:fake": "node scripts/run-m5-2-event-pump-gate.mjs --mode fake",
-    "validate:m5-2:event-pump:live": "node scripts/run-m5-2-event-pump-gate.mjs --mode live",
     "validate:m5-2:sigkill-canary": "node scripts/validate-m5-2-sigkill-canary.mjs",
     "validate:m5-2:live:codex": "node scripts/run-live-agent-scenario.mjs --mode live --product codex",
     "validate:m5-2:live:kimi": "node scripts/run-live-agent-scenario.mjs --mode live --product kimi",
