@@ -22,6 +22,7 @@ accepted until two qualifying public records exist and pass
 ## Deterministic autonomous evidence
 
 - [M5.2 coordinator-driven no-plan autonomous fixture](2026-09-01-m5-2-autonomous-fixture.md)
+- [M5.2 durable pump recovery post-merge evidence](2026-09-01-m5-2-durable-pump-recovery.md)
 - [Deterministic M5 attention-router vertical slice](2026-08-31-attention-router-slice.md)
 
 These records demonstrate bounded coordinator and harness behavior. They do

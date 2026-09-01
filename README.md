@@ -81,8 +81,10 @@ durable lifecycle attention drives the bounded chain
 `A → R → same-A → V → dependent`. The fixture runner dispatches no phase,
 submits no phase prompt, relays no message manually, and polls no session.
 ThreadMesh routes only exact next events, while each receiving session selects
-its registered decision and business tools. An authorized but irrelevant
-session receives no claim and runs no turn.
+its registered decision and business tools. After the one kickoff, the pump
+starts eight protected native turns: a decision and admitted business turn for
+each of R, same-A, V, and dependent. An authorized but irrelevant session
+receives no claim and runs no turn.
 
 This matters because useful work can continue across session boundaries without
 the user noticing and copying every intermediate dependency. It is evidence of
@@ -94,9 +96,12 @@ then checked and removed exactly.
 
 The evidence boundary is intentionally narrow. The result reports
 `liveProductEvidence=false`, `deterministicPolicyOracle=true`,
-`externalIndependentVerifier=false`, a fixture-owned ephemeral signer, and
-`selectionDurable=false`. Durable pump restart, a cross-process lease, OS-kill
-recovery, and the equivalent real Codex and Kimi product runs remain pending.
+`externalIndependentVerifier=false`, and a fixture-owned ephemeral signer.
+As of [#122](https://github.com/fyaic/threadmesh/pull/122), selection and
+publication recovery are durable per dispatch, with leased and fenced
+publication. There is still no global cross-dispatch selection chain:
+`selectionChainValid=null`. OS-kill recovery, long-turn lease heartbeat, and
+the equivalent real Codex and Kimi product runs remain pending.
 
 [Read the exact fixture evidence](docs/09-reviews/2026-09-01-m5-2-autonomous-fixture.md) ·
 [Read the M5.2 scenario guide](docs/06-guides/m5-2-live-agent-scenario.md)
@@ -285,13 +290,13 @@ peer content or as a production security boundary.
   install Ajv and native `better-sqlite3`.
 - **Reference runtime:** authenticated JSON-RPC + SQLite coordinator for local,
   trusted-process experiments.
-- **Validation:** 345 tests, plus 55 schema cases and 7 transition cases;
+- **Validation:** 360 tests, plus 55 schema cases and 7 transition cases;
   documentation lint passes. These are separate counts, not one combined total.
 - **Default:** proactive coordination remains off unless a maintainer explicitly
   opts into the bounded experimental profile.
-- **Next mainline:** make event-pump selection restart-durable with a
-  cross-process lease, add OS-kill recovery, then run the same autonomous chain
-  through real Codex and Kimi products.
+- **Next mainline:** exercise the durable pump through OS kill and long-turn
+  lease renewal, then run the same autonomous chain through real Codex and Kimi
+  products with an external verifier.
 
 [Current status](docs/10-planning/project-status.md) ·
 [roadmap](ROADMAP.md) ·
