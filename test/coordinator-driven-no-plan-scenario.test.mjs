@@ -18,6 +18,15 @@ test("one pump autonomously closes A to R to same-A to V to dependent", async (t
   assert.equal(result.state, "passed-full-functional-in-process-fixture");
   assert.equal(result.liveProductEvidence, false);
   assert.equal(result.initialUserStartPrompts, 1);
+  assert.deepEqual(result.promptBoundary, {
+    initialUserKickoffPrompts: 1,
+    phasePromptsSubmittedByRunner: 0,
+    runnerDirectActivationDispatches: 0,
+    logicalEventPumpLifecycleStarts: 1,
+    pumpProtectedTurnStarts: 8,
+    nativeTurnStarts: 9,
+    source: "sqlite-exact-turn-and-binding-records",
+  });
   assert.equal(result.deterministicPolicyOracle, true);
   assert.equal(result.activationDispatchesByFixtureRunner, 0);
   assert.equal(result.eventPumpDispatches, 4);
@@ -55,6 +64,13 @@ test("one pump autonomously closes A to R to same-A to V to dependent", async (t
     "handler.no-plan.dependent.v1",
   ]);
   assert.equal(result.selectionBindings.length, 5);
+  assert.equal(result.durableDispatchManifest.recordCount, 5);
+  assert.equal(result.durableDispatchManifest.recordDigests.length, 5);
+  assert.equal(new Set(result.durableDispatchManifest.recordDigests).size, 5);
+  assert.match(result.durableDispatchManifest.manifestDigest,
+    /^sha256:[a-f0-9]{64}$/u);
+  assert.equal(result.durableDispatchManifest.scope,
+    "per-dispatch-records-not-global-chain");
   assert.ok(result.selectionBindings.every((binding) =>
     /^handler\.no-plan\./u.test(binding.handlerId) &&
     /^sha256:[a-f0-9]{64}$/u.test(binding.handlerConfigDigest) &&

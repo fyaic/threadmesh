@@ -136,14 +136,22 @@ export async function runCoordinatorActivation({
   businessPhase = "admitted-business",
   decisionPhase = "receiver-decision",
   businessTool,
+  businessTools,
   onBusinessToolCall,
   afterDecisionCommitted = async () => null,
   afterAdmissionPrepared = async () => null,
 }) {
+  const admittedBusinessTools = businessTools ?? (businessTool ? [businessTool] : null);
   if (
     !initialCoordinator || !runtime || !receiver || !principal || !ref ||
     !routeProjection || routeProjection.state !== "offered" || routeProjection.offer !== true ||
-    typeof businessTool?.name !== "string" || typeof onBusinessToolCall !== "function" ||
+    !Array.isArray(admittedBusinessTools) || admittedBusinessTools.length < 1 ||
+    admittedBusinessTools.length > 4 ||
+    admittedBusinessTools.some(({ name } = {}) =>
+      typeof name !== "string" || name.length < 1) ||
+    new Set(admittedBusinessTools.map(({ name }) => name)).size !==
+      admittedBusinessTools.length ||
+    typeof onBusinessToolCall !== "function" ||
     typeof recoveryDirectory !== "string" || recoveryDirectory.length < 1
   ) throw coded("threadmesh_activation_input_invalid");
   let coordinator = initialCoordinator;
@@ -368,7 +376,7 @@ export async function runCoordinatorActivation({
   let businessExecution = getExecution(coordinator, businessExecutionId, principal);
   let businessTurn = null;
   if (recoveredAdmission.state !== "completed") {
-    const allowedToolNames = [businessTool.name];
+    const allowedToolNames = admittedBusinessTools.map(({ name }) => name);
     const adapterIdempotencyKey = `idem_threadmesh_admitted_${sha256Digest({
       scenarioId,
       role,

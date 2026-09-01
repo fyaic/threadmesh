@@ -74,6 +74,12 @@ const businessTool = Object.freeze({
   description: "Record a harmless admitted activation effect.",
   inputSchema: Object.freeze({ type: "object", additionalProperties: false }),
 });
+const publicationTool = Object.freeze({
+  type: "function",
+  name: "threadmesh_activation_publish",
+  description: "Publish the admitted effect after preparing it.",
+  inputSchema: Object.freeze({ type: "object", additionalProperties: false }),
+});
 
 function completedBinding(actor, turnId, actions) {
   const receipt = {
@@ -318,27 +324,31 @@ function noPlanCodexAdapter() {
         adapterIdempotencyKey: options.adapterIdempotencyKey,
       });
       const decision = options.dynamicTools[0].name === "threadmesh_decide_offer";
-      const args = decision
-        ? { messageId: lifecycleEvent.messageId, decision: "accepted" }
-        : {};
-      const selected = {
-        threadId: ref.threadId,
-        turnId,
-        callId: `call-${turnId}`,
-        ordinal: 0,
-        tool: options.dynamicTools[0].name,
-        arguments: args,
-        argumentsDigest: sha256Digest(args),
-      };
-      await options.beforeToolCall(selected);
-      const output = await options.onToolCall(selected);
-      const completed = {
-        ...selected,
-        outputDigest: sha256Digest(output),
-        resultStatus: "completed",
-      };
-      delete completed.arguments;
-      await options.afterToolCall(completed);
+      const completedCalls = [];
+      for (const [ordinal, dynamicTool] of options.dynamicTools.entries()) {
+        const args = decision
+          ? { messageId: lifecycleEvent.messageId, decision: "accepted" }
+          : {};
+        const selected = {
+          threadId: ref.threadId,
+          turnId,
+          callId: `call-${turnId}-${ordinal}`,
+          ordinal,
+          tool: dynamicTool.name,
+          arguments: args,
+          argumentsDigest: sha256Digest(args),
+        };
+        await options.beforeToolCall(selected);
+        const output = await options.onToolCall(selected);
+        const completed = {
+          ...selected,
+          outputDigest: sha256Digest(output),
+          resultStatus: "completed",
+        };
+        delete completed.arguments;
+        await options.afterToolCall(completed);
+        completedCalls.push(completed);
+      }
       return {
         state: "completed",
         text: "done",
@@ -363,7 +373,7 @@ function noPlanCodexAdapter() {
           notificationCount: 1,
           deltaCount: 1,
         },
-        toolCalls: [completed],
+        toolCalls: completedCalls,
         nonThreadMeshToolCalls: 0,
       };
     },
@@ -416,10 +426,10 @@ test("coordinator activation accepts, admits, executes, confirms, and stops", as
   const ref = await runtime.createRole({
     role: "receiver",
     cwd: directory,
-    tools: [REGISTERED_PEER_DECISION_TOOL, businessTool],
+    tools: [REGISTERED_PEER_DECISION_TOOL, businessTool, publicationTool],
     phaseTools: {
       "receiver-decision": [REGISTERED_PEER_DECISION_TOOL],
-      "admitted-business": [businessTool],
+      "admitted-business": [businessTool, publicationTool],
     },
     protectedPhases: {
       "receiver-decision": "receiver-decision",
@@ -440,8 +450,12 @@ test("coordinator activation accepts, admits, executes, confirms, and stops", as
     scenarioId: "scenario_activation",
     chainId: "chain_activation",
     recoveryDirectory: directory,
-    businessTool,
-    async onBusinessToolCall() { return { effect: "recorded" }; },
+    businessTools: [businessTool, publicationTool],
+    async onBusinessToolCall({ tool }) {
+      return tool === businessTool.name
+        ? { effect: "recorded" }
+        : { published: true };
+    },
   });
 
   assert.equal(result.state, "completed");
@@ -449,6 +463,11 @@ test("coordinator activation accepts, admits, executes, confirms, and stops", as
   assert.equal(result.admitted, true);
   assert.equal(result.claim.state, "completed-bound");
   assert.equal(adapter.state.starts, 2);
+  assert.deepEqual(
+    coordinator.getTurnExecution(result.businessExecutionId, receiverPrincipal)
+      .actions.map(({ name }) => name),
+    [businessTool.name, publicationTool.name],
+  );
   assert.equal(adapter.state.prompts[0].includes("RAW_CONTENT_MUST_ONLY_APPEAR"), false);
   assert.match(adapter.state.prompts[1], /RAW_CONTENT_MUST_ONLY_APPEAR/u);
   const admission = coordinator.recoverContextAdmission(

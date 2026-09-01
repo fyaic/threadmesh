@@ -231,6 +231,24 @@ test("pump rejects unbounded and duplicate startup registration", () => {
   assert.throws(() => pump.registerReceiver(missingHandler), {
     code: "threadmesh_event_pump_registration_invalid",
   });
+  const duplicateTools = registration();
+  duplicateTools.routes[0].businessTools = [
+    duplicateTools.routes[0].businessTool,
+    duplicateTools.routes[0].businessTool,
+  ];
+  delete duplicateTools.routes[0].businessTool;
+  assert.throws(() => pump.registerReceiver(duplicateTools), {
+    code: "threadmesh_event_pump_registration_invalid",
+  });
+  const unboundedTools = registration();
+  unboundedTools.routes[0].businessTools = Array.from({ length: 5 }, (_, index) => ({
+    ...unboundedTools.routes[0].businessTool,
+    name: `threadmesh_unbounded_${index}`,
+  }));
+  delete unboundedTools.routes[0].businessTool;
+  assert.throws(() => pump.registerReceiver(unboundedTools), {
+    code: "threadmesh_event_pump_registration_invalid",
+  });
   pump.registerReceiver(registration());
   assert.throws(() => pump.registerReceiver(registration()), {
     code: "threadmesh_event_pump_registration_conflict",

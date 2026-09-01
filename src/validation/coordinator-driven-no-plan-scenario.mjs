@@ -1126,6 +1126,21 @@ export async function runCoordinatorDrivenNoPlanScenario({
         "SELECT COUNT(*) AS count FROM context_admission_turn_bindings",
       ).get().count,
     };
+    const nativeTurnBindingCount = coordinator.db.prepare(
+      `SELECT COUNT(*) AS count FROM turn_execution_intents
+       WHERE turn_id IS NOT NULL AND state IN ('completed-turn-bound', 'promoted')`,
+    ).get().count;
+    const protectedDecisionTurnCount = coordinator.db.prepare(
+      `SELECT COUNT(*) AS count FROM attention_route_decision_bindings d
+       JOIN turn_execution_intents i
+         ON i.execution_id = d.receiver_decision_execution_id
+       WHERE i.turn_id IS NOT NULL`,
+    ).get().count;
+    const protectedAdmissionTurnCount = coordinator.db.prepare(
+      `SELECT COUNT(*) AS count FROM context_admission_turn_bindings b
+       JOIN turn_execution_intents i ON i.execution_id = b.execution_id
+       WHERE i.turn_id IS NOT NULL`,
+    ).get().count;
     const chain = coordinator.getGitEvidenceChain(requirement.chainId, owner);
     const dependency = coordinator.getDependencyEdge(
       "dependency_no_plan_verified", principal(actors.dependent),
@@ -1172,6 +1187,16 @@ export async function runCoordinatorDrivenNoPlanScenario({
       state: "passed-full-functional-in-process-fixture",
       liveProductEvidence: false,
       initialUserStartPrompts: 1,
+      promptBoundary: {
+        initialUserKickoffPrompts: 1,
+        phasePromptsSubmittedByRunner: 0,
+        runnerDirectActivationDispatches: 0,
+        logicalEventPumpLifecycleStarts: 1,
+        pumpProtectedTurnStarts:
+          protectedDecisionTurnCount + protectedAdmissionTurnCount,
+        nativeTurnStarts: nativeTurnBindingCount,
+        source: "sqlite-exact-turn-and-binding-records",
+      },
       deterministicPolicyOracle: true,
       activationDispatchesByFixtureRunner: 0,
       eventPumpDispatches: pumpResult.dispatches,
@@ -1202,6 +1227,12 @@ export async function runCoordinatorDrivenNoPlanScenario({
         .filter(({ kind }) => kind === "coordinator-activation")
         .map(({ handlerId }) => handlerId),
       selectionBindings,
+      durableDispatchManifest: {
+        scope: "per-dispatch-records-not-global-chain",
+        recordCount: selectionBindings.length,
+        recordDigests: selectionBindings.map(({ recordDigest }) => recordDigest),
+        manifestDigest: sha256Digest(selectionBindings),
+      },
       attention: {
         cursors: attentionCursors,
         activeClaimCount: activeAttentionClaimCount,
