@@ -19,9 +19,13 @@ experiments are explicitly labeled and do not satisfy it.
 
 M5.2 remains the only implementation critical path. The behavioral question is
 answered by the completed sixth Codex run. The bounded Git effects and existing
-process-isolated child verifier are integrated on `main` by #133. The active
-checkpoint is now a successful network-valid traversal of that merged path,
-followed by measured baseline and external first-run evidence.
+process-isolated child verifier are integrated on `main` by #133. A process-
+scoped local proxy restored certificate-verified HTTP and WebSocket connectivity
+on 2026-09-02. The fresh merged-path run reached real A publication and the R
+admitted turn, then failed closed on ambiguous context reconciliation with exact
+five-role cleanup. The active checkpoint is now that observed R-turn blocker,
+followed by a successful traversal, measured baseline, and external first-run
+evidence.
 
 The older product canary proved real multi-tool turns, same-A reuse, a bounded
 Git chain, controls, and cleanup, but its four prompts were runner-submitted.
@@ -44,10 +48,11 @@ Execute in this order:
 
 1. Treat the real behavioral chain as passed and retain its exact evidence; do
    not rerun it merely to polish counts or prose.
-2. Retain one successful live rerun of the now-integrated bounded Git and child
-   verifier path. Wait for the currently reproducible local DNS/TLS endpoint
-   failure to clear; do not bypass certificate validation or redesign the
-   protocol around it.
+2. Diagnose the fresh reviewer admitted-turn reconciliation failure from
+   bounded product/coordinator evidence, retain a public partial-stage manifest,
+   and rerun the integrated bounded Git and child-verifier path once. Keep the
+   process-scoped proxy, certificate validation, product version, and exact
+   cleanup boundary unchanged.
 3. Retain the measured manual/live baseline. The executable demo already
    reports a nine-action manual lower bound versus one kickoff, but elapsed time
    and tokens remain explicitly unmeasured.

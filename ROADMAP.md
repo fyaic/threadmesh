@@ -187,7 +187,8 @@ partial integration attempt is promoted to M5.2 evidence.
     verifier in the correlated event-pump implementation, with exact cleanup
     and no new coordinator or verifier subsystem.
   - [ ] Retain one successful live Codex traversal of that real-effects path;
-    current reruns are blocked by a reproducible local DNS/TLS endpoint error.
+    certificate-verified proxy connectivity is restored, but the latest rerun
+    failed closed at reviewer context reconciliation with complete cleanup.
   - [x] Add executable manual workflow accounting: one kickoff plus four checks
     plus four relays is a nine-action lower bound, versus one ThreadMesh kickoff.
     Keep elapsed time and tokens explicitly unmeasured.

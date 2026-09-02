@@ -35,21 +35,33 @@ The following passed on the exact checkpoint commit:
 The 9-to-1 comparison remains modeled workflow accounting. Elapsed time and
 model tokens are not measured.
 
-## Live-product preflight
+## Live-product preflight and attempt
 
-Codex CLI 0.145.0 remained authenticated and locally healthy. The Responses
-WebSocket diagnostic timed out, system DNS returned unexpected non-provider
-addresses for `chatgpt.com`, and a certificate-verifying HTTPS probe timed out
-during the SSL connection. No DNS override, TLS bypass, live session creation,
-or real Git-effect gate was attempted.
+Codex CLI 0.145.0 remained authenticated and locally healthy. The initial
+Responses WebSocket diagnostic timed out, system DNS returned unexpected non-
+provider addresses for `chatgpt.com`, and a direct certificate-verifying HTTPS
+probe timed out. Read-only diagnosis found that macOS had a running local HTTP
+and HTTPS proxy which was not present in the Codex process environment.
 
-This is an environment blocker, not positive or negative ThreadMesh product
-evidence. The next live attempt begins only after normal DNS and certificate-
-verified connectivity are restored.
+Supplying that proxy only to the validation process preserved TLS verification
+and produced a successful Codex doctor result: WebSocket `101 Switching
+Protocols` and provider HTTP reachability. No system DNS, Tailscale, proxy,
+certificate, or Codex-version setting was changed.
+
+A fresh real-effects run on `53df406` then created and registered all five
+roles, published the real A implementation, and entered the reviewer admitted
+turn. It failed closed as
+`threadmesh_codex_live_context_reconciliation_ambiguous`. The bounded terminal
+projection reported 5/5 role deletion and absence checks, coordinator removal,
+and zero remaining journals. The exact empty caller-owned artifacts directory
+was then removed. This is a failed partial attempt, not a product pass. See the
+[attempt record](2026-09-02-m5-2-real-effects-live-attempt.md).
 
 ## Ordered next gates
 
-1. One network-valid traversal of the merged real-effects Codex path.
+1. Explain the reviewer reconciliation failure with a bounded partial-stage
+   manifest, correct the observed blocker, and retain one successful traversal
+   of the merged real-effects Codex path.
 2. One same-condition manual/ThreadMesh comparison with action, elapsed, usage,
    interruption, duplicate-delivery, and cleanup measurements.
 3. The complete M5.3 matrix: relevant 3/3, irrelevant, stale/unverified,

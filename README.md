@@ -143,12 +143,14 @@ The completed result is deliberately classified `state=blocked` and
 `liveProductEvidence=false`: that retained run used fixture-owned or simulated
 Git and verification effects. [#133](https://github.com/fyaic/threadmesh/pull/133)
 now binds the existing bounded Git worktrees and process-isolated child
-verifier into that correlated path on `main`. Its fresh real Codex rerun is
-pending after a reproducible local DNS/TLS endpoint failure; it has not been
-upgraded into product evidence. The deterministic manual-accounting baseline,
+verifier into that correlated path on `main`. A process-scoped, certificate-
+verified local proxy restored normal Codex connectivity on 2026-09-02. The
+fresh rerun reached real A publication and the reviewer admitted turn, then
+failed closed on ambiguous context reconciliation with complete cleanup; it was
+not upgraded into product evidence. The deterministic manual-accounting baseline,
 active-receiver checkpoint negative, and 76-second evidence walkthrough are now
 the public product proof. New harness, transport, and generalized protocol work
-remains frozen until the live rerun, measured manual/live baseline, and three
+remains frozen until a successful live rerun, measured manual/live baseline, and three
 external setup attempts close.
 
 [Read the exact fixture evidence](docs/09-reviews/2026-09-01-m5-2-autonomous-fixture.md) ·

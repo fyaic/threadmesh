@@ -1,16 +1,16 @@
 # M5.2 real Codex event-pump attempt audit
 
-Date: 2026-09-01
+Updated: 2026-09-02
 
 Latest completed behavioral `main`: `f98c56b83057b43f8b9618d6f69e1b2f481f77bd`
 
-Latest real-effects integration attempt: `1845d86`
+Latest fresh real-effects integration attempt: `53df406`
 
-Subsequent merged integration: [#133](https://github.com/fyaic/threadmesh/pull/133)
-at `5ec7b19`; no later live attempt is claimed
+Merged integration: [#133](https://github.com/fyaic/threadmesh/pull/133) at
+`5ec7b19`
 
-Classification: ten live attempts; attempt 6 completed the real autonomous
-behavioral chain, while attempts 7–10 exercised the real Git/child-verifier
+Classification: eleven live attempts; attempt 6 completed the real autonomous
+behavioral chain, while attempts 7–11 exercised the real Git/child-verifier
 integration without completing its end-to-end product gate
 
 ## Why this record exists
@@ -23,7 +23,7 @@ paused run into product evidence.
 
 This is a bounded operator audit record, not a canonical machine-verifiable
 attempt bundle. The live failure CLI retained exact cleanup projection but did
-not yet emit SQLite-derived partial-stage manifests for attempts 7–10. Their
+not yet emit SQLite-derived partial-stage manifests for attempts 7–11. Their
 partial-progress rows therefore remain descriptive and cannot close a gate.
 
 ## Attempt ledger
@@ -40,6 +40,7 @@ partial-progress rows therefore remain descriptive and cannot close a gate.
 | 8 | Real-effects R admitted turn ended after one completed detached-checkout read | Real A commit/publication and one R read action | Partial through `A -> R detached checkout read` | Same complete 5/5, verifier, Git, coordinator, and journal cleanup |
 | 9 | R receiver-decision turn was terminally reconciled | Real A commit/publication and autonomous R route selection | Partial through `A -> R decision start` | Same complete 5/5, verifier, Git, coordinator, and journal cleanup |
 | 10 | R accepted, then its admitted turn became ambiguous during a machine-observed DNS/TLS failure | Real A commit/publication, R acceptance, and R admission start | Partial through `A -> R admission start` | Same complete 5/5, verifier, Git, coordinator, and journal cleanup |
+| 11 | Process-scoped proxy restored certificate-verified HTTP/WebSocket connectivity; R admitted turn still failed `threadmesh_codex_live_context_reconciliation_ambiguous` | Five registered tasks; real A implementation publication and Git evidence; one R dispatch; pre-cleanup operator counts were 3 turn intents and 4 tool actions | Partial through the R admitted turn; no reviewer completion, verifier, dependent, finalization, satisfaction, or cursor commit is claimed | Terminal projection reported 5/5 deletion and absence checks, coordinator removal, and zero journals; verifier/Git cleanup completed and the exact empty caller directory was removed |
 
 The fixes in #126 and #127 do not retroactively change the evidence class of
 attempts 1 or 2. Attempt 3 is bootstrap and cleanup evidence only. Attempt 4
@@ -50,13 +51,18 @@ attempts produced a completed `state=blocked` event-pump gate result. Attempt 6
 did. It is the first retained real behavioral pass of the autonomous chain, not
 an M5.2 completion claim.
 
-Attempts 7–10 run the branch that replaces simulated Git and fixture-owned
+Attempts 7–11 run the path that replaces simulated Git and fixture-owned
 signing with the existing bounded Git topology and child-owned verifier key.
 They establish partial real-effect execution and cleanup, not a completed
 real-effects chain. Attempt 10's Codex log recorded a certificate for
 `*.extern.facebook.com` while connecting to the ChatGPT Responses WebSocket;
 the system resolver and `curl` independently reproduced the wrong endpoint,
 and `codex doctor` reported the WebSocket failure. No TLS check was bypassed.
+For attempt 11, supplying the already-configured local proxy only to the
+validation process preserved TLS verification and made `codex doctor` pass both
+HTTP reachability and WebSocket `101`. The run therefore moves the immediate
+blocker from endpoint connectivity to reviewer context reconciliation. See the
+[attempt record](2026-09-02-m5-2-real-effects-live-attempt.md).
 
 ## What the combined work established
 
@@ -134,8 +140,10 @@ The bounded window correction in #131 closed that blocker without changing the
 reconciliation policy.
 
 The existing bounded Git worktree and child verifier are now wired into the
-same correlated event-pump path. The next checkpoint is one successful live
-rerun after the local DNS/TLS condition clears, followed by the manual
-relay/polling baseline and minimum critical negative/restart case. Attempt 6
-remains the behavioral checkpoint; attempts 7–10 do not upgrade it into an
-integrated product pass. Issue #91 and M5.2 remain open.
+same correlated event-pump path. Attempt 11 restored certificate-verified
+connectivity but exposed reviewer context reconciliation as the current direct
+blocker. The next checkpoint is a bounded partial-stage projection, a correction
+for that observed boundary, and one successful live rerun, followed by the
+manual relay/polling baseline and minimum critical negative/restart case.
+Attempt 6 remains the behavioral checkpoint; attempts 7–11 do not upgrade it
+into an integrated product pass. Issue #91 and M5.2 remain open.

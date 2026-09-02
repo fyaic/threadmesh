@@ -313,10 +313,16 @@ silently combined with that earlier run.
 
 The 2026-09-02 mainline check retained a clean deterministic regression:
 384/384 unit and subtests, 55 schema cases, 7 transition cases, 112 Markdown
-files with zero lint issues, and a passing one-command demo. A certificate-
-verifying endpoint probe still timed out after system DNS returned unexpected
-non-provider addresses, so no live session or Git-effect run was started. See
-the [checkpoint record](../09-reviews/2026-09-02-mainline-checkpoint.md).
+files with zero lint issues, and a passing one-command demo. Initial direct
+connectivity failed after system DNS returned unexpected non-provider
+addresses. A process-scoped local proxy then restored certificate-verified
+HTTP and WebSocket connectivity without changing system DNS or Codex version.
+The fresh real-effects run reached real A publication and the R admitted turn,
+then failed `threadmesh_codex_live_context_reconciliation_ambiguous`. Cleanup
+deleted and absence-confirmed 5/5 roles, removed the coordinator, left zero
+journals, and removed the caller-owned empty artifacts directory. See the
+[checkpoint](../09-reviews/2026-09-02-mainline-checkpoint.md) and
+[attempt record](../09-reviews/2026-09-02-m5-2-real-effects-live-attempt.md).
 
 Community reports are now grouped into three public product backlogs rather
 than one issue per upstream symptom: correlated handoff state
