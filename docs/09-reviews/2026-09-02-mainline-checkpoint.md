@@ -59,12 +59,21 @@ was then removed. This is a failed partial attempt, not a product pass. See the
 [attempt record](2026-09-02-m5-2-real-effects-live-attempt.md).
 
 The follow-up diagnostic slice now captures a strict pre-cleanup SQLite
-projection on scenario failure. It exposes only a fixed stage enum, nine
+projection on scenario failure. It exposes only a fixed stage enum, ten
 bounded aggregate counts, and an allowlisted ambiguous-reconciliation reason;
 raw prompts, receipts, paths, thread IDs, and journal contents are not included.
 Schema drift, excess counts, inconsistent stages, and unsafe reason strings are
 rejected by the CLI projector. Failure-stage, tamper, privacy, and exact cleanup
 tests pass.
+
+Attempt 12 on merged commit `688c226` exercised that projection. It reported
+`reviewer-admitted-turn-partial` and
+`codex-native-turn-completed-observation-only`, with 5 tasks, 1 dispatch, 3
+turn intents, 5 selected tool actions, 1 lifecycle publication, and 1 Git
+evidence record. Exact cleanup passed. Because selected-action count alone does
+not distinguish a rejected second callback from post-callback adapter failure,
+the projection now also includes the bounded completed-action aggregate before
+the next run.
 
 ## Ordered next gates
 

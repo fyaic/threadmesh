@@ -169,6 +169,7 @@ const FAILURE_PROGRESS_COUNT_LIMITS = Object.freeze({
   dispatches: 5,
   turnIntents: 16,
   toolActions: 32,
+  completedToolActions: 32,
   lifecyclePublications: 4,
   gitEvidenceRecords: 4,
   dependencyFinalizations: 1,
@@ -197,6 +198,7 @@ export function projectM52EventPumpFailureProgress(value) {
     if (!Number.isSafeInteger(count) || count < 0 || count > limit) return null;
     counts[key] = count;
   }
+  if (counts.completedToolActions > counts.toolActions) return null;
   if (value.stage !== deriveCoordinatorDrivenFailureStage(counts)) return null;
   let reconciliation = null;
   if (value.reconciliation !== null) {
