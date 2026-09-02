@@ -135,3 +135,27 @@ another exact finding condition is being rejected. The compound validator is
 therefore split into fixed source, resource, counterexample, checkout, reason,
 and digest branches. The public failure projection may expose only one matching
 boundary enum; it still cannot expose model arguments or outputs.
+
+## Attempt 16 result
+
+Attempt 16 ran commit `b7a1a1e` under the same process-scoped proxy, Codex CLI
+0.145.0, certificate validation, real Git, child-verifier, and cleanup
+conditions. It completed the merged path:
+
+- one user kickoff and zero later runner prompts or direct activations;
+- nine bound native turns and eight business tool calls;
+- four coordinator activations and one durable irrelevant skip;
+- A implementation → R review → same-A fix → V verification → dependent
+  activation;
+- same A reference/workspace retained, distinct R/V roles, and zero irrelevant
+  native turns;
+- dependent execution only after trusted finalization;
+- 5/5 role deletion and absence checks, verifier closed, Git resources removed,
+  coordinator removed, and zero remaining journals.
+
+The public result is intentionally `blocked`, not `passed`, with
+`liveProductEvidence=false`. The executable is operator-supplied and Codex-
+shaped rather than provenance-trusted, while the measured manual baseline,
+restart/OS-kill coverage, and global selection-chain gates remain open. Attempt
+16 closes the combined real behavioral/effects traversal blocker; it does not
+silently close #91 or all of M5.2.

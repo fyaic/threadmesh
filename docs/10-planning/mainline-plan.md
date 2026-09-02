@@ -21,11 +21,12 @@ M5.2 remains the only implementation critical path. The behavioral question is
 answered by the completed sixth Codex run. The bounded Git effects and existing
 process-isolated child verifier are integrated on `main` by #133. A process-
 scoped local proxy restored certificate-verified HTTP and WebSocket connectivity
-on 2026-09-02. The fresh merged-path run reached real A publication and the R
-admitted turn, then failed closed on ambiguous context reconciliation with exact
-five-role cleanup. The active checkpoint is now that observed R-turn blocker,
-followed by a successful traversal, measured baseline, and external first-run
-evidence.
+on 2026-09-02. Attempt 16 on `b7a1a1e` completed the merged real-effects
+A → R → same-A → V → dependent path with one kickoff, nine bound native turns,
+zero later runner prompts/direct activations, real Git effects, process-isolated
+verification, an irrelevant zero-turn control, and exact cleanup. The active
+checkpoint is now the measured baseline, M5.3 closure matrix, and external
+first-run evidence—not another traversal rerun.
 
 The older product canary proved real multi-tool turns, same-A reuse, a bounded
 Git chain, controls, and cleanup, but its four prompts were runner-submitted.
@@ -46,23 +47,18 @@ zero-turn control, and exact cleanup.
 
 Execute in this order:
 
-1. Treat the real behavioral chain as passed and retain its exact evidence; do
-   not rerun it merely to polish counts or prose.
-2. The public SQLite-derived partial-stage manifest is implemented and rejects
-   raw or inconsistent failure data. Rerun the integrated bounded Git and
-   child-verifier path once, use the emitted reconciliation reason to fix the
-   exact reviewer boundary, then retain one successful traversal. Keep the
-   process-scoped proxy, certificate validation, product version, and exact
-   cleanup boundary unchanged.
-3. Retain the measured manual/live baseline. The executable demo already
+1. Retain attempt 16 as the successful merged real-effects traversal; do not
+   rerun it merely to polish counts or prose. Its `blocked` state remains honest
+   because trusted binary provenance and later acceptance gates are open.
+2. Run the measured manual/live baseline. The executable demo already
    reports a nine-action manual lower bound versus one kickoff, but elapsed time
    and tokens remain explicitly unmeasured.
-4. Complete the M5.3 closure matrix: three fresh relevant runs, irrelevant,
+3. Complete the M5.3 closure matrix: three fresh relevant runs, irrelevant,
    stale/unverified, restart/replay, and exact failure cleanup. Close #91 only
    after that canonical checklist and the measured baseline pass.
-5. Observe three independent operators using only the README and 15-minute
+4. Observe three independent operators using only the README and 15-minute
    challenge; convert friction into product or documentation fixes.
-6. Use the resulting evidence to prioritize the correlated state vector #135
+5. Use the resulting evidence to prioritize the correlated state vector #135
    and durable non-interrupting attention inbox #136 before broader adapter
    work. Keep the autonomous circuit breaker #137 frozen until #91 has a live
    pass and #93 has a real cross-harness pass.

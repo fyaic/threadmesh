@@ -1,14 +1,13 @@
 # Project status
 
-> Snapshot: 2026-09-02 at `main` commit
-> `0c7165ead39499497827737c17e94e95f0f3286b`, including the merged
+> Snapshot: 2026-09-02 at evidence commit
+> `b7a1a1e`, including the merged
 > real-effects integration [#133](https://github.com/fyaic/threadmesh/pull/133)
 > and product-proof update [#134](https://github.com/fyaic/threadmesh/pull/134).
 > Technical evidence includes the
 > deterministic no-plan autonomous fixture, the earlier runner-sequenced real
-> Codex canary, nine fail-closed event-pump attempts, and one completed real
-> autonomous behavioral chain. Real Git and child-verifier wiring is complete,
-> but its successful Codex rerun and measured manual/live baseline remain
+> Codex canary, bounded fail-closed event-pump attempts, and attempt 16's
+> completed merged real-effects chain. The measured manual/live baseline remains
 > pending. Deterministic workflow accounting and the active-receiver checkpoint
 > negative are executable in the public demo.
 
@@ -48,7 +47,7 @@ setup attempts are retained.
 |---|---|---|
 | Research and problem framing | Codex deep dive, community signals, ecosystem comparison, ADRs | Established |
 | Community adoption | One GitHub star; zero forks and zero external issue comments or independent setup results as of 2026-09-02 | Positive discovery hint only; adoption unvalidated |
-| Active product outcome | One-command lifecycle-event and dependency-handoff loop with inspector, manual-action accounting, active-receiver checkpoint negative, and 76-second walkthrough | Real Codex A/R/same-A/V/dependent behavioral chain completed after one kickoff; real Git/verifier path merged; combined network-valid rerun pending |
+| Active product outcome | One-command lifecycle-event and dependency-handoff loop with inspector, manual-action accounting, active-receiver checkpoint negative, and 76-second walkthrough | Attempt 16 completed the combined network-valid real Codex A/R/same-A/V/dependent path after one kickoff with real Git and child-verifier effects; measured baseline pending |
 | Protocol draft | 14 JSON Schemas; 55 schema cases; 7 transition cases; 385 tests | Executable draft; counts are reported separately |
 | Minimal adapter SDK | `@fyaic/threadmesh` `0.1.0-alpha.0`; six bounded client methods, per-turn proactive bridge, about 20 kB tarball, packed-consumer execution | Real Pi clean-consumer pass; not published to npm |
 | Local binding | Schema-validated JSON-RPC, transport-derived principals, typed errors | Executable local reference |
@@ -66,10 +65,10 @@ setup attempts are retained.
 | Codex-to-Kimi proactive flow | Codex A selected discovery and one send; persistent Kimi ACP B completed; exact A deletion and B delete/absence passed at `e0adb0e` | First real cross-harness proactive case passed |
 | Pi integration-kit flow | Fresh packed consumer exposed exactly two native tools; real Pi passed relevant/irrelevant/control behavior and supplied one admitted input to Kimi at `02d8d24` | Maintainer integration passed; independent human feedback pending |
 | Codex M5 attention seam | Real persistent A model-selected discovery/publication; durable cursor resumed the pre-created persistent B exactly once; local verification unlocked the dependency and restart recovered B as ready at `3d5caee` | M5.1 passed; logical wake only, local verifier simulation; M5.2/M5.3 pending |
-| M5.2 Git/verifier real-effects path | Independent temporary bare repo and role worktrees, same-worktree implementer fix, exact commit/finding/test binding, and process-isolated child verifier wired into the autonomous event pump by #133 | Deterministic positive and wrong-finding negative pass; fresh real Codex traversal pending network-valid endpoint |
+| M5.2 Git/verifier real-effects path | Independent temporary bare repo and role worktrees, same-worktree implementer fix, exact commit/finding/test binding, and process-isolated child verifier wired into the autonomous event pump by #133 | Deterministic positive/wrong-finding negative pass; attempt 16 completed the combined real Codex traversal |
 | M5.2 real Codex model/tool canary | Five persistent roles; four real A/R/same-A/V turns; seven model-selected tool calls; exact two-commit chain; same-A identity/worktree; dependent and irrelevant zero-turn controls; five-of-five cleanup on base `1155fc8` | Canary completed; intentionally `blocked` with `liveProductEvidence=false` because the runner submitted four phase prompts and ThreadMesh performed no lifecycle handoff |
 | M5.2 autonomous no-plan fixture | One user kickoff; durable SQLite attention drives A→R→same-A→V→dependent; zero fixture-runner activation dispatches or phase/business prompts; zero manual relay and polling; pump starts protected receiver turns; trusted finalization precedes dependent turn; exact cleanup | Deterministic in-process fixture at `711da66`; per-dispatch recovery durable, global chain absent; OS kill/heartbeat/live products/external verifier pending |
-| M5.2 real event-pump attempts | Six attempts: five bounded fail-closed stops, then one complete real Codex A/R/same-A/V/dependent chain with one kickoff, nine bound turns, eight business tool calls, zero later runner prompts/direct activations, an irrelevant zero-turn control, and exact cleanup | Behavioral checkpoint passed; result remains honestly `blocked`/`liveProductEvidence=false` because Git effects and verifier custody are simulated; M5.2 remains open |
+| M5.2 real event-pump attempts | The bounded audit culminated in attempt 16: complete real Codex A/R/same-A/V/dependent chain with one kickoff, nine bound turns, eight business tool calls, zero later runner prompts/direct activations, real Git effects, process-isolated verification, irrelevant zero-turn control, and exact cleanup | Combined behavioral/effects checkpoint passed; result remains honestly `blocked`/`liveProductEvidence=false` because trusted Codex binary provenance and later acceptance gates remain open |
 | Gemini CLI headless | Official package 0.56.0 integrity, required flags, isolated-home cleanup | Real no-model preflight passed |
 | Gemini live model behavior | Exact marker script requires explicit provider key | Not authorized, not run |
 | Multi-product admission | One mailbox/acceptance/claim/evidence path across ACP, Codex, and Gemini fakes | Merged experimental implementation |
@@ -317,10 +316,9 @@ files with zero lint issues, and a passing one-command demo. Initial direct
 connectivity failed after system DNS returned unexpected non-provider
 addresses. A process-scoped local proxy then restored certificate-verified
 HTTP and WebSocket connectivity without changing system DNS or Codex version.
-The fresh real-effects run reached real A publication and the R admitted turn,
-then failed `threadmesh_codex_live_context_reconciliation_ambiguous`. Cleanup
-deleted and absence-confirmed 5/5 roles, removed the coordinator, left zero
-journals, and removed the caller-owned empty artifacts directory. See the
+The fresh real-effects audit first isolated reviewer reconciliation and callback
+validation failures, then attempt 16 completed the full merged chain with exact
+cleanup. See the
 [checkpoint](../09-reviews/2026-09-02-mainline-checkpoint.md) and
 [attempt record](../09-reviews/2026-09-02-m5-2-real-effects-live-attempt.md).
 
@@ -328,8 +326,8 @@ The next-run diagnostic is now implemented: scenario failures snapshot a
 strict SQLite-derived stage and aggregate counts before cleanup, while the CLI
 publishes only an exact allowlisted projection. Ambiguous reconciliation may
 include one fixed-enum reason code; raw prompts, receipts, paths, session IDs,
-and journal data are excluded. The next real run is therefore diagnostic rather
-than blind: its reason code selects the reviewer-boundary correction.
+and journal data are excluded. This diagnostic path selected the reviewer
+correction that attempt 16 subsequently traversed.
 
 Community reports are now grouped into three public product backlogs rather
 than one issue per upstream symptom: correlated handoff state

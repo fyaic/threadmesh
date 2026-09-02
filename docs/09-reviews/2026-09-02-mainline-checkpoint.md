@@ -89,18 +89,24 @@ compound callback validator is now split into six fixed, publicly safe boundary
 enums so the next failure identifies the exact rejected condition without
 publishing any model argument or output.
 
+Attempt 16 on `b7a1a1e` completed the entire merged real-effects path. One user
+kickoff produced nine bound native turns, four activation dispatches plus one
+irrelevant skip, and eight business tool calls across A, R, the same A, V, and
+the dependent. The runner supplied zero later phase prompts or direct
+activations; the irrelevant role ran zero turns; dependent execution started
+only after trusted finalization. Real Git worktrees and the process-isolated
+verifier were exercised. Five roles, the verifier, Git resources, coordinator,
+and journals all cleaned exactly.
+
 ## Ordered next gates
 
-1. Run the merged real-effects Codex path once with the new partial-stage
-   manifest, use its exact bounded reconciliation reason to correct the
-   observed blocker, and retain one successful traversal.
-2. One same-condition manual/ThreadMesh comparison with action, elapsed, usage,
+1. One same-condition manual/ThreadMesh comparison with action, elapsed, usage,
    interruption, duplicate-delivery, and cleanup measurements.
-3. The complete M5.3 matrix: relevant 3/3, irrelevant, stale/unverified,
+2. The complete M5.3 matrix: relevant 3/3, irrelevant, stale/unverified,
    restart/replay, and failure cleanup.
-4. Close #91 only after its canonical checklist passes.
-5. Observe three independent 15-minute operators for #79.
-6. Prioritize #135 and #136 from observed friction; keep #137 frozen until #91
+3. Close #91 only after its canonical checklist passes.
+4. Observe three independent 15-minute operators for #79.
+5. Prioritize #135 and #136 from observed friction; keep #137 frozen until #91
    and #93 have real evidence.
 
 ## Community backlog decision
