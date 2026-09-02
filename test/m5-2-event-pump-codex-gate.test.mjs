@@ -435,6 +435,7 @@ test("failure progress projection exposes only bounded SQLite-derived stage data
     reconciliation: {
       state: "ambiguous",
       reasonCode: "codex-native-turn-completed-observation-only",
+      boundary: "review-counterexample",
     },
   };
   assert.deepEqual(projectM52EventPumpFailureProgress(source), source);
@@ -447,6 +448,7 @@ test("failure progress projection exposes only bounded SQLite-derived stage data
     (value) => { value.stage = "review-published"; },
     (value) => { value.reconciliation.reasonCode = "/private/raw/path"; },
     (value) => { value.reconciliation.reasonCode = "codex-native-turn-secret-id"; },
+    (value) => { value.reconciliation.boundary = "review-secret-id"; },
   ]) {
     const tampered = structuredClone(source);
     mutate(tampered);

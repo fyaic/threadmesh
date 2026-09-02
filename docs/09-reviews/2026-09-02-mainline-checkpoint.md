@@ -82,6 +82,13 @@ coordinator-derivable digest from tool output with a coordinator-bound schema
 constant. Exact path and counterexample matching against the detached checkout,
 negative tamper coverage, and the downstream verifier chain remain mandatory.
 
+Attempt 14 did not exercise the change because role bootstrap failed with zero
+business records and exact cleanup. Attempt 15 reached the reviewer but retained
+the 5-selected/4-completed result, disproving the digest-copy hypothesis. The
+compound callback validator is now split into six fixed, publicly safe boundary
+enums so the next failure identifies the exact rejected condition without
+publishing any model argument or output.
+
 ## Ordered next gates
 
 1. Run the merged real-effects Codex path once with the new partial-stage

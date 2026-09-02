@@ -298,7 +298,7 @@ test("real-effects path rejects a model-reported finding not present in checkout
     (error) => {
       assert.equal(error?.code, "threadmesh_codex_live_context_terminal_reconciled");
       assert.equal(error?.originCode,
-        "threadmesh_real_effect_review_finding_not_reproduced");
+        "threadmesh_real_effect_review_counterexample_invalid");
       assert.equal(error.cleanup?.complete, true);
       assert.equal(error.cleanup?.roles.length, 5);
       assert.equal(error.cleanup?.verifierServiceClosed, true);

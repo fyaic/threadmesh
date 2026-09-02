@@ -121,3 +121,17 @@ brittle model obligation. The correction makes it a coordinator-bound schema
 constant instead, while retaining exact path/counterexample comparison against
 the detached checkout, bounded reason validation, wrong-content negative
 coverage, and all downstream lifecycle/Git/verifier bindings.
+
+## Attempts 14 and 15
+
+Attempt 14 stopped before business execution with a bootstrap marker mismatch:
+3 created roles were deleted and absence-confirmed, all business counts stayed
+zero, and cleanup completed. One bounded retry was allowed because the reviewer
+fix was not exercised and no business effect occurred.
+
+Attempt 15 crossed bootstrap but again reported 5 selected and 4 completed
+actions at the reviewer callback. This disproves the digest-copy hypothesis:
+another exact finding condition is being rejected. The compound validator is
+therefore split into fixed source, resource, counterexample, checkout, reason,
+and digest branches. The public failure projection may expose only one matching
+boundary enum; it still cannot expose model arguments or outputs.
