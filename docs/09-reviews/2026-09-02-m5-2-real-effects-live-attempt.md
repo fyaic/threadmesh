@@ -77,10 +77,31 @@ session identifiers. Then correct the observed boundary and run once.
 The requested failure manifest is now implemented for the next run. It is
 captured from the live coordinator database before cleanup and then passed
 through an exact public projector. The output is restricted to a schema
-version, source marker, derived stage, nine bounded counts, and—only for an
+version, source marker, derived stage, ten bounded counts, and—only for an
 ambiguous recovery—one fixed-enum reason code. Any extra key, unknown reason,
 string, impossible count, or stage/count mismatch suppresses the projection.
 
 The historical aggregates above remain operator observations from attempt 11;
 they are not retroactively upgraded into machine evidence. The next live run is
 the first one that can produce the new machine-verifiable partial projection.
+
+## Attempt 12 result
+
+The first run with the merged projection used commit `688c226`, the same
+process-scoped proxy, Codex CLI 0.145.0, certificate verification, real Git
+worktrees, and child verifier. It again reached the reviewer admitted turn and
+failed closed, but now emitted machine-derived evidence:
+
+- stage: `reviewer-admitted-turn-partial`;
+- tasks 5, dispatches 1, turn intents 3, tool actions 5;
+- lifecycle publications 1 and Git evidence records 1;
+- zero finalizations, satisfactions, and cursor commits;
+- reason: `codex-native-turn-completed-observation-only`;
+- cleanup: 5/5 roles deleted and absence-confirmed, coordinator removed, zero
+  journals, and the empty caller artifacts directory removed.
+
+The fifth action proves that the reviewer selected both admitted tools, while
+the completed-only persisted turn cannot by itself prove whether the second
+callback result was durably completed. The next diagnostic adds only one
+aggregate—completed tool actions—to distinguish callback rejection from an
+adapter-finalization failure. It does not expose tool arguments or outputs.

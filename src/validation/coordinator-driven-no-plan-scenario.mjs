@@ -54,6 +54,8 @@ const FAILURE_PROGRESS_COUNT_QUERIES = Object.freeze({
   dispatches: "SELECT COUNT(*) AS count FROM event_pump_dispatches",
   turnIntents: "SELECT COUNT(*) AS count FROM turn_execution_intents",
   toolActions: "SELECT COUNT(*) AS count FROM turn_tool_actions",
+  completedToolActions:
+    "SELECT COUNT(*) AS count FROM turn_tool_actions WHERE result_status = 'completed'",
   lifecyclePublications: "SELECT COUNT(*) AS count FROM lifecycle_action_publications",
   gitEvidenceRecords: "SELECT COUNT(*) AS count FROM git_evidence_records",
   dependencyFinalizations:
