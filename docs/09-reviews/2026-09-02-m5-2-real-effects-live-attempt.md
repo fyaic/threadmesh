@@ -71,3 +71,16 @@ Do not repeat the run blindly. First retain a public, SQLite-derived partial
 manifest that exposes the exact phase, durable dispatch/action counts, bounded
 reconciliation reason, and cleanup without raw prompts, receipts, paths, or
 session identifiers. Then correct the observed boundary and run once.
+
+## Follow-up implementation
+
+The requested failure manifest is now implemented for the next run. It is
+captured from the live coordinator database before cleanup and then passed
+through an exact public projector. The output is restricted to a schema
+version, source marker, derived stage, nine bounded counts, and—only for an
+ambiguous recovery—one fixed-enum reason code. Any extra key, unknown reason,
+string, impossible count, or stage/count mismatch suppresses the projection.
+
+The historical aggregates above remain operator observations from attempt 11;
+they are not retroactively upgraded into machine evidence. The next live run is
+the first one that can produce the new machine-verifiable partial projection.

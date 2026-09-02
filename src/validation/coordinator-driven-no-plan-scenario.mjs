@@ -49,6 +49,76 @@ function scenarioError(code) {
   return error;
 }
 
+const FAILURE_PROGRESS_COUNT_QUERIES = Object.freeze({
+  tasks: "SELECT COUNT(*) AS count FROM tasks",
+  dispatches: "SELECT COUNT(*) AS count FROM event_pump_dispatches",
+  turnIntents: "SELECT COUNT(*) AS count FROM turn_execution_intents",
+  toolActions: "SELECT COUNT(*) AS count FROM turn_tool_actions",
+  lifecyclePublications: "SELECT COUNT(*) AS count FROM lifecycle_action_publications",
+  gitEvidenceRecords: "SELECT COUNT(*) AS count FROM git_evidence_records",
+  dependencyFinalizations:
+    "SELECT COUNT(*) AS count FROM git_evidence_dependency_finalizations",
+  dependencySatisfactions: "SELECT COUNT(*) AS count FROM dependency_satisfactions",
+  cursorCommits: "SELECT COUNT(*) AS count FROM attention_cursor_commits",
+});
+
+export const COORDINATOR_FAILURE_RECONCILIATION_REASONS = Object.freeze([
+  "codex-native-turn-identity-mismatch",
+  "codex-native-turn-thread-not-idle",
+  "codex-native-turn-baseline-truncated",
+  "codex-native-turn-baseline-mutated",
+  "codex-native-turn-no-observable-delta",
+  "codex-native-turn-multiple-new-turns",
+  "codex-native-turn-client-id-mismatch",
+  "codex-native-turn-client-id-missing",
+  "codex-native-turn-completed-observation-only",
+  "codex-native-turn-still-in-progress",
+  "codex-native-turn-started-id-mismatch",
+]);
+
+export function deriveCoordinatorDrivenFailureStage(counts) {
+  const durableStages = Math.min(
+    counts.lifecyclePublications ?? 0,
+    counts.gitEvidenceRecords ?? 0,
+  );
+  if ((counts.dependencyFinalizations ?? 0) > 0 ||
+      (counts.dependencySatisfactions ?? 0) > 0) {
+    return "dependency-finalized";
+  }
+  if (durableStages >= 4) return "verification-published";
+  if (durableStages >= 3) return "fix-published";
+  if (durableStages >= 2) return "review-published";
+  if (durableStages >= 1 && (counts.turnIntents ?? 0) >= 3) {
+    return "reviewer-admitted-turn-partial";
+  }
+  if (durableStages >= 1) return "implementation-published";
+  if ((counts.turnIntents ?? 0) > 0) return "implementation-turn-partial";
+  if ((counts.tasks ?? 0) >= 5) return "roles-registered";
+  if ((counts.tasks ?? 0) > 0) return "roles-registering";
+  return "coordinator-ready";
+}
+
+export function captureCoordinatorDrivenFailureProgress(database, error) {
+  const counts = Object.fromEntries(Object.entries(FAILURE_PROGRESS_COUNT_QUERIES)
+    .map(([key, query]) => [key, database.prepare(query).get().count]));
+  const recovery = error?.recovery;
+  const reasonCode = recovery?.reasonCode;
+  const reconciliation = recovery?.state === "ambiguous" &&
+      COORDINATOR_FAILURE_RECONCILIATION_REASONS.includes(reasonCode)
+    ? {
+        state: "ambiguous",
+        reasonCode,
+      }
+    : null;
+  return Object.freeze({
+    schemaVersion: 1,
+    source: "sqlite-pre-cleanup",
+    stage: deriveCoordinatorDrivenFailureStage(counts),
+    counts: Object.freeze(counts),
+    reconciliation: reconciliation === null ? null : Object.freeze(reconciliation),
+  });
+}
+
 function throwIfShutdownRequested(signal) {
   if (signal?.aborted === true) {
     throw scenarioError("threadmesh_coordinator_driven_shutdown_requested");
@@ -872,6 +942,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
   let adapter;
   let result;
   let failure;
+  let failureProgress = null;
   let evidenceRevision = 0;
   let evidenceHead = null;
   let verification = null;
@@ -2179,6 +2250,9 @@ export async function runCoordinatorDrivenNoPlanScenario({
       },
     };
   } catch (error) {
+    try {
+      failureProgress = captureCoordinatorDrivenFailureProgress(coordinator.db, error);
+    } catch {}
     if (injectFinalizationFailure || injectPreverifiedTamper) {
       let edgeStatus = "unavailable";
       let taskState = "unavailable";
@@ -2338,6 +2412,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
   };
   if (failure) {
     failure.cleanup = cleanup;
+    if (failureProgress !== null) failure.partialProgress = failureProgress;
     if (failure.failureEvidence) failure.failureEvidence.cleanupComplete = cleanup.complete;
     throw failure;
   }

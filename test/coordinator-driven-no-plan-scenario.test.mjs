@@ -353,6 +353,23 @@ test("failed trusted finalization starts no dependent business turn", async (t) 
         ],
         cleanupComplete: true,
       });
+      assert.deepEqual(error.partialProgress, {
+        schemaVersion: 1,
+        source: "sqlite-pre-cleanup",
+        stage: "fix-published",
+        counts: {
+          tasks: 5,
+          dispatches: 5,
+          turnIntents: 8,
+          toolActions: 11,
+          lifecyclePublications: 4,
+          gitEvidenceRecords: 3,
+          dependencyFinalizations: 0,
+          dependencySatisfactions: 0,
+          cursorCommits: 3,
+        },
+        reconciliation: null,
+      });
       assert.equal(error.cleanup?.complete, true);
       return true;
     },
@@ -528,4 +545,21 @@ test("a bounded shutdown after role bootstrap cleans every created role and run 
   assert.equal(failure.cleanup?.remainingJournalCount, 0);
   assert.equal(failure.cleanup?.coordinatorRemoved, true);
   assert.equal(failure.cleanup?.runRootRemoved, true);
+  assert.deepEqual(failure.partialProgress, {
+    schemaVersion: 1,
+    source: "sqlite-pre-cleanup",
+    stage: "coordinator-ready",
+    counts: {
+      tasks: 0,
+      dispatches: 0,
+      turnIntents: 0,
+      toolActions: 0,
+      lifecyclePublications: 0,
+      gitEvidenceRecords: 0,
+      dependencyFinalizations: 0,
+      dependencySatisfactions: 0,
+      cursorCommits: 0,
+    },
+    reconciliation: null,
+  });
 });

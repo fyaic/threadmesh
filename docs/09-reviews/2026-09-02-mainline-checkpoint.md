@@ -10,8 +10,9 @@ critical path.
 
 ## Repository state
 
-- branch: `main`, clean and synchronized with `origin/main`;
-- commit: `0c7165ead39499497827737c17e94e95f0f3286b`;
+- branch base: `main`, synchronized with `origin/main` before this diagnostic
+  slice;
+- base commit: `e8b8ce62dd177dde09557b7311939f871b3e3954`;
 - latest product work: real-effects integration #133 and product-proof update
   #134;
 - public discovery: one star, zero forks, and no external operator report;
@@ -21,9 +22,9 @@ critical path.
 
 The following passed on the exact checkpoint commit:
 
-- 384/384 unit and subtests;
+- 385/385 unit and subtests;
 - 55 schema cases and 7 transition cases;
-- 112 Markdown files with zero lint issues;
+- 114 Markdown files with zero lint issues;
 - focused autonomous real-effects scenario: 9/9;
 - one-command attention-router demo: `state=passed`;
 - modeled manual lower bound: 9 user actions;
@@ -57,11 +58,19 @@ and zero remaining journals. The exact empty caller-owned artifacts directory
 was then removed. This is a failed partial attempt, not a product pass. See the
 [attempt record](2026-09-02-m5-2-real-effects-live-attempt.md).
 
+The follow-up diagnostic slice now captures a strict pre-cleanup SQLite
+projection on scenario failure. It exposes only a fixed stage enum, nine
+bounded aggregate counts, and an allowlisted ambiguous-reconciliation reason;
+raw prompts, receipts, paths, thread IDs, and journal contents are not included.
+Schema drift, excess counts, inconsistent stages, and unsafe reason strings are
+rejected by the CLI projector. Failure-stage, tamper, privacy, and exact cleanup
+tests pass.
+
 ## Ordered next gates
 
-1. Explain the reviewer reconciliation failure with a bounded partial-stage
-   manifest, correct the observed blocker, and retain one successful traversal
-   of the merged real-effects Codex path.
+1. Run the merged real-effects Codex path once with the new partial-stage
+   manifest, use its exact bounded reconciliation reason to correct the
+   observed blocker, and retain one successful traversal.
 2. One same-condition manual/ThreadMesh comparison with action, elapsed, usage,
    interruption, duplicate-delivery, and cleanup measurements.
 3. The complete M5.3 matrix: relevant 3/3, irrelevant, stale/unverified,
