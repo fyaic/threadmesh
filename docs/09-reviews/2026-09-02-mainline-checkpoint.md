@@ -75,6 +75,13 @@ not distinguish a rejected second callback from post-callback adapter failure,
 the projection now also includes the bounded completed-action aggregate before
 the next run.
 
+Attempt 13 then reported 5 selected versus 4 completed actions, proving that
+the second reviewer callback—not adapter finalization—was the failing boundary.
+The correction replaces the redundant requirement for the model to copy a
+coordinator-derivable digest from tool output with a coordinator-bound schema
+constant. Exact path and counterexample matching against the detached checkout,
+negative tamper coverage, and the downstream verifier chain remain mandatory.
+
 ## Ordered next gates
 
 1. Run the merged real-effects Codex path once with the new partial-stage

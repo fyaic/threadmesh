@@ -231,6 +231,12 @@ test("real-effects path keeps reviewer context blind and binds model finding", a
   assert.equal(result.verification.signatureVerified, true);
   assert.equal(result.verification.resultDigestBound, true);
   assert.equal(result.runtime.modelSelectedToolCalls, 14);
+  const liveReviewSchema = result.routeHandlerConfigs[0].businessTools[1].inputSchema;
+  assert.match(liveReviewSchema.properties.findingDigest.const, /^sha256:[a-f0-9]{64}$/u);
+  assert.deepEqual(liveReviewSchema.required, [
+    "sourceEventId", "event", "resourcePath", "counterexample", "reason",
+    "findingDigest",
+  ]);
   assert.deepEqual(result.nativeTurnManifest.records.map(({ actions }) =>
     actions.map(({ tool }) => tool)), [
     ["threadmesh_commit_candidate", "threadmesh_publish_artifact"],

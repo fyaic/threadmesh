@@ -821,9 +821,13 @@ export async function runCoordinatorDrivenNoPlanScenario({
       required: Object.freeze([...Object.keys(staticArguments), "commitSha"]),
     }),
   });
+  const realReviewFindingDigest = independentGitFindingDigest({
+    resourcePath: REAL_EFFECT_RESOURCE,
+    counterexample: REAL_EFFECT_IMPLEMENTATION.trim(),
+  });
   const realReviewPublish = Object.freeze({
     ...TOOLS.review,
-    description: `${TOOLS.review.description} Use only the artifact content returned by the preceding read tool. Copy its candidateFindingDigest and report the exact resourcePath, counterexample, and a bounded reason.`,
+    description: `${TOOLS.review.description} Use only the artifact content returned by the preceding read tool. Report its exact resourcePath and counterexample with a bounded reason; use the coordinator-bound findingDigest constant from this schema.`,
     inputSchema: Object.freeze({
       type: "object", additionalProperties: false,
       properties: Object.freeze({
@@ -832,7 +836,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
         resourcePath: Object.freeze({ type: "string", minLength: 1, maxLength: 200 }),
         counterexample: Object.freeze({ type: "string", minLength: 1, maxLength: 256 }),
         reason: Object.freeze({ type: "string", minLength: 1, maxLength: 1000 }),
-        findingDigest: Object.freeze({ type: "string", pattern: "^sha256:[a-f0-9]{64}$" }),
+        findingDigest: Object.freeze({ const: realReviewFindingDigest }),
       }),
       required: Object.freeze([
         "sourceEventId", "event", "resourcePath", "counterexample", "reason",
@@ -1086,7 +1090,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
             counterexample: injectRealReviewFindingTamper
               ? "WRONG_COUNTEREXAMPLE" : read.content.trim(),
             reason: "The detached artifact contains the exact blocking counterexample.",
-            findingDigest: read.candidateFindingDigest,
+            findingDigest: realReviewFindingDigest,
           };
         }
         return value;
@@ -1135,7 +1139,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
         "receiver-decision": "receiver-decision", "r-review": "admitted-tool",
       },
       instructions: realEffects
-        ? "Review only coordinator-admitted context. In the admitted review turn, call every offered tool exactly once and in order: read the detached-checkout artifact, then report the exact counterexample found in the returned content and copy candidateFindingDigest. Do not stop after the read result."
+        ? "Review only coordinator-admitted context. In the admitted review turn, call every offered tool exactly once and in order: read the detached-checkout artifact, then report the exact resourcePath and counterexample found in the returned content. Use the coordinator-bound findingDigest constant from the report tool schema; do not derive or copy it from tool output. Do not stop after the read result."
         : "Review only coordinator-admitted context.",
       scenarioId: "coordinator_driven_no_plan",
     });
@@ -1333,7 +1337,6 @@ export async function runCoordinatorDrivenNoPlanScenario({
               resourcePath: REAL_EFFECT_RESOURCE,
               content,
               commitSha: checkout.subjectSha,
-              candidateFindingDigest: independentGitFindingDigest(candidate),
             };
           }
           if (realEffects && selectedTool === TOOLS.review.name) {

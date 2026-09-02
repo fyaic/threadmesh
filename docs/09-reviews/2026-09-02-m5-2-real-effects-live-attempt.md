@@ -105,3 +105,19 @@ the completed-only persisted turn cannot by itself prove whether the second
 callback result was durably completed. The next diagnostic adds only one
 aggregate—completed tool actions—to distinguish callback rejection from an
 adapter-finalization failure. It does not expose tool arguments or outputs.
+
+## Attempt 13 result and correction
+
+Attempt 13 ran the merged completed-action projection on `3609ce3` under the
+same live conditions. It reported the same stage and reconciliation reason,
+but distinguished 5 selected actions from 4 completed actions. The first
+reviewer read callback completed; the second finding callback was selected and
+rejected before completion. Cleanup again completed exactly.
+
+The live finding tool required the reviewer to copy the exact path,
+counterexample, and a digest that the trusted coordinator can deterministically
+derive from the first two values. Copying that digest from tool output is a
+brittle model obligation. The correction makes it a coordinator-bound schema
+constant instead, while retaining exact path/counterexample comparison against
+the detached checkout, bounded reason validation, wrong-content negative
+coverage, and all downstream lifecycle/Git/verifier bindings.
