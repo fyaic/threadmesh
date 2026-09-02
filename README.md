@@ -148,7 +148,8 @@ pending after a reproducible local DNS/TLS endpoint failure; it has not been
 upgraded into product evidence. The deterministic manual-accounting baseline,
 active-receiver checkpoint negative, and 76-second evidence walkthrough are now
 the public product proof. New harness, transport, and generalized protocol work
-remains frozen until the live rerun and three external setup attempts close.
+remains frozen until the live rerun, measured manual/live baseline, and three
+external setup attempts close.
 
 [Read the exact fixture evidence](docs/09-reviews/2026-09-01-m5-2-autonomous-fixture.md) ·
 [Read the real Codex behavior](docs/09-reviews/2026-09-01-m5-2-real-codex-event-pump-behavior.md) ·
@@ -172,11 +173,11 @@ npm ci
 npm run demo
 ```
 
-This deterministic demo creates four isolated sessions and runs an
-implementation → review → fix → review → dependent-task sequence. It exposes
-the event, routing reason, receiver decision, external verification,
-dependency effect, and cleanup state without spending model quota or touching
-your agent sessions.
+This deterministic demo creates four workflow sessions plus one isolated
+active-receiver safety task. It runs an implementation → review → fix → review
+→ dependent-task sequence and exposes the event, routing reason, receiver
+decision, fixture-signed verified disposition, dependency effect, and cleanup
+state without spending model quota or touching your agent sessions.
 
 [Read the attention-router demo guide](docs/06-guides/attention-router-demo.md)
 

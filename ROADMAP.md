@@ -199,6 +199,12 @@ partial integration attempt is promoted to M5.2 evidence.
     output.
   - [ ] M5.3: pass three fresh relevant runs plus the manual baseline,
     irrelevant, stale/unverified, restart, and cleanup matrix.
+- [ ] Add one bounded, read-only correlated handoff state vector after the
+  current live-value gate, without adding a scheduler or transport
+  ([#135](https://github.com/fyaic/threadmesh/issues/135)).
+- [ ] Prove a real busy receiver is not silently steered and preserve admitted
+  context across restart/compaction through a durable attention inbox
+  ([#136](https://github.com/fyaic/threadmesh/issues/136)).
 - [ ] Repeat the loop across Codex and one ACP-compatible harness
   ([#93](https://github.com/fyaic/threadmesh/issues/93)).
 - [x] Publish the bounded inspector and reproducible deterministic evidence
@@ -227,6 +233,9 @@ incorrect dependency unlocks.
 - [ ] Prototype a Cotal transport bridge only after the local loop passes.
 - [ ] Receive one external connector contribution or equivalent clean-room
   integration.
+- [ ] After #91 and #93 each have real evidence, add durable workflow budgets,
+  recursive stop, and an owner-visible circuit breaker
+  ([#137](https://github.com/fyaic/threadmesh/issues/137)).
 
 Exit: an operator outside the maintainer organization completes a useful loop
 without maintainer intervention, and the integration contract is ready for a

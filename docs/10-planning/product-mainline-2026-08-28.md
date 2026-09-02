@@ -216,18 +216,23 @@ labels its real-versus-deterministic evidence boundary.
 Outcome: someone outside the maintainer organization integrates an existing
 harness and completes a real loop without maintainer intervention.
 
-1. Turn the existing ACP adapter into the preferred multi-harness gateway and
-   document the registry-compatible path.
-2. Publish an A2A mapping for task, message, artifact, lifecycle, and extension
-   fields; keep receiver admission local to ThreadMesh.
-3. Prototype a Cotal transport bridge only after the core loop works locally.
-4. Recruit three external operators for a 15-minute setup task. Capture
+1. Recruit three external operators for a 15-minute setup task. Capture
    installation outcome, time to first value, failed steps, and whether they
    would use the loop again.
-5. Close [#79](https://github.com/fyaic/threadmesh/issues/79) only with feedback
+2. Close [#79](https://github.com/fyaic/threadmesh/issues/79) only with feedback
    from an independent harness author; seek one external connector pull
    request.
-6. Prepare `0.1` only after the workflow and integration contract survive the
+3. Use live and operator evidence to add one bounded correlated handoff state
+   vector [#135](https://github.com/fyaic/threadmesh/issues/135) and the real
+   busy-target/context-freshness behavior in
+   [#136](https://github.com/fyaic/threadmesh/issues/136).
+4. Turn the existing ACP adapter into the preferred multi-harness gateway and
+   complete the real cross-harness gate
+   [#93](https://github.com/fyaic/threadmesh/issues/93).
+5. Publish an A2A mapping for task, message, artifact, lifecycle, and extension
+   fields; keep receiver admission local to ThreadMesh.
+6. Prototype a Cotal transport bridge only after the core loop works locally.
+7. Prepare `0.1` only after the workflow and integration contract survive the
    external attempts.
 
 ### Later — harden only proven usage
@@ -238,6 +243,9 @@ observed failure modes.
 - claimant-specific mailbox leases and crash recovery;
 - production authentication and remote transport profiles;
 - OS isolation and secret minimization;
+- durable workflow budgets, recursive stop, and an owner-visible circuit
+  breaker [#137](https://github.com/fyaic/threadmesh/issues/137), only after
+  #91 and #93 each have real evidence;
 - hosted or multi-user coordinator only with demonstrated demand;
 - additional wake, steer, or interruption capabilities only when a validated
   workflow requires them.
