@@ -48,9 +48,10 @@ Execute in this order:
 
 1. Treat the real behavioral chain as passed and retain its exact evidence; do
    not rerun it merely to polish counts or prose.
-2. Diagnose the fresh reviewer admitted-turn reconciliation failure from
-   bounded product/coordinator evidence, retain a public partial-stage manifest,
-   and rerun the integrated bounded Git and child-verifier path once. Keep the
+2. The public SQLite-derived partial-stage manifest is implemented and rejects
+   raw or inconsistent failure data. Rerun the integrated bounded Git and
+   child-verifier path once, use the emitted reconciliation reason to fix the
+   exact reviewer boundary, then retain one successful traversal. Keep the
    process-scoped proxy, certificate validation, product version, and exact
    cleanup boundary unchanged.
 3. Retain the measured manual/live baseline. The executable demo already

@@ -49,7 +49,7 @@ setup attempts are retained.
 | Research and problem framing | Codex deep dive, community signals, ecosystem comparison, ADRs | Established |
 | Community adoption | One GitHub star; zero forks and zero external issue comments or independent setup results as of 2026-09-02 | Positive discovery hint only; adoption unvalidated |
 | Active product outcome | One-command lifecycle-event and dependency-handoff loop with inspector, manual-action accounting, active-receiver checkpoint negative, and 76-second walkthrough | Real Codex A/R/same-A/V/dependent behavioral chain completed after one kickoff; real Git/verifier path merged; combined network-valid rerun pending |
-| Protocol draft | 14 JSON Schemas; 55 schema cases; 7 transition cases; 384 tests | Executable draft; counts are reported separately |
+| Protocol draft | 14 JSON Schemas; 55 schema cases; 7 transition cases; 385 tests | Executable draft; counts are reported separately |
 | Minimal adapter SDK | `@fyaic/threadmesh` `0.1.0-alpha.0`; six bounded client methods, per-turn proactive bridge, about 20 kB tarball, packed-consumer execution | Real Pi clean-consumer pass; not published to npm |
 | Local binding | Schema-validated JSON-RPC, transport-derived principals, typed errors | Executable local reference |
 | Local persistence | SQLite v10 registry, lifecycle state, append-only Git evidence, and durable per-dispatch event-pump selection/publication checkpoints | Experimental; global cross-dispatch pump chain absent |
@@ -312,7 +312,7 @@ Git effects and verifier custody were simulated; the merged integration is not
 silently combined with that earlier run.
 
 The 2026-09-02 mainline check retained a clean deterministic regression:
-384/384 unit and subtests, 55 schema cases, 7 transition cases, 112 Markdown
+385/385 unit and subtests, 55 schema cases, 7 transition cases, 114 Markdown
 files with zero lint issues, and a passing one-command demo. Initial direct
 connectivity failed after system DNS returned unexpected non-provider
 addresses. A process-scoped local proxy then restored certificate-verified
@@ -323,6 +323,13 @@ deleted and absence-confirmed 5/5 roles, removed the coordinator, left zero
 journals, and removed the caller-owned empty artifacts directory. See the
 [checkpoint](../09-reviews/2026-09-02-mainline-checkpoint.md) and
 [attempt record](../09-reviews/2026-09-02-m5-2-real-effects-live-attempt.md).
+
+The next-run diagnostic is now implemented: scenario failures snapshot a
+strict SQLite-derived stage and aggregate counts before cleanup, while the CLI
+publishes only an exact allowlisted projection. Ambiguous reconciliation may
+include one fixed-enum reason code; raw prompts, receipts, paths, session IDs,
+and journal data are excluded. The next real run is therefore diagnostic rather
+than blind: its reason code selects the reviewer-boundary correction.
 
 Community reports are now grouped into three public product backlogs rather
 than one issue per upstream symptom: correlated handoff state

@@ -1,8 +1,11 @@
 import path from "node:path";
 
 import { canonicalJson, sha256Digest } from "../canonical-json.mjs";
-import { runCoordinatorDrivenNoPlanScenario } from
-  "./coordinator-driven-no-plan-scenario.mjs";
+import {
+  COORDINATOR_FAILURE_RECONCILIATION_REASONS,
+  deriveCoordinatorDrivenFailureStage,
+  runCoordinatorDrivenNoPlanScenario,
+} from "./coordinator-driven-no-plan-scenario.mjs";
 import {
   CodexLiveAgentRuntime,
   isCodexLiveAgentRuntime,
@@ -158,6 +161,65 @@ export function projectM52EventPumpFailureCleanup(value) {
     roleAbsenceChecks: roles.filter((role) => role?.absenceVerified === true).length,
     coordinatorRemoved: source.coordinatorRemoved === true,
     remainingJournalCount,
+  });
+}
+
+const FAILURE_PROGRESS_COUNT_LIMITS = Object.freeze({
+  tasks: 5,
+  dispatches: 5,
+  turnIntents: 16,
+  toolActions: 32,
+  lifecyclePublications: 4,
+  gitEvidenceRecords: 4,
+  dependencyFinalizations: 1,
+  dependencySatisfactions: 1,
+  cursorCommits: 5,
+});
+export function projectM52EventPumpFailureProgress(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const expectedKeys = [
+    "schemaVersion", "source", "stage", "counts", "reconciliation",
+  ];
+  if (canonicalJson(Object.keys(value).sort()) !== canonicalJson(expectedKeys.sort()) ||
+      value.schemaVersion !== 1 || value.source !== "sqlite-pre-cleanup" ||
+      !value.counts || typeof value.counts !== "object" ||
+      Array.isArray(value.counts)) {
+    return null;
+  }
+  const countKeys = Object.keys(FAILURE_PROGRESS_COUNT_LIMITS);
+  if (canonicalJson(Object.keys(value.counts).sort()) !==
+      canonicalJson([...countKeys].sort())) {
+    return null;
+  }
+  const counts = {};
+  for (const [key, limit] of Object.entries(FAILURE_PROGRESS_COUNT_LIMITS)) {
+    const count = value.counts[key];
+    if (!Number.isSafeInteger(count) || count < 0 || count > limit) return null;
+    counts[key] = count;
+  }
+  if (value.stage !== deriveCoordinatorDrivenFailureStage(counts)) return null;
+  let reconciliation = null;
+  if (value.reconciliation !== null) {
+    const source = value.reconciliation;
+    const reconciliationKeys = ["state", "reasonCode"];
+    if (!source || typeof source !== "object" || Array.isArray(source) ||
+        canonicalJson(Object.keys(source).sort()) !==
+          canonicalJson(reconciliationKeys.sort()) ||
+        source.state !== "ambiguous" ||
+        !COORDINATOR_FAILURE_RECONCILIATION_REASONS.includes(source.reasonCode)) {
+      return null;
+    }
+    reconciliation = Object.freeze({
+      state: source.state,
+      reasonCode: source.reasonCode,
+    });
+  }
+  return Object.freeze({
+    schemaVersion: 1,
+    source: "sqlite-pre-cleanup",
+    stage: value.stage,
+    counts: Object.freeze(counts),
+    reconciliation,
   });
 }
 

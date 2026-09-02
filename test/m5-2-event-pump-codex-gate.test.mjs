@@ -14,6 +14,7 @@ import {
 } from "../src/validation/live-agent-scenario.mjs";
 import {
   projectM52EventPumpFailureCleanup,
+  projectM52EventPumpFailureProgress,
   projectM52OperatorSuppliedCodexEventPumpGateResult,
   projectOperatorSuppliedCodexProbe,
   projectM52EventPumpCodexGateResult,
@@ -412,4 +413,45 @@ test("failure cleanup projection is bounded and omits raw role and path data", (
       projectM52EventPumpFailureCleanup(contradictory),
     ).includes("synthetic"), false);
   }
+});
+
+test("failure progress projection exposes only bounded SQLite-derived stage data", () => {
+  const source = {
+    schemaVersion: 1,
+    source: "sqlite-pre-cleanup",
+    stage: "reviewer-admitted-turn-partial",
+    counts: {
+      tasks: 5,
+      dispatches: 1,
+      turnIntents: 3,
+      toolActions: 4,
+      lifecyclePublications: 1,
+      gitEvidenceRecords: 1,
+      dependencyFinalizations: 0,
+      dependencySatisfactions: 0,
+      cursorCommits: 0,
+    },
+    reconciliation: {
+      state: "ambiguous",
+      reasonCode: "codex-native-turn-completed-observation-only",
+    },
+  };
+  assert.deepEqual(projectM52EventPumpFailureProgress(source), source);
+
+  for (const mutate of [
+    (value) => { value.rawThreadId = "raw-thread-id"; },
+    (value) => { value.counts.prompt = 1; },
+    (value) => { value.counts.turnIntents = 17; },
+    (value) => { value.stage = "review-published"; },
+    (value) => { value.reconciliation.reasonCode = "/private/raw/path"; },
+    (value) => { value.reconciliation.reasonCode = "codex-native-turn-secret-id"; },
+  ]) {
+    const tampered = structuredClone(source);
+    mutate(tampered);
+    assert.equal(projectM52EventPumpFailureProgress(tampered), null);
+  }
+  const encoded = JSON.stringify(projectM52EventPumpFailureProgress(source));
+  assert.equal(encoded.includes("threadId"), false);
+  assert.equal(encoded.includes("prompt"), false);
+  assert.equal(encoded.includes("/private/"), false);
 });

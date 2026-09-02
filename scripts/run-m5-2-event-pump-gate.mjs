@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   projectM52EventPumpFailureCleanup,
+  projectM52EventPumpFailureProgress,
   runM52EventPumpCodexGate,
   runM52OperatorSuppliedCodexEventPumpGate,
 } from
@@ -129,12 +130,15 @@ try {
   const preflight = preflightCodes.has(error?.code);
   const cleanup = error?.cleanup === undefined
     ? null : projectM52EventPumpFailureCleanup(error.cleanup);
+  const partialProgress = error?.partialProgress === undefined
+    ? null : projectM52EventPumpFailureProgress(error.partialProgress);
   console.error(JSON.stringify({
     state: preflight ? "not-run" : "failed",
     code: shutdownSignal === null
       ? (error?.code ?? "threadmesh_m52_event_pump_runner_failed")
       : `threadmesh_m52_event_pump_runner_${shutdownSignal.toLowerCase()}`,
     liveAck: LIVE_ACK,
+    ...(partialProgress === null ? {} : { partialProgress }),
     ...(cleanup === null ? {} : { cleanup }),
   }, null, 2));
   process.exitCode = preflight ? 3 : 1;
