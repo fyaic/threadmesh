@@ -145,13 +145,15 @@ Git and verification effects. [#133](https://github.com/fyaic/threadmesh/pull/13
 now binds the existing bounded Git worktrees and process-isolated child
 verifier into that correlated path on `main`. A process-scoped, certificate-
 verified local proxy restored normal Codex connectivity on 2026-09-02. The
-fresh rerun reached real A publication and the reviewer admitted turn, then
-failed closed on ambiguous context reconciliation with complete cleanup; it was
-not upgraded into product evidence. The deterministic manual-accounting baseline,
-active-receiver checkpoint negative, and 76-second evidence walkthrough are now
-the public product proof. New harness, transport, and generalized protocol work
-remains frozen until a successful live rerun, measured manual/live baseline, and three
-external setup attempts close.
+merged real-effects rerun now completed the full A → R → same-A → V →
+dependent chain: one kickoff, nine bound native turns, zero later runner prompts
+or direct activations, real bounded Git worktrees, process-isolated verification,
+an irrelevant zero-turn control, and exact cleanup. The gate still reports
+`blocked`/`liveProductEvidence=false` because the operator-supplied executable
+lacks trusted binary provenance and the measured baseline/restart/global-chain
+gates remain open; this is not presented as complete M5.2 acceptance. New
+harness, transport, and generalized protocol work remains frozen until the
+measured manual/live baseline and three external setup attempts close.
 
 [Read the exact fixture evidence](docs/09-reviews/2026-09-01-m5-2-autonomous-fixture.md) ·
 [Read the real Codex behavior](docs/09-reviews/2026-09-01-m5-2-real-codex-event-pump-behavior.md) ·
