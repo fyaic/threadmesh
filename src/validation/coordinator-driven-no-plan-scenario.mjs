@@ -77,6 +77,14 @@ export const COORDINATOR_FAILURE_RECONCILIATION_REASONS = Object.freeze([
   "codex-native-turn-still-in-progress",
   "codex-native-turn-started-id-mismatch",
 ]);
+export const COORDINATOR_FAILURE_BOUNDARIES = Object.freeze({
+  threadmesh_real_effect_review_source_invalid: "review-source",
+  threadmesh_real_effect_review_resource_invalid: "review-resource",
+  threadmesh_real_effect_review_counterexample_invalid: "review-counterexample",
+  threadmesh_real_effect_review_checkout_invalid: "review-checkout",
+  threadmesh_real_effect_review_reason_invalid: "review-reason",
+  threadmesh_real_effect_review_digest_invalid: "review-digest",
+});
 
 export function deriveCoordinatorDrivenFailureStage(counts) {
   const durableStages = Math.min(
@@ -110,6 +118,7 @@ export function captureCoordinatorDrivenFailureProgress(database, error) {
     ? {
         state: "ambiguous",
         reasonCode,
+        boundary: COORDINATOR_FAILURE_BOUNDARIES[error?.originCode] ?? null,
       }
     : null;
   return Object.freeze({
@@ -1349,15 +1358,25 @@ export async function runCoordinatorDrivenNoPlanScenario({
               counterexample: value?.counterexample,
             };
             const candidateDigest = independentGitFindingDigest(candidate);
-            if (
-              value?.sourceEventId !== artifactEvent.messageId ||
-              candidate.resourcePath !== REAL_EFFECT_RESOURCE ||
-              candidate.counterexample !== content.trim() ||
-              !content.includes(candidate.counterexample) ||
-              checkout.subjectSha !== implementationSha ||
-              typeof value?.reason !== "string" || value.reason.length < 1 ||
-              value?.findingDigest !== candidateDigest
-            ) throw scenarioError("threadmesh_real_effect_review_finding_not_reproduced");
+            if (value?.sourceEventId !== artifactEvent.messageId) {
+              throw scenarioError("threadmesh_real_effect_review_source_invalid");
+            }
+            if (candidate.resourcePath !== REAL_EFFECT_RESOURCE) {
+              throw scenarioError("threadmesh_real_effect_review_resource_invalid");
+            }
+            if (candidate.counterexample !== content.trim() ||
+                !content.includes(candidate.counterexample)) {
+              throw scenarioError("threadmesh_real_effect_review_counterexample_invalid");
+            }
+            if (checkout.subjectSha !== implementationSha) {
+              throw scenarioError("threadmesh_real_effect_review_checkout_invalid");
+            }
+            if (typeof value?.reason !== "string" || value.reason.length < 1) {
+              throw scenarioError("threadmesh_real_effect_review_reason_invalid");
+            }
+            if (value?.findingDigest !== candidateDigest) {
+              throw scenarioError("threadmesh_real_effect_review_digest_invalid");
+            }
             finding = Object.freeze(candidate);
             findingDigest = candidateDigest;
             payloads["review-failed"].findingDigest = findingDigest;

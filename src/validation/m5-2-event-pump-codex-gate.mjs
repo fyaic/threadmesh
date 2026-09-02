@@ -2,6 +2,7 @@ import path from "node:path";
 
 import { canonicalJson, sha256Digest } from "../canonical-json.mjs";
 import {
+  COORDINATOR_FAILURE_BOUNDARIES,
   COORDINATOR_FAILURE_RECONCILIATION_REASONS,
   deriveCoordinatorDrivenFailureStage,
   runCoordinatorDrivenNoPlanScenario,
@@ -203,17 +204,20 @@ export function projectM52EventPumpFailureProgress(value) {
   let reconciliation = null;
   if (value.reconciliation !== null) {
     const source = value.reconciliation;
-    const reconciliationKeys = ["state", "reasonCode"];
+    const reconciliationKeys = ["state", "reasonCode", "boundary"];
     if (!source || typeof source !== "object" || Array.isArray(source) ||
         canonicalJson(Object.keys(source).sort()) !==
           canonicalJson(reconciliationKeys.sort()) ||
         source.state !== "ambiguous" ||
-        !COORDINATOR_FAILURE_RECONCILIATION_REASONS.includes(source.reasonCode)) {
+        !COORDINATOR_FAILURE_RECONCILIATION_REASONS.includes(source.reasonCode) ||
+        (source.boundary !== null &&
+          !Object.values(COORDINATOR_FAILURE_BOUNDARIES).includes(source.boundary))) {
       return null;
     }
     reconciliation = Object.freeze({
       state: source.state,
       reasonCode: source.reasonCode,
+      boundary: source.boundary,
     });
   }
   return Object.freeze({
