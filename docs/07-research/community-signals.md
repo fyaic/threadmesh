@@ -1,8 +1,25 @@
 # Community signals around cross-task agent coordination
 
-> Research snapshot: 2026-09-01. GitHub issues are community reports unless an
+> Research snapshot: 2026-09-02. GitHub issues are community reports unless an
 > OpenAI contributor explicitly confirms product status. They are evidence of
 > demand and failure modes, not a stable API contract.
+
+## 2026-09-02 reliability and operator-control update
+
+New reports sharpen three product requirements beyond transport:
+
+| Requirement | Community reports | ThreadMesh decision |
+|---|---|---|
+| Correlated, complete handoff state | Codex [#29886](https://github.com/openai/codex/issues/29886), [#40397](https://github.com/openai/codex/issues/40397), [#41964](https://github.com/openai/codex/issues/41964), [#41972](https://github.com/openai/codex/issues/41972), [#42074](https://github.com/openai/codex/issues/42074) | Track one bounded state vector in [#135](https://github.com/fyaic/threadmesh/issues/135); do not require another model turn to learn delivery state. |
+| Durable, non-interrupting attention with fresh context | Codex [#30499](https://github.com/openai/codex/issues/30499), [#41995](https://github.com/openai/codex/issues/41995), [#42131](https://github.com/openai/codex/issues/42131) | Track real busy-target and context-epoch behavior in [#136](https://github.com/fyaic/threadmesh/issues/136); queue/checkpoint remains the default. |
+| Hard autonomy limits and recursive stop | Codex [#35177](https://github.com/openai/codex/issues/35177), [#40037](https://github.com/openai/codex/issues/40037), [#42032](https://github.com/openai/codex/issues/42032), [#42080](https://github.com/openai/codex/issues/42080), [#42182](https://github.com/openai/codex/issues/42182) | Track workflow-level budgets and circuit breakers in [#137](https://github.com/fyaic/threadmesh/issues/137), but freeze implementation until real Codex and cross-harness value is established. |
+
+The reports validate ThreadMesh's attention/admission thesis, but they do not
+authorize a project orchestrator. Project-level contractor mode, Codex writer
+takeover, UI persistence fixes, model routing, and a new scheduler remain
+upstream concerns or explicit non-goals. ThreadMesh should expose typed
+detect/defer/fail-closed behavior at those boundaries instead of replacing the
+harness.
 
 ## 2026-09-01 delivery-mode update
 
@@ -53,15 +70,17 @@ to:
 
 ### Community and adoption reality
 
-At this snapshot, ThreadMesh has no external stars, forks, watchers, issue
-comments, or independent review records. Before this roadmap update, its two
-open issues were the external M0 review gate
-[#7](https://github.com/fyaic/threadmesh/issues/7) and independent
-harness-author feedback [#79](https://github.com/fyaic/threadmesh/issues/79).
-The new M5 issues [#89](https://github.com/fyaic/threadmesh/issues/89)–
-[#93](https://github.com/fyaic/threadmesh/issues/93) are maintainer planning,
-not community adoption. Repository clone traffic is not treated as adoption
-because CI, dependency bots, and maintainer validation can dominate it.
+At this snapshot, ThreadMesh has one star, zero forks, zero external issue
+comments, and no independent review or setup record. The star is a positive
+discovery hint, not evidence that an operator reached value. Open product and
+review work remains maintainer-defined: external M0 review
+[#7](https://github.com/fyaic/threadmesh/issues/7), independent operator
+feedback [#79](https://github.com/fyaic/threadmesh/issues/79), the Codex and
+cross-harness gates [#91](https://github.com/fyaic/threadmesh/issues/91) and
+[#93](https://github.com/fyaic/threadmesh/issues/93), plus the three grouped
+community backlogs #135–#137. Repository clone traffic is not treated as
+adoption because CI, dependency bots, and maintainer validation can dominate
+it.
 
 This is neither product rejection nor validation: the repository was created
 only eight days earlier, but there is currently no evidence that an external

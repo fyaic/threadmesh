@@ -15,7 +15,7 @@ inspector, and an independently repeated implementation/review/fix loop.
 Normative M0 review remains a parallel governance track. Maintainer-authorized
 experiments are explicitly labeled and do not satisfy it.
 
-## Active critical path — 2026-09-01
+## Active critical path — 2026-09-02
 
 M5.2 remains the only implementation critical path. The behavioral question is
 answered by the completed sixth Codex run. The bounded Git effects and existing
@@ -51,18 +51,23 @@ Execute in this order:
 3. Retain the measured manual/live baseline. The executable demo already
    reports a nine-action manual lower bound versus one kickoff, but elapsed time
    and tokens remain explicitly unmeasured.
-4. Observe three independent operators using only the README and 15-minute
+4. Complete the M5.3 closure matrix: three fresh relevant runs, irrelevant,
+   stale/unverified, restart/replay, and exact failure cleanup. Close #91 only
+   after that canonical checklist and the measured baseline pass.
+5. Observe three independent operators using only the README and 15-minute
    challenge; convert friction into product or documentation fixes.
-5. Close #91 only when its original outcome is satisfied, then resume
-   repetition, Kimi parity, and production-hardening evidence.
+6. Use the resulting evidence to prioritize the correlated state vector #135
+   and durable non-interrupting attention inbox #136 before broader adapter
+   work. Keep the autonomous circuit breaker #137 frozen until #91 has a live
+   pass and #93 has a real cross-harness pass.
 
 Mainline guardrail: do not add a new substrate or generalize an existing one
 unless the current live chain demonstrates that it is the blocking condition.
-OS-kill matrices, long-turn heartbeat, a global cross-dispatch chain, new
-harnesses, A2A/Cotal work, hosted operation, and new transport/protocol surface
-are paused. The evidence walkthrough is complete and must now be judged by
-external first-run attempts. Small PRs remain acceptable; scope, not PR size,
-is the constraint.
+OS-kill matrices beyond the canonical restart/replay case, long-turn heartbeat,
+a global cross-dispatch chain, new harnesses, A2A/Cotal work, hosted operation,
+and new transport/protocol surface are paused. The evidence walkthrough is
+complete and must now be judged by external first-run attempts. Small PRs
+remain acceptable; scope, not PR size, is the constraint.
 
 The detailed historical gates remain in the
 [real Codex scenario plan](m5-2-real-codex-scenario.md). The

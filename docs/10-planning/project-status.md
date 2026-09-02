@@ -1,9 +1,10 @@
 # Project status
 
-> Snapshot: 2026-09-01 after behavioral `main` commit
-> `f98c56b83057b43f8b9618d6f69e1b2f481f77bd` and merged real-effects
-> integration [#133](https://github.com/fyaic/threadmesh/pull/133) at
-> `5ec7b19`. Technical evidence includes the
+> Snapshot: 2026-09-02 at `main` commit
+> `0c7165ead39499497827737c17e94e95f0f3286b`, including the merged
+> real-effects integration [#133](https://github.com/fyaic/threadmesh/pull/133)
+> and product-proof update [#134](https://github.com/fyaic/threadmesh/pull/134).
+> Technical evidence includes the
 > deterministic no-plan autonomous fixture, the earlier runner-sequenced real
 > Codex canary, nine fail-closed event-pump attempts, and one completed real
 > autonomous behavioral chain. Real Git and child-verifier wiring is complete,
@@ -46,7 +47,7 @@ setup attempts are retained.
 | Area | Current evidence | Status |
 |---|---|---|
 | Research and problem framing | Codex deep dive, community signals, ecosystem comparison, ADRs | Established |
-| Community adoption | No external stars, forks, watchers, issue comments, or independent setup result as of 2026-08-28 | Unvalidated |
+| Community adoption | One GitHub star; zero forks and zero external issue comments or independent setup results as of 2026-09-02 | Positive discovery hint only; adoption unvalidated |
 | Active product outcome | One-command lifecycle-event and dependency-handoff loop with inspector, manual-action accounting, active-receiver checkpoint negative, and 76-second walkthrough | Real Codex A/R/same-A/V/dependent behavioral chain completed after one kickoff; real Git/verifier path merged; combined network-valid rerun pending |
 | Protocol draft | 14 JSON Schemas; 55 schema cases; 7 transition cases; 384 tests | Executable draft; counts are reported separately |
 | Minimal adapter SDK | `@fyaic/threadmesh` `0.1.0-alpha.0`; six bounded client methods, per-turn proactive bridge, about 20 kB tarball, packed-consumer execution | Real Pi clean-consumer pass; not published to npm |
@@ -302,12 +303,29 @@ The sequencing decision is now explicit. The existing bounded Git worktrees and
 child verifier are integrated in #133; deterministic positive and wrong-finding
 negative cases pass. The public demo adds a modeled manual-action baseline and
 active-receiver checkpoint negative. Next, retain one network-valid real Codex
-traversal, run the measured manual arm, and observe three external operators.
-OS-kill and heartbeat matrices, a global cross-dispatch chain, Kimi parity, new
-harnesses, and transport/protocol expansion remain frozen. The completed live
+traversal, run the measured manual arm, complete the M5.3 matrix, and observe
+three external operators. OS-kill work beyond the required restart/replay case,
+heartbeat matrices, a global cross-dispatch chain, Kimi parity, new harnesses,
+and transport/protocol expansion remain frozen. The completed live
 behavioral chain is still `blocked` and `liveProductEvidence=false` because its
 Git effects and verifier custody were simulated; the merged integration is not
 silently combined with that earlier run.
+
+The 2026-09-02 mainline check retained a clean deterministic regression:
+384/384 unit and subtests, 55 schema cases, 7 transition cases, 112 Markdown
+files with zero lint issues, and a passing one-command demo. A certificate-
+verifying endpoint probe still timed out after system DNS returned unexpected
+non-provider addresses, so no live session or Git-effect run was started. See
+the [checkpoint record](../09-reviews/2026-09-02-mainline-checkpoint.md).
+
+Community reports are now grouped into three public product backlogs rather
+than one issue per upstream symptom: correlated handoff state
+[#135](https://github.com/fyaic/threadmesh/issues/135), durable
+non-interrupting attention and context freshness
+[#136](https://github.com/fyaic/threadmesh/issues/136), and bounded autonomous
+chains [#137](https://github.com/fyaic/threadmesh/issues/137). #135 and #136
+follow the current live-value gate; #137 remains frozen until both the Codex
+and cross-harness paths have real evidence.
 
 The Codex context-admission turn now uses the same private pre-turn baseline,
 fsynced journal, exact client key, and read-first restart boundary. The journal

@@ -110,9 +110,10 @@ npm ci
 npm run demo
 ```
 
-这个确定性案例会创建四个隔离 session，并执行“实现 → 评审 → 修复 → 再评审 →
-解锁下游任务”的完整链路。输出会分别展示事件、路由理由、接收方决定、外部验证、
-依赖效果与清理状态；它不消耗模型额度，也不触碰你的真实 Agent session。
+这个确定性案例会创建四个工作流 session，加一个隔离的活跃接收方安全任务，并执行
+“实现 → 评审 → 修复 → 再评审 → 解锁下游任务”的完整链路。输出会分别展示事件、
+路由理由、接收方决定、fixture 签名的验证 disposition、依赖效果与清理状态；它不
+消耗模型额度，也不触碰你的真实 Agent session。
 
 [查看 attention-router 演示指南](docs/06-guides/attention-router-demo.md)
 

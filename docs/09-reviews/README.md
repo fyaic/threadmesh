@@ -30,6 +30,7 @@ not count as live-product or independent external-verifier evidence.
 
 ## Live attempt audits
 
+- [2026-09-02 mainline and connectivity checkpoint](2026-09-02-mainline-checkpoint.md)
 - [M5.2 real Codex event-pump attempt audit](2026-09-01-m5-2-real-codex-event-pump-attempt-audit.md)
 - [Real Codex autonomous event-pump behavior](2026-09-01-m5-2-real-codex-event-pump-behavior.md)
 
