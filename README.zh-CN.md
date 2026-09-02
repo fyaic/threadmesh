@@ -234,8 +234,8 @@ sandbox。不要用它处理任意恶意 peer 内容或充当生产安全边界�
 - 参考 runtime：authenticated JSON-RPC + SQLite coordinator，面向本地可信进程实验。
 - 验证：384 项测试，加 55 个 schema case、7 个状态转换 case、文档检查；这些计数分别报告。
 - 默认策略：除非 maintainer 明确选择有边界实验 profile，否则主动协调保持关闭。
-- 当前边界：第六次真实 Codex event-pump 已在一次 kickoff 后通过 9 个 native turn 完成 A→R→同一个 A→V→dependent，后续 runner phase prompt/direct activation 为 0，无关 session turn 为 0，清理 5/5；该次运行的 Git/verifier effect 是模拟的。真实 Git worktree 与 child verifier 已由 #133 合入同一路径，但组合后的新鲜 live 重跑仍受本机 DNS/TLS 故障阻塞。
-- 下一主线：在网络正常的 host 上保留一次真实 Codex real-effects 闭环，完成实测人工基线，并观察 3 位外部 operator 的 15 分钟上手过程。在这些产品证据前，继续冻结新 harness、transport 和泛化 protocol 扩展。
+- 当前边界：第六次真实 Codex event-pump 已在一次 kickoff 后通过 9 个 native turn 完成 A→R→同一个 A→V→dependent，后续 runner phase prompt/direct activation 为 0，无关 session turn 为 0，清理 5/5；该次运行的 Git/verifier effect 是模拟的。真实 Git worktree 与 child verifier 已由 #133 合入同一路径。2026-09-02 的进程级本地代理恢复了证书校验与 WebSocket 连接；新鲜 live 重跑到达真实 A 发布和 reviewer admitted turn，随后在 ambiguous context reconciliation 处保守失败，清理仍为 5/5。
+- 下一主线：修复或明确该 reconciliation blocker 后保留一次真实 Codex real-effects 闭环，完成实测人工基线，并观察 3 位外部 operator 的 15 分钟上手过程。在这些产品证据前，继续冻结新 harness、transport 和泛化 protocol 扩展。
 
 [当前状态](docs/10-planning/project-status.md) · [路线图](ROADMAP.md) ·
 [协议草案](spec/README.md) · [验证记录](docs/09-reviews/README.md)

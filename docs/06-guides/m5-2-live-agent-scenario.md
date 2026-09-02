@@ -184,8 +184,8 @@ export THREADMESH_CODEX_COMMAND=/absolute/path/to/codex
 node scripts/run-m5-2-event-pump-gate.mjs --mode live --artifacts-dir /fresh/owned/directory
 ```
 
-Ten bounded attempts are retained. Attempts 1–6 cover the behavioral path;
-attempts 7–10 exercise the real Git/child-verifier integration:
+Eleven bounded attempts are retained. Attempts 1–6 cover the behavioral path;
+attempts 7–11 exercise the real Git/child-verifier integration:
 
 | Attempt | Stop | Chain evidence | Cleanup evidence |
 |---|---|---|---|
@@ -199,6 +199,7 @@ attempts 7–10 exercise the real Git/child-verifier integration:
 | 8 | R admitted turn ended after its detached-checkout read | Real A implementation plus one R read action | Complete role/verifier/Git/coordinator cleanup |
 | 9 | R decision turn was terminally reconciled | Real A implementation and R route selection | Complete role/verifier/Git/coordinator cleanup |
 | 10 | R admitted turn became ambiguous during a reproduced DNS/TLS endpoint failure | Real A implementation, R acceptance, and admission start | Complete role/verifier/Git/coordinator cleanup |
+| 11 | Certificate-verified proxy connectivity passed; R admitted turn still reconciled ambiguously | Real A implementation commit/publication, one R dispatch, and reviewer admitted-turn partial progress | Complete 5/5 role, verifier, Git, coordinator, journal, and caller-owned empty-directory cleanup |
 
 [#126](https://github.com/fyaic/threadmesh/pull/126) and
 [#127](https://github.com/fyaic/threadmesh/pull/127) fixed the first two observed
@@ -209,11 +210,13 @@ completed `state=blocked` gate result and the first real autonomous behavioral
 chain.
 
 The bounded Git-worktree and process-isolated child-verifier foundations are
-now wired into this correlated path. The next checkpoint is one successful
-live rerun after `codex doctor` no longer reports the current WebSocket
-certificate failure, then the manual relay/polling baseline and minimum
-critical negative/restart evidence. Until those gates pass, the correct public
-result remains `state=blocked` and `liveProductEvidence=false`.
+now wired into this correlated path. Process-scoped proxy configuration restored
+certificate-verified Codex HTTP and WebSocket connectivity for attempt 11, so
+DNS/TLS is no longer the immediate blocker. The next checkpoint is a bounded
+partial-stage manifest and correction for the reviewer reconciliation failure,
+then one successful live rerun, the manual relay/polling baseline, and minimum
+critical negative/restart evidence. Until those gates pass, no product pass is
+claimed.
 
 See the [bounded attempt audit](../09-reviews/2026-09-01-m5-2-real-codex-event-pump-attempt-audit.md)
 and [real behavior record](../09-reviews/2026-09-01-m5-2-real-codex-event-pump-behavior.md).
