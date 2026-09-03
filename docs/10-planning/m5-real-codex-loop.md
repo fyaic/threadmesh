@@ -113,6 +113,14 @@ reasons, receiver dispositions, verification and unlock state, cursor
 checkpoints, UTC timing, and cleanup confirmation. Public evidence must not
 contain raw transcripts, account data, secrets, or absolute local paths.
 
+Current checkpoint (2026-09-03): the deterministic relevant 3/3, irrelevant,
+stale/unverified, restart/replay, and failure-cleanup matrix passes. A real
+operator-triggered control also completed with nine actions and exact cleanup.
+Its same-condition ThreadMesh arm failed closed at reviewer admitted-turn
+reconciliation, so `manualBaselineCompared` and real-product
+`relevantLoopPasses=3/3` remain false. See the
+[M5.3 record](../09-reviews/2026-09-03-m5-3-baseline-and-matrix.md).
+
 ## Reviewer closure checklist
 
 Issue #91 may close only when every item below is true:

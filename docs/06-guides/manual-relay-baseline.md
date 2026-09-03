@@ -62,17 +62,31 @@ interruptions, and comparable final artifacts in both arms. Report raw product
 usage only when the product exposes it; do not infer token counts from text
 length.
 
+The repository runner is:
+
+```sh
+THREADMESH_M53_BASELINE_LIVE_ACK=maintainer-approved-threadmesh-m53-baseline-live \
+THREADMESH_CODEX_COMMAND=/absolute/path/to/codex \
+npm run validate:m5-3:baseline:live:codex
+```
+
+It emits a bounded checkpoint after each completed arm and a SQLite-derived
+stage plus cleanup projection on failure. The deterministic negative/restart
+matrix is available separately as `npm run validate:m5-3:matrix`.
+
 ## Current status
 
 - Workflow accounting: complete and executable.
-- Live ThreadMesh behavior: one retained real Codex chain completed after one
-  kickoff, with nine native turns and zero later runner prompts or direct
-  activations; its Git/verifier effects were simulated.
-- Real-effects code path: merged on `main` in
-  [#133](https://github.com/fyaic/threadmesh/pull/133).
-- Measured manual/live comparison: pending a host that resolves and reaches the
-  valid Codex endpoint. The current host's reproducible DNS/TLS failure makes a
-  fresh comparison invalid rather than negative product evidence.
+- Live ThreadMesh behavior: attempt 16 completed the merged real-effects Codex
+  chain after one kickoff, with nine native turns, real Git/verifier effects,
+  an irrelevant zero-turn control, and exact cleanup.
+- Measured operator control: complete on 2026-09-03 with nine actions, nine
+  bound native turns, eight business tool calls, 1,744,551 ms elapsed, zero
+  duplicate delivery/interruption/incorrect unlock, and exact cleanup.
+- Same-condition ThreadMesh arm: failed closed after 979,280 ms at an ambiguous
+  reviewer admitted turn. It cleaned 5/5 roles and all coordinator state but
+  did not complete the comparison.
+- Full record: [M5.3 baseline checkpoint](../09-reviews/2026-09-03-m5-3-baseline-and-matrix.md).
 
 No elapsed-time or token reduction should be advertised until the measured
 protocol passes.

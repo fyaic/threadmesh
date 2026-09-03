@@ -78,6 +78,10 @@ export const COORDINATOR_FAILURE_RECONCILIATION_REASONS = Object.freeze([
   "codex-native-turn-started-id-mismatch",
 ]);
 export const COORDINATOR_FAILURE_BOUNDARIES = Object.freeze({
+  codex_app_server_operation_timeout: "native-turn-timeout",
+  threadmesh_live_admitted_turn_tool_missing: "admitted-tools-missing",
+  threadmesh_live_product_tool_correlation_invalid: "tool-correlation",
+  threadmesh_live_product_turn_result_invalid: "turn-result",
   threadmesh_real_effect_review_source_invalid: "review-source",
   threadmesh_real_effect_review_resource_invalid: "review-resource",
   threadmesh_real_effect_review_counterexample_invalid: "review-counterexample",

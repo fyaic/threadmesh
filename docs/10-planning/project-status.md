@@ -1,15 +1,16 @@
 # Project status
 
-> Snapshot: 2026-09-02 at evidence commit
-> `b7a1a1e`, including the merged
+> Snapshot: 2026-09-03 at evidence commit
+> `da9dda1`, including the merged
 > real-effects integration [#133](https://github.com/fyaic/threadmesh/pull/133)
 > and product-proof update [#134](https://github.com/fyaic/threadmesh/pull/134).
 > Technical evidence includes the
 > deterministic no-plan autonomous fixture, the earlier runner-sequenced real
 > Codex canary, bounded fail-closed event-pump attempts, and attempt 16's
-> completed merged real-effects chain. The measured manual/live baseline remains
-> pending. Deterministic workflow accounting and the active-receiver checkpoint
-> negative are executable in the public demo.
+> completed merged real-effects chain, the completed measured operator control,
+> and the passing deterministic M5.3 closure matrix. The same-condition live
+> baseline remains pending because the ThreadMesh arm failed closed at reviewer
+> admission.
 
 ## Executive summary
 
@@ -47,8 +48,8 @@ setup attempts are retained.
 |---|---|---|
 | Research and problem framing | Codex deep dive, community signals, ecosystem comparison, ADRs | Established |
 | Community adoption | One GitHub star; zero forks and zero external issue comments or independent setup results as of 2026-09-02 | Positive discovery hint only; adoption unvalidated |
-| Active product outcome | One-command lifecycle-event and dependency-handoff loop with inspector, manual-action accounting, active-receiver checkpoint negative, and 76-second walkthrough | Attempt 16 completed the combined network-valid real Codex A/R/same-A/V/dependent path after one kickoff with real Git and child-verifier effects; measured baseline pending |
-| Protocol draft | 14 JSON Schemas; 55 schema cases; 7 transition cases; 385 tests | Executable draft; counts are reported separately |
+| Active product outcome | One-command lifecycle-event and dependency-handoff loop with inspector, manual-action accounting, active-receiver checkpoint negative, and 76-second walkthrough | Attempt 16 completed the combined real Codex path; the measured 9-action control completed, while the same-condition ThreadMesh arm failed closed at reviewer admission |
+| Protocol draft | 14 JSON Schemas; 55 schema cases; 7 transition cases; 388 tests | Executable draft; counts are reported separately |
 | Minimal adapter SDK | `@fyaic/threadmesh` `0.1.0-alpha.0`; six bounded client methods, per-turn proactive bridge, about 20 kB tarball, packed-consumer execution | Real Pi clean-consumer pass; not published to npm |
 | Local binding | Schema-validated JSON-RPC, transport-derived principals, typed errors | Executable local reference |
 | Local persistence | SQLite v10 registry, lifecycle state, append-only Git evidence, and durable per-dispatch event-pump selection/publication checkpoints | Experimental; global cross-dispatch pump chain absent |
@@ -69,6 +70,7 @@ setup attempts are retained.
 | M5.2 real Codex model/tool canary | Five persistent roles; four real A/R/same-A/V turns; seven model-selected tool calls; exact two-commit chain; same-A identity/worktree; dependent and irrelevant zero-turn controls; five-of-five cleanup on base `1155fc8` | Canary completed; intentionally `blocked` with `liveProductEvidence=false` because the runner submitted four phase prompts and ThreadMesh performed no lifecycle handoff |
 | M5.2 autonomous no-plan fixture | One user kickoff; durable SQLite attention drives A→R→same-A→V→dependent; zero fixture-runner activation dispatches or phase/business prompts; zero manual relay and polling; pump starts protected receiver turns; trusted finalization precedes dependent turn; exact cleanup | Deterministic in-process fixture at `711da66`; per-dispatch recovery durable, global chain absent; OS kill/heartbeat/live products/external verifier pending |
 | M5.2 real event-pump attempts | The bounded audit culminated in attempt 16: complete real Codex A/R/same-A/V/dependent chain with one kickoff, nine bound turns, eight business tool calls, zero later runner prompts/direct activations, real Git effects, process-isolated verification, irrelevant zero-turn control, and exact cleanup | Combined behavioral/effects checkpoint passed; result remains honestly `blocked`/`liveProductEvidence=false` because trusted Codex binary provenance and later acceptance gates remain open |
+| M5.3 baseline and closure matrix | Real operator control completed in 1,744,551 ms with 9 actions and exact cleanup; same-condition ThreadMesh arm failed at reviewer admitted-turn reconciliation; deterministic relevant 3/3, irrelevant, stale/unverified, restart/replay, and failure cleanup pass | Negative/recovery implementation closed deterministically; real two-arm completion and real relevant 3/3 remain open |
 | Gemini CLI headless | Official package 0.56.0 integrity, required flags, isolated-home cleanup | Real no-model preflight passed |
 | Gemini live model behavior | Exact marker script requires explicit provider key | Not authorized, not run |
 | Multi-product admission | One mailbox/acceptance/claim/evidence path across ACP, Codex, and Gemini fakes | Merged experimental implementation |
@@ -299,19 +301,18 @@ temporary-resource cleanup. See the
 and [behavior record](../09-reviews/2026-09-01-m5-2-real-codex-event-pump-behavior.md).
 
 The sequencing decision is now explicit. The existing bounded Git worktrees and
-child verifier are integrated in #133; deterministic positive and wrong-finding
-negative cases pass. The public demo adds a modeled manual-action baseline and
-active-receiver checkpoint negative. Next, retain one network-valid real Codex
-traversal, run the measured manual arm, complete the M5.3 matrix, and observe
-three external operators. OS-kill work beyond the required restart/replay case,
-heartbeat matrices, a global cross-dispatch chain, Kimi parity, new harnesses,
-and transport/protocol expansion remain frozen. The completed live
-behavioral chain is still `blocked` and `liveProductEvidence=false` because its
-Git effects and verifier custody were simulated; the merged integration is not
-silently combined with that earlier run.
+child verifier are integrated in #133; attempt 16 completed that merged live
+path. The measured operator control then completed with nine actions and exact
+cleanup, while its same-condition ThreadMesh arm failed closed at reviewer
+admission. The deterministic M5.3 negative/restart matrix passes. Next, close
+the reviewer reliability boundary, complete real Codex relevant 3/3 and the
+two-arm baseline, then observe three external operators. OS-kill work beyond
+the required restart/replay case, heartbeat matrices, a global cross-dispatch
+chain, Kimi parity, new harnesses, and transport/protocol expansion remain
+frozen.
 
-The 2026-09-02 mainline check retained a clean deterministic regression:
-385/385 unit and subtests, 55 schema cases, 7 transition cases, 114 Markdown
+The 2026-09-03 mainline check retained a clean deterministic regression:
+388/388 unit and subtests, 55 schema cases, 7 transition cases, 115 Markdown
 files with zero lint issues, and a passing one-command demo. Initial direct
 connectivity failed after system DNS returned unexpected non-provider
 addresses. A process-scoped local proxy then restored certificate-verified

@@ -62,6 +62,7 @@
     "validate:m5-2:live:kimi": "node scripts/run-live-agent-scenario.mjs --mode live --product kimi",
     "validate:m5-3:baseline:fake": "node scripts/run-m5-3-manual-threadmesh-baseline.mjs --mode fake",
     "validate:m5-3:baseline:live:codex": "node scripts/run-m5-3-manual-threadmesh-baseline.mjs --mode live",
+    "validate:m5-3:matrix": "node scripts/run-m5-3-closure-matrix.mjs",
     "validate:cross-harness:fake": "node --test test/proactive-cross-harness.test.mjs",
     "validate:pi-consumer": "node scripts/validate-pi-consumer.mjs",
     "validate:pi:live": "node scripts/validate-pi-live.mjs",
