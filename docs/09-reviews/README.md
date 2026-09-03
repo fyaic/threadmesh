@@ -30,15 +30,17 @@ not count as live-product or independent external-verifier evidence.
 
 ## Live attempt audits
 
+- [M5.3 measured baseline and closure matrix](2026-09-03-m5-3-baseline-and-matrix.md)
 - [Fresh real-effects attempt after proxy recovery](2026-09-02-m5-2-real-effects-live-attempt.md)
 - [2026-09-02 mainline and connectivity checkpoint](2026-09-02-mainline-checkpoint.md)
 - [M5.2 real Codex event-pump attempt audit](2026-09-01-m5-2-real-codex-event-pump-attempt-audit.md)
 - [Real Codex autonomous event-pump behavior](2026-09-01-m5-2-real-codex-event-pump-behavior.md)
 
 Attempt audits preserve preflight, failure, interruption, and cleanup facts.
-The sixth event-pump attempt completed the real autonomous behavioral chain and
-returned the expected blocked product-gate classification; it does not close
-M5.2 while Git effects and verifier custody remain simulated.
+Attempt 16 completed the merged real-effects autonomous chain and returned the
+expected blocked product-gate classification. The later measured control arm
+completed, while its same-condition ThreadMesh arm failed closed at an
+ambiguous reviewer admitted turn; #91 therefore remains open.
 
 ## Real product evidence
 

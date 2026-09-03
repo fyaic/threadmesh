@@ -47,7 +47,10 @@ models the same four-handoff workflow two ways: the manual path requires at
 least one kickoff, four status checks, and four relay actions; the ThreadMesh
 path requires one kickoff and zero later relay or polling actions. Elapsed time
 and model tokens are deliberately marked **not measured** until a network-valid
-live baseline is retained.
+live baseline is retained. A real operator-triggered control arm has now
+measured the nine actions and completed with exact cleanup; its same-condition
+ThreadMesh arm failed closed at an ambiguous reviewer turn, so no speed or
+token-saving claim is made.
 
 It also exercises the safety failure people worry about: when B is already
 running, the completion stays `pending` in a `checkpoint-offer`; B remains
@@ -140,25 +143,27 @@ phase prompts or direct activations; the irrelevant session ran zero turns;
 five of five temporary sessions and all coordinator artifacts were removed.
 
 The completed result is deliberately classified `state=blocked` and
-`liveProductEvidence=false`: that retained run used fixture-owned or simulated
-Git and verification effects. [#133](https://github.com/fyaic/threadmesh/pull/133)
-now binds the existing bounded Git worktrees and process-isolated child
-verifier into that correlated path on `main`. A process-scoped, certificate-
+`liveProductEvidence=false`. [#133](https://github.com/fyaic/threadmesh/pull/133)
+binds bounded Git worktrees and a process-isolated child verifier into the
+correlated path on `main`. A process-scoped, certificate-
 verified local proxy restored normal Codex connectivity on 2026-09-02. The
 merged real-effects rerun now completed the full A → R → same-A → V →
 dependent chain: one kickoff, nine bound native turns, zero later runner prompts
 or direct activations, real bounded Git worktrees, process-isolated verification,
 an irrelevant zero-turn control, and exact cleanup. The gate still reports
 `blocked`/`liveProductEvidence=false` because the operator-supplied executable
-lacks trusted binary provenance and the measured baseline/restart/global-chain
-gates remain open; this is not presented as complete M5.2 acceptance. New
+lacks trusted binary provenance and the complete measured baseline plus
+real-product repetition gates remain open; this is not presented as complete
+M5.2 acceptance. The deterministic M5.3 relevant 3/3, irrelevant,
+stale/unverified, restart/replay, and failure-cleanup matrix passes. New
 harness, transport, and generalized protocol work remains frozen until the
 measured manual/live baseline and three external setup attempts close.
 
 [Read the exact fixture evidence](docs/09-reviews/2026-09-01-m5-2-autonomous-fixture.md) ·
 [Read the real Codex behavior](docs/09-reviews/2026-09-01-m5-2-real-codex-event-pump-behavior.md) ·
 [Read the real-effects checkpoint](docs/09-reviews/2026-09-01-m5-2-real-effects-integration.md) ·
-[Read the M5.2 scenario guide](docs/06-guides/m5-2-live-agent-scenario.md)
+[Read the M5.2 scenario guide](docs/06-guides/m5-2-live-agent-scenario.md) ·
+[Read the measured baseline attempt](docs/09-reviews/2026-09-03-m5-3-baseline-and-matrix.md)
 
 ## Quickstart
 
@@ -344,14 +349,14 @@ peer content or as a production security boundary.
   install Ajv and native `better-sqlite3`.
 - **Reference runtime:** authenticated JSON-RPC + SQLite coordinator for local,
   trusted-process experiments.
-- **Validation:** 385 tests, plus 55 schema cases and 7 transition cases;
+- **Validation:** 388 tests, plus 55 schema cases and 7 transition cases;
   documentation lint passes. These are separate counts, not one combined total.
 - **Default:** proactive coordination remains off unless a maintainer explicitly
   opts into the bounded experimental profile.
-- **Next mainline:** retain one network-valid real Codex traversal of the merged
-  real-effects path, run the measured manual baseline, and observe three
-  independent 15-minute setup attempts. Kimi parity and broader hardening
-  follow only after those product-proof gates.
+- **Next mainline:** make the real reviewer admitted-turn boundary repeatable,
+  complete the same-condition baseline and real Codex relevant 3/3, then
+  observe three independent 15-minute setup attempts. Kimi parity and broader
+  hardening follow only after those product-proof gates.
 
 [Current status](docs/10-planning/project-status.md) ·
 [roadmap](ROADMAP.md) ·

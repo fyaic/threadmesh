@@ -15,7 +15,7 @@ inspector, and an independently repeated implementation/review/fix loop.
 Normative M0 review remains a parallel governance track. Maintainer-authorized
 experiments are explicitly labeled and do not satisfy it.
 
-## Active critical path — 2026-09-02
+## Active critical path — 2026-09-03
 
 M5.2 remains the only implementation critical path. The behavioral question is
 answered by the completed sixth Codex run. The bounded Git effects and existing
@@ -25,8 +25,8 @@ on 2026-09-02. Attempt 16 on `b7a1a1e` completed the merged real-effects
 A → R → same-A → V → dependent path with one kickoff, nine bound native turns,
 zero later runner prompts/direct activations, real Git effects, process-isolated
 verification, an irrelevant zero-turn control, and exact cleanup. The active
-checkpoint is now the measured baseline, M5.3 closure matrix, and external
-first-run evidence—not another traversal rerun.
+checkpoint is now real-product repeatability and external first-run
+evidence—not another protocol or transport expansion.
 
 The older product canary proved real multi-tool turns, same-A reuse, a bounded
 Git chain, controls, and cleanup, but its four prompts were runner-submitted.
@@ -50,12 +50,14 @@ Execute in this order:
 1. Retain attempt 16 as the successful merged real-effects traversal; do not
    rerun it merely to polish counts or prose. Its `blocked` state remains honest
    because trusted binary provenance and later acceptance gates are open.
-2. Run the measured manual/live baseline. The executable demo already
-   reports a nine-action manual lower bound versus one kickoff, but elapsed time
-   and tokens remain explicitly unmeasured.
-3. Complete the M5.3 closure matrix: three fresh relevant runs, irrelevant,
-   stale/unverified, restart/replay, and exact failure cleanup. Close #91 only
-   after that canonical checklist and the measured baseline pass.
+2. Retain the 2026-09-03 operator-triggered control: nine actions, 1,744,551 ms,
+   zero duplicate delivery/interruption/incorrect unlock, and exact cleanup.
+   Its same-condition ThreadMesh arm failed closed at reviewer admission; do
+   not claim the baseline passed or compare its incomplete elapsed time.
+3. Retain the passing deterministic M5.3 relevant 3/3, irrelevant,
+   stale/unverified, restart/replay, and exact failure-cleanup matrix. The only
+   remaining #91 execution gates are a complete real two-arm baseline and real
+   Codex relevant 3/3.
 4. Observe three independent operators using only the README and 15-minute
    challenge; convert friction into product or documentation fixes.
 5. Use the resulting evidence to prioritize the correlated state vector #135
@@ -71,7 +73,8 @@ and new transport/protocol surface are paused. The evidence walkthrough is
 complete and must now be judged by external first-run attempts. Small PRs
 remain acceptable; scope, not PR size, is the constraint.
 
-The detailed historical gates remain in the
+The [measured baseline record](../09-reviews/2026-09-03-m5-3-baseline-and-matrix.md)
+is the canonical current checkpoint. The detailed historical gates remain in the
 [real Codex scenario plan](m5-2-real-codex-scenario.md). The
 [event-pump attempt audit](../09-reviews/2026-09-01-m5-2-real-codex-event-pump-attempt-audit.md)
 and the [behavior record](../09-reviews/2026-09-01-m5-2-real-codex-event-pump-behavior.md)

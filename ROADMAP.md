@@ -153,10 +153,12 @@ This exposed an execution-order imbalance rather than a change in product
 direction. The behavioral checkpoint is passed. The bounded Git worktrees and
 process-isolated child verifier are now wired into the correlated path by
 [#133](https://github.com/fyaic/threadmesh/pull/133), with deterministic
-positive and wrong-finding negative coverage. A successful live rerun is
-pending after a reproducible local DNS/TLS failure. The public demo now includes
-executable manual-action accounting and an active-receiver checkpoint negative;
-elapsed time and token cost remain unmeasured. New substrate, generalized
+positive and wrong-finding negative coverage. Attempt 16 then completed the
+merged real-effects live path. A measured operator-triggered control completed
+with nine actions and exact cleanup; its same-condition ThreadMesh arm failed
+closed at reviewer admission. The deterministic M5.3 relevant 3/3, irrelevant,
+stale/unverified, restart/replay, and failure-cleanup matrix passes. Product
+token cost remains unavailable. New substrate, generalized
 recovery, cross-harness, transport, and protocol expansion remains frozen. No
 partial integration attempt is promoted to M5.2 evidence.
 
@@ -182,24 +184,26 @@ partial integration attempt is promoted to M5.2 evidence.
     A/R/same-A/V/dependent run with one kickoff, zero runner phase/business
     prompts or direct activations, exact real session/turn/dispatch bindings,
     dependent ordering, an irrelevant zero-turn control, and exact cleanup.
-    Simulated verifier and Git effects remain explicitly labeled.
+    The earlier behavioral run's simulated effects remain explicitly labeled.
   - [x] Reuse the existing bounded Git topology and process-isolated child
     verifier in the correlated event-pump implementation, with exact cleanup
     and no new coordinator or verifier subsystem.
-  - [ ] Retain one successful live Codex traversal of that real-effects path;
-    certificate-verified proxy connectivity is restored, but the latest rerun
-    failed closed at reviewer context reconciliation with complete cleanup.
+  - [x] Retain one successful live Codex traversal of that real-effects path;
+    attempt 16 completed with certificate-verified connectivity and exact
+    cleanup.
   - [x] Add executable manual workflow accounting: one kickoff plus four checks
     plus four relays is a nine-action lower bound, versus one ThreadMesh kickoff.
-    Keep elapsed time and tokens explicitly unmeasured.
+    The real operator-triggered control later measured all nine actions and
+    elapsed time; product tokens remain unavailable.
   - [x] Add the active-receiver negative: a completion remains pending at a
     checkpoint while B stays running, with zero steer, interrupt, or native-turn
     starts.
-  - [ ] M5.2 closure: complete one successful correlated real-effects run and a
-    measured manual/live baseline while keeping raw product data out of public
-    output.
-  - [ ] M5.3: pass three fresh relevant runs plus the manual baseline,
-    irrelevant, stale/unverified, restart, and cleanup matrix.
+  - [ ] M5.2 closure: combine the successful correlated real-effects run with a
+    complete measured two-arm baseline while keeping raw product data out of
+    public output. The control arm passes; the ThreadMesh arm failed closed.
+  - [ ] M5.3: deterministic relevant 3/3, irrelevant, stale/unverified,
+    restart/replay, and cleanup pass. Real Codex relevant 3/3 and the complete
+    live baseline remain open.
 - [ ] Add one bounded, read-only correlated handoff state vector after the
   current live-value gate, without adding a scheduler or transport
   ([#135](https://github.com/fyaic/threadmesh/issues/135)).

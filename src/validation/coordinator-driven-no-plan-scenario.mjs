@@ -78,6 +78,10 @@ export const COORDINATOR_FAILURE_RECONCILIATION_REASONS = Object.freeze([
   "codex-native-turn-started-id-mismatch",
 ]);
 export const COORDINATOR_FAILURE_BOUNDARIES = Object.freeze({
+  codex_app_server_operation_timeout: "native-turn-timeout",
+  threadmesh_live_admitted_turn_tool_missing: "admitted-tools-missing",
+  threadmesh_live_product_tool_correlation_invalid: "tool-correlation",
+  threadmesh_live_product_turn_result_invalid: "turn-result",
   threadmesh_real_effect_review_source_invalid: "review-source",
   threadmesh_real_effect_review_resource_invalid: "review-resource",
   threadmesh_real_effect_review_counterexample_invalid: "review-counterexample",
@@ -611,6 +615,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
   runtime: providedRuntime = null,
   signal = null,
   realEffects = false,
+  coordinationMode = "event-pump",
   sourceRoot = null,
   validatedBaseSha = null,
   temporaryParent = null,
@@ -633,6 +638,7 @@ export async function runCoordinatorDrivenNoPlanScenario({
         typeof providedRuntime?.deleteRole !== "function"
       )) ||
       typeof realEffects !== "boolean" ||
+      !["event-pump", "operator-triggered"].includes(coordinationMode) ||
       (realEffects && (
         !path.isAbsolute(sourceRoot ?? "") ||
         !/^[a-f0-9]{40}$/u.test(validatedBaseSha ?? "") ||
@@ -1813,7 +1819,24 @@ export async function runCoordinatorDrivenNoPlanScenario({
     evidenceRevision = promotedKickoff.evidenceState.recordCount;
     evidenceHead = promotedKickoff.evidenceState.headDigest;
     coordinator.submit(projectLifecycleEventToEnvelope(irrelevantEvent), principal(actors.a));
-    const pumpResult = await pump.runUntilIdle();
+    let pumpResult;
+    if (coordinationMode === "event-pump") {
+      pumpResult = await pump.runUntilIdle();
+    } else {
+      pump.start();
+      while (pump.dispatches < 4) {
+        const step = await pump.drainOnce();
+        if (step.state === "idle" || step.state.startsWith("blocked-")) {
+          throw scenarioError("threadmesh_operator_triggered_baseline_incomplete");
+        }
+      }
+      // The four relevant handoffs have each required an explicit operator
+      // trigger. Only irrelevant durable skips may remain for the bounded pump.
+      pumpResult = await pump.runUntilIdle();
+      if (pumpResult.dispatches !== 4) {
+        throw scenarioError("threadmesh_operator_triggered_baseline_incomplete");
+      }
+    }
     throwIfShutdownRequested(signal);
     if (!rActivation || !sameAActivation || !verifierActivation ||
         !dependentActivation || !finalized || !dependentActivationCommitted) {
@@ -2104,11 +2127,16 @@ export async function runCoordinatorDrivenNoPlanScenario({
       bindingDigest: nativeTurnRecords.find(
         ({ bindingKind }) => bindingKind === "kickoff",
       )?.recordDigest,
-    }, {
+    }, ...(coordinationMode === "event-pump" ? [{
       sequence: 2,
       event: "event-pump-run-until-idle",
       bindingDigest: durableDispatchManifest.manifestDigest,
-    }].map((record) => ({ ...record, recordDigest: sha256Digest(record) }));
+    }] : selectionBindings.filter(({ kind }) => kind === "coordinator-activation")
+      .map((record, index) => ({
+        sequence: index + 2,
+        event: "operator-status-check-and-relay-trigger",
+        bindingDigest: record.recordDigest,
+      })))].map((record) => ({ ...record, recordDigest: sha256Digest(record) }));
     const runnerTraceManifest = {
       recordCount: runnerTraceRecords.length,
       records: runnerTraceRecords,
@@ -2155,11 +2183,13 @@ export async function runCoordinatorDrivenNoPlanScenario({
       durablePerDispatchRecordCount: pumpResult.durablePerDispatchRecordCount,
       eventPumpTerminalState: pumpResult.state,
       eventPumpAwaitingPromotion: pumpResult.awaitingPromotion === true,
-      autonomousEventPump: true,
-      autonomousEventPumpScope: "in-process-functional-fixture",
+      autonomousEventPump: coordinationMode === "event-pump",
+      autonomousEventPumpScope: coordinationMode === "event-pump"
+        ? "in-process-functional-fixture"
+        : "operator-triggered-same-delivery-seam",
       rawPhasePromptsSubmittedByFixtureRunner: 0,
-      humanRelayCount: 0,
-      pollingCount: 0,
+      humanRelayCount: coordinationMode === "event-pump" ? 0 : 4,
+      pollingCount: coordinationMode === "event-pump" ? 0 : 4,
       completedRoles: ["a-kickoff", "r", "same-a", "v", "dependent"],
       pendingRoles: [],
       pendingReason: "OS-kill/long-turn lease heartbeat and a global selection chain remain outside this fixture.",
