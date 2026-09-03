@@ -200,6 +200,36 @@ test("one pump autonomously closes A to R to same-A to V to dependent", async (t
     deleted && absenceVerified));
 });
 
+test("operator-triggered control arm requires one status check and relay per handoff", async (t) => {
+  const artifactsDirectory = fs.mkdtempSync(
+    path.join(os.tmpdir(), "threadmesh-operator-triggered-"),
+  );
+  t.after(() => fs.rmSync(artifactsDirectory, { recursive: true, force: true }));
+
+  const result = await runCoordinatorDrivenNoPlanScenario({
+    artifactsDirectory,
+    coordinationMode: "operator-triggered",
+  });
+
+  assert.equal(result.autonomousEventPump, false);
+  assert.equal(result.autonomousEventPumpScope, "operator-triggered-same-delivery-seam");
+  assert.equal(result.humanRelayCount, 4);
+  assert.equal(result.pollingCount, 4);
+  assert.equal(result.eventPumpDispatches, 4);
+  assert.equal(result.eventPumpSkips, 1);
+  assert.equal(result.irrelevant.turnCount, 0);
+  assert.equal(result.dependent.effectCommittedAfterFinalization, true);
+  assert.equal(result.runnerTraceManifest.recordCount, 5);
+  assert.deepEqual(result.runnerTraceManifest.records.map(({ event }) => event), [
+    "explicit-user-kickoff",
+    "operator-status-check-and-relay-trigger",
+    "operator-status-check-and-relay-trigger",
+    "operator-status-check-and-relay-trigger",
+    "operator-status-check-and-relay-trigger",
+  ]);
+  assert.equal(result.cleanup.complete, true);
+});
+
 test("real-effects path keeps reviewer context blind and binds model finding", async (t) => {
   const artifactsDirectory = fs.mkdtempSync(
     path.join(os.tmpdir(), "threadmesh-real-effects-artifacts-"),
