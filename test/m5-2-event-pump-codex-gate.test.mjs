@@ -439,6 +439,13 @@ test("failure progress projection exposes only bounded SQLite-derived stage data
     },
   };
   assert.deepEqual(projectM52EventPumpFailureProgress(source), source);
+  for (const boundary of [
+    "native-turn-timeout", "admitted-tools-missing", "tool-correlation", "turn-result",
+  ]) {
+    const classified = structuredClone(source);
+    classified.reconciliation.boundary = boundary;
+    assert.deepEqual(projectM52EventPumpFailureProgress(classified), classified);
+  }
 
   for (const mutate of [
     (value) => { value.rawThreadId = "raw-thread-id"; },
