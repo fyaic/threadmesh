@@ -7,6 +7,10 @@ import { fileURLToPath } from "node:url";
 
 import { sha256Digest } from "../src/canonical-json.mjs";
 import { CodexLiveAgentRuntime } from "../src/validation/live-agent-scenario.mjs";
+import {
+  projectM52EventPumpFailureCleanup,
+  projectM52EventPumpFailureProgress,
+} from "../src/validation/m5-2-event-pump-codex-gate.mjs";
 import { runM53ManualThreadmeshBaseline } from
   "../src/validation/m5-3-manual-threadmesh-baseline.mjs";
 
@@ -53,6 +57,15 @@ try {
     runtimeFactory: live
       ? () => new CodexLiveAgentRuntime({ command, model: values.model ?? null })
       : null,
+    onArmComplete: async (arm) => {
+      console.error(JSON.stringify({
+        state: "arm-complete",
+        coordinationMode: arm.coordinationMode,
+        elapsedMs: arm.elapsedMs,
+        cleanupComplete: arm.cleanup.complete,
+        recordDigest: sha256Digest(arm),
+      }));
+    },
   });
   console.log(JSON.stringify(result, null, 2));
   process.exitCode = result.state === "passed" ? 0 : 1;
@@ -63,6 +76,24 @@ try {
       (error.message === "live-preflight" ? "threadmesh_m53_baseline_preflight_failed" :
         (error.code ?? "threadmesh_m53_baseline_failed")),
     errorDigest: sha256Digest({ name: error.name, code: error.code ?? null }),
+    ...(typeof error.baselineArm === "string" ? {
+      failedArm: error.baselineArm,
+      elapsedMs: error.baselineElapsedMs,
+    } : {}),
+    ...(error.partialProgress === undefined ? {} : {
+      partialProgress: projectM52EventPumpFailureProgress(error.partialProgress),
+    }),
+    ...(error.cleanup === undefined ? {} : {
+      cleanup: projectM52EventPumpFailureCleanup(error.cleanup),
+    }),
+    ...(error.completedBaselineArm === undefined ? {} : {
+      completedArm: {
+        coordinationMode: error.completedBaselineArm.coordinationMode,
+        elapsedMs: error.completedBaselineArm.elapsedMs,
+        cleanupComplete: error.completedBaselineArm.cleanup.complete,
+        recordDigest: sha256Digest(error.completedBaselineArm),
+      },
+    }),
   }, null, 2));
   process.exitCode = error.message === "usage" || error.message === "live-preflight" ? 3 : 1;
 } finally {

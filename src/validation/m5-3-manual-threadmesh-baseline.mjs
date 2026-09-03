@@ -85,22 +85,28 @@ async function runArm({
   const runtime = runtimeFactory === null ? null : runtimeFactory(coordinationMode);
   const startedAt = new Date().toISOString();
   const start = performance.now();
-  const result = await runCoordinatorDrivenNoPlanScenario({
-    artifactsDirectory,
-    coordinationMode,
-    runtime,
-    realEffects,
-    ...(realEffects ? { sourceRoot, validatedBaseSha, temporaryParent } : {}),
-  });
-  const completedAt = new Date().toISOString();
-  return {
-    result,
-    timing: Object.freeze({
-      startedAt,
-      completedAt,
-      elapsedMs: Math.max(1, Math.round(performance.now() - start)),
-    }),
-  };
+  try {
+    const result = await runCoordinatorDrivenNoPlanScenario({
+      artifactsDirectory,
+      coordinationMode,
+      runtime,
+      realEffects,
+      ...(realEffects ? { sourceRoot, validatedBaseSha, temporaryParent } : {}),
+    });
+    const completedAt = new Date().toISOString();
+    return {
+      result,
+      timing: Object.freeze({
+        startedAt,
+        completedAt,
+        elapsedMs: Math.max(1, Math.round(performance.now() - start)),
+      }),
+    };
+  } catch (error) {
+    error.baselineArm = coordinationMode;
+    error.baselineElapsedMs = Math.max(1, Math.round(performance.now() - start));
+    throw error;
+  }
 }
 
 export async function runM53ManualThreadmeshBaseline({
@@ -112,10 +118,12 @@ export async function runM53ManualThreadmeshBaseline({
   sourceRoot = null,
   validatedBaseSha = null,
   temporaryParent = null,
+  onArmComplete = async () => {},
 } = {}) {
   if (
     typeof artifactsDirectory !== "string" || artifactsDirectory.length < 1 ||
     (runtimeFactory !== null && typeof runtimeFactory !== "function") ||
+    typeof onArmComplete !== "function" ||
     (productProbe !== null && (
       typeof productProbe !== "object" || Array.isArray(productProbe)
     )) ||
@@ -130,14 +138,22 @@ export async function runM53ManualThreadmeshBaseline({
     artifactsDirectory, coordinationMode: "operator-triggered", runtimeFactory,
     realEffects, sourceRoot, validatedBaseSha, temporaryParent,
   });
-  const threadmeshRun = await runArm({
-    artifactsDirectory, coordinationMode: "event-pump", runtimeFactory,
-    realEffects, sourceRoot, validatedBaseSha, temporaryParent,
-  });
   const manual = projectArm(manualRun.result, manualRun.timing, "operator-triggered");
+  await onArmComplete(manual);
+  let threadmeshRun;
+  try {
+    threadmeshRun = await runArm({
+      artifactsDirectory, coordinationMode: "event-pump", runtimeFactory,
+      realEffects, sourceRoot, validatedBaseSha, temporaryParent,
+    });
+  } catch (error) {
+    error.completedBaselineArm = manual;
+    throw error;
+  }
   const threadmesh = projectArm(
     threadmeshRun.result, threadmeshRun.timing, "threadmesh-event-pump",
   );
+  await onArmComplete(threadmesh);
   const comparableArtifacts = sha256Digest(manual.finalArtifactClass) ===
     sha256Digest(threadmesh.finalArtifactClass);
   const comparison = Object.freeze({
