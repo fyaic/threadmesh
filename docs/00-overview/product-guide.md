@@ -94,7 +94,7 @@ safe handling of arbitrary untrusted peer prompts.
 
 ## Fastest way to understand the project
 
-1. Watch the [12-second proactive-session moment](../assets/demo/session-initiative-wow.mp4).
+1. See the [cross-task moment on the README](../../README.md).
 2. Watch the [76-second proof](../assets/demo/threadmesh-proof-walkthrough.mp4).
 3. Run the [attention-router demo](../06-guides/attention-router-demo.md).
 4. Read the [real agent case portfolio](../06-guides/real-world-cases.md).

@@ -9,7 +9,7 @@ session。
 ## 推荐阅读
 
 1. [ThreadMesh 是什么](product-guide.md)
-2. [12 秒跨 session 主动联系演示](../assets/demo/session-initiative-wow.mp4)
+2. [README 跨任务主动联系瞬间](../../README.zh-CN.md)
 3. [76 秒完整证据演示](../assets/demo/threadmesh-proof-walkthrough.mp4)
 4. [真实 Agent 主动协调案例总览](../06-guides/real-world-cases.md)
 5. [人工转发与轮询基线](../06-guides/manual-relay-baseline.md)
