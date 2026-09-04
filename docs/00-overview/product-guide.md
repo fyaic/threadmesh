@@ -94,12 +94,13 @@ safe handling of arbitrary untrusted peer prompts.
 
 ## Fastest way to understand the project
 
-1. Watch the [76-second proof](../assets/demo/threadmesh-proof-walkthrough.mp4).
-2. Run the [attention-router demo](../06-guides/attention-router-demo.md).
-3. Read the [real agent case portfolio](../06-guides/real-world-cases.md).
-4. Compare the [manual baseline](../06-guides/manual-relay-baseline.md).
-5. Check the [harness support matrix](harness-support.md).
-6. Read [context sovereignty](../01-concepts/context-sovereignty.md).
-7. Follow the [30-minute adapter guide](../06-guides/implement-an-adapter.md).
-8. Check [current project status](../10-planning/project-status.md) before using
+1. Watch the [12-second proactive-session moment](../assets/demo/session-initiative-wow.mp4).
+2. Watch the [76-second proof](../assets/demo/threadmesh-proof-walkthrough.mp4).
+3. Run the [attention-router demo](../06-guides/attention-router-demo.md).
+4. Read the [real agent case portfolio](../06-guides/real-world-cases.md).
+5. Compare the [manual baseline](../06-guides/manual-relay-baseline.md).
+6. Check the [harness support matrix](harness-support.md).
+7. Read [context sovereignty](../01-concepts/context-sovereignty.md).
+8. Follow the [30-minute adapter guide](../06-guides/implement-an-adapter.md).
+9. Check [current project status](../10-planning/project-status.md) before using
    experimental adapters.

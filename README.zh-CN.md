@@ -1,5 +1,7 @@
 <p align="center">
-  <img src="docs/assets/threadmesh-hero.svg" width="100%" alt="ThreadMesh — Agent session 之间的选择性主动协作">
+  <a href="docs/assets/demo/session-initiative-wow.mp4">
+    <img src="docs/assets/demo/session-initiative-wow.gif" width="100%" alt="Agent A 发现 Agent B 正好需要自己已验证的结果，主动通过 ThreadMesh 联系 B，而无关的 Agent C 保持静默">
+  </a>
 </p>
 
 <p align="center">
@@ -19,13 +21,21 @@
 
 # ThreadMesh
 
-**不用再人工盯守多个并行 coding agent。**
+**Agent A 发现 Agent B 需要这个结果，并在你动手前主动联系了它。**
 
-ThreadMesh 会把完成、阻塞、评审发现和经过验证的依赖状态，在安全 checkpoint
-路由给正确的 agent session：用户不用复制结果，不用消耗模型 turn 反复查询，也
-不会让一个 session 静默接管另一个 session 的当前工作。
+ThreadMesh 让彼此独立的 agent session 能在有边界的前提下，发现“我的工作现在
+与另一个 session 相关”，并主动采取行动。用户不必再充当并行 Agent 之间的
+剪贴板、轮询器和交通警察。
 
-**Agent 提供主动性，ThreadMesh 提供边界。**
+**Agent 主动判断，接收方保有控制。**
+
+上面的 12 秒场景是基于证据的交互重演，不是真实产品录屏。它组合了已经保留的
+Pi → Kimi、Codex → Kimi 和 Codex 生命周期真实案例行为：自主发现与建议、接收方
+checkpoint admission，以及无关 session 零 turn。
+
+[观看 MP4](docs/assets/demo/session-initiative-wow.mp4) ·
+[查看证据边界](docs/assets/demo/README.md) ·
+[阅读真实案例](docs/06-guides/real-world-cases.md)
 
 > [!IMPORTANT]
 > ThreadMesh 目前是 pre-alpha，主动能力默认关闭。现阶段适合本地、可信进程范围

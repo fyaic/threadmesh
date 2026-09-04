@@ -1,5 +1,7 @@
 <p align="center">
-  <img src="docs/assets/threadmesh-hero.svg" width="100%" alt="ThreadMesh — selective initiative between agent sessions">
+  <a href="docs/assets/demo/session-initiative-wow.mp4">
+    <img src="docs/assets/demo/session-initiative-wow.gif" width="100%" alt="Agent A notices that Agent B needs its verified result and proactively reaches out through ThreadMesh while an unrelated Agent C remains idle">
+  </a>
 </p>
 
 <p align="center">
@@ -19,14 +21,22 @@
 
 # ThreadMesh
 
-**Stop babysitting parallel coding agents.**
+**Agent A noticed Agent B needed the result—and reached out before you did.**
 
-ThreadMesh routes completion, blockers, review findings, and verified
-dependency state to the right agent session at a safe checkpoint—without making
-you copy results, spend model turns polling status, or let one session silently
-take over another.
+ThreadMesh gives separate agent sessions a bounded way to notice when their
+work becomes relevant to each other and act on it. You stop being the clipboard,
+poller, and traffic controller between parallel agents.
 
-**The agent supplies the initiative. ThreadMesh supplies the boundary.**
+**Agent initiative. Receiver control.**
+
+The 12-second scene above is an evidence-backed interaction reenactment, not a
+live product recording. It combines behavior retained from real Pi → Kimi,
+Codex → Kimi, and Codex lifecycle cases: autonomous discovery and suggestion,
+receiver-side checkpoint admission, and zero turns for an irrelevant session.
+
+[Watch the MP4](docs/assets/demo/session-initiative-wow.mp4) ·
+[inspect its evidence boundary](docs/assets/demo/README.md) ·
+[read the real cases](docs/06-guides/real-world-cases.md)
 
 > [!IMPORTANT]
 > ThreadMesh is pre-alpha and disabled-by-default infrastructure. The current
@@ -299,6 +309,10 @@ and known gaps.
 ## How ThreadMesh fits
 
 ThreadMesh complements rather than replaces adjacent agent infrastructure:
+
+<p align="center">
+  <img src="docs/assets/threadmesh-hero.svg" width="100%" alt="ThreadMesh routes a bounded suggestion from Agent A to an accept, defer, or reject checkpoint owned by Agent B">
+</p>
 
 | Layer | Primary job |
 |---|---|
