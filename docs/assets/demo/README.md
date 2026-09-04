@@ -1,5 +1,26 @@
 # Demo asset provenance
 
+`session-initiative-wow.mp4` is a 12-second interaction reenactment designed to
+make the project's core product moment legible at a glance. The GIF is the
+README hero and the PNG captures its central cross-session notification frame.
+
+It is deliberately labeled **evidence-backed interaction reenactment** in every
+frame. It is not a Codex, Pi, or Kimi screen recording and does not reproduce a
+private user task. The sequence combines behavior established by three retained
+records:
+
+- real Pi autonomous discovery and suggestion to a persistent Kimi session;
+- real Codex autonomous discovery and suggestion to Kimi;
+- the real Codex lifecycle chain's one kickoff and irrelevant zero-turn control.
+
+The receiver checkpoint UI is explanatory: it visualizes ThreadMesh's tested
+accept/defer/reject and context-admission semantics rather than claiming that a
+specific harness already renders this exact interface. Rebuild the assets with:
+
+```sh
+npm run demo:initiative-assets
+```
+
 `threadmesh-proof-walkthrough.mp4` is a 76-second evidence walkthrough. The GIF
 is the README preview and the PNG is its cover.
 

@@ -9,16 +9,17 @@ session。
 ## 推荐阅读
 
 1. [ThreadMesh 是什么](product-guide.md)
-2. [76 秒证据演示](../assets/demo/threadmesh-proof-walkthrough.mp4)
-3. [真实 Agent 主动协调案例总览](../06-guides/real-world-cases.md)
-4. [人工转发与轮询基线](../06-guides/manual-relay-baseline.md)
-5. [活跃 session 不打断案例](../06-guides/non-interrupting-handoff.md)
-6. [Harness 支持与证据矩阵](../00-overview/harness-support.md)
-7. [愿景](vision.md)
-8. [安全模型](safety-model.md)
-9. [Codex 主动跨任务协调调研摘要](research-summary.md)
-10. [当前项目状态](../10-planning/project-status.md)
-11. [英文文档总览](../README.md)
+2. [12 秒跨 session 主动联系演示](../assets/demo/session-initiative-wow.mp4)
+3. [76 秒完整证据演示](../assets/demo/threadmesh-proof-walkthrough.mp4)
+4. [真实 Agent 主动协调案例总览](../06-guides/real-world-cases.md)
+5. [人工转发与轮询基线](../06-guides/manual-relay-baseline.md)
+6. [活跃 session 不打断案例](../06-guides/non-interrupting-handoff.md)
+7. [Harness 支持与证据矩阵](../00-overview/harness-support.md)
+8. [愿景](vision.md)
+9. [安全模型](safety-model.md)
+10. [Codex 主动跨任务协调调研摘要](research-summary.md)
+11. [当前项目状态](../10-planning/project-status.md)
+12. [英文文档总览](../README.md)
 
 ## 一句话理解
 
