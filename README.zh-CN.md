@@ -1,6 +1,6 @@
 <p align="center">
-  <a href="docs/06-guides/real-world-cases.md">
-    <img src="docs/assets/threadmesh-cross-task-moment.png" width="100%" alt="原生 Agent 对话中出现由 ChatGPT 从另一项任务发送的消息——这正是 ThreadMesh 想要抽离的跨 session 主动性瞬间">
+  <a href="docs/assets/threadmesh-cross-task-demo.mp4">
+    <img src="docs/assets/threadmesh-cross-task-demo.gif" width="100%" alt="ThreadMesh 动态演示：两个独立 Agent session 中，A 完成上游工作、发现 B 正好需要结果并主动联系，镜头随后放大原生的从另一项任务发送来源标记">
   </a>
 </p>
 
@@ -29,10 +29,11 @@ ThreadMesh 让彼此独立的 agent session 能在有边界的前提下，发现
 
 **Agent 主动判断，接收方保有控制。**
 
-上面的画面是对启发本项目的 Codex 原生瞬间所做的编辑性重现：一条消息明确显示
+上面的动画是对启发本项目的 Codex 原生瞬间所做的编辑性重现：一条消息明确显示
 为**从另一项任务发送**。其中没有保留私人任务内容；这张图也不冒充实时录屏或
 独立证据。真实证据来自已经保留的 Pi、Codex 与 Kimi 案例。
 
+[观看 MP4](docs/assets/threadmesh-cross-task-demo.mp4) ·
 [查看素材边界](docs/assets/README.md) ·
 [阅读真实案例](docs/06-guides/real-world-cases.md)
 
