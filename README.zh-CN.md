@@ -23,6 +23,16 @@
   <a href="README.md">English</a>
 </p>
 
+<p align="center">
+  <a href="docs/06-guides/real-world-cases.md">
+    <img src="docs/assets/threadmesh-session-initiative.jpg" width="100%" alt="Agent A 主动把来自另一任务的有边界建议发送给 Agent B；Agent B 可以接受、延迟或拒绝，无关 session 保持静默">
+  </a>
+</p>
+
+<p align="center">
+  <sub><strong>A 决定何时主动联系。</strong>B 决定是否接纳。无关任务保持安静。</sub>
+</p>
+
 ThreadMesh 是一个面向 Agent harness 的可移植协调层。它让一个 session 能在授权
 范围内发现相关工作，并向另一个 session 建议上下文；接收方仍然决定是否以及何时
 把这些上下文加入自己的模型历史。
@@ -43,20 +53,6 @@ ThreadMesh 是一个面向 Agent harness 的可移植协调层。它让一个 se
 | 用户复制结果、找到 B、重新解释上下文 | A 发送一次有类型、有时效的建议 |
 | 用户猜测是否应该打断 B | B 在 checkpoint 接受、延迟或拒绝 |
 | 无关 session 很容易被误触 | 无关 session 保持静默 |
-
-核心路径很简单：
-
-```text
-Agent A 完成工作
-        │
-        ├─ 发现一项已授权、确实相关的依赖
-        │
-        └─ 建议一次 ──> ThreadMesh mailbox ──> Agent B checkpoint
-                                                        │
-                                                接受 / 延迟 / 拒绝
-
-无关的 Agent C：不联系，不启动 turn
-```
 
 这里的“智能”是：工作变得相关时主动开口，不相关时保持安静。ThreadMesh 为这个
 判断提供 policy、来源、mailbox、接收方同意和审计边界。

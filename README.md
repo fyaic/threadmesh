@@ -23,6 +23,16 @@
   <a href="README.zh-CN.md">简体中文</a>
 </p>
 
+<p align="center">
+  <a href="docs/06-guides/real-world-cases.md">
+    <img src="docs/assets/threadmesh-session-initiative.jpg" width="100%" alt="Agent A autonomously sends a bounded suggestion from another task to Agent B; Agent B may accept, defer, or reject it while an unrelated session stays quiet">
+  </a>
+</p>
+
+<p align="center">
+  <sub><strong>A decides to reach out.</strong> B decides whether to admit it. Unrelated work stays quiet.</sub>
+</p>
+
 ThreadMesh is a portable coordination layer for agent harnesses. It gives one
 session a bounded way to discover relevant work and suggest context to another,
 while the receiving session keeps control over whether and when that context is
@@ -46,20 +56,6 @@ Parallel agents still make the user coordinate every handoff.
 | You copy, find B, and explain the context | A sends one typed, expiring suggestion |
 | You decide whether to interrupt B | B accepts, defers, or rejects at a checkpoint |
 | Unrelated sessions are easy to disturb | Irrelevant sessions remain quiet |
-
-The product idea is simple:
-
-```text
-Agent A finishes work
-        │
-        ├─ discovers an authorized, relevant dependency
-        │
-        └─ suggests once ──> ThreadMesh mailbox ──> Agent B checkpoint
-                                                        │
-                                             accept / defer / reject
-
-Unrelated Agent C: no contact, no turn
-```
 
 The intelligence is the decision to speak when the work becomes relevant—and
 to remain silent when it does not. ThreadMesh supplies the policy, provenance,
