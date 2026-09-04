@@ -1,6 +1,6 @@
 <p align="center">
-  <a href="docs/assets/demo/session-initiative-wow.mp4">
-    <img src="docs/assets/demo/session-initiative-wow.gif" width="100%" alt="Agent A 发现 Agent B 正好需要自己已验证的结果，主动通过 ThreadMesh 联系 B，而无关的 Agent C 保持静默">
+  <a href="docs/06-guides/real-world-cases.md">
+    <img src="docs/assets/threadmesh-cross-task-moment.png" width="100%" alt="原生 Agent 对话中出现由 ChatGPT 从另一项任务发送的消息——这正是 ThreadMesh 想要抽离的跨 session 主动性瞬间">
   </a>
 </p>
 
@@ -29,12 +29,11 @@ ThreadMesh 让彼此独立的 agent session 能在有边界的前提下，发现
 
 **Agent 主动判断，接收方保有控制。**
 
-上面的 12 秒场景是基于证据的交互重演，不是真实产品录屏。它组合了已经保留的
-Pi → Kimi、Codex → Kimi 和 Codex 生命周期真实案例行为：自主发现与建议、接收方
-checkpoint admission，以及无关 session 零 turn。
+上面的画面是对启发本项目的 Codex 原生瞬间所做的编辑性重现：一条消息明确显示
+为**从另一项任务发送**。其中没有保留私人任务内容；这张图也不冒充实时录屏或
+独立证据。真实证据来自已经保留的 Pi、Codex 与 Kimi 案例。
 
-[观看 MP4](docs/assets/demo/session-initiative-wow.mp4) ·
-[查看证据边界](docs/assets/demo/README.md) ·
+[查看素材边界](docs/assets/README.md) ·
 [阅读真实案例](docs/06-guides/real-world-cases.md)
 
 > [!IMPORTANT]

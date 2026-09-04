@@ -1,6 +1,6 @@
 <p align="center">
-  <a href="docs/assets/demo/session-initiative-wow.mp4">
-    <img src="docs/assets/demo/session-initiative-wow.gif" width="100%" alt="Agent A notices that Agent B needs its verified result and proactively reaches out through ThreadMesh while an unrelated Agent C remains idle">
+  <a href="docs/06-guides/real-world-cases.md">
+    <img src="docs/assets/threadmesh-cross-task-moment.png" width="100%" alt="A native agent conversation shows that ChatGPT sent a message from another task—the cross-session initiative moment that inspired ThreadMesh">
   </a>
 </p>
 
@@ -29,13 +29,12 @@ poller, and traffic controller between parallel agents.
 
 **Agent initiative. Receiver control.**
 
-The 12-second scene above is an evidence-backed interaction reenactment, not a
-live product recording. It combines behavior retained from real Pi → Kimi,
-Codex → Kimi, and Codex lifecycle cases: autonomous discovery and suggestion,
-receiver-side checkpoint admission, and zero turns for an irrelevant session.
+The scene above is an editorial recreation of the native Codex moment that
+inspired this project: a message visibly arriving **from another task**. Private
+task content was removed; the image is not presented as a live recording or as
+proof by itself. The evidence lives in the retained Pi, Codex, and Kimi cases.
 
-[Watch the MP4](docs/assets/demo/session-initiative-wow.mp4) ·
-[inspect its evidence boundary](docs/assets/demo/README.md) ·
+[Inspect the asset boundary](docs/assets/README.md) ·
 [read the real cases](docs/06-guides/real-world-cases.md)
 
 > [!IMPORTANT]
