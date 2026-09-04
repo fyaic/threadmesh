@@ -1,7 +1,11 @@
+<h1 align="center">ThreadMesh</h1>
+
 <p align="center">
-  <a href="docs/assets/threadmesh-cross-task-demo.mp4">
-    <img src="docs/assets/threadmesh-cross-task-demo.gif" width="100%" alt="ThreadMesh 动态演示：两个独立 Agent session 中，A 完成上游工作、发现 B 正好需要结果并主动联系，镜头随后放大原生的从另一项任务发送来源标记">
-  </a>
+  <strong>让彼此独立的 Agent session 产生有选择、有边界的主动协作。</strong>
+</p>
+
+<p align="center">
+  Agent A 发现 Agent B 正好需要自己的结果，并在用户充当消息中转站之前主动联系它。
 </p>
 
 <p align="center">
@@ -19,93 +23,47 @@
   <a href="README.md">English</a>
 </p>
 
-# ThreadMesh
+ThreadMesh 是一个面向 Agent harness 的可移植协调层。它让一个 session 能在授权
+范围内发现相关工作，并向另一个 session 建议上下文；接收方仍然决定是否以及何时
+把这些上下文加入自己的模型历史。
 
-**Agent A 发现 Agent B 需要这个结果，并在你动手前主动联系了它。**
+它不是共享记忆、工作流引擎，也不允许一个 Agent 接管另一个任务。
 
-ThreadMesh 让彼此独立的 agent session 能在有边界的前提下，发现“我的工作现在
-与另一个 session 相关”，并主动采取行动。用户不必再充当并行 Agent 之间的
-剪贴板、轮询器和交通警察。
+> [!WARNING]
+> ThreadMesh 目前是 pre-alpha，主动能力默认关闭。仅适合本地可信进程实验，不能
+> 作为生产授权、多租户隔离或恶意 peer prompt 的安全边界。
 
-**Agent 主动判断，接收方保有控制。**
+## 为什么需要 ThreadMesh
 
-上面的动画是对启发本项目的 Codex 原生瞬间所做的编辑性重现：一条消息明确显示
-为**从另一项任务发送**。其中没有保留私人任务内容；这张图也不冒充实时录屏或
-独立证据。真实证据来自已经保留的 Pi、Codex 与 Kimi 案例。
+多个 Agent 并行工作时，用户仍然需要人工协调每一次交接。
 
-[观看 MP4](docs/assets/threadmesh-cross-task-demo.mp4) ·
-[查看素材边界](docs/assets/README.md) ·
-[阅读真实案例](docs/06-guides/real-world-cases.md)
+| 没有 ThreadMesh | 使用 ThreadMesh |
+|---|---|
+| 用户发现 A 的结果正好是 B 缺少的输入 | A 发现 B 声明的相关依赖 |
+| 用户复制结果、找到 B、重新解释上下文 | A 发送一次有类型、有时效的建议 |
+| 用户猜测是否应该打断 B | B 在 checkpoint 接受、延迟或拒绝 |
+| 无关 session 很容易被误触 | 无关 session 保持静默 |
 
-> [!IMPORTANT]
-> ThreadMesh 目前是 pre-alpha，主动能力默认关闭。现阶段适合本地、可信进程范围
-> 的实验，不应作为生产级授权、多租户隔离或处理恶意 peer prompt 的安全边界。
+核心路径很简单：
 
-## 76 秒证据演示
+```text
+Agent A 完成工作
+        │
+        ├─ 发现一项已授权、确实相关的依赖
+        │
+        └─ 建议一次 ──> ThreadMesh mailbox ──> Agent B checkpoint
+                                                        │
+                                                接受 / 延迟 / 拒绝
 
-<p align="center">
-  <a href="docs/assets/demo/threadmesh-proof-walkthrough.mp4">
-    <img src="docs/assets/demo/threadmesh-proof-walkthrough.gif" width="100%" alt="ThreadMesh 证据演示：一次启动、零人工转发和轮询、活跃接收方 checkpoint、选择性注意力与验证后依赖解锁">
-  </a>
-</p>
+无关的 Agent C：不联系，不启动 turn
+```
 
-这个演示由一次新鲜的可执行 demo 和已经保留的真实 Codex 证据生成，不冒充实时
-录屏。对于同一个四次交接工作流，人工路径的最低成本是 1 次启动、4 次状态查询、
-4 次复制转发，共至少 9 次用户操作；ThreadMesh 路径是 1 次启动，后续 0 次转发、
-0 次轮询。耗时和 token 尚未实测，必须等网络正常的真实基线，文档不会虚构数字。
-
-演示还覆盖最重要的安全负例：B 正在运行时，完成事件只会以
-`checkpoint-offer` 留在 mailbox，decision 保持 `pending`；B 仍是 `running`，
-不会触发 steer、interrupt 或新的 native turn。
-
-[观看 MP4](docs/assets/demo/threadmesh-proof-walkthrough.mp4) ·
-[查看演示资产证据边界](docs/assets/demo/README.md) ·
-[亲自运行](docs/06-guides/attention-router-demo.md)
-
-## 为什么需要它
-
-当多个 Agent 并行工作时，用户往往被迫承担三份额外工作：
-
-- 当“剪贴板”：发现 A 的结果正好是 B 缺少的输入，再复制、查找、解释；
-- 当“轮询器”：不断询问评审、验证或依赖是否完成，即使状态没变化也消耗额度；
-- 当“交通警察”：在不了解 B 当前工作的情况下决定排队、唤醒、转向还是打断。
-
-ThreadMesh 把这个过程抽象成一项可移植能力：
-
-1. host 为精确的任务实例建立有方向的授权关系；
-2. B 只发布关系范围内的最小摘要，而不是完整私有历史；
-3. A 查看摘要后，**自主判断**这次是否值得联系；
-4. A 最多发送一条带来源、理由和时效的 `suggest`；
-5. B 的 harness 在 checkpoint 接受、拒绝或延迟，再决定是否进入模型上下文；
-6. 完整的决策、投递与清理链路可审计。
-
-这里的“智能”不只是 Agent 会发消息。传输能力正在被 harness 原生 API、ACP 和
-A2A 普及；ThreadMesh 关注的是**有选择的主动性**：依赖确实存在时主动联系，
-无关时保持安静，验证后才解锁下游，并尊重接收 session 的自主权。
-
-## 已验证的主动性效果
-
-真实 Pi 行为验证只给 Agent A 两个有预算的 ThreadMesh 工具，并比较三种条件：
-
-| 条件 | Agent A 的自主选择 | 对 B 的影响 |
-|---|---|---|
-| 存在相关依赖 | 发现一次 → 建议一次 | B 接受并完成 |
-| 任务无关 | 发现一次 → 不发送 | B 没有被激活 |
-| 无相关任务（control） | 不调用 ThreadMesh | 零干扰 |
-
-同一个 relevant 路径随后完成真实跨产品闭环：**Pi `0.84.2` → ThreadMesh →
-Kimi Code `0.38.0`**。Pi 主动选择联系 B，Kimi 保留自己的持久 session 和接收
-边界，coordinator 记录 `context-admitted`，所有临时资源最终清理完成。另一组真实
-**Codex CLI `0.145.0` → Kimi Code `0.38.0`** 案例也出现了相同的
-`发现 → 建议` 自主工具序列。
-
-[查看真实案例总览](docs/06-guides/real-world-cases.md) ·
-[复现 Pi→Kimi 案例](docs/06-guides/pi-to-kimi-demo.md) ·
-[查看有边界的验证记录](docs/09-reviews/2026-08-25-pi-integration-kit-validation.md)
+这里的“智能”是：工作变得相关时主动开口，不相关时保持安静。ThreadMesh 为这个
+判断提供 policy、来源、mailbox、接收方同意和审计边界。
 
 ## 快速开始
 
-### 1. 运行闭环 attention-router 演示
+不消耗模型额度，也不接触现有 Agent session，直接运行确定性闭环演示：
 
 ```sh
 npx --yes --package=github:fyaic/threadmesh threadmesh demo
@@ -120,35 +78,22 @@ npm ci
 npm run demo
 ```
 
-这个确定性案例会创建四个工作流 session，加一个隔离的活跃接收方安全任务，并执行
-“实现 → 评审 → 修复 → 再评审 → 解锁下游任务”的完整链路。输出会分别展示事件、
-路由理由、接收方决定、fixture 签名的验证 disposition、依赖效果与清理状态；它不
-消耗模型额度，也不触碰你的真实 Agent session。
+演示覆盖“实现 → 评审 → 修复 → 验证 → 下游任务”，包括接收方 checkpoint、
+无关路由抑制、验证后依赖解锁、重启恢复和精确清理。
 
-[查看 attention-router 演示指南](docs/06-guides/attention-router-demo.md)
+[演示指南](docs/06-guides/attention-router-demo.md) ·
+[人工对照](docs/06-guides/manual-relay-baseline.md) ·
+[真实 Agent 案例](docs/06-guides/real-world-cases.md)
 
-再运行早期的 control/relevant/irrelevant 模型选择对照：
+## 接入自己的 harness
 
-```sh
-npm run validate:behavior:fake
-```
-
-再运行最小跨 harness 证明：
-
-```sh
-npm run validate:cross-harness:fake
-```
-
-### 2. 接入自己的 harness
-
-SDK 尚未发布到 npm registry，请直接从 GitHub 安装 pre-alpha 版本：
+SDK 目前处于 pre-alpha，从 GitHub 安装：
 
 ```sh
 npm install github:fyaic/threadmesh
 ```
 
-把 SDK 连接到已认证的 ThreadMesh JSON-RPC transport，并为每个模型 turn 创建一
-个主动工具 bridge：
+为每个模型 turn 提供受预算约束的发现与建议 bridge：
 
 ```js
 import {
@@ -158,14 +103,7 @@ import {
 
 const client = createThreadMeshClient({
   authorization: `Bearer ${process.env.THREADMESH_TOKEN}`,
-  send: async (request, { authorization }) => {
-    const response = await fetch(process.env.THREADMESH_URL, {
-      method: "POST",
-      headers: { authorization, "content-type": "application/json" },
-      body: JSON.stringify(request),
-    });
-    return response.json();
-  },
+  send: authenticatedJsonRpc,
 });
 
 const bridge = createProactiveToolBridge({
@@ -180,57 +118,80 @@ await harness.runModelTurn({
 });
 ```
 
-关系集合由 host 而不是模型决定。模型必须先发现才能发送；默认每个 turn 只允许
-一次查询和一次建议；接收方 harness 仍然掌握 context admission。
+关系集合由 host 而不是模型决定。模型必须先发现才能发送，transport 调用前会保留
+预算，接收方始终掌握 context admission。
 
 [30 分钟接入指南](docs/06-guides/implement-an-adapter.md) ·
 [完整 sender/receiver 示例](examples/proactive-tool-bridge.mjs)
 
-## 有什么能力
+## 已验证的主动性
+
+公开验证明确区分相关、无关和 control 条件。
+
+| 条件 | Agent A 的选择 | 对 B 的影响 |
+|---|---|---|
+| 存在相关依赖 | 发现一次 → 建议一次 | B 接受并完成 |
+| 任务无关 | 发现一次 → 保持安静 | B 没有被激活 |
+| 没有相关任务 | 不调用 ThreadMesh | 零干扰 |
+
+当前真实模型案例包括：
+
+- **Pi `0.84.2` → Kimi Code `0.38.0`：**相关时联系、无关时安静、上下文
+  admission 和精确清理；
+- **Codex CLI `0.145.0` → Kimi Code `0.38.0`：**跨产品自主选择
+  `discover → suggest`；
+- **Codex 生命周期链：**一次 kickoff 推动实现、评审、修复、验证和下游角色，
+  无关 session 为零 turn；完整生产证据门仍未关闭。
+
+[真实案例总览](docs/06-guides/real-world-cases.md) ·
+[Pi 验证记录](docs/09-reviews/2026-08-25-pi-integration-kit-validation.md) ·
+[Codex-to-Kimi 记录](docs/09-reviews/2026-08-25-codex-to-kimi-proactive.md)
+
+## 能力
 
 | 能力 | 当前实现 |
 |---|---|
 | 关系范围发现 | 只读取 host 授权关系中的最小任务摘要 |
 | 有预算的主动建议 | 两个模型工具，每 turn 限制发现和发送次数 |
-| 接收方主权 | mailbox checkpoint，明确接受、拒绝或延迟 |
+| 接收方主权 | mailbox checkpoint，明确接受、延迟或拒绝 |
 | 时效与防重放 | 精确任务实例、过期、revision、幂等和 claim 检查 |
-| 来源与审计 | 记录 sender、关系、理由、处置、admission 和清理证据 |
-| Harness 可移植性 | transport-neutral SDK，以及 ACP/App Server/subprocess 实验 adapter |
-| 失败关闭 | 不把不支持的 `steer`/`interrupt` 冒充成成功 |
+| 来源与审计 | sender、关系、理由、处置、admission 和清理记录 |
+| Harness 可移植性 | transport-neutral SDK 与 App Server、ACP、subprocess adapter |
+| 失败关闭 | 不把不支持的控制操作冒充成成功 |
 
-协议草案区分 `notify`、`suggest`、`steer`、`interrupt` 四类意图；目前真实产品
-实验只启用有边界的 `suggest`。
+真实产品实验目前只启用有边界的 `suggest`。`steer` 和 `interrupt` 仍然需要更严格
+的权限门。
 
-## 已接入与可接入的 Agent harness
+## Harness 支持
 
-| Harness / 接入方式 | 已验证角色 | 证据级别 |
+| Harness / 接入方式 | 已验证角色 | 证据 |
 |---|---|---|
 | Pi `0.84.2` extension | 通过公开 SDK 主动发送 | 真实模型通过 |
 | Codex CLI `0.145.0` App Server | 主动 sender 与 receiver | 真实模型通过 |
 | Kimi Code `0.38.0` ACP | 持久接收 session | 真实模型通过 |
-| Gemini CLI `0.56.0` headless | subprocess receiver adapter | 确定性 + 无模型预检；真实模型未运行 |
-| 自研 JavaScript harness | cooperative loop / native tool bridge | 打包消费与 conformance 通过 |
-| 通用 ACP Agent | 持久 session receiver | 确定性 conformance；Kimi 是真实 ACP 证明 |
+| Gemini CLI `0.56.0` headless | subprocess receiver adapter | 确定性预检；真实模型待运行 |
+| 自研 JavaScript harness | cooperative loop 与 native tool bridge | consumer 与 conformance 通过 |
+| 通用 ACP Agent | 持久 session receiver | conformance 通过；Kimi 是真实 ACP 证明 |
 
-Claude Code、LangGraph、CrewAI、OpenAI Agents SDK 等可以成为 adapter 目标，
-但在公开版本范围、capability、conformance 和已知缺口前，项目不会声称已验证兼容。
+其他 harness 只有在发布版本范围、capability 文档、conformance 结果和已知缺口后，
+才会被标记为已验证集成。
 
 [完整兼容矩阵](docs/00-overview/harness-support.md) ·
-[实现 adapter](docs/06-guides/implement-an-adapter.md)
+[Adapter contract](docs/05-adapters/adapter-contract.md)
 
 ## 安全边界
 
-ThreadMesh 的核心规则是：**每个任务拥有自己的目标和模型可见历史。**
+每个任务拥有自己的目标和模型可见历史。
 
 - 不搜索全局 session，不共享完整 transcript；
 - 精确、有方向、最小权限的关系授权；
 - peer 内容先进入 mailbox，再由 receiver 判断；
-- consequential request 必须检查时效、任务实例和目标版本；
-- 保留 peer 来源与理由，不伪装成用户指令；
-- capability 不满足时失败关闭，完整因果链可审计。
+- consequential request 必须检查时效和目标版本；
+- 保留 peer 来源，不伪装成用户指令；
+- capability 不满足时失败关闭，保留完整因果审计。
 
-当前 adapter 仍通过普通 prompt surface 投递已接受的 peer context，也不提供 OS
-sandbox。不要用它处理任意恶意 peer 内容或充当生产安全边界。
+当前 adapter 不提供 OS sandbox。不要用它处理任意恶意 peer 内容或充当生产安全
+边界。
 
 [上下文主权](docs/01-concepts/context-sovereignty.md) ·
 [权限模型](docs/04-safety/permission-model.md) ·
@@ -239,29 +200,43 @@ sandbox。不要用它处理任意恶意 peer 内容或充当生产安全边界�
 
 ## 项目状态
 
-- 协议：可执行 `0.0-draft`，仍可能调整。
-- 包：`@fyaic/threadmesh@0.1.0-alpha.0`，可从 GitHub 安装；根 export 是精简 SDK，CLI 与显式 runtime subpath 会安装 Ajv 和原生 `better-sqlite3`。
-- 参考 runtime：authenticated JSON-RPC + SQLite coordinator，面向本地可信进程实验。
-- 验证：384 项测试，加 55 个 schema case、7 个状态转换 case、文档检查；这些计数分别报告。
-- 默认策略：除非 maintainer 明确选择有边界实验 profile，否则主动协调保持关闭。
-- 当前边界：第六次真实 Codex event-pump 已在一次 kickoff 后通过 9 个 native turn 完成 A→R→同一个 A→V→dependent，后续 runner phase prompt/direct activation 为 0，无关 session turn 为 0，清理 5/5；该次运行的 Git/verifier effect 是模拟的。真实 Git worktree 与 child verifier 已由 #133 合入同一路径。2026-09-02 的进程级本地代理恢复了证书校验与 WebSocket 连接；新鲜 live 重跑到达真实 A 发布和 reviewer admitted turn，随后在 ambiguous context reconciliation 处保守失败，清理仍为 5/5。
-- 下一主线：修复或明确该 reconciliation blocker 后保留一次真实 Codex real-effects 闭环，完成实测人工基线，并观察 3 位外部 operator 的 15 分钟上手过程。在这些产品证据前，继续冻结新 harness、transport 和泛化 protocol 扩展。
+- **协议：**可执行 `0.0-draft`；
+- **Package：**`@fyaic/threadmesh@0.1.0-alpha.0`，可从 GitHub 安装；
+- **Runtime：**面向本地可信进程的 authenticated JSON-RPC + SQLite coordinator；
+- **验证：**388 项测试、55 个 schema case、7 个状态转换 case 和文档检查；
+- **默认：**主动协调保持显式 opt-in；
+- **主线：**先关闭真实产品实测基线和外部用户上手门，再扩展协议或 harness 范围。
 
-[当前状态](docs/10-planning/project-status.md) · [路线图](ROADMAP.md) ·
-[协议草案](spec/README.md) · [验证记录](docs/09-reviews/README.md)
+[当前状态](docs/10-planning/project-status.md) ·
+[路线图](ROADMAP.md) ·
+[验证索引](docs/09-reviews/README.md)
 
-## 文档与社区
+## 文档
 
-- [中文文档入口](docs/zh-CN/README.md)
-- [英文文档总览](docs/README.md)
-- [产品说明](docs/00-overview/product-guide.md)
-- [76 秒演示](docs/assets/demo/threadmesh-proof-walkthrough.mp4)
-- [真实 Agent 案例](docs/06-guides/real-world-cases.md)
-- [人工转发与轮询基线](docs/06-guides/manual-relay-baseline.md)
-- [活跃 session 不打断案例](docs/06-guides/non-interrupting-handoff.md)
-- [15 分钟外部上手挑战](docs/06-guides/15-minute-operator-challenge.md)
-- [贡献指南](CONTRIBUTING.md)
-- [GitHub Discussions](https://github.com/fyaic/threadmesh/discussions)
-- [GitHub Issues](https://github.com/fyaic/threadmesh/issues)
+| 目标 | 从这里开始 |
+|---|---|
+| 理解产品 | [产品说明](docs/00-overview/product-guide.md) |
+| 查看真实主动行为 | [真实 Agent 案例](docs/06-guides/real-world-cases.md) |
+| 运行本地证明 | [Attention-router 演示](docs/06-guides/attention-router-demo.md) |
+| 对比人工转发 | [人工基线](docs/06-guides/manual-relay-baseline.md) |
+| 接入 harness | [Adapter 指南](docs/06-guides/implement-an-adapter.md) |
+| 评估安全边界 | [威胁模型](docs/04-safety/threat-model.md) |
+| 参与贡献 | [贡献指南](CONTRIBUTING.md) |
+
+## 非目标
+
+ThreadMesh 不是聊天系统、模型网关、工作流 DAG 引擎、全局 Agent 目录，也不允许
+一个 Agent 控制无关任务。它不会取代 MCP 或 A2A。
+
+## 社区
+
+[Discussions](https://github.com/fyaic/threadmesh/discussions) ·
+[Issues](https://github.com/fyaic/threadmesh/issues) ·
+[贡献指南](CONTRIBUTING.md) ·
+[治理](GOVERNANCE.md) ·
+[支持](SUPPORT.md) ·
+[行为准则](CODE_OF_CONDUCT.md)
+
+## 许可证
 
 ThreadMesh 采用 [Apache License 2.0](LICENSE)。
