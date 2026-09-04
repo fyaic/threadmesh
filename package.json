@@ -43,7 +43,6 @@
   "scripts": {
     "demo": "node bin/threadmesh.mjs demo",
     "demo:assets": "node scripts/build-demo-assets.mjs",
-    "demo:cross-task-assets": "node scripts/build-cross-task-demo.mjs",
     "validate:spec": "node scripts/validate-spec.mjs",
     "lint:docs": "markdownlint-cli2 'README*.md' 'docs/**/*.md' 'spec/**/*.md' '*.md'",
     "test:unit": "node --test test/*.test.mjs",

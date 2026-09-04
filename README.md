@@ -1,7 +1,11 @@
+<h1 align="center">ThreadMesh</h1>
+
 <p align="center">
-  <a href="docs/assets/threadmesh-cross-task-demo.mp4">
-    <img src="docs/assets/threadmesh-cross-task-demo.gif" width="100%" alt="Cinematic ThreadMesh demo: two independent agent sessions, Agent A finishes upstream work, notices Session B needs the result, reaches out, and the camera zooms into the native from-another-task provenance line">
-  </a>
+  <strong>Selective initiative between independent agent sessions.</strong>
+</p>
+
+<p align="center">
+  Let Agent A notice when Agent B needs its work—and reach out before you become the message bus.
 </p>
 
 <p align="center">
@@ -15,169 +19,56 @@
   <a href="#quickstart"><strong>Quickstart</strong></a> ·
   <a href="docs/06-guides/real-world-cases.md">Real agent cases</a> ·
   <a href="docs/00-overview/harness-support.md">Harness support</a> ·
-  <a href="docs/README.md">Documentation</a> ·
+  <a href="docs/README.md">Docs</a> ·
   <a href="README.zh-CN.md">简体中文</a>
 </p>
 
-# ThreadMesh
+ThreadMesh is a portable coordination layer for agent harnesses. It gives one
+session a bounded way to discover relevant work and suggest context to another,
+while the receiving session keeps control over whether and when that context is
+admitted.
 
-**Agent A noticed Agent B needed the result—and reached out before you did.**
+It is not shared memory, a workflow engine, or permission for one agent to take
+over another task.
 
-ThreadMesh gives separate agent sessions a bounded way to notice when their
-work becomes relevant to each other and act on it. You stop being the clipboard,
-poller, and traffic controller between parallel agents.
+> [!WARNING]
+> ThreadMesh is pre-alpha and disabled by default. Use it only for local,
+> trusted-process experiments. It is not a production authorization or
+> multi-tenant security boundary.
 
-**Agent initiative. Receiver control.**
+## Why ThreadMesh
 
-The animation above is an editorial recreation of the native Codex moment that
-inspired this project: a message visibly arriving **from another task**. Private
-task content was removed; the image is not presented as a live recording or as
-proof by itself. The evidence lives in the retained Pi, Codex, and Kimi cases.
+Parallel agents still make the user coordinate every handoff.
 
-[Watch the MP4](docs/assets/threadmesh-cross-task-demo.mp4) ·
-[Inspect the asset boundary](docs/assets/README.md) ·
-[read the real cases](docs/06-guides/real-world-cases.md)
+| Without ThreadMesh | With ThreadMesh |
+|---|---|
+| You notice that A produced something B needs | A discovers B's declared dependency |
+| You copy, find B, and explain the context | A sends one typed, expiring suggestion |
+| You decide whether to interrupt B | B accepts, defers, or rejects at a checkpoint |
+| Unrelated sessions are easy to disturb | Irrelevant sessions remain quiet |
 
-> [!IMPORTANT]
-> ThreadMesh is pre-alpha and disabled-by-default infrastructure. The current
-> release is suitable for local, trusted-process experiments—not production
-> authorization, hostile prompts, or multi-tenant deployment.
+The product idea is simple:
 
-## 76-second proof walkthrough
+```text
+Agent A finishes work
+        │
+        ├─ discovers an authorized, relevant dependency
+        │
+        └─ suggests once ──> ThreadMesh mailbox ──> Agent B checkpoint
+                                                        │
+                                             accept / defer / reject
 
-<p align="center">
-  <a href="docs/assets/demo/threadmesh-proof-walkthrough.mp4">
-    <img src="docs/assets/demo/threadmesh-proof-walkthrough.gif" width="100%" alt="ThreadMesh evidence walkthrough: one kickoff, zero manual relay or polling, active receiver checkpoint, selective attention, and verified dependency unlock">
-  </a>
-</p>
+Unrelated Agent C: no contact, no turn
+```
 
-The walkthrough is generated from a fresh executable demo and retained real
-Codex evidence. It is not presented as a live screen recording. The local demo
-models the same four-handoff workflow two ways: the manual path requires at
-least one kickoff, four status checks, and four relay actions; the ThreadMesh
-path requires one kickoff and zero later relay or polling actions. Elapsed time
-and model tokens are deliberately marked **not measured** until a network-valid
-live baseline is retained. A real operator-triggered control arm has now
-measured the nine actions and completed with exact cleanup; its same-condition
-ThreadMesh arm failed closed at an ambiguous reviewer turn, so no speed or
-token-saving claim is made.
-
-It also exercises the safety failure people worry about: when B is already
-running, the completion stays `pending` in a `checkpoint-offer`; B remains
-`running`, and the demo starts zero steer, interrupt, or native-turn operations.
-
-[Watch the MP4](docs/assets/demo/threadmesh-proof-walkthrough.mp4) ·
-[inspect asset provenance](docs/assets/demo/README.md) ·
-[run the proof yourself](docs/06-guides/attention-router-demo.md)
-
-## Why this matters
-
-Running several agents in parallel often gives the user three extra jobs:
-
-- **clipboard:** notice A has the result B needs, then copy and explain it;
-- **poller:** repeatedly ask whether review, verification, or a dependency is
-  finished, consuming time and model quota even when nothing changed;
-- **traffic controller:** decide whether to queue, wake, steer, or interrupt B
-  without enough visibility into B's current work.
-
-ThreadMesh makes that handoff an explicit, portable capability:
-
-1. the host authorizes a relationship between exact task incarnations;
-2. B publishes a minimal relationship-scoped summary—not its private history;
-3. A may inspect that summary and **autonomously decide** whether to act;
-4. A can send one typed, expiring suggestion with provenance;
-5. B's harness accepts, rejects, or defers it before model-context admission;
-6. the decision and delivery chain stays auditable.
-
-The intelligence is not “agents can send messages.” Transport is increasingly
-available from harness-native APIs, ACP, and A2A. ThreadMesh focuses on
-**selective initiative**: speak when a dependency is real, remain quiet when it
-is not, verify before unlocking downstream work, and preserve the receiver's
-agency.
-
-## What proactive behavior looks like
-
-Our real Pi evaluation gave Agent A only two bounded ThreadMesh tools and tested
-three conditions:
-
-| Condition | What Agent A chose | Receiver effect |
-|---|---|---|
-| Relevant dependency | discover once → suggest once | B accepted and completed |
-| Unrelated task | discover once → stay silent | B was not activated |
-| No related task (control) | use no ThreadMesh tool | zero interference |
-
-The same relevant path then crossed products: **Pi `0.84.2` → ThreadMesh →
-Kimi Code `0.38.0`**. Pi chose to contact B; Kimi retained its own persistent
-session and admission boundary; the coordinator recorded `context-admitted`;
-and every temporary resource was deleted. A separate real **Codex CLI `0.145.0`
-→ Kimi Code `0.38.0`** case produced the same autonomous `discover → suggest`
-sequence.
-
-[Read the case portfolio](docs/06-guides/real-world-cases.md) ·
-[Reproduce the Pi-to-Kimi path](docs/06-guides/pi-to-kimi-demo.md) ·
-[Inspect the bounded evidence](docs/09-reviews/2026-08-25-pi-integration-kit-validation.md)
-
-## Autonomous lifecycle fixture
-
-The current deterministic fixture demonstrates a deeper form of session
-initiative than a one-message handoff. The user starts A once; after that,
-durable lifecycle attention drives the bounded chain
-`A → R → same-A → V → dependent`. The fixture runner dispatches no phase,
-submits no phase prompt, relays no message manually, and polls no session.
-ThreadMesh routes only exact next events, while each receiving session selects
-its registered decision and business tools. After the one kickoff, the pump
-starts eight protected native turns: a decision and admitted business turn for
-each of R, same-A, V, and dependent. An authorized but irrelevant session
-receives no claim and runs no turn.
-
-This matters because useful work can continue across session boundaries without
-the user noticing and copying every intermediate dependency. It is evidence of
-bounded, policy-mediated session initiative—not a claim of emergent intelligence.
-The dependent turn starts only after the accepted event and fixture-trusted
-finalization are durable; an injected finalization failure starts zero dependent
-turns. Every created role, journal, SQLite file, and private run directory is
-then checked and removed exactly.
-
-The evidence boundary is intentionally narrow. The result reports
-`liveProductEvidence=false`, `deterministicPolicyOracle=true`,
-`externalIndependentVerifier=false`, and a fixture-owned ephemeral signer.
-As of [#122](https://github.com/fyaic/threadmesh/pull/122), selection and
-publication recovery are durable per dispatch, with leased and fenced
-publication. There is still no global cross-dispatch selection chain:
-`selectionChainValid=null`.
-
-The sixth real Codex event-pump attempt completed that same autonomous chain.
-After one kickoff, nine real bound native turns carried the work through R,
-the original A session, V, and the dependent. The runner supplied zero later
-phase prompts or direct activations; the irrelevant session ran zero turns;
-five of five temporary sessions and all coordinator artifacts were removed.
-
-The completed result is deliberately classified `state=blocked` and
-`liveProductEvidence=false`. [#133](https://github.com/fyaic/threadmesh/pull/133)
-binds bounded Git worktrees and a process-isolated child verifier into the
-correlated path on `main`. A process-scoped, certificate-
-verified local proxy restored normal Codex connectivity on 2026-09-02. The
-merged real-effects rerun now completed the full A → R → same-A → V →
-dependent chain: one kickoff, nine bound native turns, zero later runner prompts
-or direct activations, real bounded Git worktrees, process-isolated verification,
-an irrelevant zero-turn control, and exact cleanup. The gate still reports
-`blocked`/`liveProductEvidence=false` because the operator-supplied executable
-lacks trusted binary provenance and the complete measured baseline plus
-real-product repetition gates remain open; this is not presented as complete
-M5.2 acceptance. The deterministic M5.3 relevant 3/3, irrelevant,
-stale/unverified, restart/replay, and failure-cleanup matrix passes. New
-harness, transport, and generalized protocol work remains frozen until the
-measured manual/live baseline and three external setup attempts close.
-
-[Read the exact fixture evidence](docs/09-reviews/2026-09-01-m5-2-autonomous-fixture.md) ·
-[Read the real Codex behavior](docs/09-reviews/2026-09-01-m5-2-real-codex-event-pump-behavior.md) ·
-[Read the real-effects checkpoint](docs/09-reviews/2026-09-01-m5-2-real-effects-integration.md) ·
-[Read the M5.2 scenario guide](docs/06-guides/m5-2-live-agent-scenario.md) ·
-[Read the measured baseline attempt](docs/09-reviews/2026-09-03-m5-3-baseline-and-matrix.md)
+The intelligence is the decision to speak when the work becomes relevant—and
+to remain silent when it does not. ThreadMesh supplies the policy, provenance,
+mailbox, consent, and audit boundary around that decision.
 
 ## Quickstart
 
-### 1. Run the closed-loop attention-router demo
+Run the deterministic closed-loop demo without model quota or access to your
+existing agent sessions:
 
 ```sh
 npx --yes --package=github:fyaic/threadmesh threadmesh demo
@@ -192,36 +83,23 @@ npm ci
 npm run demo
 ```
 
-This deterministic demo creates four workflow sessions plus one isolated
-active-receiver safety task. It runs an implementation → review → fix → review
-→ dependent-task sequence and exposes the event, routing reason, receiver
-decision, fixture-signed verified disposition, dependency effect, and cleanup
-state without spending model quota or touching your agent sessions.
+The demo exercises implementation → review → fix → verification → dependent
+work, including receiver checkpoints, irrelevant-route suppression, verified
+dependency unlock, restart-safe state, and exact cleanup.
 
-[Read the attention-router demo guide](docs/06-guides/attention-router-demo.md)
+[Demo guide](docs/06-guides/attention-router-demo.md) ·
+[manual comparison](docs/06-guides/manual-relay-baseline.md) ·
+[real agent cases](docs/06-guides/real-world-cases.md)
 
-Run the earlier model-selection control/relevant/irrelevant comparison next:
+## Add it to a harness
 
-```sh
-npm run validate:behavior:fake
-```
-
-Run the smallest cross-harness proof next:
-
-```sh
-npm run validate:cross-harness:fake
-```
-
-### 2. Add proactive tools to a harness
-
-The package is not on npm yet. Install the pre-alpha SDK directly from GitHub:
+The SDK is pre-alpha and currently installed from GitHub:
 
 ```sh
 npm install github:fyaic/threadmesh
 ```
 
-Connect it to an authenticated ThreadMesh JSON-RPC transport, then create one
-bridge per native model turn:
+Give each model turn a bounded discovery-and-suggestion bridge:
 
 ```js
 import {
@@ -231,14 +109,7 @@ import {
 
 const client = createThreadMeshClient({
   authorization: `Bearer ${process.env.THREADMESH_TOKEN}`,
-  send: async (request, { authorization }) => {
-    const response = await fetch(process.env.THREADMESH_URL, {
-      method: "POST",
-      headers: { authorization, "content-type": "application/json" },
-      body: JSON.stringify(request),
-    });
-    return response.json();
-  },
+  send: authenticatedJsonRpc,
 });
 
 const bridge = createProactiveToolBridge({
@@ -253,102 +124,83 @@ await harness.runModelTurn({
 });
 ```
 
-The host—not the model—selects the bounded relationship set. Discovery is
-required before sending; the default budget allows one lookup and one
-suggestion; the receiving harness still controls context admission.
+The host—not the model—defines the relationship set. The model must discover
+before sending, budgets are reserved before transport calls, and the receiver
+retains context-admission control.
 
-[30-minute integration guide](docs/06-guides/implement-an-adapter.md) ·
-[complete sender/receiver example](examples/proactive-tool-bridge.mjs) ·
-[SDK reference by example](examples/minimal-harness.mjs)
+[30-minute adapter guide](docs/06-guides/implement-an-adapter.md) ·
+[complete sender/receiver example](examples/proactive-tool-bridge.mjs)
+
+## Verified behavior
+
+The public evidence separates relevant, irrelevant, and control conditions.
+
+| Case | Sender decision | Receiver outcome |
+|---|---|---|
+| Relevant dependency | discover once → suggest once | B accepts and completes |
+| Unrelated task | discover once → stay silent | B is not activated |
+| No related task | no ThreadMesh call | zero interference |
+
+Real model cases currently include:
+
+- **Pi `0.84.2` → Kimi Code `0.38.0`:** relevant contact, irrelevant silence,
+  context admission, and exact cleanup;
+- **Codex CLI `0.145.0` → Kimi Code `0.38.0`:** autonomous
+  `discover → suggest` across products;
+- **Codex lifecycle chain:** one kickoff advanced bounded implementation,
+  review, fix, verification, and dependent roles while the irrelevant session
+  ran zero turns. The complete production evidence gate remains open.
+
+[Case portfolio](docs/06-guides/real-world-cases.md) ·
+[Pi validation](docs/09-reviews/2026-08-25-pi-integration-kit-validation.md) ·
+[Codex-to-Kimi record](docs/09-reviews/2026-08-25-codex-to-kimi-proactive.md)
 
 ## Capabilities
 
-| Capability | What ThreadMesh provides today |
+| Capability | Current implementation |
 |---|---|
-| Relationship-scoped discovery | Minimal summaries for exact host-authorized task relationships |
+| Relationship-scoped discovery | Minimal summaries from host-authorized relationships |
 | Bounded proactive suggestion | Two model tools with per-turn discovery and send budgets |
-| Receiver sovereignty | Mailbox checkpoint with explicit accept, reject, or defer |
+| Receiver sovereignty | Mailbox checkpoint with accept, defer, or reject |
 | Freshness and replay defense | Exact task incarnation, expiry, revision, idempotency, and claim checks |
-| Provenance and audit | Sender, relationship, reason, disposition, admission, and cleanup evidence |
-| Harness portability | Transport-neutral SDK plus ACP, App Server, and subprocess adapter experiments |
-| Fail-closed negotiation | Unsupported `steer` or `interrupt` behavior is not silently approximated |
+| Provenance and audit | Sender, relationship, reason, disposition, admission, and cleanup records |
+| Harness portability | Transport-neutral SDK plus App Server, ACP, and subprocess adapters |
+| Fail-closed behavior | Unsupported control operations never masquerade as success |
 
-The draft protocol distinguishes four coordination intents:
+Only bounded `suggest` is enabled in real product experiments. `steer` and
+`interrupt` remain protocol-level capabilities with stricter authority gates.
 
-| Intent | Default behavior | Typical use |
+## Harness support
+
+| Harness / integration | Exercised role | Evidence |
 |---|---|---|
-| `notify` | Side-channel information; not active prompt context | Progress or dependency update |
-| `suggest` | Receiver mailbox; explicit checkpoint decision | Peer advice or a missing input |
-| `steer` | May change active direction; requires stronger authority | Parent-to-child correction |
-| `interrupt` | Requests typed cancellation; highest privilege | Safety stop or invalidated work |
-
-Only bounded `suggest` is enabled in the real product experiments.
-
-## Harnesses and agents
-
-ThreadMesh coordinates **tasks**, so the model provider and harness can differ
-on each side.
-
-| Harness / integration | Role exercised | Evidence level |
-|---|---|---|
-| Pi `0.84.2` extension | Real proactive sender through the packaged public SDK | Real model pass |
-| Codex CLI `0.145.0` App Server | Real proactive sender and receiver | Real model pass |
+| Pi `0.84.2` extension | Proactive sender through the public SDK | Real model pass |
+| Codex CLI `0.145.0` App Server | Proactive sender and receiver | Real model pass |
 | Kimi Code `0.38.0` ACP | Persistent receiving session | Real model pass |
-| Gemini CLI `0.56.0` headless | Subprocess receiver adapter | Deterministic + no-model preflight; live model not run |
-| Custom JavaScript harness | Cooperative loop or native tool bridge | Packed consumer + conformance pass |
-| Generic ACP agent | Persistent session receiver | Deterministic conformance; Kimi is the real ACP proof |
+| Gemini CLI `0.56.0` headless | Subprocess receiver adapter | Deterministic preflight; live model pending |
+| Custom JavaScript harness | Cooperative loop and native tool bridge | Consumer and conformance pass |
+| Generic ACP agent | Persistent receiver | Conformance pass; Kimi is the real ACP proof |
 
-Claude Code, LangGraph, CrewAI, OpenAI Agents SDK, and other harnesses are
-plausible adapter targets, but they are **not claimed as validated** until an
-adapter publishes a version range, capability document, conformance result,
-and known gaps.
+Other harnesses are adapter candidates, not claimed integrations, until they
+publish a version range, capability document, conformance result, and known
+gaps.
 
-[Full compatibility matrix](docs/00-overview/harness-support.md) ·
-[Implement an adapter](docs/06-guides/implement-an-adapter.md)
-
-## How ThreadMesh fits
-
-ThreadMesh complements rather than replaces adjacent agent infrastructure:
-
-<p align="center">
-  <img src="docs/assets/threadmesh-hero.svg" width="100%" alt="ThreadMesh routes a bounded suggestion from Agent A to an accept, defer, or reject checkpoint owned by Agent B">
-</p>
-
-| Layer | Primary job |
-|---|---|
-| MCP and native tools | Connect one agent to tools and context |
-| A2A-style transport | Exchange messages between agent endpoints |
-| Workflow / graph runtimes | Schedule known steps and own the execution loop |
-| **ThreadMesh** | Govern proactive contact between separate task contexts |
-
-The reference shape is deliberately small:
-
-```text
-Agent A                    ThreadMesh                     Agent B
-   │ discover authorized task │                              │
-   ├─────────────────────────>│ relationship-scoped summary  │
-   │<─────────────────────────┤                              │
-   │ suggest once             │ policy → mailbox → consent   │
-   ├─────────────────────────>├─────────────────────────────>│
-   │                          │ accepted / rejected / deferred│
-   │<─────────────────────────┴──────────────────────────────┤
-```
+[Compatibility matrix](docs/00-overview/harness-support.md) ·
+[adapter contract](docs/05-adapters/adapter-contract.md)
 
 ## Safety model
 
-ThreadMesh is designed around a simple rule: **a task owns its objective and
-model-visible history**.
+A task owns its objective and model-visible history.
 
 - no global session search or shared transcript;
-- least-authority intent and exact directional grants;
-- mailbox before peer content becomes model-visible;
-- expiry and objective/run freshness for consequential requests;
-- visible source and reason instead of relabeling peer text as user intent;
-- fail-closed capability negotiation and complete causal audit.
+- exact, directional, least-authority relationships;
+- peer content enters a mailbox before model-context admission;
+- expiry and objective freshness for consequential requests;
+- visible peer provenance instead of relabeling content as user intent;
+- fail-closed capability negotiation and causal audit.
 
-Current adapters still deliver accepted peer context through ordinary prompt
-surfaces and do not supply an OS sandbox. Do not use them with arbitrary hostile
-peer content or as a production security boundary.
+Current adapters do not provide an OS sandbox. Do not use them with arbitrary
+hostile peer content or as a production security boundary.
 
 [Context sovereignty](docs/01-concepts/context-sovereignty.md) ·
 [permission model](docs/04-safety/permission-model.md) ·
@@ -357,59 +209,46 @@ peer content or as a production security boundary.
 
 ## Project status
 
-- **Protocol:** executable `0.0-draft`; changes are still expected.
-- **Package:** `@fyaic/threadmesh@0.1.0-alpha.0`, installable from GitHub. The
-  root export is the small harness SDK; explicit runtime subpaths and the CLI
-  install Ajv and native `better-sqlite3`.
-- **Reference runtime:** authenticated JSON-RPC + SQLite coordinator for local,
-  trusted-process experiments.
-- **Validation:** 388 tests, plus 55 schema cases and 7 transition cases;
-  documentation lint passes. These are separate counts, not one combined total.
-- **Default:** proactive coordination remains off unless a maintainer explicitly
-  opts into the bounded experimental profile.
-- **Next mainline:** make the real reviewer admitted-turn boundary repeatable,
-  complete the same-condition baseline and real Codex relevant 3/3, then
-  observe three independent 15-minute setup attempts. Kimi parity and broader
-  hardening follow only after those product-proof gates.
+- **Protocol:** executable `0.0-draft`;
+- **Package:** `@fyaic/threadmesh@0.1.0-alpha.0`, installable from GitHub;
+- **Runtime:** authenticated JSON-RPC and SQLite coordinator for local trusted
+  processes;
+- **Validation:** 388 tests, 55 schema cases, 7 transition cases, and
+  documentation lint;
+- **Default:** proactive coordination remains explicit opt-in;
+- **Mainline:** close the measured real-product baseline and external operator
+  setup gates before expanding protocol or harness scope.
 
 [Current status](docs/10-planning/project-status.md) ·
 [roadmap](ROADMAP.md) ·
-[protocol draft](spec/README.md) ·
-[validation evidence](docs/09-reviews/README.md)
+[validation index](docs/09-reviews/README.md)
 
 ## Documentation
 
-| If you want to… | Start here |
+| Goal | Start here |
 |---|---|
-| Understand the product | [What ThreadMesh is](docs/00-overview/product-guide.md) |
-| Watch the 76-second proof | [MP4 walkthrough](docs/assets/demo/threadmesh-proof-walkthrough.mp4) |
-| See real proactive behavior | [Real agent case portfolio](docs/06-guides/real-world-cases.md) |
-| Run the closed-loop local demo | [Attention-router demo](docs/06-guides/attention-router-demo.md) |
-| Audit the user-value baseline | [Manual relay/polling baseline](docs/06-guides/manual-relay-baseline.md) |
-| Audit non-interruption | [Active-session checkpoint case](docs/06-guides/non-interrupting-handoff.md) |
-| Try it as a new operator | [15-minute challenge](docs/06-guides/15-minute-operator-challenge.md) |
-| Compare selective model initiative | [End-to-end demo](docs/06-guides/end-to-end-demo.md) |
-| Add ThreadMesh to a harness | [Adapter implementation guide](docs/06-guides/implement-an-adapter.md) |
-| Evaluate a harness | [Harness support matrix](docs/00-overview/harness-support.md) |
-| Review safety and semantics | [Protocol](docs/03-protocol/README.md) → [safety](docs/04-safety/threat-model.md) |
-| Inspect exact test evidence | [Review and validation index](docs/09-reviews/README.md) |
+| Understand the product | [Product guide](docs/00-overview/product-guide.md) |
+| Inspect real proactive behavior | [Real agent cases](docs/06-guides/real-world-cases.md) |
+| Run the local proof | [Attention-router demo](docs/06-guides/attention-router-demo.md) |
+| Compare with manual relay | [Manual baseline](docs/06-guides/manual-relay-baseline.md) |
+| Add a harness | [Adapter guide](docs/06-guides/implement-an-adapter.md) |
+| Evaluate safety | [Threat model](docs/04-safety/threat-model.md) |
 | Contribute | [Contributing guide](CONTRIBUTING.md) |
 
 ## Non-goals
 
 ThreadMesh is not a human chat system, model gateway, workflow DAG engine,
-global agent directory, or license for one agent to control unrelated user
-sessions. It does not replace MCP or A2A.
+global agent directory, or license for one agent to control unrelated tasks. It
+does not replace MCP or A2A.
 
 ## Community
 
-- Ask design and integration questions in
-  [GitHub Discussions](https://github.com/fyaic/threadmesh/discussions).
-- Report reproducible defects or propose adapters through
-  [GitHub Issues](https://github.com/fyaic/threadmesh/issues).
-- Read [CONTRIBUTING.md](CONTRIBUTING.md), [GOVERNANCE.md](GOVERNANCE.md),
-  [SUPPORT.md](SUPPORT.md), and the [Code of Conduct](CODE_OF_CONDUCT.md).
-- Report security issues privately as described in [SECURITY.md](SECURITY.md).
+[Discussions](https://github.com/fyaic/threadmesh/discussions) ·
+[Issues](https://github.com/fyaic/threadmesh/issues) ·
+[Contributing](CONTRIBUTING.md) ·
+[Governance](GOVERNANCE.md) ·
+[Support](SUPPORT.md) ·
+[Code of Conduct](CODE_OF_CONDUCT.md)
 
 ## License
 
