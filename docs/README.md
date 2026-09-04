@@ -25,7 +25,7 @@ evidence. New readers do not need to read every numbered directory in order.
 | Goal | Read or run |
 |---|---|
 | Understand the product | [Product guide](00-overview/product-guide.md) → [proactive coordination](01-concepts/proactive-coordination.md) |
-| See the intelligence effect | [README cross-task moment](../README.md) → [76-second proof](assets/demo/threadmesh-proof-walkthrough.mp4) → [real case portfolio](06-guides/real-world-cases.md) |
+| See the intelligence effect | [Cinematic cross-task demo](assets/threadmesh-cross-task-demo.mp4) → [76-second proof](assets/demo/threadmesh-proof-walkthrough.mp4) → [real case portfolio](06-guides/real-world-cases.md) |
 | Evaluate user value | [Manual baseline](06-guides/manual-relay-baseline.md) → [15-minute operator challenge](06-guides/15-minute-operator-challenge.md) |
 | Run it locally | [Attention-router demo](06-guides/attention-router-demo.md) → [active-session safety](06-guides/non-interrupting-handoff.md) → [real Codex attention validation](06-guides/codex-attention-validation.md) |
 | Integrate a harness | [Harness matrix](00-overview/harness-support.md) → [adapter guide](06-guides/implement-an-adapter.md) → [adapter contract](05-adapters/adapter-contract.md) |

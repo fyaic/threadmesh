@@ -29,3 +29,28 @@ and records under [`docs/09-reviews`](../09-reviews/README.md).
 
 The asset was produced with the built-in OpenAI image-generation tool and then
 copied into the repository without modifying the private source image.
+
+## Cinematic cross-task demo
+
+`threadmesh-cross-task-demo.gif` turns the static hero into an 11.6-second,
+silent README story. The MP4 is the higher-quality linked version and the cover
+captures the native provenance close-up.
+
+The storyboard uses five beats:
+
+1. establish two independent sessions;
+2. zoom into Agent A finishing upstream work;
+3. draw the relationship as A decides to reach out;
+4. move the camera to Session B and magnify the cross-task provenance line;
+5. state the product moment: “A reached B before you did.”
+
+This is still an editorial explanation, not a native product recording. The
+animation makes the intended causal sequence understandable; it does not add
+behavioral evidence beyond the linked case records. Rebuild it on macOS with:
+
+```sh
+npm run demo:cross-task-assets
+```
+
+The checked-in builder renders deterministic SVG frames, verifies no private
+source screenshot is needed, then exports MP4, optimized GIF, and cover assets.

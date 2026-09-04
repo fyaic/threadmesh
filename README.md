@@ -1,6 +1,6 @@
 <p align="center">
-  <a href="docs/06-guides/real-world-cases.md">
-    <img src="docs/assets/threadmesh-cross-task-moment.png" width="100%" alt="A native agent conversation shows that ChatGPT sent a message from another task—the cross-session initiative moment that inspired ThreadMesh">
+  <a href="docs/assets/threadmesh-cross-task-demo.mp4">
+    <img src="docs/assets/threadmesh-cross-task-demo.gif" width="100%" alt="Cinematic ThreadMesh demo: two independent agent sessions, Agent A finishes upstream work, notices Session B needs the result, reaches out, and the camera zooms into the native from-another-task provenance line">
   </a>
 </p>
 
@@ -29,11 +29,12 @@ poller, and traffic controller between parallel agents.
 
 **Agent initiative. Receiver control.**
 
-The scene above is an editorial recreation of the native Codex moment that
+The animation above is an editorial recreation of the native Codex moment that
 inspired this project: a message visibly arriving **from another task**. Private
 task content was removed; the image is not presented as a live recording or as
 proof by itself. The evidence lives in the retained Pi, Codex, and Kimi cases.
 
+[Watch the MP4](docs/assets/threadmesh-cross-task-demo.mp4) ·
 [Inspect the asset boundary](docs/assets/README.md) ·
 [read the real cases](docs/06-guides/real-world-cases.md)
 
