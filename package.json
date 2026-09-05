@@ -1,7 +1,7 @@
 {
   "name": "@fyaic/threadmesh",
-  "version": "0.1.0-alpha.0",
-  "description": "Safe attention and handoff routing for parallel agent sessions",
+  "version": "0.1.0-alpha.1",
+  "description": "Local cross-agent workspaces, useful peer messages, and portable checkpoints",
   "type": "module",
   "license": "Apache-2.0",
   "repository": {
@@ -13,6 +13,8 @@
   },
   "exports": {
     ".": "./src/sdk/index.mjs",
+    "./workspace": "./src/workspace/local-workspace.mjs",
+    "./pi": "./src/integrations/pi-extension.mjs",
     "./coordinator/sqlite": "./src/coordinator/sqlite-coordinator.mjs",
     "./demo/attention-router": "./src/demo/attention-router-demo.mjs",
     "./inspector/attention-snapshot": "./src/inspector/attention-snapshot.mjs",
@@ -27,6 +29,9 @@
     "spec/schema",
     "src/canonical-json.mjs",
     "src/coordinator",
+    "src/bindings",
+    "src/workspace",
+    "src/integrations",
     "src/demo",
     "src/inspector/attention-snapshot.mjs",
     "src/policy",
@@ -66,6 +71,9 @@
     "validate:cross-harness:fake": "node --test test/proactive-cross-harness.test.mjs",
     "validate:pi-consumer": "node scripts/validate-pi-consumer.mjs",
     "validate:pi:live": "node scripts/validate-pi-live.mjs",
+    "validate:workspace:live": "node scripts/validate-workspace-live.mjs",
+    "validate:workspace:deepseek": "node scripts/validate-deepseek-workspace.mjs",
+    "validate:checkpoint:live": "node scripts/validate-checkpoint-live.mjs",
     "validate:attention:live:codex": "node scripts/run-live-product-validation.mjs codex-attention",
     "validate:proactive:live:codex": "node scripts/run-live-product-validation.mjs codex-proactive",
     "validate:products:live:codex": "node scripts/run-live-product-validation.mjs codex",
@@ -77,6 +85,7 @@
     "test": "npm run validate:spec && npm run test:unit && npm run lint:docs"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "1.30.0",
     "ajv": "8.20.0",
     "ajv-formats": "3.0.1",
     "better-sqlite3": "13.0.3"

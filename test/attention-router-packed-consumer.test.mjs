@@ -30,6 +30,11 @@ test("packed CLI runs the attention-router demo in a fresh consumer", { timeout:
       "src/demo/attention-router-demo.mjs",
       "src/protocol-validator.mjs",
       "src/routing/lifecycle-events.mjs",
+      "src/workspace/cli.mjs",
+      "src/workspace/mcp-server.mjs",
+      "src/integrations/pi-extension.mjs",
+      "src/integrations/pi-entry.js",
+      "src/bindings/jsonrpc.mjs",
     ]) {
       assert.ok(publishedPaths.has(requiredPath), `missing packed CLI input: ${requiredPath}`);
     }
@@ -94,6 +99,17 @@ test("packed CLI runs the attention-router demo in a fresh consumer", { timeout:
     });
     assert.deepEqual(result.cleanup, { attempted: true, complete: true });
     assert.equal(JSON.stringify(result).includes(directory), false);
+    const cli = path.join(consumerDirectory, "node_modules", ".bin", "threadmesh");
+    for (const scenario of ["api", "preferences", "quota"]) {
+      const preview = execFileSync(cli, ["preview", scenario], { cwd: consumerDirectory, encoding: "utf8" });
+      assert.match(preview, /simulated/i);
+      assert.match(preview, /0 messages/);
+    }
+    execFileSync(cli, ["init"], { cwd: consumerDirectory, encoding: "utf8" });
+    const setup = JSON.parse(execFileSync(cli, ["setup", "deepseek", "--name", "research", "--goal", "Investigate API changes"], { cwd: consumerDirectory, encoding: "utf8" }));
+    assert.equal(setup[0].insert[0].name, "@deepseek-ai/dsh-mcp-client");
+    const status = JSON.parse(execFileSync(cli, ["status"], { cwd: consumerDirectory, encoding: "utf8" }));
+    assert.equal(status[0].name, "research");
   } finally {
     fs.rmSync(directory, { recursive: true, force: true });
   }

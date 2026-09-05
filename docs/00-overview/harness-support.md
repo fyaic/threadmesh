@@ -17,7 +17,25 @@ A real pass proves only the recorded scenario and version. It does not imply
 production support, provider-role isolation, hostile-prompt safety, or every
 protocol intent.
 
-## Current matrix
+## First-use workspace integrations (2026-09-05)
+
+These are the new user-facing launcher paths, distinct from the historical
+adapter/benchmark matrix below. See the [start guide](../06-guides/first-workspace.md)
+and [dated validation](../09-reviews/2026-09-05-first-use-validation.md).
+
+| Harness | Version inspected | Surface | Boundary |
+|---|---|---|---|
+| Pi | `0.84.2` | Native CLI extension, four tools, turn-start inbox, opt-in idle follow-up | Native tools remain available; local trusted process, not an OS sandbox |
+| Codex | `0.145.0` | Invocation-scoped stdio MCP | Tool configuration is real; normal-task initiative is not guaranteed; no native idle wake |
+| Kimi Code | `0.39.1` | Project stdio MCP configuration | Weekly quota blocked this live attempt; previous ACP proof is a different version/path |
+| DeepSeek Harness | npm `0.1.2-rc.1` | Official MCP client in Cordis runtime | Native four-tool bidirectional check passed; model, web UI and idle wake not claimed |
+
+Joining shares published goals, not native chat history. A workspace name is
+an explicit ongoing workstream; arbitrary native tabs are not automatically
+discovered or bound. The four-tool convenience wrapper uses the same core
+coordinator, but an inbox acceptance is not a core verified business outcome.
+
+## Historical adapter matrix
 
 | Harness | Version tested | Integration surface | Sender | Receiver | Evidence | Current boundary |
 |---|---:|---|:---:|:---:|---|---|

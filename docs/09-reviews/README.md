@@ -30,6 +30,8 @@ not count as live-product or independent external-verifier evidence.
 
 ## Live attempt audits
 
+- [First-use workspace: native DeepSeek integration and ordinary-task live attempts](2026-09-05-first-use-validation.md)
+
 - [M5.3 measured baseline and closure matrix](2026-09-03-m5-3-baseline-and-matrix.md)
 - [Fresh real-effects attempt after proxy recovery](2026-09-02-m5-2-real-effects-live-attempt.md)
 - [2026-09-02 mainline and connectivity checkpoint](2026-09-02-mainline-checkpoint.md)

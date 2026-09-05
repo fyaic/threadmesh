@@ -1,251 +1,164 @@
 <h1 align="center">ThreadMesh</h1>
 
-<p align="center">
-  <strong>Selective initiative between independent agent sessions.</strong>
-</p>
+<p align="center"><strong>Your agents should talk to each other. You shouldn't have to relay every message.</strong></p>
 
-<p align="center">
-  Let Agent A notice when Agent B needs its work—and reach out before you become the message bus.
-</p>
+<p align="center">Shared workspaces for independent agent sessions: useful peer messages, explicit context, and portable checkpoints.</p>
 
 <p align="center">
   <a href="https://github.com/fyaic/threadmesh/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/fyaic/threadmesh/actions/workflows/ci.yml/badge.svg"></a>
-  <a href="LICENSE"><img alt="Apache 2.0 license" src="https://img.shields.io/badge/license-Apache--2.0-4c7bd9.svg"></a>
-  <a href="package.json"><img alt="Node 22 or newer" src="https://img.shields.io/badge/node-%3E%3D22-3c873a.svg"></a>
-  <a href="docs/10-planning/project-status.md"><img alt="Pre-alpha status" src="https://img.shields.io/badge/status-pre--alpha-f59e0b.svg"></a>
+  <a href="LICENSE"><img alt="Apache 2.0" src="https://img.shields.io/badge/license-Apache--2.0-4c7bd9.svg"></a>
+  <a href="package.json"><img alt="Node 22+" src="https://img.shields.io/badge/node-%3E%3D22-3c873a.svg"></a>
+  <a href="docs/10-planning/project-status.md"><img alt="Experimental alpha" src="https://img.shields.io/badge/status-experimental_alpha-f59e0b.svg"></a>
 </p>
 
 <p align="center">
-  <a href="#quickstart"><strong>Quickstart</strong></a> ·
-  <a href="docs/06-guides/real-world-cases.md">Real agent cases</a> ·
-  <a href="docs/00-overview/harness-support.md">Harness support</a> ·
-  <a href="docs/README.md">Docs</a> ·
+  <a href="#try-it">Try it</a> ·
+  <a href="docs/06-guides/first-workspace.md">Connect your agents</a> ·
+  <a href="docs/06-guides/portable-checkpoints.md">Out of quota?</a> ·
+  <a href="docs/06-guides/real-world-cases.md">Evidence</a> ·
   <a href="README.zh-CN.md">简体中文</a>
 </p>
 
 <p align="center">
-  <a href="docs/06-guides/real-world-cases.md">
-    <img src="docs/assets/threadmesh-session-initiative.jpg" width="100%" alt="Agent A autonomously sends a bounded suggestion from another task to Agent B; Agent B may accept, defer, or reject it while an unrelated session stays quiet">
-  </a>
+  <img src="docs/assets/threadmesh-session-initiative.jpg" width="100%" alt="Concept illustration: one session reaches out to another while unrelated work stays quiet">
+  <br><sub>Concept illustration, not a screenshot of a shipped ThreadMesh chat UI.</sub>
 </p>
 
-<p align="center">
-  <sub><strong>A decides to reach out.</strong> B decides whether to admit it. Unrelated work stays quiet.</sub>
-</p>
+You're changing an API in one agent and building its client in another.
+The backend switches to cursor pagination. The client agent doesn't know.
+Usually, **you** notice, copy the change, switch sessions, and explain it again.
 
-ThreadMesh is a portable coordination layer for agent harnesses. It gives one
-session a bounded way to discover relevant work and suggest context to another,
-while the receiving session keeps control over whether and when that context is
-admitted.
+ThreadMesh gives connected agents a way to notice related work and share useful
+context themselves. You choose which sessions share a workspace. The model
+chooses whether to reach out; the receiving agent decides what to do with the
+advice. ThreadMesh supplies the connection—not a new foundation model.
 
-It is not shared memory, a workflow engine, or permission for one agent to take
-over another task.
-
-> [!WARNING]
-> ThreadMesh is pre-alpha and disabled by default. Use it only for local,
-> trusted-process experiments. It is not a production authorization or
-> multi-tenant security boundary.
-
-## Why ThreadMesh
-
-Parallel agents still make the user coordinate every handoff.
-
-| Without ThreadMesh | With ThreadMesh |
-|---|---|
-| You notice that A produced something B needs | A discovers B's declared dependency |
-| You copy, find B, and explain the context | A sends one typed, expiring suggestion |
-| You decide whether to interrupt B | B accepts, defers, or rejects at a checkpoint |
-| Unrelated sessions are easy to disturb | Irrelevant sessions remain quiet |
-
-The intelligence is the decision to speak when the work becomes relevant—and
-to remain silent when it does not. ThreadMesh supplies the policy, provenance,
-mailbox, consent, and audit boundary around that decision.
-
-## Quickstart
-
-Run the deterministic closed-loop demo without model quota or access to your
-existing agent sessions:
-
-```sh
-npx --yes --package=github:fyaic/threadmesh threadmesh demo
+```text
+Backend session                 Client session                 Unrelated work
+Changes pagination              Maintains the orders client    Translates policy
+        │                                 │                          │
+        └── “next_cursor replaces page” ──►│                          │
+              model-selected advice       └─ reviews / updates       └─ stays quiet
 ```
 
-Or run from source:
+## Try it
 
-```sh
-git clone https://github.com/fyaic/threadmesh.git
-cd threadmesh
-npm ci
-npm run demo
-```
-
-The demo exercises implementation → review → fix → verification → dependent
-work, including receiver checkpoints, irrelevant-route suppression, verified
-dependency unlock, restart-safe state, and exact cleanup.
-
-[Demo guide](docs/06-guides/attention-router-demo.md) ·
-[manual comparison](docs/06-guides/manual-relay-baseline.md) ·
-[real agent cases](docs/06-guides/real-world-cases.md)
-
-## Add it to a harness
-
-The SDK is pre-alpha and currently installed from GitHub:
+Requires Node 22+. Install from GitHub; the package is **not on npm yet**.
 
 ```sh
 npm install github:fyaic/threadmesh
+npx threadmesh preview api
 ```
 
-Give each model turn a bounded discovery-and-suggestion bridge:
+The preview uses simulated agents and the real local coordinator. No API key,
+no model quota, no access to your existing chats. Try `preview preferences` or
+`preview quota` for different situations. This is an onboarding walkthrough,
+not evidence of model initiative.
 
-```js
-import {
-  createProactiveToolBridge,
-  createThreadMeshClient,
-} from "@fyaic/threadmesh";
+### Connect real agents
 
-const client = createThreadMeshClient({
-  authorization: `Bearer ${process.env.THREADMESH_TOKEN}`,
-  send: authenticatedJsonRpc,
-});
+From your project folder, create a room once:
 
-const bridge = createProactiveToolBridge({
-  client,
-  source: currentTask,
-  relationships: [{ relationshipId, target: relatedTask }],
-});
-
-await harness.runModelTurn({
-  tools: bridge.tools,
-  onToolCall: bridge.handleToolCall,
-});
+```sh
+npx threadmesh init --workspace .threadmesh
 ```
 
-The host—not the model—defines the relationship set. The model must discover
-before sending, budgets are reserved before transport calls, and the receiver
-retains context-admission control.
+Start the receiving agent in terminal B:
 
-[30-minute adapter guide](docs/06-guides/implement-an-adapter.md) ·
-[complete sender/receiver example](examples/proactive-tool-bridge.mjs)
+```sh
+npx threadmesh run pi --name client --goal "Maintain the /orders client" --wake-idle \
+  -- --provider zai --model glm-5.3
+```
 
-## Verified behavior
+Start another agent in terminal A, in the same project:
 
-The public evidence separates relevant, irrelevant, and control conditions.
+```sh
+npx threadmesh run pi --name backend --goal "Maintain the /orders API" \
+  -- --provider zai --model glm-5.3
+```
 
-| Case | Sender decision | Receiver outcome |
-|---|---|---|
-| Relevant dependency | discover once → suggest once | B accepts and completes |
-| Unrelated task | discover once → stay silent | B is not activated |
-| No related task | no ThreadMesh call | zero interference |
+Give each its ordinary task. They now have peer discovery, messaging, inbox and
+checkpoint tools. Different project folders can share one **absolute**
+`--workspace` path. Harness installation, login and model quota are separate.
+This first example pins the tested Pi model; other model choices need their
+own validation. Codex, Kimi and DeepSeek launch paths are documented below.
 
-Real model cases currently include:
+[Full walkthrough, DeepSeek setup and troubleshooting →](docs/06-guides/first-workspace.md)
 
-- **Pi `0.84.2` → Kimi Code `0.38.0`:** relevant contact, irrelevant silence,
-  context admission, and exact cleanup;
-- **Codex CLI `0.145.0` → Kimi Code `0.38.0`:** autonomous
-  `discover → suggest` across products;
-- **Codex lifecycle chain:** one kickoff advanced bounded implementation,
-  review, fix, verification, and dependent roles while the irrelevant session
-  ran zero turns. The complete production evidence gate remains open.
+The [latest real run](docs/09-reviews/2026-09-05-first-use-validation.md)
+used two Pi sessions with ordinary file tasks: peer-selected contact → idle
+receiver follow-up → updated client → passing two-page assertion. Unrelated
+messages: **0**. One controlled pass, not a general reliability claim.
 
-[Case portfolio](docs/06-guides/real-world-cases.md) ·
-[Pi validation](docs/09-reviews/2026-08-25-pi-integration-kit-validation.md) ·
-[Codex-to-Kimi record](docs/09-reviews/2026-08-25-codex-to-kimi-proactive.md)
+## Where it helps
 
-## Capabilities
-
-| Capability | Current implementation |
+| Your day-to-day problem | What ThreadMesh makes possible |
 |---|---|
-| Relationship-scoped discovery | Minimal summaries from host-authorized relationships |
-| Bounded proactive suggestion | Two model tools with per-turn discovery and send budgets |
-| Receiver sovereignty | Mailbox checkpoint with accept, defer, or reject |
-| Freshness and replay defense | Exact task incarnation, expiry, revision, idempotency, and claim checks |
-| Provenance and audit | Sender, relationship, reason, disposition, admission, and cleanup records |
-| Harness portability | Transport-neutral SDK plus App Server, ACP, and subprocess adapters |
-| Fail-closed behavior | Unsupported control operations never masquerade as success |
+| “I already told the other agent which API changed.” | A publishes relevant changes to the session maintaining the client. |
+| “Why do I have to explain our naming/tone decisions again?” | Deliberately share agreed constraints, instead of copying whole conversations. |
+| “The research agent found the answer, but the coding agent is still stuck.” | Send the finding and why it matters to that workstream. |
+| “I hit my quota halfway through a large task.” | Start another harness with the last saved goal, decisions, constraints and next step. |
 
-Only bounded `suggest` is enabled in real product experiments. `steer` and
-`interrupt` remain protocol-level capabilities with stricter authority gates.
+These are use-case recipes, not a claim that every scenario has been independently
+validated. [Real case records](docs/06-guides/real-world-cases.md) distinguish
+model runs from scripts and disclose unsuccessful attempts.
 
-## Harness support
+### Out of quota? Continue from a checkpoint
 
-| Harness / integration | Exercised role | Evidence |
+```sh
+npx threadmesh status
+npx threadmesh continue backend --agent kimi --name recovery
+```
+
+The source must have saved a checkpoint first. The destination needs its own
+working account. This carries **explicit context**, not hidden model state or
+every token in the original conversation. No quota bypass or account rotation.
+
+[Checkpoint guide and realistic limits →](docs/06-guides/portable-checkpoints.md)
+
+## Harnesses and what actually happens
+
+| Harness | New workspace integration | Automatic idle wake? |
 |---|---|---|
-| Pi `0.84.2` extension | Proactive sender through the public SDK | Real model pass |
-| Codex CLI `0.145.0` App Server | Proactive sender and receiver | Real model pass |
-| Kimi Code `0.38.0` ACP | Persistent receiving session | Real model pass |
-| Gemini CLI `0.56.0` headless | Subprocess receiver adapter | Deterministic preflight; live model pending |
-| Custom JavaScript harness | Cooperative loop and native tool bridge | Consumer and conformance pass |
-| Generic ACP agent | Persistent receiver | Conformance pass; Kimi is the real ACP proof |
+| **Pi** | Native extension; four tools and inbox at turn start | Opt-in `--wake-idle`; does not steer a busy turn |
+| **Codex** | Invocation-scoped stdio MCP configuration | No; inbox is consulted during model work |
+| **Kimi Code** | Project MCP entry; preserves other servers | No; inbox is consulted during model work |
+| **DeepSeek Harness** | Official `dsh` MCP plugin through a Cordis patch | Not claimed |
+| **Other harnesses** | Standard MCP configuration or JavaScript SDK | Host integration required |
 
-Other harnesses are adapter candidates, not claimed integrations, until they
-publish a version range, capability document, conformance result, and known
-gaps.
+DeepSeek's official preview `0.1.2-rc.1` passed native MCP discovery, bidirectional
+delivery, receiver decisions and checkpoint persistence. **Its live model
+initiative test remains pending credentials.** Earlier bounded real-model
+records include Codex→Kimi and Pi→Kimi; they used more constrained prompts than
+normal daily work and are not a general autonomy guarantee.
 
-[Compatibility matrix](docs/00-overview/harness-support.md) ·
-[adapter contract](docs/05-adapters/adapter-contract.md)
+[Versioned support and evidence matrix →](docs/00-overview/harness-support.md)
 
-## Safety model
+## What this does not promise
 
-A task owns its objective and model-visible history.
+- Installing tools does not guarantee a model notices every dependency.
+- MCP messaging does not magically wake any arbitrary agent product.
+- Joined sessions see published goals and messages, not all your private chats.
+- Reading mail does not consume it. Accepting advice does not prove work is done.
+- A checkpoint is a recoverable summary, not lossless memory migration.
 
-- no global session search or shared transcript;
-- exact, directional, least-authority relationships;
-- peer content enters a mailbox before model-context admission;
-- expiry and objective freshness for consequential requests;
-- visible peer provenance instead of relabeling content as user intent;
-- fail-closed capability negotiation and causal audit.
+This is an **experimental, same-owner local workspace**. Do not use it as a
+multi-tenant security boundary. Agent tool permissions remain those of the
+host. You can mute a workstream, and messages have expiry and send budgets.
 
-Current adapters do not provide an OS sandbox. Do not use them with arbitrary
-hostile peer content or as a production security boundary.
+[Safety model](docs/04-safety/threat-model.md) ·
+[SDK integration](docs/06-guides/implement-an-adapter.md) ·
+[Security policy](SECURITY.md)
 
-[Context sovereignty](docs/01-concepts/context-sovereignty.md) ·
-[permission model](docs/04-safety/permission-model.md) ·
-[threat model](docs/04-safety/threat-model.md) ·
-[security policy](SECURITY.md)
+## Help shape the useful version
 
-## Project status
+The next milestone is not another protocol feature. It is independent users
+getting a useful collaboration without troubleshooting the maintainer's setup.
+Tell us **where you got stuck**, including failed installs and silent agents.
 
-- **Protocol:** executable `0.0-draft`;
-- **Package:** `@fyaic/threadmesh@0.1.0-alpha.0`, installable from GitHub;
-- **Runtime:** authenticated JSON-RPC and SQLite coordinator for local trusted
-  processes;
-- **Validation:** 388 tests, 55 schema cases, 7 transition cases, and
-  documentation lint;
-- **Default:** proactive coordination remains explicit opt-in;
-- **Mainline:** close the measured real-product baseline and external operator
-  setup gates before expanding protocol or harness scope.
+[Report a first run](https://github.com/fyaic/threadmesh/issues/new?template=operator.yml) ·
+[Discuss a workflow](https://github.com/fyaic/threadmesh/discussions) ·
+[Roadmap](ROADMAP.md) · [Docs](docs/README.md) · [Contribute](CONTRIBUTING.md)
 
-[Current status](docs/10-planning/project-status.md) ·
-[roadmap](ROADMAP.md) ·
-[validation index](docs/09-reviews/README.md)
-
-## Documentation
-
-| Goal | Start here |
-|---|---|
-| Understand the product | [Product guide](docs/00-overview/product-guide.md) |
-| Inspect real proactive behavior | [Real agent cases](docs/06-guides/real-world-cases.md) |
-| Run the local proof | [Attention-router demo](docs/06-guides/attention-router-demo.md) |
-| Compare with manual relay | [Manual baseline](docs/06-guides/manual-relay-baseline.md) |
-| Add a harness | [Adapter guide](docs/06-guides/implement-an-adapter.md) |
-| Evaluate safety | [Threat model](docs/04-safety/threat-model.md) |
-| Contribute | [Contributing guide](CONTRIBUTING.md) |
-
-## Non-goals
-
-ThreadMesh is not a human chat system, model gateway, workflow DAG engine,
-global agent directory, or license for one agent to control unrelated tasks. It
-does not replace MCP or A2A.
-
-## Community
-
-[Discussions](https://github.com/fyaic/threadmesh/discussions) ·
-[Issues](https://github.com/fyaic/threadmesh/issues) ·
-[Contributing](CONTRIBUTING.md) ·
-[Governance](GOVERNANCE.md) ·
-[Support](SUPPORT.md) ·
-[Code of Conduct](CODE_OF_CONDUCT.md)
-
-## License
-
-ThreadMesh is available under the [Apache License 2.0](LICENSE).
+If this solves a real problem for you, a star helps others find it.
+Released under [Apache 2.0](LICENSE).

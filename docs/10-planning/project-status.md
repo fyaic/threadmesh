@@ -1,5 +1,32 @@
 # Project status
 
+## Current product update — 2026-09-05
+
+The active plan is [first useful collaboration](first-use-2026-09-05.md),
+superseding the older freeze and five-role proof as the critical path.
+The alpha now has a usable local workspace CLI, a four-tool stdio MCP server,
+Codex/Pi/Kimi/official DeepSeek launch integration, persistent non-consuming
+inboxes and explicit portable checkpoints. The core coordinator is reused.
+
+DeepSeek `@deepseek-ai/dsh@0.1.2-rc.1` passed its official runtime's MCP plugin
+test without a model key. DeepSeek model initiative is unverified. The current
+local Kimi `0.39.1` rejected a live run with its weekly quota exhausted; that
+does not invalidate the earlier `0.38.0` records or count as a new pass.
+Ordinary-task live attempts and their actual outcomes are recorded in the
+[first-use validation](../09-reviews/2026-09-05-first-use-validation.md).
+
+GitHub snapshot: 2 stars, 0 forks, and one external offer of a fresh-consumer
+review in [#79](https://github.com/fyaic/threadmesh/issues/79#issuecomment-5538796478).
+The offer is not a completed independent test. The package remains GitHub
+distributed, not npm published. README now leads with practical use and direct
+launch instructions; the old 76-second walkthrough is not promoted.
+
+## Historical baseline (2026-09-03)
+
+The following ledger preserves the evidence that preceded the first-use alpha.
+Its counts, package sizes, adoption snapshot and execution freeze are historical,
+not current claims.
+
 > Snapshot: 2026-09-03 at evidence commit
 > `da9dda1`, including the merged
 > real-effects integration [#133](https://github.com/fyaic/threadmesh/pull/133)
