@@ -25,6 +25,9 @@ open; they are not prerequisites for a usable, honestly labelled local alpha.
 - [x] First-run feedback form accepts unsuccessful installs and silent agents.
 - [x] Real Pi-pair ordinary-task advice → idle wake → file update → independent
   business assertion; real Pi continuation from an explicit saved checkpoint.
+- [x] Second real task family: an approved name/free-tier change reaches the
+  website session, which updates copy and leaves unrelated price/data work alone.
+  [Evidence and limits](docs/09-reviews/2026-09-05-workspace-awareness.md).
 - [ ] Close live ordinary-task collaboration evidence, including DeepSeek with
   an available provider credential; publish failures alongside successes.
 - [ ] Get three independent first-run reports and fix the first blocking step.

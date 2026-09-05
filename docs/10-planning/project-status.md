@@ -15,6 +15,13 @@ does not invalidate the earlier `0.38.0` records or count as a new pass.
 Ordinary-task live attempts and their actual outcomes are recorded in the
 [first-use validation](../09-reviews/2026-09-05-first-use-validation.md).
 
+Follow-up: the [approved-copy case](../09-reviews/2026-09-05-workspace-awareness.md)
+passed with two real Pi sessions, one kickoff each and a real idle follow-up.
+Codex tool discovery reached an approval cancellation in a read-only diagnostic;
+the launcher now scopes preapproval to its four local tools. Both awareness-only
+and authorization-adjusted ordinary tasks remained silent. Keep that gap open
+until a real useful loop passes; tool availability is not the same as initiative.
+
 GitHub snapshot: 2 stars, 0 forks, and one external offer of a fresh-consumer
 review in [#79](https://github.com/fyaic/threadmesh/issues/79#issuecomment-5538796478).
 The offer is not a completed independent test. The package remains GitHub

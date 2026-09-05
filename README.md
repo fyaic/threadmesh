@@ -90,6 +90,13 @@ used two Pi sessions with ordinary file tasks: peer-selected contact → idle
 receiver follow-up → updated client → passing two-page assertion. Unrelated
 messages: **0**. One controlled pass, not a general reliability claim.
 
+**Not just API changes:** in a second real Pi-pair case, the user changed the
+brand brief in one session. That agent contacted the website session, which
+resumed on its own and changed “Team Hub / unlimited free projects” to
+“Member Portal / up to 5 projects.” The price stayed unchanged; the unrelated
+database task received no messages.
+[See the actual file and event record →](docs/09-reviews/2026-09-05-workspace-awareness.md)
+
 ## Where it helps
 
 | Your day-to-day problem | What ThreadMesh makes possible |

@@ -64,7 +64,12 @@ export function launchPlan({ agent, directory, name, goal, cwd = process.cwd(), 
   if (agent === "codex") return { command: executable("codex"), args: [
     "-c", `mcp_servers.threadmesh.command=${JSON.stringify(config.command)}`,
     "-c", `mcp_servers.threadmesh.args=${JSON.stringify(config.args)}`,
-    "-c", "mcp_servers.threadmesh.required=true", ...extra], env, cwd };
+    "-c", "mcp_servers.threadmesh.required=true",
+    // Joining this private, same-owner room opts into these four operations.
+    // Do not change global approval_policy, sandbox, or another server's tools.
+    ...["threadmesh_peers", "threadmesh_send", "threadmesh_inbox", "threadmesh_checkpoint"]
+      .flatMap(tool => ["-c", `mcp_servers.threadmesh.tools.${tool}.approval_mode="approve"`]),
+    ...extra], env, cwd };
   if (agent === "kimi") {
     return { command: executable("kimi"), args: extra, env, cwd, kimiConfig: config };
   }
@@ -88,6 +93,7 @@ export async function launch(options) {
     process.stderr.write(`ThreadMesh added its project MCP entry in ${filename}; existing entries retained.\n`);
   }
   process.stderr.write(`ThreadMesh: ${options.name} joined ${path.resolve(options.directory)}\n${COORDINATION_GUIDANCE}\n`);
+  if (options.agent === "codex") process.stderr.write("ThreadMesh: the four local workspace tools are preapproved for this launch only. Shell/file and other MCP approvals are unchanged.\n");
   return new Promise((resolve, reject) => {
     const child = spawn(plan.command, plan.args, { cwd: plan.cwd, env: plan.env, stdio: "inherit" });
     child.once("error", reject);

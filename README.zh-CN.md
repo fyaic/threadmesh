@@ -44,6 +44,12 @@ npx threadmesh preview api
 
 ## 接入真实 session
 
+不只改接口：第二条真实 Pi 双 session 案例中，用户只在品牌任务里确认新名称和免费
+额度。品牌 Agent 自己联系网站任务，后者自动续接，把“Team Hub / 无限免费项目”
+改成“Member Portal / 最多 5 个免费项目”，原价未变，无关数据库任务收到 0 条消息。
+这是一次受控实测，不是所有 Agent 都会自动成功的承诺。
+[查看真实文件和事件记录](docs/09-reviews/2026-09-05-workspace-awareness.md)。
+
 在项目目录创建工作空间：
 
 ```sh

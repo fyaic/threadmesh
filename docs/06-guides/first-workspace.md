@@ -52,6 +52,12 @@ You can choose other tool-capable models, but their behavior is not guaranteed.
 For the Codex launcher, use `threadmesh run codex` with the same name/goal
 options; its new workspace initiative attempt did not pass yet.
 
+The Codex launcher preapproves only the four local ThreadMesh tools for that
+invocation: joining the room opts into goal discovery, advisory mail, inbox
+decisions and explicit checkpoints. Shell/file permissions and other MCP
+servers are unchanged. This avoids a headless MCP approval being reported as a
+user cancellation. Preapproval does not force the model to use the tools.
+
 Give A a real upstream task, such as changing pagination from `next_page` to
 `next_cursor`. ThreadMesh exposes the published peer goals; A decides whether
 the change matters to B and whether to send an advisory message. An opted-in,
@@ -124,7 +130,7 @@ integration; the core two-tool bridge is distinct from this four-tool room.
 
 | Surface | Available behavior | Limit |
 |---|---|---|
-| Published goals | Name/goal hints in discovery-tool metadata, fresh lookup on request | Existing clients may cache the initial catalog; not global chat search |
+| Published goals | MCP startup guidance and discovery metadata; Pi turn-start hints; fresh lookup on request | MCP startup hints can become stale; not global chat search |
 | Sending | Model chooses useful recipient and content after discovery | No promise that every useful opportunity is noticed |
 | Pi extension | Inbox at turn start; optional follow-up while idle | `--wake-idle` required; no steering a running turn |
 | Codex / Kimi / DeepSeek MCP | Model reads inbox and decides what to do | No background native wake claimed |

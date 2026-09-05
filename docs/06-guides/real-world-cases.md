@@ -19,6 +19,12 @@ output marker. It records successful and unsuccessful attempts, and separates
 native integration, model-selected contact, idle wake and an independent file
 assertion. Use the [workspace guide](first-workspace.md) to try this path.
 
+The [approved-copy case](../09-reviews/2026-09-05-workspace-awareness.md) adds a
+different everyday pain: “I already confirmed this in my other session.” Two
+real Pi sessions shared a changed name and free-tier limit without user relay;
+the idle website task updated its file and preserved the price. Exact kickoffs,
+failed send attempts, successful deliveries and the final copy are retained.
+
 The older cases below used stronger benchmark instructions and narrower tool
 sets. They establish bounded behavior, not spontaneous discovery in arbitrary
 user sessions.
