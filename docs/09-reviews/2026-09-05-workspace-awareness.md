@@ -73,6 +73,13 @@ Changes retained:
 - Goals are still a startup hint. Fresh discovery remains necessary before
   sending; the model still chooses whether to contact anyone.
 
+The same read-only diagnostic **passed after the scoped approval change**:
+native Codex called `threadmesh_peers` and received the Pi client's published
+goal, with no approval interaction, message or file edit. The
+[before/after diagnostic](artifacts/2026-09-05-codex-approval-diagnostic.json)
+retains the exact prompt, outcome and private event hashes. This verifies the
+authorization fix, not spontaneous tool selection under an ordinary task.
+
 The awareness-only ordinary API attempt still failed: Codex edited and checked
 the contract, but sent no message. Native networking retried WebSockets before
 falling back to HTTPS. Network delay does not explain away a completed silent
@@ -109,6 +116,7 @@ The script prints its private artifact directory. Use
 `node scripts/project-first-use-evidence.mjs PATH` for a small public projection,
 reviewing it before publishing. Run `npm test` for non-model regression checks.
 
-Next: a successful authorization-adjusted Codex ordinary task, a fresh
+Next: native turn-start workspace awareness for Codex rather than relying only
+on tool metadata, a successful ordinary task, a fresh
 non-contact control, DeepSeek with an available provider, and an independent
 first-run report. Do not restart the larger five-role audit as a prerequisite.

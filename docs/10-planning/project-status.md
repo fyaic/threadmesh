@@ -21,6 +21,8 @@ Codex tool discovery reached an approval cancellation in a read-only diagnostic;
 the launcher now scopes preapproval to its four local tools. Both awareness-only
 and authorization-adjusted ordinary tasks remained silent. Keep that gap open
 until a real useful loop passes; tool availability is not the same as initiative.
+The before/after native diagnostic verifies that the scoped approval fix works:
+the previously canceled peer-list call now returns the expected Pi workstream.
 
 GitHub snapshot: 2 stars, 0 forks, and one external offer of a fresh-consumer
 review in [#79](https://github.com/fyaic/threadmesh/issues/79#issuecomment-5538796478).
