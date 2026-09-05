@@ -78,8 +78,9 @@ const app = acp
   .onRequest(acp.methods.agent.session.prompt, async ({ params, client }) => {
     if (!sessions.has(params.sessionId)) throw new Error("unknown session");
     if (process.env.FAKE_ACP_QUOTA === "1") {
-      console.error("billing cycle quota exhausted");
-      throw new Error("billing cycle quota exhausted");
+      // A generic Error is intentionally redacted to "Internal error" by the
+      // SDK. Carry the fixture's quota signal in JSON-RPC, not a racy stderr log.
+      throw new acp.RequestError(-32000, "billing cycle quota exhausted");
     }
     if (process.env.FAKE_ACP_HANG === "1") {
       process.on("SIGTERM", () => {});

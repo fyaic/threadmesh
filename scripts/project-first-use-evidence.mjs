@@ -9,6 +9,7 @@ const raw = fs.readFileSync(path.join(directory, "events.json"));
 const rows = JSON.parse(raw);
 const models = new Set();
 const timeline = [];
+const sendOutcomes = [];
 for (const row of rows) {
   const event = row.event;
   if (event.type === "message_end" && event.message?.role === "assistant") {
@@ -18,10 +19,22 @@ for (const row of rows) {
     timeline.push({ session: row.session, elapsedMs: row.elapsedMs, type: event.type,
       ...(event.toolName ? { tool: event.toolName } : {}) });
   }
+  if (event.type === "item.completed" && event.item?.type === "mcp_tool_call" && event.item.server === "threadmesh") {
+    timeline.push({ session: row.session, elapsedMs: row.elapsedMs, type: "mcp_tool_call",
+      tool: event.item.tool, status: event.item.status,
+      failed: !!(event.item.error || event.item.result?.isError) });
+  }
+  if (event.type === "tool_execution_end" && event.toolName === "threadmesh_send") {
+    const failed = !!(event.isError || event.result?.isError);
+    let queued = false;
+    try { queued = JSON.parse(event.result?.content?.[0]?.text).queued === true; } catch { /* A failed call is not a delivery. */ }
+    sendOutcomes.push({ session: row.session, elapsedMs: row.elapsedMs, failed, queued });
+  }
 }
 const result = { kind: "maintainer-live-run-projection", rawEventsSha256: createHash("sha256").update(raw).digest("hex"),
-  ...report, models: [...models], timeline,
-  clientSource: fs.readFileSync(path.join(directory, "client", "client.mjs"), "utf8") };
+  ...report, models: [...models], timeline, sendOutcomes,
+  receiverArtifact: { path: report.artifact ?? "client/client.mjs",
+    content: fs.readFileSync(path.join(directory, report.artifact ?? "client/client.mjs"), "utf8") } };
 const serialized = JSON.stringify(result, null, 2).replaceAll(directory, "<fixture>")
   .replaceAll(directory.replace("/var/", "/private/var/"), "<fixture>");
 process.stdout.write(serialized + "\n");

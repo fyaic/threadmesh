@@ -1,0 +1,261 @@
+{
+  "kind": "maintainer-live-run-projection",
+  "rawEventsSha256": "b3b70cf44ba54933ae1c31ec60685d8488ac72f5dd3a2e17b9f56eed55a7e836",
+  "pass": true,
+  "elapsedMs": 167535,
+  "source": "pi",
+  "receiver": "Pi",
+  "kickoffsPerSession": 1,
+  "nativeIdleWake": true,
+  "businessAssertion": "landing uses Member Portal, states the 5-project free limit, removes old name/unlimited claim and preserves protected price",
+  "unrelatedMessages": 0,
+  "prompts": {
+    "website": "Review landing.json against ../brand/brief.json, our shared source of approved terminology and claims. Keep a short customer-facing headline and description, with the product name in the headline. Keep the page ready as our approved brief evolves.",
+    "brand": "Update brief.json with the final product decision: the product is now named Member Portal, the free tier is limited to 5 projects, and all customer-facing copy must use US spelling. Remove the old product name and unlimited-free claim from the approved brief. Keep the brief concise."
+  },
+  "caveat": "One controlled live run, generic coordination guidance enabled. Not an initiative success rate or speed comparison.",
+  "scenario": "preferences",
+  "sourceWorkstream": "brand",
+  "receiverWorkstream": "website",
+  "artifact": "website/landing.json",
+  "models": [
+    "website: zai/glm-5.3",
+    "brand: zai/glm-5.3"
+  ],
+  "timeline": [
+    {
+      "session": "website",
+      "elapsedMs": 759,
+      "type": "agent_start"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 4475,
+      "type": "tool_execution_start",
+      "tool": "read"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 4477,
+      "type": "tool_execution_start",
+      "tool": "read"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 30242,
+      "type": "tool_execution_start",
+      "tool": "edit"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 30243,
+      "type": "tool_execution_start",
+      "tool": "threadmesh_inbox"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 39680,
+      "type": "tool_execution_start",
+      "tool": "read"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 39680,
+      "type": "tool_execution_start",
+      "tool": "threadmesh_send"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 39680,
+      "type": "tool_execution_start",
+      "tool": "threadmesh_checkpoint"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 47629,
+      "type": "tool_execution_start",
+      "tool": "threadmesh_peers"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 53965,
+      "type": "tool_execution_start",
+      "tool": "threadmesh_send"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 59841,
+      "type": "agent_end"
+    },
+    {
+      "session": "brand",
+      "elapsedMs": 61057,
+      "type": "agent_start"
+    },
+    {
+      "session": "brand",
+      "elapsedMs": 70549,
+      "type": "tool_execution_start",
+      "tool": "read"
+    },
+    {
+      "session": "brand",
+      "elapsedMs": 70551,
+      "type": "tool_execution_start",
+      "tool": "bash"
+    },
+    {
+      "session": "brand",
+      "elapsedMs": 76647,
+      "type": "tool_execution_start",
+      "tool": "write"
+    },
+    {
+      "session": "brand",
+      "elapsedMs": 79111,
+      "type": "tool_execution_start",
+      "tool": "bash"
+    },
+    {
+      "session": "brand",
+      "elapsedMs": 84784,
+      "type": "tool_execution_start",
+      "tool": "threadmesh_inbox"
+    },
+    {
+      "session": "brand",
+      "elapsedMs": 90745,
+      "type": "tool_execution_start",
+      "tool": "threadmesh_send"
+    },
+    {
+      "session": "brand",
+      "elapsedMs": 98586,
+      "type": "tool_execution_start",
+      "tool": "threadmesh_peers"
+    },
+    {
+      "session": "brand",
+      "elapsedMs": 109022,
+      "type": "tool_execution_start",
+      "tool": "threadmesh_send"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 110717,
+      "type": "agent_start"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 114009,
+      "type": "tool_execution_start",
+      "tool": "threadmesh_inbox"
+    },
+    {
+      "session": "brand",
+      "elapsedMs": 114545,
+      "type": "tool_execution_start",
+      "tool": "threadmesh_checkpoint"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 117732,
+      "type": "tool_execution_start",
+      "tool": "read"
+    },
+    {
+      "session": "brand",
+      "elapsedMs": 120073,
+      "type": "agent_end"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 125319,
+      "type": "tool_execution_start",
+      "tool": "edit"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 135732,
+      "type": "tool_execution_start",
+      "tool": "read"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 135732,
+      "type": "tool_execution_start",
+      "tool": "threadmesh_inbox"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 145854,
+      "type": "tool_execution_start",
+      "tool": "threadmesh_send"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 145854,
+      "type": "tool_execution_start",
+      "tool": "threadmesh_checkpoint"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 152013,
+      "type": "tool_execution_start",
+      "tool": "threadmesh_peers"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 155267,
+      "type": "tool_execution_start",
+      "tool": "threadmesh_send"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 167431,
+      "type": "agent_end"
+    }
+  ],
+  "sendOutcomes": [
+    {
+      "session": "website",
+      "elapsedMs": 39684,
+      "failed": true,
+      "queued": false
+    },
+    {
+      "session": "website",
+      "elapsedMs": 53968,
+      "failed": false,
+      "queued": true
+    },
+    {
+      "session": "brand",
+      "elapsedMs": 90747,
+      "failed": true,
+      "queued": false
+    },
+    {
+      "session": "brand",
+      "elapsedMs": 109026,
+      "failed": false,
+      "queued": true
+    },
+    {
+      "session": "website",
+      "elapsedMs": 145854,
+      "failed": true,
+      "queued": false
+    },
+    {
+      "session": "website",
+      "elapsedMs": 155269,
+      "failed": false,
+      "queued": true
+    }
+  ],
+  "receiverArtifact": {
+    "path": "website/landing.json",
+    "content": "{\"headline\":\"Organize work with Member Portal\",\"description\":\"Up to 5 projects for your team on the free plan.\"}"
+  }
+}

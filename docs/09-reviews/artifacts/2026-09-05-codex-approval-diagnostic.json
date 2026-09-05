@@ -1,0 +1,26 @@
+{
+  "kind": "native-codex-read-only-approval-diagnostic",
+  "version": "0.145.0",
+  "prompt": "Read the available ThreadMesh peer list using its MCP tool. Do not send messages or change files. Report whether the tool worked.",
+  "initiativeEvidence": false,
+  "before": {
+    "rawEventsSha256": "3d34a08355f25981d7c91cd3e8c1e966abb3c0e857ea99c3e0f04db3f37db7d4",
+    "tool": "threadmesh_peers",
+    "status": "failed",
+    "error": "user cancelled MCP tool call",
+    "peers": null
+  },
+  "after": {
+    "rawEventsSha256": "90109faae2ee842bb86e5082c206a16bb26823b951dc8290ae09885e3b383fe8",
+    "tool": "threadmesh_peers",
+    "status": "completed",
+    "error": null,
+    "peers": [
+      {
+        "name": "client",
+        "harness": "pi",
+        "goal": "Maintain API client"
+      }
+    ]
+  }
+}
