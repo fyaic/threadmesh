@@ -128,6 +128,27 @@ in this case too. The next product check must retain meaningful constraints
 and expose an unsuccessful result, not add more message-routing roles or tune
 the fixture until it appears green.
 
+### Unrelated ordinary change: no-contact control passes
+
+In a fresh third run, Codex was asked to write an internal Monday-meeting note
+without changing the API contract. It actually called peer discovery, inbox
+and checkpoint tools, but made **zero send attempts**. The existing Pi receiver
+kept the same native identity, had no follow-up turn and retained its initial
+client file; the API contract was unchanged. The run passed at 216,066 ms,
+including 10 seconds of observation after the source completed.
+
+Pi had sent its initial dependency message, so this is zero **source contact
+about the unrelated change**, not zero workspace traffic for the entire run.
+The result does not mean silence caused by missing tools, nor prove long-term
+silence or busy-user arbitration. [Public control record](artifacts/2026-09-05-codex-pi-no-contact.json).
+
+Final three-run outcome: **API pass / copy-quality failure / no-contact pass**.
+Each was attempted once. Non-model regression: 407 passed, one optional native
+test skipped; 55 schema and 7 transition cases; 123 Markdown files, zero lint
+issues. The optional native hook test separately passed 4/4. Internal review
+also ran alternate two-page and empty-page client assertions. These maintainer
+and subagent checks are not independent community adoption.
+
 ## Codex: separate visibility, authorization and initiative
 
 The installed Codex version is `0.145.0`. Its official
@@ -200,6 +221,8 @@ create isolated fixtures; they do not operate on existing user sessions.
 npm ci
 node scripts/validate-workspace-live.mjs pi preferences
 node scripts/validate-workspace-live.mjs codex api
+node scripts/validate-workspace-live.mjs codex preferences
+node scripts/validate-workspace-live.mjs codex api-no-contact
 ```
 
 The script prints its private artifact directory. Use
@@ -207,7 +230,7 @@ The script prints its private artifact directory. Use
 reviewing it before publishing. Run `npm test` for non-model regression checks.
 
 Native task-start awareness and the ordinary cross-harness API task have now
-passed as recorded above. Remaining acceptance includes a fresh non-contact
-control, native prior-session attachment, DeepSeek with an available provider,
-and an independent first-run report. Do not restart the larger five-role audit
-as a prerequisite.
+passed as recorded above, along with the fresh no-contact control. Remaining
+acceptance includes complete business-constraint retention, native prior-session
+attachment, DeepSeek with an available provider, and an independent first-run
+report. Do not restart the larger five-role audit as a prerequisite.

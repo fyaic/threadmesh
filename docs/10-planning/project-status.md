@@ -39,6 +39,10 @@ the website resumed and retained the earlier button label, but omitted the
 free-plan meaning from the new five-project limit. Transport and continuation
 worked; task correctness did not. The negative evidence is retained alongside
 the API success, and the second-task quality gate remains open.
+The fresh unrelated-change control passed: Codex read available peer/inbox
+tools, made zero send attempts and did not wake the same idle Pi receiver.
+The three-run result is pass / quality failure / no-contact pass, not an overall
+reliability score. The completed increment is [PR #155](https://github.com/fyaic/threadmesh/pull/155).
 
 GitHub snapshot: 2 stars, 0 forks, and one external offer of a fresh-consumer
 review in [#79](https://github.com/fyaic/threadmesh/issues/79#issuecomment-5538796478).

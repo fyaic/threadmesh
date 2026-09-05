@@ -59,6 +59,27 @@ is a separate real-task acceptance, not counted as cross-harness initiative.
 
 ## Completion record
 
-Pending implementation and live verification. Update this section with actual
-outcomes and links before merging; do not mark a failed main goal as complete
-because the implementation and unit tests pass.
+The three lanes finished; main-agent integration is in
+[PR #155](https://github.com/fyaic/threadmesh/pull/155). Native context execution
+passed separately without sampling. Real models ran once per scenario, without
+manual sends or retrying the scenario for a green result:
+
+| Scenario | Acceptance | What remains |
+|---|---|---|
+| Ordinary Codex → Pi API | Pass: actual message, same receiver, its own client write, independent pagination assertion | Reciprocal dependency advice, not blind discovery or arbitrary old-tab attachment |
+| Ordinary Codex → Pi copy | Fail: receiver omitted the free-plan qualifier despite receiving it | Complete business meaning must survive, not merely the prior button label |
+| Unrelated Codex change | Pass: discovery/inbox available, zero source sends, no receiver follow-up | Ten-second post-source observation, not long-term or busy-input proof |
+
+[Public evidence and retained failure](../09-reviews/2026-09-05-workspace-awareness.md)
+include exact prompts, native versions, timelines, final files and private-event
+hashes. Internal review independently checked the API result and copy failure.
+This is an acceptable bounded implementation increment, **not completion of
+the overall user experience or the second-task quality gate**.
+
+Follow-up tracking: [#156](https://github.com/fyaic/threadmesh/issues/156).
+Next order: preserve complete constraints and expose failed/unverified outcomes
+using real project checks; validate native resume with an earlier project
+context; then native busy/user-input behavior and an independent first-use run.
+Keep real quota-blocked recovery and provider-authenticated DeepSeek validation
+explicitly open. Do not substitute protocol expansion or promotion for these
+outcomes, or reopen broad benchmark loops to avoid the product gap.

@@ -1,0 +1,138 @@
+{
+  "kind": "maintainer-live-run-projection",
+  "rawEventsSha256": "3e63fb776f698ed01311e9dbb9359b6b48c4aaf79326c2e972dbd02c8255b444",
+  "pass": true,
+  "elapsedMs": 216066,
+  "source": "codex",
+  "receiver": "Pi",
+  "crossHarness": true,
+  "kickoffsPerSession": 1,
+  "sameNativeReceiverSession": true,
+  "nativeIdleWake": false,
+  "noContactObservationMs": 10000,
+  "businessAssertion": "internal backend note is written, API contract is unchanged, no other workstream is contacted and idle receiver does not resume",
+  "prompts": {
+    "client": "You maintain client.mjs. Inspect it and make sure it follows the current API contract in ../backend/contract.json (the shared source of truth). Keep the exported fetchAll(fetchPage) API returning a flat array. Leave the file ready for use. This task continues as the project evolves.",
+    "backend": "Write local-notes.md with a concise note that the backend team reviews its internal meeting agenda every Monday. Keep contract.json unchanged."
+  },
+  "caveat": "One controlled live negative control, not an initiative success rate.",
+  "scenario": "api-no-contact",
+  "sourceWorkstream": "backend",
+  "receiverWorkstream": "client",
+  "artifact": "client/client.mjs",
+  "models": [
+    "client: zai/glm-5.3"
+  ],
+  "timeline": [
+    {
+      "session": "client",
+      "elapsedMs": 759,
+      "type": "agent_start"
+    },
+    {
+      "session": "client",
+      "elapsedMs": 6393,
+      "type": "tool_execution_start",
+      "tool": "read"
+    },
+    {
+      "session": "client",
+      "elapsedMs": 6393,
+      "type": "tool_execution_start",
+      "tool": "read"
+    },
+    {
+      "session": "client",
+      "elapsedMs": 14493,
+      "type": "tool_execution_start",
+      "tool": "threadmesh_peers"
+    },
+    {
+      "session": "client",
+      "elapsedMs": 14493,
+      "type": "tool_execution_start",
+      "tool": "threadmesh_inbox"
+    },
+    {
+      "session": "client",
+      "elapsedMs": 14494,
+      "type": "tool_execution_start",
+      "tool": "bash"
+    },
+    {
+      "session": "client",
+      "elapsedMs": 36468,
+      "type": "tool_execution_start",
+      "tool": "write"
+    },
+    {
+      "session": "client",
+      "elapsedMs": 46301,
+      "type": "tool_execution_start",
+      "tool": "bash"
+    },
+    {
+      "session": "client",
+      "elapsedMs": 54388,
+      "type": "tool_execution_start",
+      "tool": "threadmesh_send"
+    },
+    {
+      "session": "client",
+      "elapsedMs": 54390,
+      "type": "tool_execution_start",
+      "tool": "threadmesh_checkpoint"
+    },
+    {
+      "session": "client",
+      "elapsedMs": 62353,
+      "type": "agent_end"
+    },
+    {
+      "session": "backend",
+      "elapsedMs": 201990,
+      "type": "mcp_tool_call",
+      "tool": "threadmesh_peers",
+      "status": "completed",
+      "failed": false
+    },
+    {
+      "session": "backend",
+      "elapsedMs": 201994,
+      "type": "mcp_tool_call",
+      "tool": "threadmesh_inbox",
+      "status": "completed",
+      "failed": false
+    },
+    {
+      "session": "backend",
+      "elapsedMs": 201997,
+      "type": "mcp_tool_call",
+      "tool": "threadmesh_checkpoint",
+      "status": "completed",
+      "failed": false
+    },
+    {
+      "session": "backend",
+      "elapsedMs": 205358,
+      "type": "turn.completed"
+    }
+  ],
+  "sendOutcomes": [
+    {
+      "session": "client",
+      "elapsedMs": 54398,
+      "failed": false,
+      "queued": true
+    }
+  ],
+  "receiverArtifact": {
+    "path": "client/client.mjs",
+    "content": "/**\n * client.mjs — paginated consumer for the /orders API.\n * Contract source of truth: ../backend/contract.json\n *   request:  { page: integer starting at 1 }\n *   response: { items: array of { id: string }, next_page: integer or null }\n *\n * Exports fetchAll(fetchPage) -> flat array of order items across all pages.\n */\n\nexport async function fetchAll(fetchPage) {\n  const items = [];\n  let page = 1; // pages are 1-indexed per contract\n  while (page != null) {\n    const data = await fetchPage({ page });\n    // Stack-safe accumulation (spread can overflow on very large pages).\n    for (const item of data.items) items.push(item);\n    page = data.next_page; // null terminates the loop\n  }\n  return items;\n}\n"
+  },
+  "nativeVersions": {
+    "codex": "0.145.0",
+    "pi": "0.84.2"
+  },
+  "sourceModel": "Unavailable: native Codex exec JSON events did not expose the model identifier."
+}

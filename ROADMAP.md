@@ -30,6 +30,8 @@ open; they are not prerequisites for a usable, honestly labelled local alpha.
   [Evidence and limits](docs/09-reviews/2026-09-05-workspace-awareness.md).
 - [x] Native Codex task-time context plus one ordinary Codex → Pi API pass:
   same receiver session, model-selected advice and verified receiver file edit.
+- [x] Fresh unrelated-change control with real Codex discovery/inbox calls:
+  zero source send attempts and no same-receiver follow-up.
 - [ ] Preserve the complete business meaning in the second cross-harness task:
   the copy run delivered and edited, but lost the free-plan qualifier. Keep this
   failed assertion visible; a successful receipt is not verified completion.
@@ -49,6 +51,9 @@ open; they are not prerequisites for a usable, honestly labelled local alpha.
 
 Do not claim arbitrary-host idle wake, lossless chat migration, production
 security, reliable speedups, or independent adoption from maintainer tests.
+The next focused product acceptance is tracked in
+[#156](https://github.com/fyaic/threadmesh/issues/156), including the retained
+copy-quality failure and prior-session adoption gap.
 
 ## Historical milestone ledger
 
