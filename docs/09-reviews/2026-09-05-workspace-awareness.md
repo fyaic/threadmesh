@@ -100,6 +100,12 @@ Markdown lint checked 121 files with zero issues. The approved-copy case passed
 before the later send-description clarification; it must not be presented as
 an after-change retry-rate comparison.
 
+CI also exposed an old ACP quota-test race: the fake agent threw a generic
+exception (serialized by the SDK as `Internal error`) and relied on stderr
+arriving first for classification. The fixture now returns an explicit JSON-RPC
+quota error without stderr, matching what its test claims to exercise. The
+production classifier and acceptance assertion were not weakened.
+
 ## Reproduce and next acceptance
 
 Requires a checkout with dependencies installed, authenticated Pi and the
