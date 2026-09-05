@@ -2,8 +2,9 @@
 
 ## Current product update — 2026-09-05
 
-The active plan is [first useful collaboration](first-use-2026-09-05.md),
-superseding the older freeze and five-role proof as the critical path.
+The active plan is [first useful collaboration](first-use-2026-09-05.md), with
+[cross-harness acceptance](cross-harness-acceptance-2026-09-05.md) as the current
+increment, superseding the older freeze and five-role proof as the critical path.
 The alpha now has a usable local workspace CLI, a four-tool stdio MCP server,
 Codex/Pi/Kimi/official DeepSeek launch integration, persistent non-consuming
 inboxes and explicit portable checkpoints. The core coordinator is reused.
@@ -19,10 +20,29 @@ Follow-up: the [approved-copy case](../09-reviews/2026-09-05-workspace-awareness
 passed with two real Pi sessions, one kickoff each and a real idle follow-up.
 Codex tool discovery reached an approval cancellation in a read-only diagnostic;
 the launcher now scopes preapproval to its four local tools. Both awareness-only
-and authorization-adjusted ordinary tasks remained silent. Keep that gap open
-until a real useful loop passes; tool availability is not the same as initiative.
+and authorization-adjusted ordinary tasks remained silent in the earlier runs.
 The before/after native diagnostic verifies that the scoped approval fix works:
 the previously canceled peer-list call now returns the expected Pi workstream.
+
+The subsequent native task-time context integration passed a real ordinary
+Codex → Pi API case: model-selected advice, the same native Pi receiver's idle
+follow-up, its own successful client write, and an independent two-page check.
+There was no human relay. Pi had first volunteered its dependency, so this is
+reciprocal collaboration, not blind-source discovery. The
+[dated record](../09-reviews/2026-09-05-workspace-awareness.md#ordinary-codex--pi-api-case-pass)
+preserves exact prompts, failed sends, timing and private-event hashes.
+Arbitrary old-session attachment, long-context quota recovery, DeepSeek model
+initiative and independent first-user success remain separate open product gates.
+
+The subsequent Codex → Pi copy case did **not** pass its business assertion:
+the website resumed and retained the earlier button label, but omitted the
+free-plan meaning from the new five-project limit. Transport and continuation
+worked; task correctness did not. The negative evidence is retained alongside
+the API success, and the second-task quality gate remains open.
+The fresh unrelated-change control passed: Codex read available peer/inbox
+tools, made zero send attempts and did not wake the same idle Pi receiver.
+The three-run result is pass / quality failure / no-contact pass, not an overall
+reliability score. The completed increment is [PR #155](https://github.com/fyaic/threadmesh/pull/155).
 
 GitHub snapshot: 2 stars, 0 forks, and one external offer of a fresh-consumer
 review in [#79](https://github.com/fyaic/threadmesh/issues/79#issuecomment-5538796478).

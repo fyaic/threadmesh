@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { createHash } from "node:crypto";
+import { nativeSendOutcomes } from "./workspace-live-evidence.mjs";
 
 // Publish a small projection, never raw transcripts, reasoning, credentials or native IDs.
 const directory = path.resolve(process.argv[2] ?? "");
@@ -9,7 +10,7 @@ const raw = fs.readFileSync(path.join(directory, "events.json"));
 const rows = JSON.parse(raw);
 const models = new Set();
 const timeline = [];
-const sendOutcomes = [];
+const sendOutcomes = nativeSendOutcomes(rows).map(({ messageId: _privateId, ...outcome }) => outcome);
 for (const row of rows) {
   const event = row.event;
   if (event.type === "message_end" && event.message?.role === "assistant") {
@@ -23,12 +24,6 @@ for (const row of rows) {
     timeline.push({ session: row.session, elapsedMs: row.elapsedMs, type: "mcp_tool_call",
       tool: event.item.tool, status: event.item.status,
       failed: !!(event.item.error || event.item.result?.isError) });
-  }
-  if (event.type === "tool_execution_end" && event.toolName === "threadmesh_send") {
-    const failed = !!(event.isError || event.result?.isError);
-    let queued = false;
-    try { queued = JSON.parse(event.result?.content?.[0]?.text).queued === true; } catch { /* A failed call is not a delivery. */ }
-    sendOutcomes.push({ session: row.session, elapsedMs: row.elapsedMs, failed, queued });
   }
 }
 const result = { kind: "maintainer-live-run-projection", rawEventsSha256: createHash("sha256").update(raw).digest("hex"),

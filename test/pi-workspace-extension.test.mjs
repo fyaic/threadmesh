@@ -13,8 +13,8 @@ test("Pi entry exposes four tools, refreshes advisory context, and only wakes an
   const before = Object.fromEntries(["THREADMESH_WORKSPACE", "THREADMESH_NAME", "THREADMESH_GOAL", "THREADMESH_WAKE_IDLE"].map(key => [key, process.env[key]]));
   Object.assign(process.env, { THREADMESH_WORKSPACE: directory, THREADMESH_NAME: "client", THREADMESH_GOAL: "Maintain API client", THREADMESH_WAKE_IDLE: "1" });
   const handlers = {}, tools = [], notifications = [];
-  let idle = false;
-  const context = { isIdle: () => idle, hasPendingMessages: () => false, ui: { setStatus() {} } };
+  let idle = false, queuedInput = false;
+  const context = { isIdle: () => idle, hasPendingMessages: () => queuedInput, ui: { setStatus() {} } };
   extension({ on: (name, handler) => { handlers[name] = handler; }, registerTool: tool => tools.push(tool),
     getActiveTools: () => tools.map(tool => tool.name), sendMessage: (...args) => notifications.push(args) });
   t.after(() => {
@@ -31,6 +31,11 @@ test("Pi entry exposes four tools, refreshes advisory context, and only wakes an
   t.mock.timers.tick(2001);
   assert.equal(notifications.length, 0, "active turn must not be steered");
   idle = true;
+  queuedInput = true;
+  t.mock.timers.tick(2001);
+  assert.equal(notifications.length, 0, "queued user work takes priority even while idle");
+  assert.equal(room.inbox("client").length, 1, "deferring for user work must not consume the peer message");
+  queuedInput = false;
   t.mock.timers.tick(2001);
   assert.equal(notifications.length, 1);
   assert.deepEqual(notifications[0][1], { triggerTurn: true, deliverAs: "followUp" });

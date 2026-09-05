@@ -26,7 +26,7 @@ and [dated validation](../09-reviews/2026-09-05-first-use-validation.md).
 | Harness | Version inspected | Surface | Boundary |
 |---|---|---|---|
 | Pi | `0.84.2` | Native CLI extension, four tools, turn-start inbox, opt-in idle follow-up | Native tools remain available; local trusted process, not an OS sandbox |
-| Codex | `0.145.0` | Invocation-scoped stdio MCP | Tool configuration is real; normal-task initiative is not guaranteed; no native idle wake |
+| Codex | `0.145.0` | Invocation-scoped stdio MCP plus exact-trusted lifecycle context hooks on macOS/Linux | Native hook execution checked without sampling; normal-task initiative is not guaranteed; no native idle wake; Windows MCP-only |
 | Kimi Code | `0.39.1` | Project stdio MCP configuration | Weekly quota blocked this live attempt; previous ACP proof is a different version/path |
 | DeepSeek Harness | npm `0.1.2-rc.1` | Official MCP client in Cordis runtime | Native four-tool bidirectional check passed; model, web UI and idle wake not claimed |
 
