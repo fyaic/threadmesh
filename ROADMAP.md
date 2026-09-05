@@ -11,6 +11,36 @@ completion, blockers, review findings, and dependency-ready state without the
 user acting as their message bus**. ThreadMesh is the attention and admission
 policy layer; A2A, Cotal, ACP, or harness-native APIs may supply transport.
 
+## Active priority — first useful collaboration (2026-09-05)
+
+The [first-use plan](docs/10-planning/first-use-2026-09-05.md) supersedes the
+older harness-expansion freeze below. Existing M0/M5 acceptance gaps remain
+open; they are not prerequisites for a usable, honestly labelled local alpha.
+
+- [x] Shared local workspace with names/goals, persistent inbox and four tools.
+- [x] Invocation-scoped Codex/Pi launch, project-scoped Kimi MCP configuration.
+- [x] Official DeepSeek Harness MCP plugin integration and native runtime check.
+- [x] Explicit portable checkpoints and cross-harness continuation command.
+- [x] Practical API, preferences and quota previews, labelled as simulated.
+- [x] First-run feedback form accepts unsuccessful installs and silent agents.
+- [x] Real Pi-pair ordinary-task advice → idle wake → file update → independent
+  business assertion; real Pi continuation from an explicit saved checkpoint.
+- [ ] Close live ordinary-task collaboration evidence, including DeepSeek with
+  an available provider credential; publish failures alongside successes.
+- [ ] Get three independent first-run reports and fix the first blocking step.
+- [ ] Measure useful messages, irrelevant contact and checkpoint recoverability
+  across at least three different everyday tasks, not only pagination.
+- [ ] Publish one concise evidence-backed community demo and one relevant
+  harness integration submission; target 100 legitimate stars, not paid growth.
+
+Do not claim arbitrary-host idle wake, lossless chat migration, production
+security, reliable speedups, or independent adoption from maintainer tests.
+
+## Historical milestone ledger
+
+The following sections preserve prior accounting. Where execution order
+conflicts, the active priority above governs; incomplete evidence stays open.
+
 ## M0 — Foundation and protocol draft
 
 - [x] Define the problem, scope, and core terminology.

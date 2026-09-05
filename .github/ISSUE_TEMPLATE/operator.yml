@@ -1,5 +1,5 @@
-name: 15-minute operator report
-description: Report an independent first-run attempt of the ThreadMesh proof.
+name: First-run report (failures welcome)
+description: Tell us the first useful result or the first step that failed.
 title: "[Operator]: "
 labels: [external-review, usability, triage]
 body:
@@ -22,8 +22,8 @@ body:
   - type: input
     id: time
     attributes:
-      label: Time to first successful demo
-      placeholder: 7m 30s, or did not complete in 15m
+      label: Time to first useful result, or where you stopped
+      placeholder: 5 minutes, install failed, or tools loaded but the agent stayed silent
     validations:
       required: true
   - type: textarea
@@ -52,12 +52,12 @@ body:
       label: Evidence checks
       options:
         - label: I found why delivery alone did not unlock the dependent task.
-          required: true
+          required: false
         - label: I found what happened when the receiver was already running.
-          required: true
+          required: false
         - label: The demo reported cleanup complete.
-          required: true
+          required: false
         - label: I am independent of the ThreadMesh maintainer organization.
-          required: true
+          required: false
         - label: I removed credentials, transcripts, IDs, and local paths.
           required: true

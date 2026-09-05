@@ -11,7 +11,15 @@ function print(value) {
   process.stdout.write(`${JSON.stringify(value)}\n`);
 }
 
-if (command !== "demo" || args.some((arg) => arg !== "--json")) {
+if (command !== "demo") {
+  try {
+    const { workspaceCli } = await import("../src/workspace/cli.mjs");
+    await workspaceCli(process.argv.slice(2));
+  } catch (error) {
+    process.stderr.write(`ThreadMesh: ${error.message}\n`);
+    process.exitCode = 1;
+  }
+} else if (args.some((arg) => arg !== "--json")) {
   process.stderr.write("Usage: node bin/threadmesh.mjs demo [--json]\n");
   process.exitCode = 64;
 } else {

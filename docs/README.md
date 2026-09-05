@@ -5,6 +5,11 @@ evidence. New readers do not need to read every numbered directory in order.
 
 ## Start here
 
+For the current alpha, start with [your first workspace](06-guides/first-workspace.md),
+[portable checkpoints](06-guides/portable-checkpoints.md), and the
+[first-use plan](10-planning/first-use-2026-09-05.md). The earlier milestone
+documents below remain useful background, not onboarding prerequisites.
+
 1. [What ThreadMesh is](00-overview/product-guide.md)
 2. [See the real proactive-agent cases](06-guides/real-world-cases.md)
 3. [Run the closed-loop attention-router demo](06-guides/attention-router-demo.md)

@@ -1,238 +1,134 @@
 <h1 align="center">ThreadMesh</h1>
 
+<p align="center"><strong>让 Agent 之间自己沟通，你不用再当消息中转站。</strong></p>
+
+<p align="center">把不同 Agent 的独立 session 接到同一个工作空间：主动分享有用信息，保留工作交接点。</p>
+
 <p align="center">
-  <strong>让彼此独立的 Agent session 产生有选择、有边界的主动协作。</strong>
+  <a href="README.md">English</a> ·
+  <a href="docs/06-guides/first-workspace.md">接入指南</a> ·
+  <a href="docs/06-guides/portable-checkpoints.md">额度用完怎么办</a> ·
+  <a href="docs/06-guides/real-world-cases.md">真实案例与边界</a>
 </p>
 
 <p align="center">
-  Agent A 发现 Agent B 正好需要自己的结果，并在用户充当消息中转站之前主动联系它。
+  <img src="docs/assets/threadmesh-session-initiative.jpg" width="100%" alt="概念示意：一个 session 主动联系另一个，无关任务保持安静">
+  <br><sub>这是概念插图，不是已发布的 ThreadMesh 聊天界面截图。</sub>
 </p>
 
-<p align="center">
-  <a href="https://github.com/fyaic/threadmesh/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/fyaic/threadmesh/actions/workflows/ci.yml/badge.svg"></a>
-  <a href="LICENSE"><img alt="Apache 2.0 license" src="https://img.shields.io/badge/license-Apache--2.0-4c7bd9.svg"></a>
-  <a href="package.json"><img alt="Node 22 or newer" src="https://img.shields.io/badge/node-%3E%3D22-3c873a.svg"></a>
-  <a href="docs/10-planning/project-status.md"><img alt="Pre-alpha status" src="https://img.shields.io/badge/status-pre--alpha-f59e0b.svg"></a>
-</p>
+你让一个 Agent 改后端，另一个写客户端。后端把分页字段改成了 `next_cursor`，
+客户端却还在用旧字段。通常你需要发现这个变化，复制内容，切换 session，再解释一遍。
 
-<p align="center">
-  <a href="#快速开始"><strong>快速开始</strong></a> ·
-  <a href="docs/06-guides/real-world-cases.md">真实案例</a> ·
-  <a href="docs/00-overview/harness-support.md">Harness 支持</a> ·
-  <a href="docs/zh-CN/README.md">中文文档</a> ·
-  <a href="README.md">English</a>
-</p>
+ThreadMesh 希望省掉这次转述：你明确让两个 session 加入同一个本地 workspace，
+Agent 能看到彼此公布的目标，自行判断是否需要联系、联系谁、说什么。
+接收方再判断是否采用。**智能判断来自模型，ThreadMesh 提供让判断落地的连接。**
 
-<p align="center">
-  <a href="docs/06-guides/real-world-cases.md">
-    <img src="docs/assets/threadmesh-session-initiative.jpg" width="100%" alt="Agent A 主动把来自另一任务的有边界建议发送给 Agent B；Agent B 可以接受、延迟或拒绝，无关 session 保持静默">
-  </a>
-</p>
-
-<p align="center">
-  <sub><strong>A 决定何时主动联系。</strong>B 决定是否接纳。无关任务保持安静。</sub>
-</p>
-
-ThreadMesh 是一个面向 Agent harness 的可移植协调层。它让一个 session 能在授权
-范围内发现相关工作，并向另一个 session 建议上下文；接收方仍然决定是否以及何时
-把这些上下文加入自己的模型历史。
-
-它不是共享记忆、工作流引擎，也不允许一个 Agent 接管另一个任务。
-
-> [!WARNING]
-> ThreadMesh 目前是 pre-alpha，主动能力默认关闭。仅适合本地可信进程实验，不能
-> 作为生产授权、多租户隔离或恶意 peer prompt 的安全边界。
-
-## 为什么需要 ThreadMesh
-
-多个 Agent 并行工作时，用户仍然需要人工协调每一次交接。
-
-| 没有 ThreadMesh | 使用 ThreadMesh |
-|---|---|
-| 用户发现 A 的结果正好是 B 缺少的输入 | A 发现 B 声明的相关依赖 |
-| 用户复制结果、找到 B、重新解释上下文 | A 发送一次有类型、有时效的建议 |
-| 用户猜测是否应该打断 B | B 在 checkpoint 接受、延迟或拒绝 |
-| 无关 session 很容易被误触 | 无关 session 保持静默 |
-
-这里的“智能”是：工作变得相关时主动开口，不相关时保持安静。ThreadMesh 为这个
-判断提供 policy、来源、mailbox、接收方同意和审计边界。
-
-## 快速开始
-
-不消耗模型额度，也不接触现有 Agent session，直接运行确定性闭环演示：
-
-```sh
-npx --yes --package=github:fyaic/threadmesh threadmesh demo
+```text
+后端 session                    客户端 session                  无关 session
+改完分页接口 ── 主动发出建议 ──► 看到来自另一任务的变化           继续翻译隐私政策
+                               判断、检查、更新                 不收到无关消息
 ```
 
-也可以从源码运行：
+## 先看到效果，再接自己的 Agent
 
-```sh
-git clone https://github.com/fyaic/threadmesh.git
-cd threadmesh
-npm ci
-npm run demo
-```
-
-演示覆盖“实现 → 评审 → 修复 → 验证 → 下游任务”，包括接收方 checkpoint、
-无关路由抑制、验证后依赖解锁、重启恢复和精确清理。
-
-[演示指南](docs/06-guides/attention-router-demo.md) ·
-[人工对照](docs/06-guides/manual-relay-baseline.md) ·
-[真实 Agent 案例](docs/06-guides/real-world-cases.md)
-
-## 接入自己的 harness
-
-SDK 目前处于 pre-alpha，从 GitHub 安装：
+需要 Node 22+。目前从 GitHub 安装，尚未发布到 npm registry。
 
 ```sh
 npm install github:fyaic/threadmesh
+npx threadmesh preview api
 ```
 
-为每个模型 turn 提供受预算约束的发现与建议 bridge：
+这是明确标注的**模拟 Agent 演示**，经过真实本地协调器，不消耗模型额度，也不读取
+现有聊天。还有 `preview preferences` 和 `preview quota`，分别展示复用已确认的
+偏好、额度耗尽后的工作交接。不要把这个预览当成真实模型主动性的证明。
 
-```js
-import {
-  createProactiveToolBridge,
-  createThreadMeshClient,
-} from "@fyaic/threadmesh";
+## 接入真实 session
 
-const client = createThreadMeshClient({
-  authorization: `Bearer ${process.env.THREADMESH_TOKEN}`,
-  send: authenticatedJsonRpc,
-});
+在项目目录创建工作空间：
 
-const bridge = createProactiveToolBridge({
-  client,
-  source: currentTask,
-  relationships: [{ relationshipId, target: relatedTask }],
-});
-
-await harness.runModelTurn({
-  tools: bridge.tools,
-  onToolCall: bridge.handleToolCall,
-});
+```sh
+npx threadmesh init --workspace .threadmesh
 ```
 
-关系集合由 host 而不是模型决定。模型必须先发现才能发送，transport 调用前会保留
-预算，接收方始终掌握 context admission。
+终端 B 先启动接收方：
 
-[30 分钟接入指南](docs/06-guides/implement-an-adapter.md) ·
-[完整 sender/receiver 示例](examples/proactive-tool-bridge.mjs)
+```sh
+npx threadmesh run pi --name client --goal "维护 /orders 客户端" --wake-idle \
+  -- --provider zai --model glm-5.3
+```
 
-## 已验证的主动性
+终端 A 在同一项目启动另一个 Agent：
 
-公开验证明确区分相关、无关和 control 条件。
+```sh
+npx threadmesh run pi --name backend --goal "维护 /orders 后端接口" \
+  -- --provider zai --model glm-5.3
+```
 
-| 条件 | Agent A 的选择 | 对 B 的影响 |
+分别给它们正常的工作任务。它们现在可以发现 peer、发消息、读收件箱、存 checkpoint。
+不同项目目录也能协作，只要传相同的绝对 `--workspace` 路径。
+Agent 本身需要事先安装、登录，并有可用额度。这里固定了实测通过的 Pi 模型；
+其他模型需各自验证，Codex/Kimi/DeepSeek 的启动路径见下方指南。
+
+[最新真实案例](docs/09-reviews/2026-09-05-first-use-validation.md)：两个 Pi session
+收到普通文件任务后自行沟通，接收方在空闲时自动继续，修改客户端，并通过独立两页
+分页断言；无关消息为 **0**。这是一次受控通过，不是普遍可靠性承诺。
+
+[完整上手步骤、DeepSeek 配置、排错 →](docs/06-guides/first-workspace.md)
+
+## 能接哪些 Agent
+
+| Harness | 接入方式 | 空闲时自动唤醒 |
 |---|---|---|
-| 存在相关依赖 | 发现一次 → 建议一次 | B 接受并完成 |
-| 任务无关 | 发现一次 → 保持安静 | B 没有被激活 |
-| 没有相关任务 | 不调用 ThreadMesh | 零干扰 |
+| Pi | 原生扩展，turn 开始时提供收件箱 | 显式开启 `--wake-idle`；不打断正在运行的 turn |
+| Codex | 本次启动的 MCP 配置 | 未提供；模型工作期间读取 inbox |
+| Kimi Code | 项目 MCP 配置，保留其他 server | 未提供；模型工作期间读取 inbox |
+| DeepSeek Harness | 官方 `dsh` 的 Cordis MCP 插件 | 未声称支持 |
+| 其他 Harness | 标准 MCP 配置或 JavaScript SDK | 需要 host 自己接入 |
 
-当前真实模型案例包括：
+DeepSeek 官方 `0.1.2-rc.1` 已通过原生插件的工具发现、双向收发、接收方处置及
+checkpoint 保存验证。**真实 DeepSeek 模型主动协作仍待 provider 凭证验证。**
+此前 Codex→Kimi、Pi→Kimi 的真实模型记录使用了较强约束，不能代表任意日常任务
+都能自主成功。新旧证据和失败记录在[支持矩阵](docs/00-overview/harness-support.md)中分开说明。
 
-- **Pi `0.84.2` → Kimi Code `0.38.0`：**相关时联系、无关时安静、上下文
-  admission 和精确清理；
-- **Codex CLI `0.145.0` → Kimi Code `0.38.0`：**跨产品自主选择
-  `discover → suggest`；
-- **Codex 生命周期链：**一次 kickoff 推动实现、评审、修复、验证和下游角色，
-  无关 session 为零 turn；完整生产证据门仍未关闭。
+## 站在日常使用的角度
 
-[真实案例总览](docs/06-guides/real-world-cases.md) ·
-[Pi 验证记录](docs/09-reviews/2026-08-25-pi-integration-kit-validation.md) ·
-[Codex-to-Kimi 记录](docs/09-reviews/2026-08-25-codex-to-kimi-proactive.md)
-
-## 能力
-
-| 能力 | 当前实现 |
+| 痛点 | 可以怎样用 |
 |---|---|
-| 关系范围发现 | 只读取 host 授权关系中的最小任务摘要 |
-| 有预算的主动建议 | 两个模型工具，每 turn 限制发现和发送次数 |
-| 接收方主权 | mailbox checkpoint，明确接受、延迟或拒绝 |
-| 时效与防重放 | 精确任务实例、过期、revision、幂等和 claim 检查 |
-| 来源与审计 | sender、关系、理由、处置、admission 和清理记录 |
-| Harness 可移植性 | transport-neutral SDK 与 App Server、ACP、subprocess adapter |
-| 失败关闭 | 不把不支持的控制操作冒充成成功 |
+| “这个接口变更，我还得跟另一个 Agent 再说一遍。” | 上游给维护客户端的 session 发变化和影响。 |
+| “命名、文案语气已经确认过，为什么又被改回去？” | 主动分享明确批准的约束，而不是广播整段私聊。 |
+| “调研 Agent 找到了答案，写代码的还卡着。” | 把结论、来源及为什么相关交给对应工作流。 |
+| “额度满了，庞大上下文都在那个 session 里。” | 用已保存的目标、决策、约束、进度和下一步启动另一家 Agent。 |
 
-真实产品实验目前只启用有边界的 `suggest`。`steer` 和 `interrupt` 仍然需要更严格
-的权限门。
+这些是使用场景建议，不是每项都已独立跑过的成功宣称。
 
-## Harness 支持
+## 额度耗尽后的交接
 
-| Harness / 接入方式 | 已验证角色 | 证据 |
-|---|---|---|
-| Pi `0.84.2` extension | 通过公开 SDK 主动发送 | 真实模型通过 |
-| Codex CLI `0.145.0` App Server | 主动 sender 与 receiver | 真实模型通过 |
-| Kimi Code `0.38.0` ACP | 持久接收 session | 真实模型通过 |
-| Gemini CLI `0.56.0` headless | subprocess receiver adapter | 确定性预检；真实模型待运行 |
-| 自研 JavaScript harness | cooperative loop 与 native tool bridge | consumer 与 conformance 通过 |
-| 通用 ACP Agent | 持久 session receiver | conformance 通过；Kimi 是真实 ACP 证明 |
+```sh
+npx threadmesh status
+npx threadmesh continue backend --agent kimi --name recovery
+```
 
-其他 harness 只有在发布版本范围、capability 文档、conformance 结果和已知缺口后，
-才会被标记为已验证集成。
+**必须先有 checkpoint**。Agent 有保存工具和通用保存提示，但不能保证每次都主动保存，
+请用 `status` 确认。目的地需要自己的正常账户、权限和额度。
 
-[完整兼容矩阵](docs/00-overview/harness-support.md) ·
-[Adapter contract](docs/05-adapters/adapter-contract.md)
+它转移的是显式工作上下文，不是隐藏推理、完整聊天或授权；不会绕过额度，也不会
+自动轮换账户。源 Agent 已完全不可访问且没保存的内容，ThreadMesh 无法凭空恢复。
 
-## 安全边界
+[保存、导出和跨 Harness 继续工作的边界 →](docs/06-guides/portable-checkpoints.md)
 
-每个任务拥有自己的目标和模型可见历史。
+## 诚实的边界
 
-- 不搜索全局 session，不共享完整 transcript；
-- 精确、有方向、最小权限的关系授权；
-- peer 内容先进入 mailbox，再由 receiver 判断；
-- consequential request 必须检查时效和目标版本；
-- 保留 peer 来源，不伪装成用户指令；
-- capability 不满足时失败关闭，保留完整因果审计。
+- 装上工具不等于模型一定会发现每个依赖。
+- MCP 发消息不等于能自动唤醒所有 Agent 产品。
+- 只共享明确加入的工作空间，不扫描所有私聊。
+- 读 inbox 不会把消息“读没”；接受消息不等于任务完成。
+- 当前是同一所有者的本地实验版，不是多租户或恶意进程的安全隔离。
 
-当前 adapter 不提供 OS sandbox。不要用它处理任意恶意 peer 内容或充当生产安全
-边界。
+我们优先解决“第一次上手就能获得实际帮助”，而不是继续堆协议术语。
+安装失败、Agent 沉默、建议不相关，都值得直接提 issue。
 
-[上下文主权](docs/01-concepts/context-sovereignty.md) ·
-[权限模型](docs/04-safety/permission-model.md) ·
-[威胁模型](docs/04-safety/threat-model.md) ·
-[安全策略](SECURITY.md)
+[报告第一次使用](https://github.com/fyaic/threadmesh/issues/new?template=operator.yml) ·
+[路线图](ROADMAP.md) · [文档](docs/README.md) · [贡献](CONTRIBUTING.md)
 
-## 项目状态
-
-- **协议：**可执行 `0.0-draft`；
-- **Package：**`@fyaic/threadmesh@0.1.0-alpha.0`，可从 GitHub 安装；
-- **Runtime：**面向本地可信进程的 authenticated JSON-RPC + SQLite coordinator；
-- **验证：**388 项测试、55 个 schema case、7 个状态转换 case 和文档检查；
-- **默认：**主动协调保持显式 opt-in；
-- **主线：**先关闭真实产品实测基线和外部用户上手门，再扩展协议或 harness 范围。
-
-[当前状态](docs/10-planning/project-status.md) ·
-[路线图](ROADMAP.md) ·
-[验证索引](docs/09-reviews/README.md)
-
-## 文档
-
-| 目标 | 从这里开始 |
-|---|---|
-| 理解产品 | [产品说明](docs/00-overview/product-guide.md) |
-| 查看真实主动行为 | [真实 Agent 案例](docs/06-guides/real-world-cases.md) |
-| 运行本地证明 | [Attention-router 演示](docs/06-guides/attention-router-demo.md) |
-| 对比人工转发 | [人工基线](docs/06-guides/manual-relay-baseline.md) |
-| 接入 harness | [Adapter 指南](docs/06-guides/implement-an-adapter.md) |
-| 评估安全边界 | [威胁模型](docs/04-safety/threat-model.md) |
-| 参与贡献 | [贡献指南](CONTRIBUTING.md) |
-
-## 非目标
-
-ThreadMesh 不是聊天系统、模型网关、工作流 DAG 引擎、全局 Agent 目录，也不允许
-一个 Agent 控制无关任务。它不会取代 MCP 或 A2A。
-
-## 社区
-
-[Discussions](https://github.com/fyaic/threadmesh/discussions) ·
-[Issues](https://github.com/fyaic/threadmesh/issues) ·
-[贡献指南](CONTRIBUTING.md) ·
-[治理](GOVERNANCE.md) ·
-[支持](SUPPORT.md) ·
-[行为准则](CODE_OF_CONDUCT.md)
-
-## 许可证
-
-ThreadMesh 采用 [Apache License 2.0](LICENSE)。
+如果它确实帮你省了一次转述或重复劳动，欢迎 star，让更多人发现它。
+采用 [Apache 2.0](LICENSE) 协议。

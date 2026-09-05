@@ -11,6 +11,18 @@ delivery. A useful case therefore needs all four of these observations:
 This page summarizes the real product evidence. Detailed records are linked for
 reproduction and audit.
 
+## Start with the everyday-work test
+
+The new [first-use validation](../09-reviews/2026-09-05-first-use-validation.md)
+tests normal file-editing tasks through the public launcher, not just an exact
+output marker. It records successful and unsuccessful attempts, and separates
+native integration, model-selected contact, idle wake and an independent file
+assertion. Use the [workspace guide](first-workspace.md) to try this path.
+
+The older cases below used stronger benchmark instructions and narrower tool
+sets. They establish bounded behavior, not spontaneous discovery in arbitrary
+user sessions.
+
 ## At a glance
 
 | Case | Agent A | Agent B | Initiative observed | Receiver outcome | Evidence |
@@ -38,9 +50,11 @@ sessions plus coordinator artifacts were removed.
 This retained run proves real model/session behavior, but its Git and verifier
 effects were simulated. [#133](https://github.com/fyaic/threadmesh/pull/133)
 subsequently merged real bounded Git worktrees and a process-isolated child
-verifier into the same event-pump path. A fresh combined live traversal remains
-pending a network-valid host, so the two evidence sets are not silently fused
-into a stronger claim.
+verifier into the same event-pump path. The later
+[attempt 16](../09-reviews/2026-09-02-m5-2-real-effects-live-attempt.md)
+completed that combined real traversal. Its full product gate remained blocked;
+the subsequent same-condition baseline failed at reviewer admission. Neither
+record establishes a reliable speed or token-cost advantage.
 
 The deterministic one-command demo complements that evidence with two
 reproducible product checks: a four-handoff workflow has a manual lower bound of
