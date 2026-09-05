@@ -1,104 +1,86 @@
 # What ThreadMesh is
 
-ThreadMesh is a permissioned attention and handoff layer for agent tasks that
-run in separate sessions or harnesses.
+ThreadMesh connects independent agent sessions to an explicitly shared local
+workspace. The aim is simple: **you should not have to relay every useful change
+between agents yourself**.
 
-Its job is narrow: move completion, blockers, review findings, and verified
-dependency state to the right task without making the user copy results, poll
-unchanged state, or risk silently redirecting an active receiver.
-
-ThreadMesh does **not** merge chat histories, give agents global session access,
-or let one agent silently rewrite another agent's objective.
+A session is one agent conversation with its own task and context. A harness
+is the application running it, such as Codex or Pi. ThreadMesh connects opted-in
+workstreams; it does not merge their conversations or become their model.
 
 ## The concrete problem
 
-Imagine two coding-agent tasks running at the same time:
+You have Codex changing an API and Pi maintaining its client. When pagination
+changes, the client needs that information. Normally you notice the dependency,
+copy the change and explain it in the other session.
 
-- Agent A builds an artifact and computes its verified checksum.
-- Agent B prepares a release manifest and cannot finish without that checksum.
+With the workspace integration:
 
-Without a coordination layer, the user must notice the dependency, check A's
-status, copy the checksum, find B, and paste it into the right session. Repeat
-that across review and fix cycles, and the user becomes the clipboard, poller,
-and handoff scheduler. A naïve automation can remove the manual step, but it may
-also inject stale or malicious text into B, contact the wrong incarnation, or
-interrupt work the user has since repurposed.
+1. You publish each session's work goal once.
+2. The agents receive collaboration tools and generic task-time guidance.
+3. A model decides whether a discovered peer needs useful information.
+4. Advice enters a persistent inbox. The recipient judges it against its task.
+5. An opted-in idle Pi can continue in its same session and act on the advice.
 
-With ThreadMesh:
-
-1. the owner authorizes a directional relationship between the exact A and B
-   task incarnations;
-2. B publishes a minimal relationship-scoped summary, not its private history;
-3. A may discover that summary and choose whether the result is useful;
-4. A sends one typed, expiring `suggest` envelope with provenance;
-5. B's harness receives it in a mailbox and accepts, rejects, or defers it at a
-   checkpoint;
-6. only an accepted message is rendered into B's context, with its peer-agent
-   origin preserved;
-7. the complete decision and delivery chain remains auditable.
-
-The agent supplies the initiative. ThreadMesh supplies the boundary.
-
-## Where it sits
-
-```text
-Models and agent loops
-  Codex · Kimi Code · Gemini CLI · custom harnesses
-                      │
-Harness adapters      │ translate task lifecycle and context admission
-                      ▼
-ThreadMesh            relationships · mailbox · policy · provenance · audit
-                      │
-Transport/storage     JSON-RPC · SQLite reference · host-defined deployment
-```
-
-MCP gives an agent tools. A2A can transport interactions between agent
-endpoints. Workflow engines schedule known steps. ThreadMesh focuses on a
-different gap: the authorization and receiver-consent semantics for a task that
-proactively decides another task matters.
-
-## Who should use it
-
-ThreadMesh is intended for harness and platform developers who:
-
-- run multiple agent tasks or sessions concurrently;
-- need coordination across different harness implementations;
-- want agents to notice dependencies without exposing global chat history;
-- require receiver consent, expiry, replay protection, and provenance;
-- are willing to integrate a small task registry and mailbox at harness
-  checkpoints.
-
-It is probably unnecessary for a single conversation, a fixed workflow whose
-edges are already known, or an application that only needs ordinary tool calls.
+The [real Codex → Pi API case](../09-reviews/2026-09-05-workspace-awareness.md#ordinary-codex--pi-api-case-pass)
+completed that path and passed a client behavior check. Pi had first volunteered
+its dependency; Codex replied after its ordinary API task. No human relayed it.
 
 ## What exists today
 
-The repository is pre-alpha but executable:
+- A local CLI to initialize a room, launch named workstreams, inspect and mute.
+- Four model tools: discover peers, send advice, read/decide inbox messages,
+  and save a portable checkpoint.
+- Pi native integration and Codex/Kimi/official DeepSeek launch paths, with
+  different evidence levels and wake capabilities.
+- An explicit checkpoint command for starting a new harness with saved context.
+- A reusable core coordinator, MCP entry point and lower-level JavaScript SDK.
 
-| Capability | Current evidence |
-|---|---|
-| Portable harness API | Zero-runtime-dependency `@fyaic/threadmesh` SDK with register, discover, suggest, poll, decide, and a per-turn proactive tool bridge |
-| Reference control plane | Authenticated JSON-RPC binding and SQLite coordinator with grants, mailbox, claims, receipts, replay defense, and audit |
-| Deterministic product demo | Four-handoff implementation/review/fix/dependency loop; manual lower bound 9 user actions versus 1 kickoff; active receiver remains running at a pending checkpoint; verified unlock and cleanup pass |
-| Real Codex lifecycle initiative | One kickoff advanced A→R→same-A→V→dependent through 9 native turns with 0 later runner prompts/direct activations and 0 irrelevant turns; retained run used simulated Git/verifier effects |
-| Real-effects integration | Bounded Git worktrees and process-isolated child verifier are merged into the event pump; deterministic positive and wrong-finding negative pass; fresh live traversal pending |
-| Codex App Server | The bounded two-stage proactive policy passed relevant 3/3 plus quiet control and irrelevant checks; it remains explicit opt-in |
-| Kimi Code ACP | A real accepted suggestion completed through the shared coordinator path with session cleanup verified |
-| Cross-harness proactive case | Real Codex A discovered and sent once; persistent Kimi Code B accepted and completed, with both resources cleaned |
-| Public integration-kit case | Real Pi A imported only the packed SDK, selected relevant contact, stayed quiet for irrelevant/control, and reached real Kimi B |
-| Gemini CLI | Adapter and no-model preflight exist; live provider execution has not been authorized |
+See the [versioned support matrix](harness-support.md), not just a product logo.
+The current package has runtime dependencies and is GitHub-distributed alpha;
+it is not a production service or an npm-published release.
 
-This proves an integration shape and a bounded experimental capability. It does
-not prove production multi-tenant security, reliable autonomous discovery, or
-safe handling of arbitrary untrusted peer prompts.
+## What the “intelligence” means
 
-## Fastest way to understand the project
+Models choose relevance and message content under configured collaboration
+guidance. ThreadMesh supplies discovery, persistence, provenance and lifecycle
+integration. It does not hard-code every handoff or guarantee useful choices.
 
-1. Read the [real agent case portfolio](../06-guides/real-world-cases.md).
-2. Run the [attention-router demo](../06-guides/attention-router-demo.md).
-3. Compare the [manual baseline](../06-guides/manual-relay-baseline.md).
-4. Check the [harness support matrix](harness-support.md).
-5. Read [context sovereignty](../01-concepts/context-sovereignty.md).
-6. Follow the [30-minute adapter guide](../06-guides/implement-an-adapter.md).
-7. Check [current project status](../10-planning/project-status.md) before using
-   experimental adapters.
+A real unrelated-change control stayed quiet despite available peer/inbox tools.
+A second copy case delivered and resumed correctly but lost a free-plan qualifier.
+**A successful message is not a verified business result.**
+[Successes and failures](../09-reviews/2026-09-05-workspace-awareness.md).
+
+## Who it helps—and who it does not
+
+Try it if you already run parallel agent tasks and repeatedly copy API decisions,
+approved constraints or research findings between them. Harness developers can
+use the [MCP surface](../06-guides/first-workspace.md#kimi-and-custom-harnesses)
+or [SDK adapter contract](../06-guides/implement-an-adapter.md).
+
+For a single conversation or a fully predetermined workflow, the extra
+coordination may be unnecessary. This alpha is a same-owner local setup, not an
+open agent network, multi-tenant security boundary or arbitrary-tab connector.
+
+## Context and control
+
+Published goals and peer advice are shared; private histories are not scanned.
+Inbox reads do not consume messages. Acceptance is a separate disposition, not
+proof that work passed tests; workspace advice may be shown to the model so it
+can decide what to do. Pi idle follow-up requires explicit opt-in.
+
+Portable checkpoints carry selected working context, not hidden state, tool
+permissions or a lossless transcript. Actual quota-blocked long-session recovery
+and native prior-session adoption remain open checks.
+
+## Start here
+
+[First workspace](../06-guides/first-workspace.md) ·
+[Real cases](../06-guides/real-world-cases.md) ·
+[Checkpoint guide](../06-guides/portable-checkpoints.md) ·
+[Safety model](../04-safety/threat-model.md) ·
+[Roadmap](../../ROADMAP.md)
+
+For implementation details, read the [reference architecture](../02-architecture/reference-architecture.md)
+and [protocol](../03-protocol/README.md). Historical benchmark records remain
+available, but are not prerequisites for trying the current workspace.
