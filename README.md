@@ -73,22 +73,23 @@ npx threadmesh run pi --name client --goal "Maintain the /orders client" --wake-
 Start another agent in terminal A, in the same project:
 
 ```sh
-npx threadmesh run pi --name backend --goal "Maintain the /orders API" \
-  -- --provider zai --model glm-5.3
+npx threadmesh run codex --name backend --goal "Maintain the /orders API"
 ```
 
 Give each its ordinary task. They now have peer discovery, messaging, inbox and
 checkpoint tools. Different project folders can share one **absolute**
 `--workspace` path. Harness installation, login and model quota are separate.
 This first example pins the tested Pi model; other model choices need their
-own validation. Codex, Kimi and DeepSeek launch paths are documented below.
+own validation. This cross-harness example needs authenticated Codex as well.
+Kimi and DeepSeek launch paths are documented below.
 
 [Full walkthrough, DeepSeek setup and troubleshooting →](docs/06-guides/first-workspace.md)
 
-The [latest real run](docs/09-reviews/2026-09-05-first-use-validation.md)
-used two Pi sessions with ordinary file tasks: peer-selected contact → idle
-receiver follow-up → updated client → passing two-page assertion. Unrelated
-messages: **0**. One controlled pass, not a general reliability claim.
+The [latest real cross-harness run](docs/09-reviews/2026-09-05-workspace-awareness.md#ordinary-codex--pi-api-case-pass)
+used Codex and Pi with ordinary file tasks: model-selected advice → the same Pi
+session resumes → its own tool updates the client → two-page assertion passes.
+Unrelated messages: **0**. Pi had volunteered its dependency first; this is
+reciprocal collaboration without user relay, not a blind-source or reliability claim.
 
 **Not just API changes:** in a second real Pi-pair case, the user changed the
 brand brief in one session. That agent contacted the website session, which
@@ -128,7 +129,7 @@ every token in the original conversation. No quota bypass or account rotation.
 | Harness | New workspace integration | Automatic idle wake? |
 |---|---|---|
 | **Pi** | Native extension; four tools and inbox at turn start | Opt-in `--wake-idle`; does not steer a busy turn |
-| **Codex** | Invocation-scoped stdio MCP configuration | No; inbox is consulted during model work |
+| **Codex** | Invocation-scoped MCP; task-start context hooks on macOS/Linux | No; awareness is refreshed during model work |
 | **Kimi Code** | Project MCP entry; preserves other servers | No; inbox is consulted during model work |
 | **DeepSeek Harness** | Official `dsh` MCP plugin through a Cordis patch | Not claimed |
 | **Other harnesses** | Standard MCP configuration or JavaScript SDK | Host integration required |

@@ -66,18 +66,18 @@ npx threadmesh run pi --name client --goal "维护 /orders 客户端" --wake-idl
 终端 A 在同一项目启动另一个 Agent：
 
 ```sh
-npx threadmesh run pi --name backend --goal "维护 /orders 后端接口" \
-  -- --provider zai --model glm-5.3
+npx threadmesh run codex --name backend --goal "维护 /orders 后端接口"
 ```
 
 分别给它们正常的工作任务。它们现在可以发现 peer、发消息、读收件箱、存 checkpoint。
 不同项目目录也能协作，只要传相同的绝对 `--workspace` 路径。
 Agent 本身需要事先安装、登录，并有可用额度。这里固定了实测通过的 Pi 模型；
-其他模型需各自验证，Codex/Kimi/DeepSeek 的启动路径见下方指南。
+其他模型需各自验证。这个跨 harness 示例还需要已登录的 Codex；Kimi/DeepSeek 配置见指南。
 
-[最新真实案例](docs/09-reviews/2026-09-05-first-use-validation.md)：两个 Pi session
-收到普通文件任务后自行沟通，接收方在空闲时自动继续，修改客户端，并通过独立两页
-分页断言；无关消息为 **0**。这是一次受控通过，不是普遍可靠性承诺。
+[最新真实跨 harness 案例](docs/09-reviews/2026-09-05-workspace-awareness.md#ordinary-codex--pi-api-case-pass)：
+Codex 与 Pi 收到普通文件任务后自行沟通；同一个 Pi session 自动继续，用自己的工具
+修改客户端，并通过独立两页分页断言；无关消息为 **0**。Pi 先自主说明了依赖，
+Codex 随后回复变更：这是无需用户转述的双向协作，不是无先行消息的盲发现或可靠性承诺。
 
 [完整上手步骤、DeepSeek 配置、排错 →](docs/06-guides/first-workspace.md)
 
@@ -86,7 +86,7 @@ Agent 本身需要事先安装、登录，并有可用额度。这里固定了�
 | Harness | 接入方式 | 空闲时自动唤醒 |
 |---|---|---|
 | Pi | 原生扩展，turn 开始时提供收件箱 | 显式开启 `--wake-idle`；不打断正在运行的 turn |
-| Codex | 本次启动的 MCP 配置 | 未提供；模型工作期间读取 inbox |
+| Codex | 本次启动的 MCP；macOS/Linux 原生任务起始上下文 hook | 未提供；模型工作期间刷新协作上下文 |
 | Kimi Code | 项目 MCP 配置，保留其他 server | 未提供；模型工作期间读取 inbox |
 | DeepSeek Harness | 官方 `dsh` 的 Cordis MCP 插件 | 未声称支持 |
 | 其他 Harness | 标准 MCP 配置或 JavaScript SDK | 需要 host 自己接入 |

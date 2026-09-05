@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import { LocalWorkspace } from "../src/workspace/local-workspace.mjs";
 import { launchPlan, installKimiConfig } from "../src/workspace/launch.mjs";
 import { liveScenario } from "./workspace-live-scenarios.mjs";
+import { deliveredSends, nativeSendOutcomes, receiverContinuation, receiverArtifactWrites } from "./workspace-live-evidence.mjs";
 
 // Opt-in paid/model test. Uses the user's authenticated Codex and Pi installations.
 // One ordinary kickoff per session; no sender/recipient/tool sequence in either task.
@@ -18,6 +19,7 @@ const directory = path.join(root, "room");
 const workspace = new LocalWorkspace(directory, { create: true });
 const children = [];
 const events = [];
+const observations = {};
 const started = Date.now();
 const piModel = ["--provider", process.env.THREADMESH_LIVE_PI_PROVIDER || "zai", "--model", process.env.THREADMESH_LIVE_PI_MODEL || "glm-5.3"];
 for (const name of [receiver, sender]) fs.mkdirSync(path.join(root, name));
@@ -54,15 +56,29 @@ async function until(predicate, label, timeout = 300000) {
     await new Promise(resolve => setTimeout(resolve, 250));
   }
 }
+async function receiverState(child, id) {
+  child.stdin.write(JSON.stringify({ id, type: "get_state" }) + "\n");
+  await until(() => events.some(row => row.event.type === "response" && row.event.id === id), "read receiver native state", 10000);
+  const response = events.find(row => row.event.type === "response" && row.event.id === id).event;
+  assert.equal(response.success, true, "receiver state query must succeed");
+  assert.equal(typeof response.data?.sessionId, "string", "native session identity must be observable");
+  return response.data;
+}
 console.log(JSON.stringify({ artifacts: root, prompts, note: "Live model run, not a deterministic preview" }));
-let report;
+let report, stage = "receiver-setup";
 try {
   const b = start(receiver, launchPlan({ agent: "pi", directory, name: receiver, goal: workspace.member(receiver).goal,
     cwd: path.join(root, receiver), wakeIdle: true,
     extra: [...piModel, "--mode", "rpc", "--no-extensions", "--no-skills", "--no-prompt-templates", "--no-context-files", "--session-dir", path.join(root, "sessions")] }));
   await until(() => workspace.db.prepare("SELECT name FROM workspace_connections WHERE name=?").get(receiver), "Pi extension connects before spending model quota", 10000);
+  stage = "receiver-initial-task";
   b.stdin.write(JSON.stringify({ id: "only-receiver-kickoff", type: "prompt", message: prompts[receiver] }) + "\n");
   await until(() => events.some(row => row.session === receiver && row.event.type === "agent_end"), "initial receiver turn");
+  const initialReceiverState = await receiverState(b, "receiver-before-source");
+  const initialReceiverEndMs = events.find(row => row.session === receiver && row.event.type === "agent_end").elapsedMs;
+  observations.initialReceiverCompletedMs = initialReceiverEndMs;
+  const initialArtifact = fs.readFileSync(path.join(root, scenario.artifact), "utf8");
+  stage = "source-task";
   const plan = launchPlan({ agent: senderHarness, directory, name: sender, goal: workspace.member(sender).goal,
     cwd: path.join(root, sender), extra: senderHarness === "kimi"
       ? ["--output-format", "stream-json", "--prompt", prompts[sender]]
@@ -74,18 +90,62 @@ try {
   a.stdin.end();
   await until(() => a.exitCode !== null, "source model turn");
   assert.equal(a.exitCode, 0, "source harness must complete");
-  await until(() => workspace.db.prepare("SELECT count(*) AS n FROM workspace_sends WHERE source=? AND target=?").get(sender, receiver).n > 0, "model chooses useful peer message", 10000);
-  await until(() => events.filter(row => row.session === receiver && row.event.type === "agent_end").length >= 2, "idle receiver resumes without a second user prompt");
+  observations.sourceTurnCompleted = true;
+  stage = "source-initiative";
+  if (scenario.expectsContact === false) {
+    // Bounded idle observation, not a claim that no future model would ever send.
+    await new Promise(resolve => setTimeout(resolve, 10000));
+    assert.equal(workspace.db.prepare("SELECT count(*) AS n FROM workspace_sends WHERE source=?").get(sender).n, 0, "unrelated source work must not contact any peer");
+    assert.equal(nativeSendOutcomes(events).filter(row => row.session === sender).length, 0, "failed native send calls are still unwanted contact attempts");
+    assert.equal(events.filter(row => row.session === receiver && row.event.type === "agent_start").length, 1, "unrelated change must not wake the idle receiver");
+    assert.equal(fs.readFileSync(path.join(root, scenario.artifact), "utf8"), initialArtifact);
+    const finalReceiverState = await receiverState(b, "receiver-after-no-contact");
+    assert.equal(finalReceiverState.sessionId, initialReceiverState.sessionId);
+    await scenario.verify(root);
+    report = { pass: true, elapsedMs: Date.now() - started, source: senderHarness, receiver: "Pi",
+      crossHarness: senderHarness !== "pi", kickoffsPerSession: 1, sameNativeReceiverSession: true,
+      nativeIdleWake: false, noContactObservationMs: 10000, businessAssertion: scenario.businessAssertion,
+      prompts, caveat: "One controlled live negative control, not an initiative success rate." };
+  } else {
+  let send;
+  await until(() => {
+    const queued = nativeSendOutcomes(events).filter(row => row.session === sender && row.queued);
+    send = deliveredSends(workspace, sender, receiver).find(row => queued.some(outcome => outcome.messageId === row.message_id));
+    return !!send;
+  }, "model chooses and successfully queues useful peer message", 10000);
+  const sentMs = send.sent_at - started;
+  observations.successfulDeliveryMs = sentMs;
+  assert.ok(sentMs > initialReceiverEndMs, "receiver must finish its own task before the source delivers advice");
+  stage = "receiver-continuation";
+  await until(() => receiverContinuation(events, receiver, sentMs), "same idle receiver resumes after delivery without a second user prompt");
+  const finalReceiverState = await receiverState(b, "receiver-after-followup");
+  assert.equal(finalReceiverState.sessionId, initialReceiverState.sessionId, "the already-started native receiver session must be retained");
+  assert.equal(b.exitCode, null, "receiver process stays alive throughout the scenario");
+  observations.sameNativeReceiverSession = true;
+  observations.receiverContinuation = receiverContinuation(events, receiver, sentMs);
+  stage = "business-artifact";
+  assert.notEqual(fs.readFileSync(path.join(root, scenario.artifact), "utf8"), initialArtifact, "receiver must update the business artifact after its initial task");
+  assert.ok(fs.statSync(path.join(root, scenario.artifact)).mtimeMs > send.sent_at, "business artifact must be written after the peer delivery");
+  const artifactWrites = receiverArtifactWrites(events, receiver, path.join(root, receiver), path.join(root, scenario.artifact), sentMs);
+  assert.ok(artifactWrites.length, "receiver's native successful write/edit of the business artifact must be observable after delivery; source edits or unproven shell writes are insufficient");
+  observations.receiverArtifactWrites = artifactWrites;
   await scenario.verify(root);
   assert.equal(workspace.inbox(unrelated).length, 0);
+  assert.equal(workspace.db.prepare("SELECT count(*) AS n FROM workspace_sends WHERE target=?").get(unrelated).n, 0, "unrelated peer must not receive even an attempted reserved send");
   report = { pass: true, elapsedMs: Date.now() - started, source: senderHarness, receiver: "Pi", kickoffsPerSession: 1,
+    crossHarness: senderHarness !== "pi", sameNativeReceiverSession: true,
+    receiverHistoryScope: "One earlier ordinary task in the same process, not an imported long-running user history",
+    successfulDeliveryMs: sentMs, receiverContinuation: receiverContinuation(events, receiver, sentMs),
+    receiverArtifactWrites: artifactWrites,
     nativeIdleWake: true, businessAssertion: scenario.businessAssertion, unrelatedMessages: 0,
     prompts, caveat: "One controlled live run, generic coordination guidance enabled. Not an initiative success rate or speed comparison." };
+  }
 } catch (error) {
-  report = { pass: false, elapsedMs: Date.now() - started, error: error.message, prompts };
+  report = { pass: false, failedStage: stage, elapsedMs: Date.now() - started, source: senderHarness,
+    receiver: "Pi", crossHarness: senderHarness !== "pi", error: error.message, prompts };
   process.exitCode = 1;
 } finally {
-  report = { ...report, scenario: scenario.name, sourceWorkstream: sender, receiverWorkstream: receiver, artifact: scenario.artifact };
+  report = { ...observations, ...report, scenario: scenario.name, sourceWorkstream: sender, receiverWorkstream: receiver, artifact: scenario.artifact };
   for (const child of children) if (child.exitCode === null) child.kill("SIGTERM");
   await new Promise(resolve => setTimeout(resolve, 500));
   for (const child of children) if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");

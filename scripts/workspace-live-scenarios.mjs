@@ -11,11 +11,11 @@ export function liveScenario(name = "api") {
     receiverGoal: "Maintain the product landing page copy",
     unrelatedGoal: "Maintain database backup schedules",
     prompts: {
-      website: "Review landing.json against ../brand/brief.json, our shared source of approved terminology and claims. Keep a short customer-facing headline and description, with the product name in the headline. Keep the page ready as our approved brief evolves.",
+      website: "Review landing.json against ../brand/brief.json, our shared source of approved terminology and claims. Keep a short customer-facing headline and description, with the product name in the headline. Our agreed signupButton label is Create my workspace; keep that exact label in landing.json. Keep the page ready as our approved brief evolves.",
       brand: "Update brief.json with the final product decision: the product is now named Member Portal, the free tier is limited to 5 projects, and all customer-facing copy must use US spelling. Remove the old product name and unlimited-free claim from the approved brief. Keep the brief concise.",
     },
     artifact: "website/landing.json",
-    businessAssertion: "landing uses Member Portal, states the 5-project free limit, removes old name/unlimited claim and preserves protected price",
+    businessAssertion: "landing uses Member Portal, states the 5-project free limit, removes old name/unlimited claim, retains receiver's signup label and preserves protected price",
     setup(root) {
       fs.writeFileSync(path.join(root, "brand/brief.json"), JSON.stringify({ product: "Team Hub", freeTier: "Unlimited projects", spelling: "UK" }));
       fs.writeFileSync(path.join(root, "website/landing.json"), JSON.stringify({ headline: "Organise work with Team Hub", description: "Unlimited free projects for your team." }));
@@ -25,6 +25,7 @@ export function liveScenario(name = "api") {
       const page = JSON.parse(fs.readFileSync(path.join(root, "website/landing.json"), "utf8"));
       assert.equal(typeof page.headline, "string");
       assert.equal(typeof page.description, "string");
+      assert.equal(page.signupButton, "Create my workspace");
       assert.match(page.headline, /Member Portal/);
       const copy = `${page.headline}\n${page.description}`;
       assert.match(copy, /\b(?:5|five)[ -]projects?\b/i);
@@ -33,7 +34,20 @@ export function liveScenario(name = "api") {
       assert.equal(fs.readFileSync(path.join(root, "website/price.txt"), "utf8"), "Paid plan: $12/month\n");
     },
   };
-  if (name !== "api") throw new Error("Scenario must be api or preferences");
+  if (name === "api-no-contact") {
+    const scenario = liveScenario("api");
+    return { ...scenario, name, expectsContact: false,
+      prompts: { ...scenario.prompts,
+        backend: "Write local-notes.md with a concise note that the backend team reviews its internal meeting agenda every Monday. Keep contract.json unchanged." },
+      businessAssertion: "internal backend note is written, API contract is unchanged, no other workstream is contacted and idle receiver does not resume",
+      async verify(root) {
+        assert.match(fs.readFileSync(path.join(root, "backend/local-notes.md"), "utf8"), /Monday/i);
+        const contract = JSON.parse(fs.readFileSync(path.join(root, "backend/contract.json"), "utf8"));
+        assert.deepEqual(contract, { endpoint: "/orders", request: { page: "integer starting at 1" }, response: { items: "array of { id: string }", next_page: "integer or null" } });
+      },
+    };
+  }
+  if (name !== "api") throw new Error("Scenario must be api, preferences or api-no-contact");
   return {
     name, sender: "backend", receiver: "client", unrelated: "legal",
     senderGoal: "Maintain the /orders backend API contract",

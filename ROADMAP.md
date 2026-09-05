@@ -3,7 +3,7 @@
 ThreadMesh uses milestone exit criteria rather than date promises. Priorities
 may change as the safety and adapter contracts become clearer. See the
 [current status](docs/10-planning/project-status.md) and
-[product mainline](docs/10-planning/product-mainline-2026-08-28.md) for the
+[active acceptance](docs/10-planning/cross-harness-acceptance-2026-09-05.md) for the
 evidence-backed snapshot, current product decision, and ordered workstreams.
 
 The roadmap now optimizes for one outcome: **parallel agent sessions hand off
@@ -28,6 +28,17 @@ open; they are not prerequisites for a usable, honestly labelled local alpha.
 - [x] Second real task family: an approved name/free-tier change reaches the
   website session, which updates copy and leaves unrelated price/data work alone.
   [Evidence and limits](docs/09-reviews/2026-09-05-workspace-awareness.md).
+- [x] Native Codex task-time context plus one ordinary Codex → Pi API pass:
+  same receiver session, model-selected advice and verified receiver file edit.
+- [ ] Preserve the complete business meaning in the second cross-harness task:
+  the copy run delivered and edited, but lost the free-plan qualifier. Keep this
+  failed assertion visible; a successful receipt is not verified completion.
+- [ ] Native resume/attachment with a real earlier project context, not merely
+  a newly named workspace or seeded checkpoint.
+- [ ] Recover useful work after an actual quota-blocked session using a prior
+  saved checkpoint; distinguish retained context from unavailable history.
+- [ ] Native busy-receiver/queued-user-input experiment; current guard evidence
+  is deterministic, not a real typing-race result.
 - [ ] Close live ordinary-task collaboration evidence, including DeepSeek with
   an available provider credential; publish failures alongside successes.
 - [ ] Get three independent first-run reports and fix the first blocking step.

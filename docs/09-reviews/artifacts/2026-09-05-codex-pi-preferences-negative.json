@@ -1,0 +1,202 @@
+{
+  "kind": "maintainer-live-run-projection",
+  "rawEventsSha256": "24b3b52175f19c2f33a89ad08198cdbfa973ae2d014f89ef6e5979dced89613d",
+  "pass": false,
+  "failedStage": "business-artifact",
+  "elapsedMs": 234978,
+  "source": "codex",
+  "receiver": "Pi",
+  "crossHarness": true,
+  "error": "The input did not match the regular expression /free/i. Input:\n\n'Organize work with Member Portal\\nUp to 5 projects for your team.'\n",
+  "prompts": {
+    "website": "Review landing.json against ../brand/brief.json, our shared source of approved terminology and claims. Keep a short customer-facing headline and description, with the product name in the headline. Our agreed signupButton label is Create my workspace; keep that exact label in landing.json. Keep the page ready as our approved brief evolves.",
+    "brand": "Update brief.json with the final product decision: the product is now named Member Portal, the free tier is limited to 5 projects, and all customer-facing copy must use US spelling. Remove the old product name and unlimited-free claim from the approved brief. Keep the brief concise."
+  },
+  "scenario": "preferences",
+  "sourceWorkstream": "brand",
+  "receiverWorkstream": "website",
+  "artifact": "website/landing.json",
+  "models": [
+    "website: zai/glm-5.3"
+  ],
+  "timeline": [
+    {
+      "session": "website",
+      "elapsedMs": 759,
+      "type": "agent_start"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 9168,
+      "type": "tool_execution_start",
+      "tool": "read"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 9169,
+      "type": "tool_execution_start",
+      "tool": "read"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 25463,
+      "type": "tool_execution_start",
+      "tool": "edit"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 25464,
+      "type": "tool_execution_start",
+      "tool": "threadmesh_peers"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 38296,
+      "type": "tool_execution_start",
+      "tool": "threadmesh_inbox"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 45947,
+      "type": "tool_execution_start",
+      "tool": "threadmesh_send"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 52558,
+      "type": "tool_execution_start",
+      "tool": "threadmesh_checkpoint"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 57463,
+      "type": "agent_end"
+    },
+    {
+      "session": "brand",
+      "elapsedMs": 195966,
+      "type": "mcp_tool_call",
+      "tool": "threadmesh_peers",
+      "status": "completed",
+      "failed": false
+    },
+    {
+      "session": "brand",
+      "elapsedMs": 195969,
+      "type": "mcp_tool_call",
+      "tool": "threadmesh_inbox",
+      "status": "completed",
+      "failed": false
+    },
+    {
+      "session": "brand",
+      "elapsedMs": 205583,
+      "type": "mcp_tool_call",
+      "tool": "threadmesh_inbox",
+      "status": "completed",
+      "failed": false
+    },
+    {
+      "session": "brand",
+      "elapsedMs": 205589,
+      "type": "mcp_tool_call",
+      "tool": "threadmesh_send",
+      "status": "completed",
+      "failed": false
+    },
+    {
+      "session": "brand",
+      "elapsedMs": 205592,
+      "type": "mcp_tool_call",
+      "tool": "threadmesh_checkpoint",
+      "status": "completed",
+      "failed": false
+    },
+    {
+      "session": "website",
+      "elapsedMs": 206771,
+      "type": "agent_start"
+    },
+    {
+      "session": "brand",
+      "elapsedMs": 210609,
+      "type": "turn.completed"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 211729,
+      "type": "tool_execution_start",
+      "tool": "threadmesh_inbox"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 216396,
+      "type": "tool_execution_start",
+      "tool": "read"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 221075,
+      "type": "tool_execution_start",
+      "tool": "edit"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 221075,
+      "type": "tool_execution_start",
+      "tool": "threadmesh_peers"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 224250,
+      "type": "tool_execution_start",
+      "tool": "threadmesh_inbox"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 224251,
+      "type": "tool_execution_start",
+      "tool": "threadmesh_send"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 229958,
+      "type": "tool_execution_start",
+      "tool": "threadmesh_checkpoint"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 234556,
+      "type": "agent_end"
+    }
+  ],
+  "sendOutcomes": [
+    {
+      "session": "website",
+      "elapsedMs": 45955,
+      "failed": false,
+      "queued": true
+    },
+    {
+      "session": "brand",
+      "elapsedMs": 205589,
+      "failed": false,
+      "queued": true
+    },
+    {
+      "session": "website",
+      "elapsedMs": 224259,
+      "failed": false,
+      "queued": true
+    }
+  ],
+  "receiverArtifact": {
+    "path": "website/landing.json",
+    "content": "{\n  \"headline\": \"Organize work with Member Portal\",\n  \"description\": \"Up to 5 projects for your team.\",\n  \"signupButton\": \"Create my workspace\"\n}"
+  },
+  "nativeVersions": {
+    "codex": "0.145.0",
+    "pi": "0.84.2"
+  },
+  "sourceModel": "Unavailable: native Codex exec JSON events did not expose the model identifier."
+}

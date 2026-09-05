@@ -41,22 +41,34 @@ contract. Keep it ready as the backend evolves.” Leave this session open.
 In terminal A:
 
 ```sh
-npx threadmesh run pi --workspace .threadmesh --name backend \
-  --goal "Maintain the /orders backend API contract" \
-  -- --provider zai --model glm-5.3
+npx threadmesh run codex --workspace .threadmesh --name backend \
+  --goal "Maintain the /orders backend API contract"
 ```
 
 This example pins the tested Pi model (`zai/glm-5.3`), requiring your own
 configured ZAI account. The local default vision-model attempt stayed silent.
 You can choose other tool-capable models, but their behavior is not guaranteed.
-For the Codex launcher, use `threadmesh run codex` with the same name/goal
-options; its new workspace initiative attempt did not pass yet.
+The source also needs an authenticated Codex installation. This ordinary-task
+Codex → Pi path has [one real passing API case](../09-reviews/2026-09-05-workspace-awareness.md#ordinary-codex--pi-api-case-pass),
+including the same native receiver continuing its earlier work. It does not
+attach an arbitrary old chat. For the earlier Pi → Pi setup, replace the source
+with `threadmesh run pi` and the same provider/model flags used above.
 
 The Codex launcher preapproves only the four local ThreadMesh tools for that
 invocation: joining the room opts into goal discovery, advisory mail, inbox
 decisions and explicit checkpoints. Shell/file permissions and other MCP
 servers are unchanged. This avoids a headless MCP approval being reported as a
 user cancellation. Preapproval does not force the model to use the tools.
+
+On macOS/Linux, the launcher also adds invocation-scoped Codex `SessionStart`
+and `UserPromptSubmit` hooks. They provide current published goals and a bounded,
+non-consuming inbox preview before model work. They do not select a recipient,
+send messages, read native transcripts or replace your existing instructions.
+Only these two exact hook definitions are trusted for this invocation; other
+user/project hooks retain their own trust. No global configuration is written.
+Native execution was checked against Codex `0.145.0`; a later version needs
+revalidation. Disabled hooks are not re-enabled. Windows currently gets MCP
+only. This adds task-time awareness, **not background Codex idle wake**.
 
 Give A a real upstream task, such as changing pagination from `next_page` to
 `next_cursor`. ThreadMesh exposes the published peer goals; A decides whether

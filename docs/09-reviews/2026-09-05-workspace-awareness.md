@@ -1,4 +1,4 @@
-# Workspace awareness and a real approved-copy handoff
+# Workspace awareness and real handoff evidence
 
 Date: 2026-09-05. Baseline: `aaa6def` (first-use alpha). Maintainer experiment,
 not an independent user report or a general reliability claim.
@@ -43,6 +43,90 @@ Evidence: [prompts, timeline, send outcomes and final file](artifacts/2026-09-05
 Private native events have SHA-256
 `b3b70cf44ba54933ae1c31ec60685d8488ac72f5dd3a2e17b9f56eed55a7e836`.
 Raw reasoning, credentials and native session identifiers are not published.
+
+## Follow-up: native Codex task-time awareness
+
+The MCP-only negatives below remain retained. A subsequent implementation adds
+invocation-scoped `SessionStart` and `UserPromptSubmit` context hooks, following
+the official [Codex Hooks](https://learn.chatgpt.com/docs/hooks) surface and
+the pinned `rust-v0.145.0` source. They refresh published peer goals and a bounded
+inbox preview; neither hook chooses a recipient or sends a message. Existing
+instructions and lower-layer hooks remain in place. Only our two exact command
+definitions are trusted; there is no global hook-trust bypass.
+
+The native no-model test verified both exact trusted entries, preservation of
+an untrusted project hook, and actual SessionStart completion with peer context.
+SessionStart is dispatched inside the first turn, not merely `thread/start`.
+A test-only blocking prompt hook and unreachable local provider prevented model
+sampling during this probe. Main-agent rerun: 4/4 passed. This establishes the
+context seam, not model initiative. Compatibility is pinned to Codex `0.145.0`
+on macOS; Windows is MCP-only and disabled hooks stay disabled.
+
+The [acceptance plan](../10-planning/cross-harness-acceptance-2026-09-05.md)
+and [internal independent review](2026-09-05-mainline-independent-review.md)
+require a successful native send, durable envelope, unchanged receiver-native
+session identity, post-delivery receiver tool edit and independent business
+assertion. A send-budget reservation or changed file timestamp cannot substitute
+for those observations. Busy/queued-input protection has deterministic coverage,
+not a new native busy-receiver result.
+
+### Ordinary Codex → Pi API case: pass
+
+Codex `0.145.0` updated the backend contract and chose to send useful advice.
+Pi `0.84.2` with `zai/glm-5.3` resumed in the same already-started native session,
+used its own `write` tool to update the client and passed an independent
+two-cursor-page assertion. Each session received one ordinary kickoff, neither
+prescribing a message or recipient. The source model identifier was not exposed
+by native Codex exec JSON and is not inferred from a default.
+
+| Event | Milliseconds from experiment start |
+|---|---:|
+| Receiver finishes its initial task | 50,497 |
+| Source successfully queues advice | 212,990 |
+| Same receiver automatically starts follow-up | 214,845 |
+| Receiver's own successful client write | 243,117 |
+| Independent business assertion passes | 269,664 |
+
+Unrelated messages: **0**. The receiver initially volunteered its dependency;
+this is configured reciprocal collaboration, not a blind-source experiment.
+Its later reply first failed fresh-discovery validation and then succeeded;
+the [public projection](artifacts/2026-09-05-codex-pi-api.json) retains that failure
+alongside successful sends. The source encountered five network retries before
+falling back to HTTP in the same run; no manual resend or second source kickoff
+repaired the outcome. This is not a timing or reliability claim.
+
+Reproduce from the repository with authenticated Codex/Pi and the recorded Pi
+provider: `node scripts/validate-workspace-live.mjs codex api`. The source flags
+are `exec --ignore-user-config --skip-git-repo-check --sandbox workspace-write
+--json`, preceded by the public launcher's scoped MCP/hook configuration. The
+receiver uses native RPC plus the ThreadMesh extension, with unrelated Pi
+extensions, skills, context files and prompt templates disabled. Optional Codex
+MCP OAuth/cache warnings were present: these flags are not evidence of a fully
+isolated user configuration. Native transcripts and identifiers stay private.
+
+### Ordinary Codex → Pi copy case: business-quality failure
+
+The second task family used the same integration and one ordinary kickoff per
+session. Codex's message explicitly carried the new product name, **free tier**
+limit and US spelling. The same Pi website session resumed and edited its own
+file, keeping its earlier `signupButton: "Create my workspace"` constraint.
+But the description became `Up to 5 projects for your team.`: it omitted that
+the limit applies to the free plan. The unchanged `/free/i` business assertion
+failed at 234,978 ms. This case is **not a pass**.
+
+The message and shared brief retained the free-tier information, so this was
+receiver-side semantic loss, not missing transport data. Contact, continuity
+and an edit alone did not preserve the complete user intent. The record
+illustrates why receipt/acceptance must not be advertised as verified completion.
+No later prompt, manual edit or weakened assertion repaired the published run.
+The [negative projection](artifacts/2026-09-05-codex-pi-preferences-negative.json)
+retains ordinary prompts, successful sends, final file and raw-event hash.
+
+The prior button requirement also existed in the initial file: retaining it
+is not proof of hidden-memory transfer. Pi volunteered the initial dependency
+in this case too. The next product check must retain meaningful constraints
+and expose an unsuccessful result, not add more message-routing roles or tune
+the fixture until it appears green.
 
 ## Codex: separate visibility, authorization and initiative
 
@@ -122,7 +206,8 @@ The script prints its private artifact directory. Use
 `node scripts/project-first-use-evidence.mjs PATH` for a small public projection,
 reviewing it before publishing. Run `npm test` for non-model regression checks.
 
-Next: native turn-start workspace awareness for Codex rather than relying only
-on tool metadata, a successful ordinary task, a fresh
-non-contact control, DeepSeek with an available provider, and an independent
-first-run report. Do not restart the larger five-role audit as a prerequisite.
+Native task-start awareness and the ordinary cross-harness API task have now
+passed as recorded above. Remaining acceptance includes a fresh non-contact
+control, native prior-session attachment, DeepSeek with an available provider,
+and an independent first-run report. Do not restart the larger five-role audit
+as a prerequisite.
