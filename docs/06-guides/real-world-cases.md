@@ -13,6 +13,24 @@ reproduction and audit.
 
 ## Start with the everyday-work test
 
+The latest [ordinary Codex → Pi evidence](../09-reviews/2026-09-05-workspace-awareness.md)
+is the best starting point for the current alpha:
+
+| Ordinary task | Result | What it establishes |
+|---|---|---|
+| Change API pagination | Pass | Model-selected advice, same Pi session resumes, its own client write passes an independent check |
+| Write unrelated internal notes | Pass | Codex reads peers/inbox but sends nothing; no receiver follow-up |
+| Change approved brand/free-tier claims | Quality failure | Message and continuation work, but the receiver drops the free-plan qualifier |
+
+Each was attempted once. Generic coordination guidance was enabled; the positive
+API send replied to Pi's earlier voluntary dependency message. There was no
+human relay, but this is not blind discovery or arbitrary historical-chat
+attachment. Keep the copy failure alongside the success: delivery is not a
+business-quality guarantee.
+
+[Try the same fixture](first-workspace.md#reproduce-the-retained-case) ·
+[中文上手](../zh-CN/first-workspace.md)
+
 The new [first-use validation](../09-reviews/2026-09-05-first-use-validation.md)
 tests normal file-editing tasks through the public launcher, not just an exact
 output marker. It records successful and unsuccessful attempts, and separates
@@ -29,7 +47,7 @@ The older cases below used stronger benchmark instructions and narrower tool
 sets. They establish bounded behavior, not spontaneous discovery in arbitrary
 user sessions.
 
-## At a glance
+## Historical adapter experiments at a glance
 
 | Case | Agent A | Agent B | Initiative observed | Receiver outcome | Evidence |
 |---|---|---|---|---|---|
@@ -38,10 +56,10 @@ user sessions.
 | Codex → Kimi | Codex CLI `0.145.0`, `gpt-5.6-sol` | Kimi Code `0.38.0`, ACP v1 | Codex selected the exact discover → send sequence with no other tool | Missing dependency became completed benchmark outcome | [record](../09-reviews/2026-08-25-codex-to-kimi-proactive.md) |
 | Codex same-product matrix | Codex CLI `0.145.0` | Codex CLI `0.145.0` | Two-stage policy passed relevant 3/3; fresh irrelevant read only; control stayed quiet | B activated only on relevant send | [behavior gate](../09-reviews/2026-08-25-codex-behavior-gate.md) · [repetitions](../09-reviews/2026-08-25-codex-behavior-repetitions.md) |
 
-## Flagship case — a review loop advances itself
+## Historical lifecycle case — a review loop advances itself
 
-The sixth retained Codex event-pump attempt is the clearest evidence of the
-session initiative that motivated ThreadMesh. The operator kicked off A once.
+The sixth retained Codex event-pump attempt is an earlier lifecycle experiment,
+not the current onboarding path. The operator kicked off A once.
 After that, durable lifecycle attention advanced:
 
 ```text

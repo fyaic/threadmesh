@@ -1,5 +1,7 @@
 # Your first useful collaboration
 
+[简体中文](../zh-CN/first-workspace.md) · [Back to the README](../../README.md)
+
 ThreadMesh connects **sessions you deliberately join to one local workspace**.
 It does not search private chats or connect every agent on your machine.
 Use Node 22+, an installed/authenticated harness, and trusted local processes.
@@ -21,6 +23,10 @@ package is distributed through GitHub, not the public npm registry.
 ## Connect two real sessions
 
 Create a room once. Run these commands from your project folder:
+
+Use a disposable project with an existing API contract and client. The launcher
+does not generate those application files. If you want the exact test fixture
+instead of adapting your own project, see [reproduce the retained case](#reproduce-the-retained-case).
 
 ```sh
 npx threadmesh init --workspace .threadmesh
@@ -83,6 +89,33 @@ The agents may use different project directories: pass the **same absolute
 workspace path** to both. Give every concurrently connected session a unique
 name. A name represents an ongoing workstream, not an automatically detected
 native tab. Do not reuse it for unrelated work.
+
+## Reproduce the retained case
+
+For a self-contained test project, use a repository checkout. This script
+creates the API/client files and room in a temporary directory, gives each
+real session one ordinary kickoff, and checks native sends, same-session
+continuation, receiver edits and the final business result. It spends normal
+model quota and does not attach to existing private chats.
+
+```sh
+git clone https://github.com/fyaic/threadmesh.git
+cd threadmesh
+npm ci
+node scripts/validate-workspace-live.mjs codex api
+```
+
+Install/authenticate Codex and Pi with `zai/glm-5.3` first. The script prints its
+artifact directory and `report.json`; the historical pass is not a guarantee
+your run will pass. Other scenarios are `codex preferences` and
+`codex api-no-contact`. The retained copy run **failed business correctness**,
+while the unrelated-change control passed. No need to run all three to learn
+the first-use path. [Results and exact prompts](../09-reviews/2026-09-05-workspace-awareness.md).
+
+Raw events may contain native identifiers and model output. Keep them private;
+review the output of `node scripts/project-first-use-evidence.mjs PATH` before
+sharing a reduced projection. When using the installed package in your own
+project, return to the terminal commands above; test scripts are repo-only.
 
 ## DeepSeek Harness
 
