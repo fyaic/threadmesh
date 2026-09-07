@@ -1,0 +1,18 @@
+{
+  "name": "threadmesh-desktop-probe",
+  "version": "0.0.1",
+  "description": "Developer-only desktop hook probe. No messaging, chat access or automatic wake.",
+  "author": {
+    "name": "ThreadMesh contributors"
+  },
+  "license": "Apache-2.0",
+  "interface": {
+    "displayName": "ThreadMesh Desktop Probe",
+    "shortDescription": "Check native session hooks; not a collaboration integration.",
+    "longDescription": "Emits a fingerprint of the current hook session into that same session. Does not read transcripts, store events, send messages or wake other sessions. Requires Node on PATH. Developer preflight only.",
+    "developerName": "ThreadMesh contributors",
+    "category": "Productivity",
+    "capabilities": [],
+    "defaultPrompt": "Report the ThreadMesh desktop probe marker if one is present; do not invent it."
+  }
+}

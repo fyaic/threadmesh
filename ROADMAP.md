@@ -11,7 +11,24 @@ completion, blockers, review findings, and dependency-ready state without the
 user acting as their message bus**. ThreadMesh is the attention and admission
 policy layer; A2A, Cotal, ACP, or harness-native APIs may supply transport.
 
-## Active priority — first useful collaboration (2026-09-05)
+## Active priority — existing desktop clients (2026-09-07)
+
+The [desktop-first plan](docs/10-planning/desktop-entry-2026-09-07.md) supersedes
+the ordering below. CLI integration is not no-terminal first use.
+
+- [x] Review official Codex/ZCode entry points; inspect local ZCode settings.
+- [x] Prepare a developer hook probe; no messaging or native pass claimed.
+- [ ] Verify plugin loading, native identity and adoption of a prior conversation.
+- [ ] Connect one explicitly selected pair without shared-path or JSON setup.
+- [ ] Prove model-selected advice, same-receiver work and visible provenance.
+- [ ] Verify full business constraints, unrelated silence and user-input priority.
+- [ ] Package without developer prerequisites; observe an independent GUI user.
+
+Native delivery remains unresolved. Do not substitute a new CLI session,
+unscoped remote control or a promotional UI for existing-conversation acceptance.
+Existing quality, quota and DeepSeek live gaps remain open.
+
+## Retained first-use alpha ledger (2026-09-05)
 
 The [first-use plan](docs/10-planning/first-use-2026-09-05.md) supersedes the
 older harness-expansion freeze below. Existing M0/M5 acceptance gaps remain
