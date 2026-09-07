@@ -1,7 +1,9 @@
 # Native desktop public entry: retrieval and readiness boundary
 
-Date: 2026-09-07. Status: **public retrieval checked; live name-based readiness
-attempt not accepted because current-turn evidence is empty**. This record does not replace the earlier
+Date: 2026-09-07. Status: **readiness failure recovered through official App Server
+read: both inventory calls used an invalid limit; pairing still not accepted**.
+The earlier empty desktop-read observations are retained below, not erased.
+This record does not replace the earlier
 [controlled native business case](2026-09-07-native-desktop-acceptance.md).
 
 ## What changed for a user
@@ -90,12 +92,77 @@ traces and cannot fill the missing tool evidence.
 
 ## Disposition
 
-The bounded readiness gate **did not pass**. The bilingual guide now explicitly
-says that a completed indicator without a readable confirmation is not ready.
-Resolve current-turn result visibility before another acceptance run; do not
-paper over it with a new CLI pair, repeated quota-consuming dispatches or a
-claim based on the earlier successful native case. Independent GUI onboarding
-and public-source activation remain open.
+The bounded readiness gate **did not pass**. The subsequent diagnosis below
+recovered the results, not a passing pair. Independent GUI onboarding and
+public-source activation remain open. Do not substitute a new CLI pair or the
+earlier successful native case for this missing acceptance.
+
+## Read-only diagnosis and correction
+
+A later native `read_thread` recheck still returned zero items for both current
+turns and readable preceding turns. The official
+[App Server `thread/read` interface](https://learn.chatgpt.com/docs/app-server)
+supports reading a stored task without resuming it. Using the installed desktop
+runtime, Codex CLI 0.153.1, over a new **stdio diagnostic connection**, the manager
+read the same task IDs with `includeTurns: true` and selected the exact same
+readiness turn IDs. **Both contained five items and a final “not ready” result.**
+No new task, `thread/resume`, `turn/start`, messaging, private socket or direct
+transcript/database access was used. Diagnostic processes exited after reads;
+no model was invoked. This identifies a discrepancy between the two read
+surfaces, not its internal implementation cause or a repair of the desktop tool.
+
+| Recovered evidence | A | B |
+|---|---|---|
+| Public retrieval operation | Web open of the pinned raw URL | Successful curl of the same URL |
+| Inventory call | `list_threads`, `limit: 100` | `list_threads`, `limit: 100` |
+| Actual tool result | Invalid arguments: limit must be at most 50 | Same |
+| Model's final disposition | Not ready; matching unverified; collaboration OFF | Same |
+| Outgoing peer send / native file-change items in this turn | 0 / 0 | 0 / 0 |
+
+The inbound `send_message_to_thread` function output is the manager's check
+message, not an outgoing peer send. A's web-open item and final response support
+retrieval being attempted/reported; they do not expose the full web response.
+B's completed curl item retains the workflow text. Neither model retried its
+rejected inventory call. There is now evidence for their reported stopped
+behavior in these turns; the initial empty-export observation could not provide it.
+
+Private App Server turn records have SHA-256 commitments:
+A `bd0b7733d39b380400b28b834c650fa8757f70d209313320bb011e3ac8d955d5`;
+B `f3c60f7680c5c683042a71038fffebb486e485c85967e768ea63db0ba499aeb6`.
+They are retained separately from the original empty native-tool responses.
+
+The manager then made one native `list_threads` call with `limit: 50`. It was
+accepted and returned 50 entries with no unavailable-host/source warnings, but
+**neither selected task was present**. Exact-title App Server `thread/list`
+diagnostics also returned no matches; a separately checked `appServer` source
+filter likewise returned none, while each task's own metadata reports `vscode`.
+A scoped exact-title archived-`vscode` query also returned no matches for either
+task; it did not unarchive or alter anything.
+Do not infer deletion, rename, global absence or a proven source-filter cause.
+This diagnostic does not establish successful title resolution.
+
+Two bounded fixes follow from the evidence:
+
+- The skill and both copyable prompts cap native inventory at 50, include
+  pinned/unpinned results and explicitly treat a bounded list as incomplete.
+  The revised public workflow is pinned to
+  `7ea4d407b719f0241f1eccbe2e5d95c15a72c72c`; the failed run used the earlier revision.
+- The structural evidence auditor now rejects any empty completed turn. An
+  earlier valid handoff must not hide a later unknown turn and produce misleading
+  total-send counts. A regression exercises empty turns on either side and empty
+  prior context; the retained original nonempty native proof still passes.
+
+Post-fix regression: 460 tests passed, one optional native test skipped; all
+55 schema cases and seven transition cases passed, and 146 Markdown files linted
+cleanly. These are deterministic checks, not a rerun of the repaired model workflow.
+The new pinned public workflow returned HTTP 200, matched the source exactly
+(7,031 bytes), and has SHA-256
+`2d3822d5c609f091ff29e49aaef33f8ea432a13661b67b5112b7144379865c18`.
+
+The original limited call approval was not reused to restart either model or
+enable collaboration. Next resolve supported selected-task lookup and validate
+the repaired public entry end to end. Keep that separate from this no-model
+diagnostic and from a claim that the desktop read tool itself has been fixed.
 
 Official [skill documentation](https://learn.chatgpt.com/docs/build-skills)
 describes reusable instructions and host loading. It does not itself prove this

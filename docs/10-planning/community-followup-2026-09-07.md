@@ -112,6 +112,14 @@ complete, not passed. The reply explicitly retained that limitation rather than
 delaying the contributor's already-delivered priorities behind native retries.
 The earlier draft is superseded by the linked posted text and remains in Git history.
 
+At 12:49:11 UTC, the same comment was corrected in place after a no-model
+diagnosis. Official App Server `thread/read` recovered both original five-item
+turns: the models reported not ready after `list_threads(limit: 100)` exceeded
+the host's maximum of 50. The recovered records contain no outgoing peer send
+or file-change items. The source workflow now caps the limit, while a later
+valid inventory still omitted both tasks. This does not repair the desktop read
+tool or prove title-based onboarding. No extra comment or model retry was sent.
+
 ### Next work, not another status-only reply
 
 Subsequent native desktop evidence is now retained as [actual excerpts and diff](../evidence/codex-native-2026-09-07/README.md).
@@ -126,9 +134,11 @@ again. Do not post another acknowledgement-only message, roadmap promise, test
 request or issue closure. Continue implementation, review and verification
 inside the authorized task rather than stopping after each small step.
 
-Next resolve why the supported native read path exposes no current-turn result
-in the readiness attempt, without private storage or unauthorized UI workarounds.
-Then validate the public-source name-based entry with a readable confirmation
+Read-only recovery now distinguishes missing desktop-tool output from a missing
+model result; the desktop tool's internal discrepancy remains outside this repo.
+Next resolve supported selected-task lookup: the bounded native list did not
+contain the pair, and exact-title diagnostic searches also returned no matches.
+Then validate the public-source entry with a readable confirmation
 before claiming activation. Keep the original goals: a user's existing Codex
 pair, retained decisions, useful receiver-owned work and less manual relaying.
 Do not add harnesses or a benchmark platform to avoid this first-use blocker.
