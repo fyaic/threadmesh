@@ -1,5 +1,8 @@
 # Cross-harness product acceptance
 
+Current execution order: [desktop-first entry](desktop-entry-2026-09-07.md).
+The gates below remain open; they do not defer desktop feasibility testing.
+
 Date: 2026-09-05. Baseline: `98bba82`. This increment is explicitly delegated
 to implementation, validation and internal product-review lanes. The main
 agent owns integration, debugging and final acceptance. Internal reviewers are

@@ -1,5 +1,15 @@
 # Project status
 
+## Current product update — 2026-09-07
+
+The [desktop-first plan](desktop-entry-2026-09-07.md) now governs implementation.
+The CLI alpha is not plug-and-play for existing GUI conversations. Official
+Codex/ZCode extension seams were reviewed; ZCode settings inspected locally.
+A developer-only hook probe is prepared. Desktop installation, native session
+binding, directed delivery and user-input priority are **not yet verified**.
+No shipped desktop integration is claimed. Earlier live passes and the
+copy-quality failure below remain unchanged.
+
 ## Current product update — 2026-09-05
 
 The active plan is [first useful collaboration](first-use-2026-09-05.md), with

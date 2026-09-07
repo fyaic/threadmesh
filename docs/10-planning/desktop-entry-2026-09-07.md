@@ -1,0 +1,105 @@
+# Desktop-first entry: keep the user's existing client
+
+Date: 2026-09-07. Starting revision: `19a9b13`.
+
+## Decision and desired experience
+
+The CLI alpha is a developer integration, not plug-and-play for ordinary GUI
+users. The next critical path is **Codex desktop + ZCode**, already installed
+locally. ZCode is a feasibility target, not a supported-harness claim. Prove
+native session binding and delivery before building a companion dashboard.
+
+Install through normal client extension UI. Explicitly opt in chosen existing
+conversations with human-readable goals. No programming runtime installation,
+JSON editing, session-ID lookup, shared-directory management or relaunch under
+a ThreadMesh CLI should be required of the user.
+
+Models decide when peer advice is useful. The same receiver keeps its earlier
+decisions and sees the source. Unrelated sessions stay quiet, user work takes
+priority, and mute/revoke prevents new delivery. Advertise idle wake only after
+a native host API passes it; otherwise show **pending until next checkpoint**.
+
+Today, processes must address the same local ThreadMesh database, not necessarily
+the same code directory. The intended product hides storage without removing
+explicit sharing boundaries. It does not broadcast all chats or provide a
+cross-machine service today.
+
+## Evidence checked
+
+Local read-only inventory: ChatGPT desktop `26.901.31953`, bundled Codex
+`0.153.1`, and ZCode `3.10.2`. ZCode's settings expose Plugins, MCP Servers and
+Hooks; its Plugins screen was inspected. No client was restarted, plugin
+installed, hook trusted, private transcript opened or cross-session message
+sent. Current website documentation may describe newer builds.
+
+| Requirement | Codex desktop | ZCode desktop |
+|---|---|---|
+| Plugin distribution | Official packaging documented; local install untested | Official packaging documented; Plugins UI observed |
+| Current identity and checkpoint context | Hook session ID and SessionStart/UserPromptSubmit documented; native probe pending | Same documented; native probe pending |
+| Prior conversation loads new plugin | Unverified; CLI resume is not proof | Docs warn running sessions do not hot-reload; adoption test needed |
+| MCP call bound to the same native session | Unverified; not a global member name | Unverified; hook ID alone does not bind MCP calls |
+| Directed delivery and idle wake | Supported third-party desktop attachment route not established | Supported scoped plugin wake route not established |
+| Busy receiver, queued user work, revoke | Not live-verified | Not live-verified |
+
+Codex's [plugin packaging](https://developers.openai.com/plugins/build/plugins)
+documents desktop distribution, local MCP and hooks. Its
+[hooks reference](https://learn.chatgpt.com/docs/hooks) documents session identity
+and exact-definition trust. These entry points do not authorize access to every
+conversation. The [App Server API](https://learn.chatgpt.com/docs/app-server)
+has thread/turn operations, but starting another server does not establish
+attachment to the already-running desktop owner. App-provided cross-task tools
+are also not, by themselves, a public external RPC endpoint.
+
+ZCode documents [plugins](https://zcode.z.ai/en/docs/plugin),
+[MCP](https://zcode.z.ai/en/docs/mcp-services), and
+[hooks](https://zcode.z.ai/en/docs/hooks). Hooks expose session IDs and context
+injection, not a callable model object. Its
+[Remote Control](https://zcode.z.ai/en/docs/remote-control) can operate existing
+conversations, but a bearer link grants window-wide control. No supported scoped
+plugin API through that feature was established here. Do not repurpose those
+tokens, private IPC or desktop database writes as a ThreadMesh adapter.
+
+## Ordered implementation and acceptance
+
+1. **Native entry probe:** install in a test context, observe two native IDs and
+   checkpoint injection. Test a pre-installation conversation separately.
+2. **One opted-in pair:** bind MCP calls to native identity, join/leave without
+   paths, deliver attributed advice to the same receiver. If the public host
+   interface is insufficient, record the precise gap and seek supported host
+   integration; do not substitute a new session or automated UI typing.
+3. **Useful initiative:** one ordinary kickoff per task, generic collaboration
+   guidance, no prescribed recipient. Verify useful work, complete prior
+   constraints, an unrelated no-contact control and queued user-input priority.
+4. **Actual first use:** package away developer prerequisites; observe an
+   independent GUI user without maintainer terminal assistance. Record every
+   manual step and the first failure before promoting a desktop demo.
+
+Everyday acceptance scenario: the existing product conversation approves “the
+free plan allows five projects”; the existing website conversation is updating
+copy. The first agent volunteers the change; the second retains both the
+free-plan qualifier and its earlier signup-button decision. An unrelated notes
+task stays untouched. **This desktop scenario has not passed yet.**
+
+Quota recovery follows with explicitly saved decisions and unfinished work,
+using the other agent's own authorized account. Do not promise lossless history
+or recovery of unsaved context after the source can no longer run.
+
+## This increment and stop line
+
+A dependency-free [developer probe](../../experiments/desktop/threadmesh-desktop-probe/README.md)
+has two manifests and five fixture tests. It emits only event type and a session
+fingerprint, performs no file/network I/O and grants no sharing. It still needs
+Node: **not an installer, native live pass or desktop collaboration feature**.
+No marketplace or global configuration was changed. Native install/trust remains
+pending and must not disrupt active user tasks.
+[Preflight results](../09-reviews/2026-09-07-desktop-entry-preflight.md) separate
+the passing fixtures from the unexecuted native acceptance.
+
+This order supersedes [first use](first-use-2026-09-05.md) and
+[cross-harness acceptance](cross-harness-acceptance-2026-09-05.md). Existing
+copy-quality failure, DeepSeek live, quota recovery and native input-race gaps
+remain open, not new prerequisites for trying desktop entry. Track under
+[#156](https://github.com/fyaic/threadmesh/issues/156).
+
+No parallel protocol expansion, additional CLI task families or promotional
+animation while desktop delivery is unresolved. Keep the current CLI working.

@@ -1,5 +1,14 @@
 # Mainline plan
 
+## Current execution order — 2026-09-07
+
+The [desktop-first plan](desktop-entry-2026-09-07.md) governs new implementation:
+native Codex/ZCode entry → one opted-in existing-session pair → useful initiative
+and user-input safety → independent GUI first use. The CLI alpha remains
+supported, but does not satisfy no-terminal onboarding. Sections below preserve
+historical planning; their “only critical path” and freezes no longer set today's
+execution order.
+
 ## Goal
 
 Prove that a user can run several durable agent sessions without acting as

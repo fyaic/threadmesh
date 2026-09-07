@@ -61,6 +61,12 @@ independent adoption. **Delivered does not mean done correctly.**
 
 ## Try it
 
+**Desktop-app user?** The current alpha below is a developer/CLI path. It does
+not attach existing Codex desktop or other GUI conversations. Desktop-first
+onboarding is [the next priority](docs/10-planning/desktop-entry-2026-09-07.md),
+not a released integration. A shared workspace means shared ThreadMesh storage,
+not a requirement that both agents edit the same code folder.
+
 ### Preview without a model
 
 Requires **Node 22+**. Install from GitHub; the package is **not on npm yet**.
