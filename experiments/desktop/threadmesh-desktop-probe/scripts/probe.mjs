@@ -3,15 +3,21 @@ import { pathToFileURL } from "node:url";
 
 // Diagnostic only. The host supplies stdin, which can contain private fields.
 // Project only these two fields; never open transcript_path, log or store stdin.
+export function sessionFingerprint(sessionId) {
+  if (typeof sessionId !== "string" || !sessionId.trim() || sessionId.length > 256) {
+    throw new Error("invalid probe identity");
+  }
+  return createHash("sha256").update("threadmesh-desktop-probe-v1\0")
+    .update(sessionId).digest("hex").slice(0, 16);
+}
+
 export function probeEvent(event) {
   if (!event || !["SessionStart", "UserPromptSubmit"].includes(event.hook_event_name) ||
       typeof event.session_id !== "string" || !event.session_id.trim() ||
       event.session_id.length > 256) {
     throw new Error("unsupported probe event");
   }
-  const fingerprint = createHash("sha256")
-    .update("threadmesh-desktop-probe-v1\0").update(event.session_id)
-    .digest("hex").slice(0, 16);
+  const fingerprint = sessionFingerprint(event.session_id);
   return { hookSpecificOutput: {
     hookEventName: event.hook_event_name,
     additionalContext: `TM_DESKTOP_PROBE session=${fingerprint} event=${event.hook_event_name}. ` +

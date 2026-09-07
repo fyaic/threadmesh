@@ -10,6 +10,13 @@ binding, directed delivery and user-input priority are **not yet verified**.
 No shipped desktop integration is claimed. Earlier live passes and the
 copy-quality failure below remain unchanged.
 
+Delegated follow-up found source-backed native MCP metadata in both clients.
+The packaged diagnostic now compares it to hook identity without returning raw
+IDs; the Codex helper separates runtime SessionId and persistent ThreadId.
+Passive native Codex preflight found no default public daemon socket. Internal
+review approved this narrow correlation path, not desktop delivery or adoption.
+See the [updated plan](desktop-entry-2026-09-07.md#ordered-implementation-and-acceptance).
+
 ## Current product update — 2026-09-05
 
 The active plan is [first useful collaboration](first-use-2026-09-05.md), with

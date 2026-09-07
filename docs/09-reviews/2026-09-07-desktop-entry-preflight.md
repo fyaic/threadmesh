@@ -5,6 +5,30 @@ Scope: [desktop-first entry](../10-planning/desktop-entry-2026-09-07.md).
 
 ## Result: developer preparation passed; native desktop acceptance pending
 
+### Delegated integration follow-up
+
+Three bounded lanes completed: [Codex](2026-09-07-codex-desktop-lane.md),
+[ZCode](2026-09-07-zcode-desktop-lane.md), and
+[independent internal review](2026-09-07-desktop-independent-review.md).
+The main agent integrated a no-write MCP identity diagnostic, corrected
+SessionId/ThreadId handling, and selected the runtime-verified camelCase
+`mcpServers` configuration. An unused hook-rewrite alternative was discarded.
+
+Final local regression: **422 passed, 1 optional native test skipped**, including
+15 targeted desktop tests. Schema/state checks remain 55 + 7 passed; 129 standard
+Markdown documents plus the experiment guide lint cleanly. Plugin Creator's
+validator passes. The main agent independently repeated the actual passive
+Codex endpoint probe: runtime 0.153.1, default control socket absent, zero model
+calls and zero chat operations. No private fallback endpoint was attempted.
+
+The original table below records the earlier preflight. Native installation,
+old-conversation adoption, actual metadata receipt and peer delivery are still
+**unexecuted**. Installing the probe and creating disposable GUI test
+conversations require explicit operator coordination. No global plugin/trust
+configuration changed in this increment.
+
+### Original preflight
+
 | Check | Result | What it establishes |
 |---|---|---|
 | Official extension review | Completed; linked in the plan | Documented seams, not installed-host behavior |

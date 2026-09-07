@@ -18,6 +18,8 @@ the ordering below. CLI integration is not no-terminal first use.
 
 - [x] Review official Codex/ZCode entry points; inspect local ZCode settings.
 - [x] Prepare a developer hook probe; no messaging or native pass claimed.
+- [x] Add dual-host MCP/hook identity correlation diagnostics and passive Codex
+  endpoint checks; keep native receipt and desktop ownership unverified.
 - [ ] Verify plugin loading, native identity and adoption of a prior conversation.
 - [ ] Connect one explicitly selected pair without shared-path or JSON setup.
 - [ ] Prove model-selected advice, same-receiver work and visible provenance.

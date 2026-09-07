@@ -1,11 +1,12 @@
 {
   "name": "threadmesh-desktop-probe",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Developer-only desktop hook probe. No messaging, chat access or automatic wake.",
   "author": {
     "name": "ThreadMesh contributors"
   },
   "license": "Apache-2.0",
+  "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "ThreadMesh Desktop Probe",
     "shortDescription": "Check native session hooks; not a collaboration integration.",

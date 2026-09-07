@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "threadmesh-desktop-probe": {
+      "command": "node",
+      "cwd": ".",
+      "args": ["scripts/mcp.mjs"]
+    }
+  }
+}
