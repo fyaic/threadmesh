@@ -67,6 +67,60 @@ goal because the smaller new-session example is easier to validate.
 
 ## Deferred reply and execution discipline
 
+### Latest review and reply gate
+
+Rechecked #158 and recent repository comments on September 7. The latest external
+comment remains `hlinor-systems` at 08:12:18 UTC, linked above; no newer demand
+was found. Do not describe a fresh inspection as a new comment. #158 and #79
+remain open.
+
+The current README now leads with user chores, one complete native desktop case
+and three distinct entry paths. It separates the 49-second desktop observation
+from the 273-second packaged example and removes the global Node badge: Node is
+a package requirement, not a requirement of the native skill workflow. Native
+attribution and the absence of measured incremental benefit remain explicit.
+
+**Decision: draft only; do not post this turn.** The three requested maintainer
+example/progress/receiver-evidence improvements have shipped. Another README
+rearrangement is not a new functional release. The next useful increment is the
+remaining Codex desktop pairing/activation friction: test a publicly retrievable
+workflow with supported task references, without maintainer-local paths or manual
+ID hunting. Record the first failure and actual setup steps. After that bounded
+increment, recheck the comment and send one consolidated update; do not wait for
+every adapter, perfect reliability or a marketing video. No automatic posting or
+scheduled follow-up is configured by this document.
+
+### Proposed reply to #158 — not sent
+
+> Thank you, Andrei. We followed the three concrete priorities in your report.
+>
+> [v0.1.0-alpha.3](https://github.com/fyaic/threadmesh/releases/tag/v0.1.0-alpha.3)
+> now defaults to a self-contained Codex → Codex example using the existing login
+> and model. `threadmesh try --live` prepares the sample and runs both sessions;
+> no custom harness, application fixture, Pi installation or second subscription
+> is required. The [install/run guide](https://github.com/fyaic/threadmesh/blob/main/docs/06-guides/first-workspace.md)
+> shows installation progress and explains quota, runtime and timeout failures.
+> We do not bypass exhausted quota or silently switch products.
+>
+> The installed-package default run completed in 272.604 seconds within its
+> 300-second cap. The original receiver made its own checked edit, preserving
+> the earlier button decision and paid price. We retained the failed attempts
+> as well as the [passing evidence](https://github.com/fyaic/threadmesh/blob/main/docs/09-reviews/2026-09-07-codex-first-use-release.md).
+>
+> Separately, a controlled desktop pair with completed prior context produced
+> native advice and the original receiver's own edit; the [actual exchange and diff](https://github.com/fyaic/threadmesh/blob/main/docs/evidence/codex-native-2026-09-07/README.md)
+> are public. Codex supplies that route's native transport. Its synthetic busy
+> and stop checks are not proof of race-free delivery or general desktop onboarding.
+>
+> These are maintainer results, not an independent live pass or a reliability
+> rate. We are keeping this issue open for the remaining onboarding gaps. No need
+> to retry with exhausted quota or share private transcripts. Your report changed
+> the first-use path and what we require before calling a handoff useful.
+
+Before posting, add only the actual outcome of the next entry-path increment,
+recheck release links and claims, and remove anything superseded by a new comment.
+Do not copy an unverified planned result into this draft.
+
 Subsequent native desktop evidence is now retained as [actual excerpts and diff](../evidence/codex-native-2026-09-07/README.md).
 That controlled prior-context pair passed; it is not this contributor's independent
 live result. The [native-value correction](../00-overview/native-capabilities-and-value.md)

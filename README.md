@@ -7,7 +7,6 @@
 <p align="center">
   <a href="https://github.com/fyaic/threadmesh/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/fyaic/threadmesh/actions/workflows/ci.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="Apache 2.0" src="https://img.shields.io/badge/license-Apache--2.0-4c7bd9.svg"></a>
-  <a href="package.json"><img alt="Node 22+" src="https://img.shields.io/badge/node-%3E%3D22-3c873a.svg"></a>
   <a href="docs/10-planning/project-status.md"><img alt="Experimental alpha" src="https://img.shields.io/badge/status-experimental_alpha-f59e0b.svg"></a>
 </p>
 
@@ -19,20 +18,23 @@
   <a href="README.zh-CN.md">简体中文</a>
 </p>
 
-One conversation changes the API. Another is still building against the old contract.
-You shouldn't have to notice, switch chats, and explain the change again.
-You don't need two different products: two sessions of the same agent can collaborate.
+You approved a decision in one chat. Another chat is still working from the old
+version. ThreadMesh helps related agent sessions share useful changes without
+making you explain them again—even when both sessions use the same product.
 
-**You choose which sessions join. The models choose when a message is useful.**
-The workspace supplies discovery, advisory messages, a persistent inbox and portable
-checkpoints—not a new model or shared chat history. The optional Codex desktop
-skill instead uses **Codex's native task tools**; it does not add that transport.
+**You choose the collaborators. The models decide what is worth sharing.**
 
-**Doesn't Codex already do this? Yes, on the tested host.** If its native task
-tools meet your needs, use them directly. The skill adds reusable collaboration
-guidance; the workspace adds coordination for supported integrations. We have
-not proved the skill outperforms native Codex alone.
-[What is native, what we add, and when not to install →](docs/00-overview/native-capabilities-and-value.md)
+| The repeated chore | What ThreadMesh offers |
+|---|---|
+| “Tell the other session what changed.” | Selected peer goals and advisory handoffs; a model chooses whether to contact a peer. |
+| “Remember what we already agreed.” | Each receiver keeps its own task context and checks advice against earlier decisions. |
+| “Was it received—or actually done?” | Workspace inbox/disposition records plus examples that verify the receiver's own artifact, not just delivery. |
+
+Two ways to use it: an optional **Codex desktop skill** over native task tools,
+or a **local workspace** with a persistent inbox, supported harness adapters
+and explicit portable checkpoints. These are different integration paths, not
+one universal desktop connector. Codex supplies the skill route's transport.
+[What we add—and when native Codex is enough →](docs/00-overview/native-capabilities-and-value.md)
 
 <p align="center">
   <img src="docs/assets/threadmesh-session-initiative.jpg" width="100%" alt="Concept: Agent A sends advice from another task to Agent B while unrelated work stays quiet">
@@ -41,43 +43,55 @@ not proved the skill outperforms native Codex alone.
 
 ## A real handoff without the copy-paste
 
-[Read the actual desktop exchange and B's own diff →](docs/evidence/codex-native-2026-09-07/README.md)
-Retained native records, with busy/stop checks; not a screenshot or reenactment.
-The separate installed-package example below is also retained.
+**A knows the new product facts. B remembers your earlier website decision.**
 
-**Two Codex sessions. One remembers your earlier decision; the other changes the
-product facts. You don't relay the change.**
+In one controlled Codex desktop run, both tasks completed their initial work
+before adopting the skill. B already knew to keep the signup button unchanged.
+After explicit pairing, the only business request went to A:
 
-In a real installed-package run, the website session first volunteered its
-dependency. The brand session then chose to send the relevant update. After
-that actual message, the runner continued the **same native website session**;
-its model edited the landing copy itself.
+> Rename the product to Member Portal and limit the free plan to five projects.
+> Use US spelling. Keep the paid-plan price unchanged. Update the approved product facts.
+
+No “send this to B.” A chose to check B's status and send the relevant facts.
+**Original B then continued and edited its own website copy.** The manager did
+not relay the change, resume B manually or write B's file.
 
 | Website copy | Before | After |
 |---|---|---|
 | Product and spelling | Organise work with Team Hub | Organize work with Member Portal |
-| Free allowance | Unlimited free projects | Free tier includes up to 5 projects |
+| Free allowance | Unlimited free projects | Up to five projects on the free tier |
 | Earlier button decision | Create my workspace | **Unchanged** |
 | Paid price | $12/month | **Unchanged** |
 
-These compact descriptions summarize the checked artifact, not a screenshot.
-Each model received an ordinary task with generic opt-in collaboration guidance,
-not an instruction naming the recipient or requiring a send. The runner checks
-the receiver's own edit, complete business meaning and retained constraints.
+The ordinary request to B's completed result took about **49 seconds, excluding
+setup**. In separate controls, A held its advice while B was busy and made no
+further send after collaboration was stopped.
+[Actual messages, B's diff and audit →](docs/evidence/codex-native-2026-09-07/README.md)
 
-Two maintainer runs passed from installed packages: about **273 seconds** with
-the default 300-second limit, and **184 seconds** in an earlier extended-budget
-diagnostic. Neither changed the configured model or account. These are two
-observations, not a reliability rate or a time-to-success promise.
-[Exact prompts, artifacts and timing →](docs/09-reviews/2026-09-07-codex-first-use-release.md)
-
-**The boundary:** these are two new disposable Codex sessions. The runner
-triggers continuation after delivery; this is not native desktop background wake
-or attachment to old chats. Earlier [Codex connection failures](docs/09-reviews/2026-09-07-codex-first-use-candidate.md)
-and [cross-product business failures](docs/09-reviews/2026-09-05-workspace-awareness.md)
-remain recorded. Delivered still does not mean done correctly.
+This is one maintainer-operated pair with prior context, not a speed guarantee
+or independent-user onboarding result. Codex provided native messaging and
+continuation; the skill provided guidance. The table summarizes checked files,
+not a screenshot. Simultaneous typing races and plugin hot-loading remain unverified.
 
 ## Try it
+
+| Your starting point | Choose this path |
+|---|---|
+| I use existing Codex desktop tasks | [Native-task workflow](#want-to-connect-your-existing-desktop-tasks): no Node/MCP/hook setup, but explicit pairing and available host tools are required. |
+| I want a self-contained real example | [Codex package example](#already-use-codex-keep-your-account): one terminal, two new disposable sessions, existing account and quota. |
+| I want to connect my project sessions | [Workspace guide](docs/06-guides/first-workspace.md#advanced-connect-your-own-project-sessions): more setup; persistent inbox and supported harness integration. |
+
+### Want to connect your existing desktop tasks?
+
+[Follow the native-task guide](docs/06-guides/codex-native-tasks.md) to give each
+chosen task the workflow and its peer's reference, authorize a narrow scope,
+then work normally. No terminal setup is needed for that route.
+
+**Experimental:** the successful case used manager-supplied task references and
+a local skill path. Novice pair selection, remote-link retrieval and normal
+plugin onboarding remain open. The skill cannot add absent host tools or enforce
+privacy and race-free sending. If native Codex already meets your needs, use it
+directly; no measured advantage over native-only use is claimed.
 
 ### Already use Codex? Keep your account
 
@@ -104,16 +118,11 @@ Omit `--live` to read instructions without a model call. Processes stop at the
 end; private results remain for inspection.
 [Permissions, results and failures →](docs/06-guides/first-workspace.md)
 
-### Want to connect your existing desktop tasks?
-
-There is an [experimental no-terminal workflow](docs/06-guides/codex-native-tasks.md)
-using a skill and Codex's already-exposed native task tools—no Node, MCP or hook
-setup for that route. **One controlled desktop pair passed:** both tasks had
-completed prior work before activation; A chose to send advice and original B
-edited its own copy, preserving earlier decisions. Busy-target and stop checks
-also passed. [Native evidence and setup limits →](docs/09-reviews/2026-09-07-native-desktop-acceptance.md)
-This is not plugin hot-loading or independent-user onboarding. The skill cannot
-create missing host tools, enforce privacy boundaries or eliminate input races.
+Separate from the desktop case above, this installed-package Codex example
+passed in about **273 seconds** under its default limit. An earlier diagnostic
+passed in 184 seconds with an extended budget. The runner continues its own
+receiver after actual delivery; it does not attach existing desktop chats.
+[Packaged-run evidence and retained failures →](docs/09-reviews/2026-09-07-codex-first-use-release.md)
 
 ### Already use Pi instead?
 
@@ -142,7 +151,8 @@ they are not evidence of model initiative. For your own projects, use the
 
 | Harness | How it connects | Automatic idle follow-up |
 |---|---|---|
-| **Codex** | `try`: native App Server pair; project launcher: scoped MCP + hooks | `try` runner continues its own idle receiver after delivery; no general native idle wake |
+| **Codex desktop** | Optional skill over host-provided native task tools | One controlled pair passed; Codex supplies continuation; availability varies by host |
+| **Codex package / projects** | `try`: native App Server pair; project launcher: scoped MCP + hooks | `try` runner continues its own receiver; not arbitrary old-chat attachment |
 | **Pi** | Native extension; four tools and turn-start context | Opt-in `--wake-idle`; busy-turn guard, not universal typing-race proof |
 | **Kimi Code** | Project MCP configuration; other servers retained | No |
 | **DeepSeek Harness** | Official `dsh` MCP plugin via a Cordis patch | Not claimed |
@@ -169,6 +179,9 @@ These are practical uses, not a promise that every scenario succeeds.
 
 ### Continue from a saved checkpoint
 
+For an already configured workspace—not the disposable `try` sample—run from
+its directory, or supply `--workspace /path/to/your/room`:
+
 ```sh
 npx threadmesh status
 npx threadmesh continue backend --agent kimi --name recovery
@@ -184,13 +197,15 @@ recovery is still unverified.
 
 ## Your sessions stay yours
 
-Joining shares published goals and advice, not all private chats. Inbox reads
+In the workspace route, joining shares published goals and advice, not all private chats. Inbox reads
 do not consume messages; acceptance does not prove completion. Pi idle wake is
 opt-in. Use `npx threadmesh status` to inspect or `npx threadmesh mute client` to mute.
 
 This is an **experimental, same-owner local workspace**, not a multi-tenant
 security boundary. It does not automatically attach arbitrary old tabs, wake
 every agent product or guarantee correct work. Host tool permissions still apply.
+The desktop skill uses Codex's native history and model-followed rules instead;
+workspace inbox and mute commands do not control that separate route.
 
 [Safety model](docs/04-safety/threat-model.md) · [Security policy](SECURITY.md)
 

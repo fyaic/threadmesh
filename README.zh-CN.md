@@ -7,7 +7,6 @@
 <p align="center">
   <a href="https://github.com/fyaic/threadmesh/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/fyaic/threadmesh/actions/workflows/ci.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="Apache 2.0" src="https://img.shields.io/badge/license-Apache--2.0-4c7bd9.svg"></a>
-  <a href="package.json"><img alt="Node 22+" src="https://img.shields.io/badge/node-%3E%3D22-3c873a.svg"></a>
   <a href="docs/10-planning/project-status.md"><img alt="实验性 alpha" src="https://img.shields.io/badge/status-experimental_alpha-f59e0b.svg"></a>
 </p>
 
@@ -19,18 +18,21 @@
   <a href="README.md">English</a>
 </p>
 
-一个对话改了接口，另一个还在按旧接口写客户端。
-你不该再负责发现变化、切换聊天、复制粘贴，然后重新解释一遍。
-不必换两种产品：同一个 Agent 的两个 session 就能协作。
+你在一个对话里确认了决策，另一个却还在按旧版本工作。
+ThreadMesh 帮相关 session 分享有用变化，省掉你再解释一次——即使它们都来自同一个产品。
 
-**你决定哪些 session 加入，模型判断什么时候值得联系。**
-Workspace 提供目标发现、建议消息、持久收件箱和可携带的 checkpoint，
-不是新模型或共享聊天记录。可选的桌面 Skill 则使用 **Codex 已有的原生任务工具**，
-并没有新增这套通信能力。
+**你选择协作对象，模型判断什么值得分享。**
 
-**Codex 自己不是就能做吗？在实测宿主上，是的。** 原生功能够用，就直接用原生。
-Skill 提供可复用协作规则，workspace 为已支持的集成提供协调能力；目前没有证明
-Skill 比原生 Codex 更有效。[哪些是原生、我们增加什么、何时不需要安装 →](docs/zh-CN/native-capabilities-and-value.md)
+| 反复遇到的麻烦 | ThreadMesh 提供什么 |
+|---|---|
+| “把变化再告诉另一个 session。” | 明确选择的协作目标和建议交接，由模型判断是否需要联系。 |
+| “之前已经说好的，别忘了。” | 接收方保留自己的任务上下文，结合先前约定判断建议。 |
+| “它只是收到了，还是真的做完了？” | Workspace 收件箱与处置记录，以及核验接收方实际产物的案例，不只统计送达。 |
+
+两条使用路径：基于原生任务工具的可选 **Codex 桌面 Skill**；或包含持久收件箱、
+已支持 harness 适配器和显式 checkpoint 的**本地 workspace**。
+它们不是一个通用桌面连接器；Skill 路径的通信由 Codex 提供。
+[我们增加什么，什么时候原生 Codex 就够用 →](docs/zh-CN/native-capabilities-and-value.md)
 
 <p align="center">
   <img src="docs/assets/threadmesh-session-initiative.jpg" width="100%" alt="概念示意：Agent A 向 Agent B 发送来自另一任务的建议，无关工作保持安静">
@@ -39,13 +41,16 @@ Skill 比原生 Codex 更有效。[哪些是原生、我们增加什么、何时
 
 ## 一次不用你转述的真实协作
 
-[查看实际桌面消息与 B 自己的修改 →](docs/zh-CN/native-evidence.md)
-保留的原生记录，含忙碌/停止检查；不是截图或重演。下面另保留安装包案例。
+**A 掌握新的产品事实，B 记着你之前的网站约定。**
 
-**两个 Codex session：一个记着你之前的约定，另一个修改产品事实。你不用转述变化。**
+一次受控 Codex 桌面实测中，两个任务先完成原工作，再启用 Skill。
+B 早已知道按钮名称不能改。明确配对后，只向 A 提出普通业务修改，意思是：
 
-在安装包真实运行中，网站 session 先自主说明了依赖，品牌 session 随后自行决定发送相关变化。
-实际收到消息后，运行器续接**同一个原生网站 session**，由它自己的模型修改注册页文案。
+> 产品更名为 Member Portal，免费方案最多五个项目，使用美式拼写。
+> 付费价格不变，更新批准的产品事实。
+
+没有要求“把这条消息发给 B”。A 自行检查 B 的状态、发送相关事实，
+**原来的 B 接着自己修改了网站文案。** 管理任务没有转述变化、手动续跑 B 或代写文件。
 
 | 网站内容 | 修改前 | 修改后 |
 |---|---|---|
@@ -54,22 +59,31 @@ Skill 比原生 Codex 更有效。[哪些是原生、我们增加什么、何时
 | 之前约定的按钮 | Create my workspace | **保持不变** |
 | 付费价格 | $12/月 | **保持不变** |
 
-上表是已验收文件的紧凑摘要，不是界面截图。每个模型收到普通业务任务和通用协作提示，
-没有在任务里指定接收者或要求必须发消息。验收检查接收方自己修改文件、完整业务含义，
-以及此前约定是否保留。
+普通业务请求到 B 完成约 **49 秒，不含设置时间**。另做对照时，B 忙碌则 A 暂缓发送；
+停止协作后再修改产品，A 也没有继续发消息。
+[实际消息、B 的 diff 与审计 →](docs/zh-CN/native-evidence.md)
 
-安装包上保留了两次维护者通过记录：默认 300 秒上限内约 **273 秒**完成；
-较早一次扩展时间预算的诊断约 **184 秒**完成。两次都没有改用其他模型或账户。
-这是两次观察，不是可靠性统计，也不保证固定时间成功。
-[真实任务、文件与时间线 →](docs/09-reviews/2026-09-07-codex-first-use-release.md)
-
-**边界明确：** 这里是两个新的临时 Codex session，由运行器在实际投递后触发续接；
-不是原生桌面后台唤醒，也不是接入已有聊天。
-此前的 [Codex 连接失败](docs/09-reviews/2026-09-07-codex-first-use-candidate.md)
-和[跨产品业务失败](docs/09-reviews/2026-09-05-workspace-awareness.md)继续保留。
-消息送达仍然不等于工作做对。
+这是一组维护者操作、保留原上下文的专用任务，不是速度保证或独立用户上手结果。
+原生消息与续跑来自 Codex，Skill 提供协作规则。上表概括已核验文件，不是界面截图。
+同时输入的竞争和插件热加载仍未验证。
 
 ## 开始体验
+
+| 你现在想做什么 | 选择这条路径 |
+|---|---|
+| 连接已有 Codex 桌面任务 | [原生任务流程](#想连接已有的桌面任务)：不用配置 Node/MCP/hook，但需明确配对且宿主已有工具。 |
+| 先跑一个自包含的真实例子 | [Codex 安装包案例](#已经在用-codex沿用你的账户)：一个终端、两个新临时任务、沿用账户和额度。 |
+| 接入自己项目里的 session | [Workspace 指南](docs/zh-CN/first-workspace.md#进阶两个终端接入自己的项目)：设置更多，提供持久收件箱和已支持的 harness 接入。 |
+
+### 想连接已有的桌面任务？
+
+按[原生任务指南](docs/zh-CN/codex-native-tasks.md)，在选中的任务里提供工作流和对方引用，
+授权限定的协作范围，然后正常工作。这条路径不需要终端设置。
+
+**实验入口：** 成功案例由管理任务提供引用和本地 Skill 路径；普通用户如何选择任务、
+远程链接读取和常规插件上手仍有缺口。Skill 不能补出缺失的宿主工具，也不能强制
+保证隐私隔离或无竞争发送。如果原生 Codex 已满足需求，直接使用即可；
+目前不声称比原生用法更有效。
 
 ### 已经在用 Codex？沿用你的账户
 
@@ -91,15 +105,9 @@ macOS 下可以自动选择比 PATH 版本更新的桌面自带运行时，不�
 不带 `--live` 只显示说明，不调用模型。结束后停止进程，私有结果保留供检查。
 [权限、结果和失败处理 →](docs/zh-CN/first-workspace.md)
 
-### 想连接已有的桌面任务？
-
-另有[实验性无终端工作流](docs/zh-CN/codex-native-tasks.md)，通过 skill 使用 Codex
-已经提供的原生任务工具；这条路径不用配置 Node、MCP 或 hook。
-**一组受控桌面双任务已通过实测：** 两边先完成原任务，再启用协作；A 自行发出建议，
-原来的 B 自己改对文案，并保留之前的约定。忙碌时不发送、停止后不再发送也通过。
-[原生证据与设置边界 →](docs/09-reviews/2026-09-07-native-desktop-acceptance.md)
-这不是插件热加载或独立新用户上手验收。Skill 不能补出宿主缺失的工具，也不能强制
-保证隐私边界或消除用户输入竞争。
+与上方桌面实测分开，这个 Codex 安装包例子在默认上限内约 **273 秒**通过；
+更早一次扩展时间预算的诊断约 184 秒通过。运行器在实际投递后续接自己的接收方，
+不是接入已有桌面聊天。[安装包证据与保留的失败 →](docs/09-reviews/2026-09-07-codex-first-use-release.md)
 
 ### 已经在用 Pi？
 
@@ -127,7 +135,8 @@ npx threadmesh preview preferences
 
 | Harness | 接入方式 | 空闲时自动续接 |
 |---|---|---|
-| **Codex** | `try` 使用原生 App Server 双 session；项目 launcher 使用限定范围的 MCP 与 hook | `try` 在投递后由运行器续接自身空闲接收方；不是通用原生空闲唤醒 |
+| **Codex 桌面** | 宿主原生任务工具之上的可选 Skill | 一组受控双任务通过；Codex 提供续跑，工具可用性取决于宿主 |
+| **Codex 安装包 / 项目** | `try` 使用 App Server 双 session；项目 launcher 使用限定范围的 MCP 与 hook | `try` 运行器续接自己的接收方；不是任意旧聊天接入 |
 | **Pi** | 原生扩展，四个工具与任务起始上下文 | 显式 `--wake-idle`；有忙碌保护，但不是所有输入竞争都已实测 |
 | **Kimi Code** | 项目 MCP 配置，保留其他 server | 未提供 |
 | **DeepSeek Harness** | 官方 `dsh` 的 Cordis MCP 插件 | 未声称支持 |
@@ -154,6 +163,9 @@ Pi→Kimi 成功记录采用约束更强的 adapter 路径。
 
 ### 从已保存的 checkpoint 继续
 
+仅用于已经配置好的 workspace，不是 `try` 的临时样例。在该目录执行，
+或显式提供 `--workspace /path/to/your/room`：
+
 ```sh
 npx threadmesh status
 npx threadmesh continue backend --agent kimi --name recovery
@@ -167,12 +179,14 @@ npx threadmesh continue backend --agent kimi --name recovery
 
 ## Session 仍由你掌控
 
-加入只共享公布的目标和建议，不扫描全部私聊。读收件箱不会消耗消息，接受建议
+在 workspace 路径，加入只共享公布的目标和建议，不扫描全部私聊。读收件箱不会消耗消息，接受建议
 不等于任务完成。Pi 的空闲续接需要明确开启。使用 `npx threadmesh status` 查看，
 或用 `npx threadmesh mute client` 静音。
 
 当前是**同一所有者的本地实验版**，不是多租户安全边界。它不会自动接入任意旧 tab、
 唤醒所有 Agent 产品，也不保证工作一定正确。宿主原有的工具权限仍然适用。
+桌面 Skill 则使用 Codex 原生历史和模型遵循的规则；workspace 的收件箱与静音命令
+不能控制这条独立路径。
 
 [安全模型](docs/04-safety/threat-model.md) · [安全报告](SECURITY.md)
 
