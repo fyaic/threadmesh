@@ -2,12 +2,12 @@
 
 [简体中文](../zh-CN/codex-native-tasks.md)
 
-**Experimental workflow, not a verified desktop integration.** This entry uses
+**Experimental workflow with one controlled native pair pass.** This entry uses
 Codex's own task tools when they are already available. The bundled skill adds
 opt-in scope and collaboration guidance; it does not add a private desktop API,
 a new model, an MCP server or a polling daemon.
 
-## No-terminal workflow to validate
+## No-terminal workflow
 
 Choose two disposable existing Codex tasks with useful prior context. For
 example, a brand task maintains approved product facts; a website task already
@@ -66,6 +66,13 @@ native send and source attribution, the receiver's own artifact change and
 business check. Record human setup actions, a busy-target no-send check and a
 stop/no-further-send check. Do not publish private IDs or transcripts.
 
-Packaging validation and a behavioral tabletop review are not this live proof.
+The [September 7 controlled run](../09-reviews/2026-09-07-native-desktop-acceptance.md)
+passed this source-read workflow with two disposable tasks that had completed
+prior context, original B's own correct edit, and busy/stop checks. The manager
+supplied task references and a local skill path through native task messages;
+remote-link retrieval, a novice's task selection and manual GUI onboarding remain
+unverified. Native source attribution was read from turn data, not a screenshot.
+
+Packaging validation and a behavioral tabletop review alone are not live proof.
 The earlier [hook/MCP adoption attempt](../09-reviews/2026-09-07-desktop-native-adoption.md)
 did not pass. A passing new App Server sample would still be a different path.

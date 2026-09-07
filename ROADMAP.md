@@ -26,8 +26,9 @@ is new-session CLI acceptance, not the primary existing-desktop gate.
 
 Next native slice: the [skill-only workflow](docs/06-guides/codex-native-tasks.md)
 uses task tools already exposed by Codex, with an explicitly selected pair.
-It needs no Node/MCP/hook setup, but still needs a real opted-in desktop pair
-test and cannot guarantee race-free sending. External adapter/hook adoption is
+It needs no Node/MCP/hook setup. [One controlled opted-in desktop pair passed](docs/09-reviews/2026-09-07-native-desktop-acceptance.md),
+including prior context, B's own edit and busy/stop checks. Novice task selection,
+remote skill retrieval and normal plugin activation remain open; sending is not race-free. External adapter/hook adoption is
 a separate portability route, not a prerequisite for trying native guidance.
 
 The [desktop-first plan](docs/10-planning/desktop-entry-2026-09-07.md) supersedes
@@ -54,11 +55,13 @@ to existing-session desktop entry instead of further prompt tuning.
   succeeded, but neither prior conversation exposed the diagnostic; keep open.
 - [ ] Connect two existing conversations in one client, explicitly selected,
   without shared-path or JSON setup; one conversation per product is not this test.
-- [ ] Prove model-selected advice, same-receiver work and visible provenance.
+- [x] Prove one controlled model-selected native advice and same-receiver edit;
+  source attribution verified in turn data, not a rendered UI recording.
 - [ ] Verify full business constraints, unrelated silence and user-input priority.
 - [ ] Package without developer prerequisites; observe an independent GUI user.
 
-Native delivery remains unresolved. Do not substitute a new CLI session,
+The external desktop adapter and independent-user entry remain unresolved.
+The controlled skill route does not close those gates. Do not substitute a new CLI session,
 unscoped remote control or a promotional UI for existing-conversation acceptance.
 Existing quality, quota and DeepSeek live gaps remain open.
 

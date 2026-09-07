@@ -10,7 +10,7 @@ sample can remove that immediate first-use barrier but does not close the existi
 desktop-conversation gate below. The external plugin's outstanding user-operated
 trust/reload checkpoint must not be hidden behind another CLI pass.
 
-Latest routing decision: first validate the [native-task skill](../06-guides/codex-native-tasks.md)
+Latest routing decision: validate and simplify the [native-task skill](../06-guides/codex-native-tasks.md)
 on an explicitly selected Codex pair. This uses already exposed host task tools,
 without installing a new MCP server or trusting hooks. It is model guidance,
 not an enforced permission layer or a portable external adapter. The direct
@@ -18,10 +18,13 @@ workflow may be read in existing conversations; installed-plugin hot-loading
 is not assumed. Native send has no atomic idle-only condition, so skip-busy is
 best effort; stricter non-interruption requires draft-only behavior.
 
-The [review record](../09-reviews/2026-09-07-codex-native-skill.md) contains the
-packaging/tabletop evidence, not a live pair pass. The user has been asked to
-select two tasks or authorize dedicated test tasks. No unrelated business task
-is a substitute. This precedes the external plugin/hook sequence below.
+The [controlled native run](../09-reviews/2026-09-07-native-desktop-acceptance.md)
+now passes: two authorized disposable desktop tasks completed prior work, then
+adopted the skill. A chose advice; original B edited correctly; busy/stop checks
+passed. Setup used manager-supplied native references and a local skill path.
+Next validate simple task selection and source retrieval with an independent
+desktop user. Plugin hot-loading and the external adapter sequence below remain
+separate open work, not prerequisites for this native workflow.
 
 The primary job is **different conversations in the same agent product helping
 each other without user relaying**. Cross-product collaboration is an extension,
@@ -137,7 +140,8 @@ free-plan qualifier and its earlier signup-button decision. An unrelated notes
 task stays untouched. The model chooses whether and whom to contact; neither
 ordinary task says "send to the other session". Preserve the receiver's native
 identity and earlier decisions, show source provenance, and do not take over
-queued user work. **This desktop scenario has not passed yet.**
+queued user work. **The controlled source-read skill slice now passes; normal
+plugin onboarding and simultaneous user-input protection remain unverified.**
 
 Quota recovery follows with explicitly saved decisions and unfinished work,
 using the other agent's own authorized account. Do not promise lossless history

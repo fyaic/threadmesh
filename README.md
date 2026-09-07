@@ -97,10 +97,12 @@ end; private results remain for inspection.
 
 There is an [experimental no-terminal workflow](docs/06-guides/codex-native-tasks.md)
 using a skill and Codex's already-exposed native task tools—no Node, MCP or hook
-setup for that route. **It has not passed native desktop adoption validation.**
-The skill cannot create missing host tools or enforce privacy boundaries and
-busy-user race protection. This remains separate from the verified new-session
-example above.
+setup for that route. **One controlled desktop pair passed:** both tasks had
+completed prior work before activation; A chose to send advice and original B
+edited its own copy, preserving earlier decisions. Busy-target and stop checks
+also passed. [Native evidence and setup limits →](docs/09-reviews/2026-09-07-native-desktop-acceptance.md)
+This is not plugin hot-loading or independent-user onboarding. The skill cannot
+create missing host tools, enforce privacy boundaries or eliminate input races.
 
 ### Already use Pi instead?
 
