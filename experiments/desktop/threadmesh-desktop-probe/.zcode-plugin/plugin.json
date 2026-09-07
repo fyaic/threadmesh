@@ -1,5 +1,5 @@
 {
   "name": "threadmesh-desktop-probe",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Developer-only native hook probe. No messaging, transcript access or automatic wake. Requires Node on PATH."
 }

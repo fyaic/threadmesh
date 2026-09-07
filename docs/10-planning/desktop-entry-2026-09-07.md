@@ -61,6 +61,22 @@ tokens, private IPC or desktop database writes as a ThreadMesh adapter.
 
 ## Ordered implementation and acceptance
 
+Delegated follow-up: the [Codex lane](../09-reviews/2026-09-07-codex-desktop-lane.md)
+and [ZCode lane](../09-reviews/2026-09-07-zcode-desktop-lane.md) found native MCP
+metadata outside model arguments. The probe now compares that metadata with
+hook identity, distinguishing Codex runtime SessionId from persistent ThreadId.
+This is source-backed and fixture-tested; actual desktop receipt remains pending.
+The documented default Codex daemon endpoint is absent locally, so no external
+directed-send wrapper is enabled. A current model may instead use native task
+tools already exposed by its host, within the explicit opted-in pair.
+
+The [independent internal review](../09-reviews/2026-09-07-desktop-independent-review.md)
+accepts checkpoint delivery as the first useful slice, not a replacement for
+the original automatic-wake goal. No crypto framework or global conversation
+scan is needed: the local alpha requires trusted host-owned transport, observed
+native correlation and explicit opt-in. Native installation/trust awaits the
+operator's specific confirmation; do not silently affect business conversations.
+
 1. **Native entry probe:** install in a test context, observe two native IDs and
    checkpoint injection. Test a pre-installation conversation separately.
 2. **One opted-in pair:** bind MCP calls to native identity, join/leave without
