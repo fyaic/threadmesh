@@ -2,6 +2,13 @@
 
 ## Current product update — 2026-09-07
 
+Latest [handoff-meaning follow-up](../09-reviews/2026-09-07-handoff-meaning.md): the
+first generic-guidance attempt still failed; a clarified final version passed
+one real Pi-pair copy case with the free-project scope, earlier button label and
+protected price intact. Its fresh no-contact control also passed. Both outcomes
+and the failure are retained. This is bounded CLI evidence, not general quality
+assurance or an existing-desktop-session pass. Desktop activation remains next.
+
 Priority correction: same-product sessions are the main use case; cross-product
 support is an extension. English/Chinese first use now starts with two Pi
 sessions, using the retained real evidence, rather than requiring Codex + Pi.

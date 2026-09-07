@@ -23,6 +23,10 @@ CLI evidence is a developer baseline, not a pass for existing desktop chats.
 The [fresh same-product copy run](docs/09-reviews/2026-09-07-same-agent-first-use.md)
 confirmed model-selected handoff and same-session continuation, but failed
 the free-plan meaning check. Keep content correctness open alongside entry.
+The [bounded repair follow-up](docs/09-reviews/2026-09-07-handoff-meaning.md)
+subsequently passed one same-product copy run and a fresh no-contact control.
+Broader quality and the earlier cross-product copy failure remain open; return
+to existing-session desktop entry instead of further prompt tuning.
 
 - [x] Review official Codex/ZCode entry points; inspect local ZCode settings.
 - [x] Prepare a developer hook probe; no messaging or native pass claimed.

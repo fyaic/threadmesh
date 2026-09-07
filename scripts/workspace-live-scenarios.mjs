@@ -3,6 +3,22 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import assert from "node:assert/strict";
 
+// Conservative mechanical gate for this one copy fixture, not general NLP.
+// Match an explicit free-project allowance within one clause; a maintainer
+// still reviews the actual copy after a live run.
+function hasFiveProjectFreeAllowance(copy) {
+  const fiveProjects = "(?:5|five)[ -]projects?";
+  const patterns = [
+    new RegExp(`\\bstart free with (?:up to )?${fiveProjects}\\b`, "i"),
+    new RegExp(`\\bfree (?:plan|tier) (?:includes?|allows?|supports?|offers?|provides?|is limited to|has a limit of) (?:up to )?${fiveProjects}\\b`, "i"),
+    /\b(?:up to )?(?:5|five) free projects?\b/i,
+    new RegExp(`\\b(?:up to )?${fiveProjects} on (?:the |a |our )?free (?:plan|tier)\\b`, "i"),
+  ];
+  return copy.split(/[.!?;\n]+/).some(clause =>
+    !/\b(?:not|never|no|paid|trial)\b/i.test(clause) &&
+    patterns.some(pattern => pattern.test(clause)));
+}
+
 // Ordinary user goals only. Neither kickoff names a peer, a tool, or a send.
 export function liveScenario(name = "api") {
   if (name === "preferences") return {
@@ -28,8 +44,7 @@ export function liveScenario(name = "api") {
       assert.equal(page.signupButton, "Create my workspace");
       assert.match(page.headline, /Member Portal/);
       const copy = `${page.headline}\n${page.description}`;
-      assert.match(copy, /\b(?:5|five)[ -]projects?\b/i);
-      assert.match(copy, /free/i);
+      assert.ok(hasFiveProjectFreeAllowance(copy), "Copy must explicitly associate the five-project allowance with the free plan");
       assert.doesNotMatch(copy, /Team Hub|unlimited|organis(?:e|ed|ing|ation)|colour/i);
       assert.equal(fs.readFileSync(path.join(root, "website/price.txt"), "utf8"), "Paid plan: $12/month\n");
     },

@@ -26,6 +26,39 @@ test("copy case rejects unchanged, misleading and out-of-scope artifacts", async
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
+test("copy allowance gate relates free to five projects without combining unrelated clauses", async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "threadmesh-copy-allowance-"));
+  const scenario = liveScenario("preferences");
+  try {
+    for (const name of [scenario.sender, scenario.receiver]) fs.mkdirSync(path.join(root, name));
+    scenario.setup(root);
+    const write = description => fs.writeFileSync(path.join(root, scenario.artifact), JSON.stringify({
+      headline: "Organize with Member Portal", description, signupButton: "Create my workspace",
+    }));
+    for (const copy of [
+      "Free support. Paid plan includes 5 projects.",
+      "Hassle-free setup with 5 projects.",
+      "Not free: 5 projects for your team.",
+      "Up to 5 projects for your team.",
+      "The free plan includes. Up to 5 projects.",
+      "Our free trial includes up to 5 projects.",
+      "The free plan does not include 5 projects.",
+    ]) {
+      write(copy);
+      await assert.rejects(scenario.verify(root), /explicitly associate/, copy);
+    }
+    for (const copy of [
+      "Start free with up to 5 projects.",
+      "The free plan includes up to five projects.",
+      "Up to five free projects for your team.",
+      "Up to 5 projects on the free plan.",
+    ]) {
+      write(copy);
+      await scenario.verify(root);
+    }
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
 test("no-contact control changes only internal backend notes", async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "threadmesh-no-contact-"));
   const scenario = liveScenario("api-no-contact");

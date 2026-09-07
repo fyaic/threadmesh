@@ -53,6 +53,9 @@ discovery of arbitrary chats.
 A [fresh Pi-pair product-copy run](docs/09-reviews/2026-09-07-same-agent-first-use.md)
 also handed off automatically and retained the earlier signup label, but dropped
 the free-plan qualifier. **That business check failed.**
+The [bounded repair follow-up](docs/09-reviews/2026-09-07-handoff-meaning.md)
+passed once with complete copy and the prior label, plus a no-contact control.
+This is not a general reliability claim; the earlier failure remains recorded.
 
 **Across products, too:** separate Codex → Pi experiments retain both useful
 results and a content-quality failure:
