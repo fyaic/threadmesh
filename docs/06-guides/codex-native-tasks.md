@@ -58,6 +58,11 @@ it. A missing workflow, missing tools or unresolved title is a stopped setup,
 not a successful connection. You can say **Stop ThreadMesh collaboration** in
 each task to cancel it; no separate control panel is required.
 
+If the app shows “completed” but supplies no readable setup confirmation, keep
+collaboration off. Do not assume pairing worked or repeatedly rerun it. This
+occurred in our [readiness attempt](../09-reviews/2026-09-07-native-public-entry.md#authorized-live-readiness-attempt);
+its cause is unresolved, and a completed indicator alone is not acceptance.
+
 This is an explicit workflow request in the existing conversation, **not proof
 that installing a plugin hot-loads old tasks**. The model must actually retrieve
 the workflow, inspect available native tools and confirm the selected scope.

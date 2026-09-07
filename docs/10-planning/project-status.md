@@ -6,8 +6,11 @@
 title-and-topic prompt with a pinned public workflow. Anonymous retrieval and
 source parity passed; readiness checking is separate from activation. The
 [entry record](../09-reviews/2026-09-07-native-public-entry.md) keeps title-only
-desktop matching and end-to-end activation open. The earlier test pair remains
-stopped; no peer probe or reactivation was dispatched for this checkpoint.
+desktop matching and end-to-end activation open. Two user-authorized read-only
+checks were dispatched: both host-reported completed, but current-turn histories
+were empty while preceding turns were readable. Sample hashes were unchanged;
+readiness and absence of peer sends cannot be verified. No enable command or
+repeat dispatch was issued. Resolve result visibility before another live gate.
 
 **Value and evidence correction:** the native demo uses Codex's own communication
 and continuation; the skill adds guidance, not transport. [English responsibility

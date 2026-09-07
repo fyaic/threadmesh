@@ -48,7 +48,9 @@ It needs no Node/MCP/hook setup. [One controlled opted-in desktop pair passed](d
 including prior context, B's own edit and busy/stop checks. A new
 [public-entry checkpoint](docs/09-reviews/2026-09-07-native-public-entry.md) verifies
 anonymous workflow retrieval; title-based activation, novice task selection and
-normal plugin activation remain open. Sending is not race-free. External adapter/hook adoption is
+normal plugin activation remain open. The live readiness attempt returned empty
+current-turn evidence despite host-reported completion; resolve result visibility
+before repeating it. Sending is not race-free. External adapter/hook adoption is
 a separate portability route, not a prerequisite for trying native guidance.
 
 The [desktop-first plan](docs/10-planning/desktop-entry-2026-09-07.md) supersedes
