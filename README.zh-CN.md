@@ -24,8 +24,13 @@
 不必换两种产品：同一个 Agent 的两个 session 就能协作。
 
 **你决定哪些 session 加入，模型判断什么时候值得联系。**
-ThreadMesh 提供目标发现、建议消息、持久收件箱和可携带的 checkpoint。
-它不是新模型、共享聊天记录，也不是把每次交接都写死的工作流。
+Workspace 提供目标发现、建议消息、持久收件箱和可携带的 checkpoint，
+不是新模型或共享聊天记录。可选的桌面 Skill 则使用 **Codex 已有的原生任务工具**，
+并没有新增这套通信能力。
+
+**Codex 自己不是就能做吗？在实测宿主上，是的。** 原生功能够用，就直接用原生。
+Skill 提供可复用协作规则，workspace 为已支持的集成提供协调能力；目前没有证明
+Skill 比原生 Codex 更有效。[哪些是原生、我们增加什么、何时不需要安装 →](docs/zh-CN/native-capabilities-and-value.md)
 
 <p align="center">
   <img src="docs/assets/threadmesh-session-initiative.jpg" width="100%" alt="概念示意：Agent A 向 Agent B 发送来自另一任务的建议，无关工作保持安静">
@@ -33,6 +38,9 @@ ThreadMesh 提供目标发现、建议消息、持久收件箱和可携带的 ch
 </p>
 
 ## 一次不用你转述的真实协作
+
+[查看实际桌面消息与 B 自己的修改 →](docs/zh-CN/native-evidence.md)
+保留的原生记录，含忙碌/停止检查；不是截图或重演。下面另保留安装包案例。
 
 **两个 Codex session：一个记着你之前的约定，另一个修改产品事实。你不用转述变化。**
 

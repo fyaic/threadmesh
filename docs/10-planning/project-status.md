@@ -2,6 +2,15 @@
 
 ## Current product update — 2026-09-07
 
+**Value and evidence correction:** the native demo uses Codex's own communication
+and continuation; the skill adds guidance, not transport. [English responsibility
+map](../00-overview/native-capabilities-and-value.md) / [中文](../zh-CN/native-capabilities-and-value.md)
+now state when native Codex is enough and that incremental benefit is unmeasured.
+The [public proof pack](../evidence/codex-native-2026-09-07/README.md) preserves
+reviewed excerpts, actual receiver diff and a content-free structural audit.
+No screenshot or video of that run exists. Next focus on pairing, meaningful
+receiver outcomes and one independent user's success, not another adapter matrix.
+
 **Latest Codex-first delivery:** Codex is primary; Pi is optional, not a required
 second product. The [installed-package case](../09-reviews/2026-09-07-codex-first-use-release.md)
 now passes in 272.604 seconds with the default command and unchanged five-minute

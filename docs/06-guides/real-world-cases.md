@@ -13,8 +13,13 @@ reproduction and audit.
 
 ## Start with the everyday-work test
 
-The latest [ordinary Codex → Pi evidence](../09-reviews/2026-09-05-workspace-awareness.md)
-is the best starting point for the current alpha:
+For the current Codex audience, start with the [actual native desktop exchange](../evidence/codex-native-2026-09-07/README.md):
+one explicitly opted-in prior-context pair, original B's own correct edit, and
+busy/stop controls. Codex provided native transport. See the [evidence library](../evidence/README.md)
+for preserved recent CLI passes and failures; none is a native-only benefit comparison.
+
+The earlier [ordinary Codex → Pi evidence](../09-reviews/2026-09-05-workspace-awareness.md)
+retains the cross-harness baseline:
 
 | Ordinary task | Result | What it establishes |
 |---|---|---|

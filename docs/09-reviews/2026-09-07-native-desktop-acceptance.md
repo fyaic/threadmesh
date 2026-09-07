@@ -91,6 +91,11 @@ No monitor, global configuration or installation requires cleanup.
 
 ## Evidence and remaining limits
 
+Public inspection: [reviewed native excerpts and actual diff](../evidence/codex-native-2026-09-07/README.md)
+and [structural audit](../evidence/codex-native-2026-09-07/audit.json). The audit tool
+emits no raw IDs, paths or prose; it checks supplied export structure, not business
+correctness or host authenticity. No screenshot or recording is implied.
+
 Complete native histories were read through the exposed task tool: six turns in A
 and five in B, with no further history page. A has exactly one outgoing native
 send, to B; B has none. No task-list call or unrelated target appears in either

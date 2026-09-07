@@ -10,6 +10,8 @@
 | 我想…… | 推荐入口 |
 |---|---|
 | 快速理解项目有什么用 | [ThreadMesh 是什么](product-guide.md) |
+| Codex 原生已够用，还需要安装吗 | [原生能力与增量价值](native-capabilities-and-value.md) |
+| 核查桌面演示的真实记录 | [消息、实际修改与审计证据](native-evidence.md) |
 | 把自己的 Agent 接起来 | [第一次真实协作：中文上手](first-workspace.md) |
 | 尝试已有 Codex 桌面任务 | [实验性原生任务流程](codex-native-tasks.md) |
 | 看真正的模型主动行为 | [真实案例与证据](../06-guides/real-world-cases.md) |
