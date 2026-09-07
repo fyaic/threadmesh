@@ -1,6 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { sessionFingerprint } from "../experiments/desktop/threadmesh-desktop-probe/scripts/probe.mjs";
@@ -53,11 +56,15 @@ test("Codex distinguishes current hook SessionId from persisted ThreadId", () =>
 });
 
 test("official SDK can invoke the self-contained packaged diagnostic with interleaved sessions", async t => {
+  const copy = fs.mkdtempSync(path.join(os.tmpdir(), "threadmesh-plugin-copy-"));
+  fs.cpSync(fileURLToPath(new URL("../experiments/desktop/threadmesh-desktop-probe", import.meta.url)), copy, { recursive: true });
+  const config = JSON.parse(fs.readFileSync(path.join(copy, ".mcp.json"), "utf8"))
+    .mcpServers["threadmesh-desktop-probe"];
   const transport = new StdioClientTransport({ command: process.execPath,
-    args: [fileURLToPath(new URL("../experiments/desktop/threadmesh-desktop-probe/scripts/mcp.mjs", import.meta.url))],
+    args: config.args, cwd: path.resolve(copy, config.cwd),
     stderr: "pipe" });
   const client = new Client({ name: "threadmesh-fixture", version: "1" });
-  t.after(() => client.close());
+  t.after(async () => { await client.close(); fs.rmSync(copy, { recursive: true, force: true }); });
   await client.connect(transport);
   const listed = await client.listTools();
   assert.deepEqual(listed.tools.map(tool => tool.name), ["threadmesh_probe_identity"]);

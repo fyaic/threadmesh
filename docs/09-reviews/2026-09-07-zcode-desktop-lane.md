@@ -94,6 +94,13 @@ Absence, disagreement or an unestablished host connection must not silently
 select a caller. Static implementation evidence and probe fixture tests remain
 separate from a native existing-conversation acceptance pass.
 
+Final package check: ZCode's loader merges the file map and then the manifest
+map, replacing a same-named server entry. Its standard `cwd: "."` path only
+undergoes variable substitution; plugin-relative resolution is not established.
+The ZCode manifest therefore overrides the Codex-oriented shared config with
+explicit `ZCODE_PLUGIN_ROOT` in both cwd and script argument. Codex uses its
+own verified plugin-relative cwd mechanism. Do not assume these match hooks.
+
 ## Next native action requiring coordination
 
 The main agent owns UI and consent: install the audited probe through the

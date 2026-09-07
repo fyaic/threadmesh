@@ -80,6 +80,12 @@ server map. This differs from the fetched documentation's snake_case example.
 The shared probe uses camelCase, accepted by both inspected runtimes and the
 Plugin Creator validator. Native desktop loading remains a separate check.
 
+The standard parser explicitly resolves relative `cwd` against the plugin root;
+MCP argument expansion of `CLAUDE_PLUGIN_ROOT` was not established in that path.
+The shared file therefore uses `cwd: "."` and `args: ["scripts/mcp.mjs"]`.
+ZCode's own manifest supplies its separately verified root-variable form.
+Hook root-variable support must not be assumed to apply to MCP arguments.
+
 The official [App Server documentation](https://learn.chatgpt.com/docs/app-server)
 documents `--listen unix://`, explicit Unix endpoints and the
 `initialize` / `initialized` handshake. The bundled executable's help also

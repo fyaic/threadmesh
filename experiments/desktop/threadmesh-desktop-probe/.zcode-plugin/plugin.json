@@ -1,5 +1,12 @@
 {
   "name": "threadmesh-desktop-probe",
   "version": "0.0.2",
-  "description": "Developer-only native hook probe. No messaging, transcript access or automatic wake. Requires Node on PATH."
+  "description": "Developer-only native hook probe. No messaging, transcript access or automatic wake. Requires Node on PATH.",
+  "mcpServers": {
+    "threadmesh-desktop-probe": {
+      "command": "node",
+      "cwd": "${ZCODE_PLUGIN_ROOT}",
+      "args": ["${ZCODE_PLUGIN_ROOT}/scripts/mcp.mjs"]
+    }
+  }
 }

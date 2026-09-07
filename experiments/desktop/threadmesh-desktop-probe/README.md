@@ -5,8 +5,11 @@ and cannot wake another session. Not installed in any client or included in the
 package file list. Still requires Node on the host PATH; this does not satisfy
 no-terminal onboarding. Initial target: local macOS desktop clients.
 
-The two manifests target Codex desktop and ZCode, using their documented
-`CLAUDE_PLUGIN_ROOT` compatibility variable. Native loading is **unverified**.
+The two manifests target Codex desktop and ZCode. Hooks use the documented
+`CLAUDE_PLUGIN_ROOT` compatibility variable. For MCP, Codex uses plugin-relative
+`cwd` and arguments; ZCode's manifest overrides the server with its supported
+plugin-root substitution. Do not assume MCP and hook variable handling match.
+Native loading is **unverified**.
 Manifest validation and fixture execution are not native-host evidence.
 
 ## Measurement and privacy

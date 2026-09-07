@@ -57,7 +57,10 @@ test("desktop manifests agree and only two non-blocking hooks are installed", ()
   assert.deepEqual(Object.keys(mcp), ["mcpServers"]);
   assert.deepEqual(Object.keys(mcp.mcpServers), ["threadmesh-desktop-probe"]);
   assert.deepEqual(mcp.mcpServers["threadmesh-desktop-probe"], {
-    command: "node", args: ["${CLAUDE_PLUGIN_ROOT}/scripts/mcp.mjs"],
+    command: "node", cwd: ".", args: ["scripts/mcp.mjs"],
+  });
+  assert.deepEqual(zcode.mcpServers["threadmesh-desktop-probe"], {
+    command: "node", cwd: "${ZCODE_PLUGIN_ROOT}", args: ["${ZCODE_PLUGIN_ROOT}/scripts/mcp.mjs"],
   });
   const hooks = json("hooks/hooks.json").hooks;
   assert.deepEqual(Object.keys(hooks), ["SessionStart", "UserPromptSubmit"]);
