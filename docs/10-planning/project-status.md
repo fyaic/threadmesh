@@ -13,7 +13,11 @@ CLI acceptance, not a desktop-adoption or general reliability claim.
 
 The [native-task skill](../06-guides/codex-native-tasks.md) avoids a Node/MCP/hook
 prerequisite by using already exposed Codex task tools. Packaging and independent
-tabletop review passed; an explicitly authorized desktop test pair is pending.
+tabletop review passed. The user authorized two dedicated desktop tasks, and the
+[controlled native run](../09-reviews/2026-09-07-native-desktop-acceptance.md)
+passed after both completed prior context. A chose to send; original B applied
+its own correct edit, and busy/stop negatives passed. This resolves the pending
+controlled-pair test, not the plugin hot-loading or independent-onboarding gaps.
 Native send still lacks an atomic idle-only condition. No new community reply
 was posted; the [latest contributor priorities](community-followup-2026-09-07.md)
 will be answered after additional actual improvements as requested.

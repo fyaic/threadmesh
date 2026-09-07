@@ -70,9 +70,10 @@ attachment to old tasks.
 
 The [experimental existing-task workflow](codex-native-tasks.md) instead uses a
 skill and task tools already exposed by the Codex host. That route needs no Node,
-MCP or hook setup, but **has not passed native desktop adoption validation**.
-The skill cannot create absent tools or enforce privacy and busy-user race
-protection. Its limits are not erased by the new-session example's pass.
+MCP or hook setup. [One controlled pair passed](../09-reviews/2026-09-07-native-desktop-acceptance.md)
+after both tasks had completed prior work, including useful receiver edits and
+busy/stop checks. This is not plugin hot-loading or independent GUI onboarding.
+The skill cannot create absent tools or enforce privacy and busy-user race protection.
 
 ### Permissions, results and failures
 

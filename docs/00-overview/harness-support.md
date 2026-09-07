@@ -30,8 +30,9 @@ attachment. [Exact evidence and failures](../09-reviews/2026-09-07-codex-first-u
 Pi remains explicit with `--agent pi`; its copy/API examples have separate
 retained evidence. Codex API execution is not offered by this sample.
 The [Codex native-task skill](../06-guides/codex-native-tasks.md) is experimental
-host guidance with packaging/tabletop evidence only, not a live desktop pair
-pass or a portable MCP-to-desktop adapter. Native Windows behavior is unverified.
+host guidance with [one controlled native desktop pair pass](../09-reviews/2026-09-07-native-desktop-acceptance.md):
+prior context, original receiver edit and busy/stop checks. It is not a portable
+MCP-to-desktop adapter or plugin hot-load pass. Native Windows behavior is unverified.
 
 ## Project workspace integrations (2026-09-05 baseline)
 

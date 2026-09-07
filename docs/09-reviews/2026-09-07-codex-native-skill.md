@@ -1,6 +1,8 @@
 # Codex native-task skill: packaging and behavioral review
 
-Date: 2026-09-07. Status: experimental, native pair acceptance pending.
+Date: 2026-09-07. Historical packaging/tabletop checkpoint. The subsequent
+[controlled native pair acceptance](2026-09-07-native-desktop-acceptance.md) passed;
+the limitations below remain unless that record explicitly resolves them.
 
 ## Why this path
 

@@ -55,9 +55,10 @@ npx threadmesh try preferences --agent codex --live
 它不是桌面原生后台唤醒，也不是接入旧任务。
 
 [实验性已有任务工作流](codex-native-tasks.md)通过 skill 使用 Codex 宿主已经提供的任务工具，
-不需要配置 Node、MCP 或 hook；但**尚未通过原生桌面接入验收**。
-Skill 不能补出缺失的工具、强制保证隐私边界或消除用户输入竞争；
-新 session 案例通过不代表这条路径通过。
+不需要配置 Node、MCP 或 hook。[一组受控双任务已通过](../09-reviews/2026-09-07-native-desktop-acceptance.md)：
+先完成各自原任务，再启用协作，验证接收方自己修改及忙碌/停止行为。
+这不是插件热加载或独立 GUI 用户上手验收；Skill 不能补出缺失的工具、
+强制保证隐私边界或消除用户输入竞争。
 
 ### 权限、记录与失败处理
 
