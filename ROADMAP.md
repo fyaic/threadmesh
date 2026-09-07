@@ -13,6 +13,23 @@ policy layer; A2A, Cotal, ACP, or harness-native APIs may supply transport.
 
 ## Active priority — existing desktop clients (2026-09-07)
 
+Primary audience: **Codex users**, especially separate existing conversations
+inside Codex desktop. Pi is a supported option, not a prerequisite or replacement.
+A Codex-only first-use entry must reuse the user's own Codex login/model, never
+silently switch harnesses, and keep old-desktop-session acceptance separate.
+Success in a newly created App Server thread pair is not native desktop adoption.
+
+The [Codex-first installed-package case](docs/09-reviews/2026-09-07-codex-first-use-release.md)
+now passes with the default command in 272.604 seconds; `alpha.3` is the delivery
+target. The earlier timeout and outdated-runtime failure remain recorded. This
+is new-session CLI acceptance, not the primary existing-desktop gate.
+
+Next native slice: the [skill-only workflow](docs/06-guides/codex-native-tasks.md)
+uses task tools already exposed by Codex, with an explicitly selected pair.
+It needs no Node/MCP/hook setup, but still needs a real opted-in desktop pair
+test and cannot guarantee race-free sending. External adapter/hook adoption is
+a separate portability route, not a prerequisite for trying native guidance.
+
 The [desktop-first plan](docs/10-planning/desktop-entry-2026-09-07.md) supersedes
 the ordering below. CLI integration is not no-terminal first use.
 

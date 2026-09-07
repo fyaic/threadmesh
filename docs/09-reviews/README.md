@@ -30,6 +30,10 @@ not count as live-product or independent external-verifier evidence.
 
 ## Live attempt audits
 
+- [Codex-first installed-package acceptance and retained failures](2026-09-07-codex-first-use-release.md)
+- [Codex native-task skill: packaging/tabletop only, desktop pair still pending](2026-09-07-codex-native-skill.md)
+- [Codex-first candidate: real initiative observed, full first-use gate failed](2026-09-07-codex-first-use-candidate.md)
+- [Published Pi packaged first-use evidence](2026-09-07-packaged-first-use.md)
 - [First-use workspace: native DeepSeek integration and ordinary-task live attempts](2026-09-05-first-use-validation.md)
 
 - [M5.3 measured baseline and closure matrix](2026-09-03-m5-3-baseline-and-matrix.md)

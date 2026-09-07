@@ -2,6 +2,38 @@
 
 All notable changes will be documented here. The project follows Keep a Changelog conventions once versioned releases begin.
 
+## [0.1.0-alpha.3] - 2026-09-07
+
+### Added
+
+- Codex-first one-command copy example using the existing Codex login and model,
+  two native App Server threads, model-selected peer advice and receiver-owned
+  business verification. A default installed-package run passed in 272.604 s.
+- Read-only selection of a newer installed macOS desktop Codex when PATH is
+  older, with explicit executable overrides preserved and actionable version
+  errors. No software update, account or global configuration change.
+- Experimental skill-only native Codex task workflow and bilingual desktop
+  guide. Packaging and behavioral review passed; existing desktop pair behavior
+  still needs live validation and explicit task selection.
+
+### Changed
+
+- `try --live` now defaults to Codex `preferences`. Existing Pi users should
+  specify `--agent pi`; the Pi API example remains `try api --agent pi --live`.
+- Native Codex reconnect notifications no longer prematurely fail an active
+  retry. Authentication, quota and terminal errors still stop promptly, and
+  the total five-minute budget and cancellation remain enforced.
+
+### Limitations
+
+- The Codex example creates new sessions, not existing desktop chat attachment.
+  Its receiver continuation is runner-triggered after a real message. Codex
+  first use supports the JSON-copy case only, not model-written API execution.
+- Network retries can take minutes. Two maintainer passes are not independent
+  adoption, a reliability score or a fixed-time guarantee; earlier failures
+  remain in the evidence. Native skill guidance cannot enforce race-free sends
+  or atomic cross-task revocation.
+
 ## [0.1.0-alpha.2] - 2026-09-07
 
 ### Added

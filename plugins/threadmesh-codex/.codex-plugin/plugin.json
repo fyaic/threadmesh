@@ -1,0 +1,21 @@
+{
+  "name": "threadmesh-codex",
+  "version": "0.1.0-alpha.1",
+  "description": "Experimental opt-in cooperation between selected Codex tasks using native host tools.",
+  "author": {
+    "name": "fyaic",
+    "url": "https://github.com/fyaic"
+  },
+  "repository": "https://github.com/fyaic/threadmesh",
+  "license": "Apache-2.0",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "ThreadMesh for Codex",
+    "shortDescription": "Selected tasks share useful context.",
+    "longDescription": "Experimental skill-only entry using native Codex task tools. No Node, hooks or MCP server. Requires explicit pair opt-in; no guaranteed non-interruption or global revocation.",
+    "developerName": "fyaic",
+    "category": "Productivity",
+    "capabilities": [],
+    "defaultPrompt": "Use ThreadMesh with the Codex task I select; explain the send boundaries first."
+  }
+}

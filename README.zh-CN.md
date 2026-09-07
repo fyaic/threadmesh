@@ -34,87 +34,73 @@ ThreadMesh 提供目标发现、建议消息、持久收件箱和可携带的 ch
 
 ## 一次不用你转述的真实协作
 
-在保留了验证记录的 **Pi → Pi** 案例中，两个 session 使用同一个 Agent 产品：
+**两个 Codex session：一个记着你之前的约定，另一个修改产品事实。你不用转述变化。**
 
-1. **客户端 session 检查接口，** 并自主说明依赖关系。
-   初始任务结束，session 保持打开。
-2. **你让后端 session 改分页。** 它更新接口契约，
-   自己决定把相关变化发给客户端 session。
-3. **原来的客户端 session 自己继续了。** 它用自己的工具更新客户端，
-   独立检查确认能正确获取两页 cursor 分页数据。
+在安装包真实运行中，网站 session 先自主说明了依赖，品牌 session 随后自行决定发送相关变化。
+实际收到消息后，运行器续接**同一个原生网站 session**，由它自己的模型修改注册页文案。
 
-每个 session 只有一次普通任务输入，之后没有用户转述，也没有指定接收对象的
-任务指令。接入时启用了通用协作提示；后端收到了客户端先前自主发出的依赖说明。
-这是模型选择的双向协作，不是对任意私聊的盲发现。
+| 网站内容 | 修改前 | 修改后 |
+|---|---|---|
+| 品牌与拼写 | Organise work with Team Hub | Organize work with Member Portal |
+| 免费额度 | 无限免费项目 | 免费方案最多 5 个项目 |
+| 之前约定的按钮 | Create my workspace | **保持不变** |
+| 付费价格 | $12/月 | **保持不变** |
 
-[查看任务提示、时间线与最终客户端 →](docs/09-reviews/2026-09-05-first-use-validation.md#the-actual-initiative-case)
+上表是已验收文件的紧凑摘要，不是界面截图。每个模型收到普通业务任务和通用协作提示，
+没有在任务里指定接收者或要求必须发消息。验收检查接收方自己修改文件、完整业务含义，
+以及此前约定是否保留。
 
-[最新 Pi 双会话文案实测](docs/09-reviews/2026-09-07-same-agent-first-use.md)也发生了主动交接，
-并保留原按钮约定，但遗漏了“免费方案”条件，**业务验收失败**。
-[后续有界修正复测](docs/09-reviews/2026-09-07-handoff-meaning.md)保留了完整文案含义和旧约定，
-并通过无关修改不联系的对照。各通过一次，不代表普遍可靠；此前失败记录继续保留。
+安装包上保留了两次维护者通过记录：默认 300 秒上限内约 **273 秒**完成；
+较早一次扩展时间预算的诊断约 **184 秒**完成。两次都没有改用其他模型或账户。
+这是两次观察，不是可靠性统计，也不保证固定时间成功。
+[真实任务、文件与时间线 →](docs/09-reviews/2026-09-07-codex-first-use-release.md)
 
-**也能跨产品协作：** 另有 Codex → Pi 实测，既保留成功结果，也保留内容质量失败：
-
-| 真实 Codex → Pi 场景 | 观察结果 |
-|---|---|
-| 接口分页变化 | **通过：** 同一个接收 session 自动续接，修改客户端并通过业务检查。 |
-| 无关的内部笔记 | **通过：** Codex 读取 peer/inbox 后没有尝试发送，Pi 没有后续回合。 |
-| 已确认的品牌与免费额度变化 | **质量失败：** 消息与续接成功，但最终文案遗漏了“免费方案”条件。 |
-
-每个场景只运行一次，属于维护者实测，不是可靠性评分或独立用户采用证明。
-**消息送达，不等于工作做对。**
-[成功与失败的完整记录 →](docs/09-reviews/2026-09-05-workspace-awareness.md)
+**边界明确：** 这里是两个新的临时 Codex session，由运行器在实际投递后触发续接；
+不是原生桌面后台唤醒，也不是接入已有聊天。
+此前的 [Codex 连接失败](docs/09-reviews/2026-09-07-codex-first-use-candidate.md)
+和[跨产品业务失败](docs/09-reviews/2026-09-05-workspace-awareness.md)继续保留。
+消息送达仍然不等于工作做对。
 
 ## 开始体验
 
-**只用桌面客户端？** 当前 alpha 的以下入口面向开发者和 CLI，不能直接接入
-Codex 桌面端或其他图形客户端中已有的对话。[桌面接入](docs/10-planning/desktop-entry-2026-09-07.md)
-仍处于实验阶段，还不是已发布功能。
-“共享工作空间”指共用 ThreadMesh 的本地存储，并不要求两个 Agent 编辑同一个代码目录。
+### 已经在用 Codex？沿用你的账户
 
-### 一条命令，两个真实 session
-
-需要 **Node 22+**。安装 GitHub Release 中固定的 **v0.1.0-alpha.2** 安装包，
-**尚未发布到 npm registry**。旧的 `v0.1.0-alpha.1` 标签不包含 `try` 命令。
+需要 **Node 22+**，以及已经登录、可以正常使用的 Codex。
+安装 GitHub Release 中固定的 **v0.1.0-alpha.3** 安装包，尚未发布到 npm registry：
 
 ```sh
 npm install --foreground-scripts --loglevel=info \
-  https://github.com/fyaic/threadmesh/releases/download/v0.1.0-alpha.2/fyaic-threadmesh-0.1.0-alpha.2.tgz
-npx threadmesh try preferences --live
+  https://github.com/fyaic/threadmesh/releases/download/v0.1.0-alpha.3/fyaic-threadmesh-0.1.0-alpha.3.tgz
+npx threadmesh try --live
 ```
 
-预先打包的文件省去 npm 准备 Git checkout 的步骤。安装参数显示进度，
-但原生依赖仍可能需要编译，不保证固定安装时长。
+默认运行 **Codex → Codex 文案案例**。不用另装 Pi、购买第二家订阅、改 API key，
+不用自编 harness、准备测试项目或打开两个终端。沿用 Codex 已有配置，消耗正常额度。
+macOS 下可以自动选择比 PATH 版本更新的桌面自带运行时，不一定需要单独安装 CLI。
 
-**已经在用 Pi？** 沿用它现有的模型配置和登录状态即可。命令会准备案例文件，
-启动两个独立 Pi session；不用 clone 仓库、准备自己的测试项目、填写工作空间路径，
-也不用开两个终端。它使用 Pi 已配置的模型，**会消耗对应账户的正常额度**。
-如果还没用过 Pi，需要先安装并完成它自己的账户配置。
+安装进度和运行阶段可见。原生依赖编译、网络和模型表现都会影响耗时。
+真实运行总上限是 **300 秒**；未完成或做错都会报告失败，不换成模拟成功。
+不带 `--live` 只显示说明，不调用模型。结束后停止进程，私有结果保留供检查。
+[权限、结果和失败处理 →](docs/zh-CN/first-workspace.md)
 
-案例是一个日常改动：一个 session 维护注册页文案，已有“按钮名称不要变”的约定；
-另一个修改品牌和免费方案额度。源模型自行判断是否联系相关 session，
-接收方可以在原任务中继续改文案，同时保留此前约定。
-验收看的是**接收方自己修改文件，而且业务含义正确**，不只是消息送达。
-模型沉默、执行错误或结果不正确都会报告失败，不会换成模拟成功。
+### 想连接已有的桌面任务？
 
-这里启动的是**两个新的临时 session**，不是你已有的桌面对话。接收方续接的是
-本次运行中先完成任务的同一个 session。结束后停止进程；打印出的临时结果目录
-会保留供你检查，请把其中的模型输出和记录留作私有。
-Pi 仍有正常的本地工具权限，临时案例目录不是操作系统沙箱。
+另有[实验性无终端工作流](docs/zh-CN/codex-native-tasks.md)，通过 skill 使用 Codex
+已经提供的原生任务工具；这条路径不用配置 Node、MCP 或 hook。
+**它尚未通过原生桌面接入验收。** Skill 不能补出宿主缺失的工具，也不能强制保证
+隐私边界或消除用户正在输入的竞争。它与上面的新 session 实测是两条不同路径。
 
-不带 `--live` 只显示使用说明，不调用模型。也可用 `try api --live` 体验接口分页
-改动。只有需要覆盖 Pi 当前配置时，才指定 provider 和 model：
+### 已经在用 Pi？
+
+沿用现有配置，明确选择 Pi 即可：
 
 ```sh
-npx threadmesh try preferences --live --provider zai --model glm-5.3
+npx threadmesh try preferences --agent pi --live
+npx threadmesh try api --agent pi --live
 ```
 
-这个覆盖示例需要已配置且有额度的 ZAI 账户；并不要求已有可用 Pi 模型的用户
-再注册一家。不同模型表现可能不同，历史通过不保证本次成功。
-能检测到 Pi 安装或版本，不代表已经登录或还有额度。
-
-[运行结果、失败处理与手动接入说明 →](docs/zh-CN/first-workspace.md)
+接口分页案例当前需用 Pi，Codex 首次体验只支持文案。两条路径都不依赖另一家产品。
+[Pi 配置和限制](docs/zh-CN/first-workspace.md#可选pi-案例)。
 
 ### 不调用模型，先理解流程
 
@@ -130,14 +116,15 @@ npx threadmesh preview preferences
 
 | Harness | 接入方式 | 空闲时自动续接 |
 |---|---|---|
+| **Codex** | `try` 使用原生 App Server 双 session；项目 launcher 使用限定范围的 MCP 与 hook | `try` 在投递后由运行器续接自身空闲接收方；不是通用原生空闲唤醒 |
 | **Pi** | 原生扩展，四个工具与任务起始上下文 | 显式 `--wake-idle`；有忙碌保护，但不是所有输入竞争都已实测 |
-| **Codex** | 本次启动的 MCP；macOS/Linux 原生任务起始 hook | 未提供；模型工作期间刷新上下文 |
 | **Kimi Code** | 项目 MCP 配置，保留其他 server | 未提供 |
 | **DeepSeek Harness** | 官方 `dsh` 的 Cordis MCP 插件 | 未声称支持 |
 | **其他 Harness** | 标准 MCP 配置或 JavaScript SDK | 需要宿主接入 |
 
-核验版本：Codex `0.145.0`、Pi `0.84.2`、Kimi `0.39.1`、DeepSeek
-`0.1.2-rc.1`。DeepSeek 通过的是**无模型**原生工具与收发检查，真实模型主动协作
+核验版本：新双 session 案例使用 Codex `0.153.1`，此前项目 launcher 使用 `0.145.0`；
+Pi `0.84.2`、Kimi `0.39.1`、DeepSeek `0.1.2-rc.1`。
+DeepSeek 通过的是**无模型**原生工具与收发检查，真实模型主动协作
 仍待配置凭证后验证。Kimi 最近一次尝试遇到周额度限制。更早的 Codex→Kimi、
 Pi→Kimi 成功记录采用约束更强的 adapter 路径。
 

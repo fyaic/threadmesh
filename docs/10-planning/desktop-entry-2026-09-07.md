@@ -4,6 +4,25 @@ Date: 2026-09-07. Starting revision: `19a9b13`.
 
 ## Decision and desired experience
 
+Audience correction: Codex is the primary client. Do not split the critical path
+equally across Codex and ZCode, or require Codex users to install Pi. A Codex-only
+sample can remove that immediate first-use barrier but does not close the existing
+desktop-conversation gate below. The external plugin's outstanding user-operated
+trust/reload checkpoint must not be hidden behind another CLI pass.
+
+Latest routing decision: first validate the [native-task skill](../06-guides/codex-native-tasks.md)
+on an explicitly selected Codex pair. This uses already exposed host task tools,
+without installing a new MCP server or trusting hooks. It is model guidance,
+not an enforced permission layer or a portable external adapter. The direct
+workflow may be read in existing conversations; installed-plugin hot-loading
+is not assumed. Native send has no atomic idle-only condition, so skip-busy is
+best effort; stricter non-interruption requires draft-only behavior.
+
+The [review record](../09-reviews/2026-09-07-codex-native-skill.md) contains the
+packaging/tabletop evidence, not a live pair pass. The user has been asked to
+select two tasks or authorize dedicated test tasks. No unrelated business task
+is a substitute. This precedes the external plugin/hook sequence below.
+
 The primary job is **different conversations in the same agent product helping
 each other without user relaying**. Cross-product collaboration is an extension,
 not a first-use prerequisite. This is the user's priority, not a measured market

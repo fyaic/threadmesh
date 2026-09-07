@@ -2,86 +2,122 @@
 
 [简体中文](../zh-CN/first-workspace.md) · [Back to the README](../../README.md)
 
-ThreadMesh connects **sessions you deliberately join to one local workspace**.
-It does not search private chats or connect every agent on your machine.
-Use Node 22+, an installed/authenticated harness, and trusted local processes.
-Model calls use that harness's normal account and quota.
-Start with **two independent Pi sessions using one configured harness account**.
-Each keeps its own conversation context; ThreadMesh exchanges selected advice,
-not a merged transcript. This CLI is a developer entry path, not attachment to
-existing GUI conversations.
+Start with **two Codex sessions using your existing account**. ThreadMesh creates
+the sample, exposes relevant peer goals and advice, and checks a useful result.
+It does not search your private chats or merge their transcripts.
 
-## Run a self-contained real example
+## Install and run the Codex example
 
-Keep your existing Pi authentication and model configuration. You do not need
-a second agent product or account, your own API/client project, a repository
-checkout, workspace paths or two terminals.
+Requires Node 22+ and an authenticated Codex runtime with available quota.
+On macOS, ThreadMesh compares PATH and desktop-bundled runtimes and can select
+the newer version-verified executable. A separate CLI install is not always needed.
+The selected runtime is reported; your account and model configuration are not
+silently replaced.
 
 ```sh
 npm install --foreground-scripts --loglevel=info \
-  https://github.com/fyaic/threadmesh/releases/download/v0.1.0-alpha.2/fyaic-threadmesh-0.1.0-alpha.2.tgz
-npx threadmesh try preferences --live
+  https://github.com/fyaic/threadmesh/releases/download/v0.1.0-alpha.3/fyaic-threadmesh-0.1.0-alpha.3.tgz
+npx threadmesh try --live
 ```
 
-This installs the fixed **v0.1.0-alpha.2** packed artifact from GitHub Releases,
-not the public npm registry. It avoids npm preparing a Git checkout; the flags
-show install progress and lifecycle-script output. Native dependencies may
-still need compilation, so installation time varies by environment.
-The older `v0.1.0-alpha.1` release does not include `try`. Omit `--live` to read
-the usage and quota notice **without starting a model**. The default case is
-`preferences`, so `npx threadmesh try --live` runs the same example.
+This installs the fixed **v0.1.0-alpha.3** packed artifact, not an npm-registry
+release. Progress flags expose installation output; native dependencies may
+still compile, so setup time varies. You do not need a repository checkout,
+custom harness, application fixture, workspace path, Pi or two terminals.
 
-With `--live`, ThreadMesh prepares disposable sample files and starts **two
-new independent Pi sessions** using Pi's configured model:
-
-1. The receiver works on signup copy with an earlier button-label constraint.
-   Its first task finishes, and the session remains open.
-2. The source receives an ordinary task to update the brand and free-plan
-   allowance. Collaboration tools and generic guidance are available; the
-   prompt does not prescribe a recipient or require a message.
-3. If the model chooses to contact its peer, the same receiver session can
-   continue and edit its copy. The check verifies the receiver's own edit,
-   the new business meaning and the earlier constraint.
-
-The command reports pass or failure. **Silence, provider errors and incorrect
-business results are not success**, and no simulated fallback replaces a
-failed live run. A message receipt alone is not enough to pass. This demonstrates
-continuity within a new pair, **not attachment to your existing GUI chats**.
-
-For an API-pagination example:
+The default is `preferences` with `codex`; the explicit equivalent is:
 
 ```sh
-npx threadmesh try api --live
+npx threadmesh try preferences --agent codex --live
 ```
 
-To override Pi's configured provider/model:
+Omit `--live` to read the instructions without starting a model. Optional
+`--model YOUR_CODEX_MODEL` selects a model already available in your configuration.
+Codex currently supports the copy case only; the API example remains an explicit
+Pi path. There is no extra subscription requirement or silent agent switch.
+
+### What you should see
+
+1. A new website session B works on signup copy with the earlier button-label
+   decision `Create my workspace`. It may volunteer its dependency.
+2. A separate brand session A receives an ordinary task to rename the product
+   Member Portal, use US spelling and limit the free tier to five projects.
+   Generic collaboration guidance is enabled; the task does not prescribe a
+   recipient or demand a message.
+3. Only after an actual message, the runner starts a follow-up turn in the
+   **same native B session**. B decides how to use the advice and edits its own
+   landing copy. The check requires the new brand, spelling and free-plan
+   meaning while retaining the button and $12/month paid price.
+
+A passing report needs the receiver's own native file change and correct
+business result. Login, delivery or acceptance alone cannot pass. Silence,
+provider errors, wrong results and unfinished work are failures; a preview never
+replaces a failed live run.
+
+[Two retained installed-package runs](../09-reviews/2026-09-07-codex-first-use-release.md)
+passed: approximately 273 seconds under the unchanged default 300-second limit,
+and 184 seconds in an earlier extended-budget diagnostic. Both kept the configured
+model and account. These are maintainer observations, not independent adoption,
+a reliability rate or a promise of completion time. Network and model behavior
+vary; [earlier connection failures](../09-reviews/2026-09-07-codex-first-use-candidate.md)
+remain available.
+
+### Existing desktop conversations are a separate path
+
+The example creates **two new disposable sessions** and supplies the follow-up
+trigger after a real message. It is not native desktop background wake or
+attachment to old tasks.
+
+The [experimental existing-task workflow](codex-native-tasks.md) instead uses a
+skill and task tools already exposed by the Codex host. That route needs no Node,
+MCP or hook setup, but **has not passed native desktop adoption validation**.
+The skill cannot create absent tools or enforce privacy and busy-user race
+protection. Its limits are not erased by the new-session example's pass.
+
+### Permissions, results and failures
+
+The example requests Codex's native sandbox for each session's own sample working
+directory. Its business verifier reads structured JSON rather than executing
+model-edited application code. This is not a claim that every ThreadMesh process
+is OS-sandboxed; use trusted local processes and review the permission notice.
+
+Model turns consume your normal Codex account quota. Finding a binary or login
+does not establish remaining quota. Progress distinguishes setup, model work and
+verification; retrying connections remain inside the **300-second total budget**.
+There is no automatic restart of the whole run, account switch or simulated
+fallback after failure.
+
+The command prints a private result directory with sample files, reports and raw
+model records. Keep these private and redact shared summaries. Processes stop
+when the run ends or you press Ctrl-C; result files remain for inspection.
+Existing private chats are not read, attached or modified by this example.
+
+Resolve missing login, depleted quota or an outdated runtime through your normal
+Codex configuration or update path. Do not repeatedly retry exhausted quota.
+ThreadMesh supplies neither credentials nor quota. For other failures, retain
+the first failing stage and share a reviewed summary, not private transcripts.
+
+## Optional Pi example
+
+Already use Pi? Keep its own authenticated configuration and choose it explicitly:
 
 ```sh
-npx threadmesh try preferences --live --provider zai --model glm-5.3
+npx threadmesh try preferences --agent pi --live
+npx threadmesh try api --agent pi --live
 ```
 
-The override is optional, not a requirement to buy another subscription. It
-requires your own configured ZAI account if used. Historical Pi runs used
-`zai/glm-5.3`; other models may behave differently or stay silent. Every live
-run consumes normal provider quota. A detected executable/version is not proof
-of authentication, available quota or a successful collaboration.
+Pi does not require Codex, and Codex does not require Pi. Both prepare their own
+samples without custom code or two-terminal setup. Alpha.2's historical `try`
+was Pi-only; alpha.3 defaults to Codex, so explicit `--agent pi` matters.
 
-### Inspect the result and stop
+Optional Pi-only overrides are `--provider zai --model glm-5.3`; they require
+your own configured provider account. Historical Pi passes used `zai/glm-5.3`.
+Other models may behave differently; a prior pass does not guarantee yours.
 
-The command prints a temporary result directory with the report, sample files
-and raw model records. Keep these private: model output and native identifiers
-may be present. The directory remains available after the run, while its
-sample agent processes stop. Ctrl-C stops the sample processes too.
-
-Pi retains its normal local tool permissions. **A temporary sample directory
-is not an OS sandbox**; only run this with a harness and model you trust.
-The command does not attach, modify or read existing private chat sessions.
-
-If the run hits an authentication or quota error, fix that in Pi's normal
-configuration or select an already configured provider with available quota.
-ThreadMesh does not supply credentials or bypass limits. Do not keep retrying
-against exhausted quota. For a silent model or wrong result, keep the failure
-report and share only a reviewed, redacted summary of the first failed step.
+Pi keeps its normal local tool permissions; its temporary directory is not an
+OS sandbox. Processes stop at completion or Ctrl-C; private results remain.
+Fix authentication or quota errors in Pi's normal configuration rather than
+repeatedly retrying exhausted quota.
 
 ## See the idea without spending quota
 
@@ -96,6 +132,10 @@ coordinator. They demonstrate the experience, not model intelligence, and
 are separate commands from the real `try --live` example.
 
 ## Advanced: connect your own project sessions
+
+The following **Pi-specific** workflow demonstrates opt-in native idle follow-up
+in your own project. It is not required for the Codex first-use example above.
+Codex's ordinary launcher currently supplies task-time context, not native idle wake.
 
 Create a room once. Run these commands from your project folder:
 
@@ -152,7 +192,7 @@ native tab. Do not reuse it for unrelated work.
 ## Reproduce the retained case
 
 Maintainers reproducing a historical validation can use a repository checkout.
-First-time users should use `threadmesh try api --live` above instead. This script
+First-time Pi users should use `threadmesh try api --agent pi --live` instead. This script
 creates the API/client files and room in a temporary directory, gives each
 real session one ordinary kickoff, and checks native sends, same-session
 continuation, receiver edits and the final business result. It spends normal

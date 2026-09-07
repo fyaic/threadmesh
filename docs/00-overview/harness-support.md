@@ -17,7 +17,23 @@ A real pass proves only the recorded scenario and version. It does not imply
 production support, provider-role isolation, hostile-prompt safety, or every
 protocol intent.
 
-## First-use workspace integrations (2026-09-05)
+## Self-contained first use (2026-09-07)
+
+`alpha.3` defaults to `threadmesh try --live`: two new Codex App Server sessions,
+existing login/model, and a receiver-owned JSON-copy business check. Codex
+`0.153.1` / `gpt-6-astra` on macOS passed the installed-package default command
+in 272.604 seconds. PATH `0.145.0` failed because the configured model required
+a newer runtime; the first-use selector now prefers a verified newer installed
+desktop binary. This is not an automatic software update or existing-chat
+attachment. [Exact evidence and failures](../09-reviews/2026-09-07-codex-first-use-release.md).
+
+Pi remains explicit with `--agent pi`; its copy/API examples have separate
+retained evidence. Codex API execution is not offered by this sample.
+The [Codex native-task skill](../06-guides/codex-native-tasks.md) is experimental
+host guidance with packaging/tabletop evidence only, not a live desktop pair
+pass or a portable MCP-to-desktop adapter. Native Windows behavior is unverified.
+
+## Project workspace integrations (2026-09-05 baseline)
 
 These are the new user-facing launcher paths, distinct from the historical
 adapter/benchmark matrix below. See the [start guide](../06-guides/first-workspace.md)
