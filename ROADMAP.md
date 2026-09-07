@@ -20,8 +20,8 @@ silently switch harnesses, and keep old-desktop-session acceptance separate.
 Success in a newly created App Server thread pair is not native desktop adoption.
 
 The [Codex-first installed-package case](docs/09-reviews/2026-09-07-codex-first-use-release.md)
-now passes with the default command in 272.604 seconds; `alpha.3` is the delivery
-target. The earlier timeout and outdated-runtime failure remain recorded. This
+now passes with the default command in 272.604 seconds; [alpha.3 is published](https://github.com/fyaic/threadmesh/releases/tag/v0.1.0-alpha.3)
+and its public install was checked. Earlier timeout and outdated-runtime failures remain recorded. This
 is new-session CLI acceptance, not the primary existing-desktop gate.
 
 Next native slice: the [skill-only workflow](docs/06-guides/codex-native-tasks.md)
