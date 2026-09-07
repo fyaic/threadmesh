@@ -73,48 +73,33 @@ Codex 桌面端或其他图形客户端中已有的对话。[桌面接入](docs/
 仍处于实验阶段，还不是已发布功能。
 “共享工作空间”指共用 ThreadMesh 的本地存储，并不要求两个 Agent 编辑同一个代码目录。
 
-### 一条命令，两个真实 session
+### Codex 是优先用户，不以另装 Pi 为前提
 
-需要 **Node 22+**。安装 GitHub Release 中固定的 **v0.1.0-alpha.2** 安装包，
-**尚未发布到 npm registry**。旧的 `v0.1.0-alpha.1` 标签不包含 `try` 命令。
+**Codex → Codex** 自包含文案案例目前是**未发布候选功能**。最近一次完整运行
+因反复出现模型连接超时，未在 300 秒内完成，因此不能当作已经可用的入口。
+它沿用现有 Codex 配置，目标是两个新 session，**不是接入已有桌面对话**。
+[已出现的主动性与保留的失败记录 →](docs/09-reviews/2026-09-07-codex-first-use-candidate.md)
+[候选入口与实际限制 →](docs/zh-CN/first-workspace.md#codex-候选入口未发布)
+
+### 已经在用 Pi？可体验已发布版本
+
+这是可选入口；**不会要求 Codex 用户另装 Pi 来绕过尚未完成的 Codex 接入**。
+需要 Node 22+，以及你已有、已登录且有额度的 Pi 配置：
 
 ```sh
 npm install --foreground-scripts --loglevel=info \
   https://github.com/fyaic/threadmesh/releases/download/v0.1.0-alpha.2/fyaic-threadmesh-0.1.0-alpha.2.tgz
-npx threadmesh try preferences --live
+npx threadmesh try preferences --agent pi --live
 ```
 
-预先打包的文件省去 npm 准备 Git checkout 的步骤。安装参数显示进度，
-但原生依赖仍可能需要编译，不保证固定安装时长。
+安装包省去准备 Git checkout 的步骤，安装进度可见，但原生依赖仍可能需要时间编译。
+尚未发布到 npm registry。命令会准备案例文件，在一个终端运行两个新的 Pi session，
+消耗现有模型的正常额度。源模型决定是否联系，原接收 session 必须自己改对文案，
+并保留此前约定；模型沉默、出错或业务错误都报告失败，不替换成模拟成功。
 
-**已经在用 Pi？** 沿用它现有的模型配置和登录状态即可。命令会准备案例文件，
-启动两个独立 Pi session；不用 clone 仓库、准备自己的测试项目、填写工作空间路径，
-也不用开两个终端。它使用 Pi 已配置的模型，**会消耗对应账户的正常额度**。
-如果还没用过 Pi，需要先安装并完成它自己的账户配置。
-
-案例是一个日常改动：一个 session 维护注册页文案，已有“按钮名称不要变”的约定；
-另一个修改品牌和免费方案额度。源模型自行判断是否联系相关 session，
-接收方可以在原任务中继续改文案，同时保留此前约定。
-验收看的是**接收方自己修改文件，而且业务含义正确**，不只是消息送达。
-模型沉默、执行错误或结果不正确都会报告失败，不会换成模拟成功。
-
-这里启动的是**两个新的临时 session**，不是你已有的桌面对话。接收方续接的是
-本次运行中先完成任务的同一个 session。结束后停止进程；打印出的临时结果目录
-会保留供你检查，请把其中的模型输出和记录留作私有。
-Pi 仍有正常的本地工具权限，临时案例目录不是操作系统沙箱。
-
-不带 `--live` 只显示使用说明，不调用模型。也可用 `try api --live` 体验接口分页
-改动。只有需要覆盖 Pi 当前配置时，才指定 provider 和 model：
-
-```sh
-npx threadmesh try preferences --live --provider zai --model glm-5.3
-```
-
-这个覆盖示例需要已配置且有额度的 ZAI 账户；并不要求已有可用 Pi 模型的用户
-再注册一家。不同模型表现可能不同，历史通过不保证本次成功。
-能检测到 Pi 安装或版本，不代表已经登录或还有额度。
-
-[运行结果、失败处理与手动接入说明 →](docs/zh-CN/first-workspace.md)
+接口分页案例用 `try api --agent pi --live`。不带 `--live` 只显示说明，不调用模型。
+不会接入已有私聊；结束后停止进程，私有结果文件保留。
+[结果、权限与失败处理 →](docs/zh-CN/first-workspace.md#已发布版本可选-pi-案例)
 
 ### 不调用模型，先理解流程
 
@@ -130,8 +115,8 @@ npx threadmesh preview preferences
 
 | Harness | 接入方式 | 空闲时自动续接 |
 |---|---|---|
-| **Pi** | 原生扩展，四个工具与任务起始上下文 | 显式 `--wake-idle`；有忙碌保护，但不是所有输入竞争都已实测 |
 | **Codex** | 本次启动的 MCP；macOS/Linux 原生任务起始 hook | 未提供；模型工作期间刷新上下文 |
+| **Pi** | 原生扩展，四个工具与任务起始上下文 | 显式 `--wake-idle`；有忙碌保护，但不是所有输入竞争都已实测 |
 | **Kimi Code** | 项目 MCP 配置，保留其他 server | 未提供 |
 | **DeepSeek Harness** | 官方 `dsh` 的 Cordis MCP 插件 | 未声称支持 |
 | **其他 Harness** | 标准 MCP 配置或 JavaScript SDK | 需要宿主接入 |

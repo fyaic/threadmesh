@@ -61,12 +61,12 @@ test("public try without --live never starts a harness", () => {
 });
 
 test("public try rejects unsupported scenarios and missing harness before creating a sample", () => {
-  const invalid = spawnSync(process.execPath, [cli, "try", "unknown", "--live"], { env: env("quota"), encoding: "utf8" });
+  const invalid = spawnSync(process.execPath, [cli, "try", "unknown", "--agent", "pi", "--live"], { env: env("quota"), encoding: "utf8" });
   assert.equal(invalid.status, 1);
   assert.match(invalid.stderr, /preferences or api/);
   const missingEnv = { ...process.env, PATH: "" };
   delete missingEnv.THREADMESH_PI_COMMAND;
-  const missing = spawnSync(process.execPath, [cli, "try", "--live"], { env: missingEnv, encoding: "utf8" });
+  const missing = spawnSync(process.execPath, [cli, "try", "--agent", "pi", "--live"], { env: missingEnv, encoding: "utf8" });
   assert.equal(missing.status, 1);
   assert.match(missing.stderr, /Pi is not installed/);
   assert.doesNotMatch(missing.stdout, /Private results:/);
@@ -133,7 +133,7 @@ test("deterministic two-process fixture exercises delivery, identity, writes and
 });
 
 test("Ctrl-C stops the deterministic sample and retains a cancelled report", { skip: process.platform === "win32", timeout: 10000 }, async t => {
-  const child = spawn(process.execPath, [cli, "try", "--live"], { env: env("hang"), stdio: ["ignore", "pipe", "pipe"] });
+  const child = spawn(process.execPath, [cli, "try", "--agent", "pi", "--live"], { env: env("hang"), stdio: ["ignore", "pipe", "pipe"] });
   t.after(() => { if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL"); });
   let output = "", sent = false;
   child.stdout.on("data", chunk => {

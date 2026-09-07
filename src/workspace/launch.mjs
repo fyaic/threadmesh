@@ -8,15 +8,21 @@ import { codexContextConfig } from "./codex-context.mjs";
 export const cliPath = fileURLToPath(new URL("../../bin/threadmesh.mjs", import.meta.url));
 const piExtension = fileURLToPath(new URL("../integrations/pi-entry.js", import.meta.url));
 
-export function executable(name) {
+export function executable(name, { platform = process.platform, searchPath = process.env.PATH ?? "",
+  bundledCodexPaths = ["/Applications/ChatGPT.app/Contents/Resources/codex"] } = {}) {
   const override = process.env[`THREADMESH_${name.toUpperCase()}_COMMAND`];
   if (override) {
     if (!path.isAbsolute(override)) throw new Error(`THREADMESH_${name.toUpperCase()}_COMMAND must be absolute`);
     return override;
   }
-  for (const directory of (process.env.PATH ?? "").split(path.delimiter)) {
-    const candidate = path.join(directory, process.platform === "win32" ? `${name}.cmd` : name);
+  for (const directory of searchPath.split(path.delimiter).filter(Boolean)) {
+    const candidate = path.join(directory, platform === "win32" ? `${name}.cmd` : name);
     try { fs.accessSync(candidate, fs.constants.X_OK); return candidate; } catch { /* try next */ }
+  }
+  // Observed desktop bundle on macOS. Reuse its public CLI executable, never
+  // private app IPC or transcript databases. PATH and explicit overrides win.
+  if (name === "codex" && platform === "darwin") for (const candidate of bundledCodexPaths) {
+    try { fs.accessSync(candidate, fs.constants.X_OK); return candidate; } catch { /* not installed */ }
   }
   return null;
 }

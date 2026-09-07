@@ -78,54 +78,38 @@ not attach existing Codex desktop or other GUI conversations.
 not a released integration. A shared workspace means shared ThreadMesh storage,
 not a requirement that both agents edit the same code folder.
 
-### One command, two real sessions
+### Codex is the priority—not an extra Pi prerequisite
 
-Requires **Node 22+**. Install the fixed **v0.1.0-alpha.2** package from GitHub
-Releases; it is **not on the npm registry**. The older `v0.1.0-alpha.1` tag
-does not include `try`.
+The self-contained **Codex → Codex** copy example is an **unreleased candidate**.
+Its latest full run did not finish within 300 seconds after repeated model-connection
+timeouts, so we are not presenting it as ready. It targets two new sessions with
+your existing Codex configuration—not attachment to existing desktop conversations.
+[Partial initiative and the retained failure →](docs/09-reviews/2026-09-07-codex-first-use-candidate.md)
+[Candidate setup and exact limits →](docs/06-guides/first-workspace.md#codex-candidate-unreleased)
+
+### Already use Pi? Try the published alpha
+
+This optional path is available now; **Codex users are not expected to install Pi**
+to get around the unfinished Codex entry. Requires Node 22+ and your existing,
+authenticated Pi configuration with quota:
 
 ```sh
 npm install --foreground-scripts --loglevel=info \
   https://github.com/fyaic/threadmesh/releases/download/v0.1.0-alpha.2/fyaic-threadmesh-0.1.0-alpha.2.tgz
-npx threadmesh try preferences --live
+npx threadmesh try preferences --agent pi --live
 ```
 
-The packed artifact avoids npm preparing a Git checkout. These flags show
-installation progress; native dependencies may still need to build, so there
-is no fixed installation-time guarantee.
+The packed release avoids preparing a Git checkout; installation progress is
+visible, though native dependencies can still take time to build. It is not
+published on the npm registry. The command prepares sample files and runs two
+new Pi sessions in one terminal, using your normal model quota. The source
+chooses whether to message; the same receiver must make its own correct edit
+while retaining an earlier decision. Silence, errors and wrong work are failures,
+not simulated successes. Existing private chats are not attached.
 
-**Already use Pi?** Keep its existing model configuration and authentication.
-The command creates the sample files and starts two independent Pi sessions;
-you do not need a repository checkout, your own test project, workspace paths
-or two terminals. It uses your configured Pi model and **normal provider quota**.
-Install and authenticate Pi first if you do not already use it.
-
-The example is an everyday change: one session maintains signup copy with an
-earlier button-label decision; another updates the brand and free-plan allowance.
-The source model decides whether to contact its peer. The receiver can continue
-its earlier task and update the copy without losing the previous decision.
-The check looks for **the receiver's own edit and correct business meaning**,
-not just message delivery. A silent model, an error or an incorrect result is
-reported as a failure, never replaced with a simulated success.
-
-These are **two new disposable sessions**, not existing desktop chats. The
-receiver continues in the same session created by this run. Processes stop at
-the end; the printed temporary result directory remains private for inspection.
-Pi keeps its normal local permissions; the sample directory is not an OS sandbox.
-
-To see the instructions without calling a model, omit `--live`. To try API
-pagination instead, use `try api --live`. Provider/model overrides are optional:
-
-```sh
-npx threadmesh try preferences --live --provider zai --model glm-5.3
-```
-
-That override needs a configured ZAI account with quota; it is not required if
-your existing Pi model is suitable. Model choice affects behavior, and a prior
-passing run does not guarantee yours. Installing Pi or checking its version
-does not prove authentication or available quota.
-
-[What to expect, failures and manual session setup →](docs/06-guides/first-workspace.md)
+Try `try api --agent pi --live` for API pagination. Omit `--live` for instructions
+without a model call. Processes stop at the end; private result files remain.
+[Results, permissions and failure handling →](docs/06-guides/first-workspace.md#published-alpha-optional-pi-example)
 
 ### Preview without a model
 
@@ -142,8 +126,8 @@ they are not evidence of model initiative. For your own projects, use the
 
 | Harness | How it connects | Automatic idle follow-up |
 |---|---|---|
-| **Pi** | Native extension; four tools and turn-start context | Opt-in `--wake-idle`; busy-turn guard, not universal typing-race proof |
 | **Codex** | Invocation-scoped MCP + task-time hooks on macOS/Linux | No; context refreshes during model work |
+| **Pi** | Native extension; four tools and turn-start context | Opt-in `--wake-idle`; busy-turn guard, not universal typing-race proof |
 | **Kimi Code** | Project MCP configuration; other servers retained | No |
 | **DeepSeek Harness** | Official `dsh` MCP plugin via a Cordis patch | Not claimed |
 | **Other harnesses** | Standard MCP configuration or JavaScript SDK | Requires host integration |

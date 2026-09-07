@@ -41,7 +41,7 @@ export async function preview(recipeName = "api", write = value => process.stdou
     write(`\nC · ${recipe.c}\n  0 messages. No contact.`);
     write(`\nSaved for continuation: ${recipe.next}`);
     if (recipeName === "quota") write(`\n${renderCheckpoint(workspace.checkpoint("client"))}`);
-    write("\nPreview complete. For real agents: threadmesh init, then threadmesh run in two terminals.");
+    write("\nPreview complete (simulation). For a real Codex pair: threadmesh try --live. For Pi: threadmesh try --agent pi --live. Uses model quota; does not attach existing desktop chats.");
     return { scenario: recipeName, simulatedAgents: true, messages: 1, unrelatedMessages: 0 };
   } finally {
     workspace.close(); fs.rmSync(directory, { recursive: true, force: true });

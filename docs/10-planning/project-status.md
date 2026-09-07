@@ -2,6 +2,15 @@
 
 ## Current product update — 2026-09-07
 
+**Latest audience correction:** Codex is primary; Pi is optional, not a required
+second product. The [Codex-first candidate](../09-reviews/2026-09-07-codex-first-use-candidate.md)
+adds a self-contained new-session copy entry, native retry handling and focused
+failure tests. A real Codex receiver volunteered a dependency, but the full run
+expired during source work. The release gate did **not** pass. `alpha.3` is not
+published; `alpha.2` below remains the available Pi release. The existing Codex
+desktop-conversation gate remains separate and unresolved. No additional model
+matrix or promotional asset replaces either acceptance.
+
 First-use delivery: `0.1.0-alpha.2` adds a self-contained public
 `threadmesh try [preferences|api] --live` command. A real Pi copy run passed in
 201.880 seconds; a real API run from a separately installed package passed in
@@ -39,8 +48,8 @@ protected price intact. Its fresh no-contact control also passed. Both outcomes
 and the failure are retained. This is bounded CLI evidence, not general quality
 assurance or an existing-desktop-session pass. Desktop activation remains open.
 
-Priority correction: same-product sessions are the main use case; cross-product
-support is an extension. English/Chinese first use now starts with two Pi
+Earlier priority correction: same-product sessions are the main use case; cross-product
+support is an extension. The published alpha.2 first-use path starts with two Pi
 sessions, using the retained real evidence, rather than requiring Codex + Pi.
 The next desktop gate is two existing conversations **inside one client**.
 This changes positioning and acceptance order, not the unresolved desktop

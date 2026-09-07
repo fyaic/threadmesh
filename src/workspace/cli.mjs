@@ -9,7 +9,7 @@ import { preview } from "./preview.mjs";
 const help = `ThreadMesh — connect your own agent sessions
 
   threadmesh preview [api|preferences|quota]  No-model walkthrough, clearly labelled
-  threadmesh try [preferences|api] --live     Self-contained real Pi pair; uses model quota
+  threadmesh try [preferences] --live         Real Codex pair; existing login and model quota
   threadmesh init --workspace DIR            Create an explicitly shared local room
   threadmesh run codex|pi|kimi|deepseek --name NAME --goal GOAL [-- native args]
   threadmesh join NAME --harness NAME --goal GOAL  Publish a goal before launching
@@ -25,6 +25,7 @@ const help = `ThreadMesh — connect your own agent sessions
 
 Shared options: --workspace DIR (default .threadmesh), --goal TEXT, --name NAME
 DeepSeek: --profile web|headless|acp. Pi: --wake-idle (explicit native wake opt-in).
+Try defaults to Codex; Pi also supports try api --agent pi --live. Neither attaches old GUI chats.
 Use a unique name per connected session. Joining a room shares its published goals
 and advisory messages with other joined sessions, never your full chat history.
 `;
@@ -48,10 +49,29 @@ export async function workspaceCli(argv) {
   if (command === "doctor") { print(doctor()); return; }
   if (command === "preview") { await preview(subject); return; }
   if (command === "try") {
-    if (positionals.length > 2 || extra.length) throw new Error("Usage: threadmesh try [preferences|api] --live [--provider NAME --model NAME]");
-    const { tryLive, tryHelp } = await import("./try-live.mjs");
-    if (!values.live) { print(tryHelp); return; }
-    const report = await tryLive({ scenarioName: subject || "preferences", provider: values.provider, model: values.model });
+    if (positionals.length > 2 || extra.length) throw new Error("Usage: threadmesh try [preferences|api] --agent codex|pi --live [--model NAME]");
+    const agent = values.agent || "codex";
+    if (!["codex", "pi"].includes(agent)) throw new Error("The self-contained try command supports codex or pi. No automatic harness fallback is performed.");
+    if (agent === "codex" && values.provider) throw new Error("For Codex, keep its configured provider and login; --provider is a Pi-only option. Use --model for a Codex model override.");
+    if (!values.live) {
+      if (agent === "pi") { const { tryHelp } = await import("./try-live.mjs"); print(tryHelp); }
+      else print(`A real Codex collaboration in one terminal:
+  threadmesh try preferences --live
+  threadmesh try preferences --agent codex --live
+
+Uses installed Codex and its existing login/model configuration. No Pi or second
+subscription is required. This consumes your normal Codex quota; limits are not
+bypassed. Two new disposable Codex sessions are created, NOT existing desktop
+chats. ThreadMesh requests a checkpoint turn only after actual peer delivery;
+this does not establish native desktop idle wake. Sample files and private logs
+remain locally; Ctrl-C stops the run. No model was called. Add --live to start.
+For an existing Pi account instead: threadmesh try --agent pi --live`);
+      return;
+    }
+    const options = { scenarioName: subject || "preferences", provider: values.provider, model: values.model };
+    const report = agent === "codex"
+      ? await (await import("./try-codex.mjs")).tryCodex(options)
+      : await (await import("./try-live.mjs")).tryLive(options);
     process.exitCode = report.pass ? 0 : report.cancelled ? 130 : 1;
     return;
   }

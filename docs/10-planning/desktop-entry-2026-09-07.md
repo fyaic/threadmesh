@@ -4,6 +4,12 @@ Date: 2026-09-07. Starting revision: `19a9b13`.
 
 ## Decision and desired experience
 
+Audience correction: Codex is the primary client. Do not split the critical path
+equally across Codex and ZCode, or require Codex users to install Pi. A Codex-only
+sample can remove that immediate first-use barrier but does not close the existing
+desktop-conversation gate below. The outstanding user-operated plugin trust and
+reload checkpoint must not be hidden behind another CLI pass.
+
 The primary job is **different conversations in the same agent product helping
 each other without user relaying**. Cross-product collaboration is an extension,
 not a first-use prerequisite. This is the user's priority, not a measured market

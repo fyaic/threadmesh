@@ -2,71 +2,89 @@
 
 [English](../06-guides/first-workspace.md) · [返回中文首页](../../README.zh-CN.md)
 
-目标：先让**同一个 Pi 产品的两个独立 session**处理各自的普通任务，观察是否出现
-无需人工转述的消息与同 session 续接。只需配置一个 harness 账户，不需要两家产品订阅；
-各 session 保留独立上下文，交换选定的建议，不合并完整聊天。
-这是面向开发者的 CLI 接入，不会自动扫描、接管或接入已有 GUI 私聊。
+ThreadMesh 连接你明确加入同一本地工作空间的 session，不扫描私聊，不合并完整聊天。
+**Codex 用户是优先对象**，但下面的自包含 Codex 入口还没有通过完整真实验证。
+已发布的 Pi 案例仅供已有 Pi 用户选择，不要求 Codex 用户另装一家产品。
 
-## 先准备好
+## Codex 候选入口（未发布）
 
-- Node 22+；当前真实产品记录来自 macOS，Windows 尚未完整验证。
-- 安装 Pi，配置一个正常可用、有额度的模型账户。
-- 新的 `try` 入口沿用 Pi 当前配置；历史案例实测使用 Pi `0.84.2` 的 `zai/glm-5.3`。
-- 不用准备应用文件、clone 仓库或开两个终端；下面的真实体验会自动准备案例。
+需要 Node 22+ 和已登录、有额度的 Codex 运行时。候选功能先查找 PATH 中的 Codex；
+macOS 下还可以自动发现桌面应用自带的二进制，不一定需要单独安装 CLI。
+发现二进制**不等于接入已有桌面对话**，也不证明账户可用、有额度或协作成功。
 
-ThreadMesh 不提供模型账户、API key 或额度。两个 session 都消耗同一账户的正常额度。
-换模型或产品版本需要各自验证，不保证同样表现。
+这是**源码 checkout 中的开发者测试**，不是 alpha.2 安装包的使用命令。
+在包含候选改动的源码目录运行：
 
-## 一条命令体验真实协作
+```sh
+npm ci
+node bin/threadmesh.mjs try preferences --agent codex --live
+```
+
+不带 `--live` 只显示说明，不调用模型。候选入口默认 Codex 和 `preferences` 文案案例；
+Codex 当前只开放这个文案案例，接口分页仍需明确选择 Pi。
+可选 `--model YOUR_CODEX_MODEL` 用于选择现有配置中可用的模型。
+不依赖 Pi、不要求第二份订阅，也不会失败后偷偷换 Agent。
+
+预期验收会创建两个新的临时 Codex session：
+
+1. B 先维护注册文案，保留此前按钮名称的约定。
+2. A 收到修改品牌与免费方案额度的普通任务。启用通用协作提示，但不在任务中
+   指定接收对象或要求必须发消息。
+3. 只有实际收到消息后，运行器才为同一个原生 B session 启动后续回合。
+   B 自行判断如何使用建议，必须自己修改文案，保留旧约定和完整业务含义。
+
+这是运行器触发的续接，**不是 Codex 桌面端原生后台唤醒**。
+最近一次默认完整运行中，B 主动说明了依赖并完成首轮；随后 A 因反复 WebSocket 超时，
+未在整体 300 秒内完成。[部分结果与失败记录](../09-reviews/2026-09-07-codex-first-use-candidate.md)保留。
+没有声称 Codex 双 session 的完整业务结果已经通过；登录、送达或第一轮完成都不够，
+真实失败也不会替换成模拟成功。
+
+### 权限、记录与失败处理
+
+候选入口为每个 Codex session 请求其自身案例工作目录内的原生沙箱。
+业务检查读取结构化 JSON，不执行模型改写的应用代码。这不代表所有 ThreadMesh
+进程都在操作系统沙箱中；请使用可信本地进程，并留意运行时权限说明。
+
+模型调用消耗现有 Codex 账户的正常额度。命令会打印私有结果目录，保留案例文件、
+报告和原始模型记录，分享前请审查脱敏。结束或按 Ctrl-C 后停止进程，结果文件保留。
+案例不会读取、接入或修改已有私聊。
+
+登录错误、额度限制、模型沉默和业务错误都算失败。在 Codex 自己的配置中处理账户
+问题，不要对耗尽的额度反复重试。ThreadMesh 不提供凭证或额度，不会偷偷换成 Pi
+或另一账户。
+
+## 已发布版本：可选 Pi 案例
+
+对**已经使用 Pi** 的用户，需要 Node 22+ 和现有可用的 Pi 配置。
+不用 clone 仓库、自编 harness、准备应用文件、填写工作空间或开两个终端：
 
 ```sh
 npm install --foreground-scripts --loglevel=info \
   https://github.com/fyaic/threadmesh/releases/download/v0.1.0-alpha.2/fyaic-threadmesh-0.1.0-alpha.2.tgz
-npx threadmesh try preferences --live
+npx threadmesh try preferences --agent pi --live
 ```
 
-这里安装 GitHub Release 中固定的 **v0.1.0-alpha.2** 安装包，尚未发布到 npm registry。
-预先打包的文件省去 npm 准备 Git checkout 的步骤，参数会显示安装进度和安装脚本输出。
-原生依赖仍可能需要编译，安装时长取决于环境，不保证固定耗时。
-旧的 `v0.1.0-alpha.1` 标签不包含 `try`。不带 `--live` 只显示说明与额度提醒，**不调用模型**。
-默认场景是 `preferences`，因此 `npx threadmesh try --live` 等价。
+这是固定的 **v0.1.0-alpha.2** 安装包，尚未发布到 npm registry。参数显示安装进度，
+但原生依赖仍可能编译，不保证固定时长。Alpha.2 的 `try` 仅运行 Pi；
+明确写出 `--agent pi` 也便于在候选版本中使用时保持含义不变。
 
-带上 `--live` 后，会准备临时案例文件，沿用 Pi 已配置的模型，
-启动**两个新的独立 session**：
+命令创建两个新的 Pi session 和案例文件，使用现有模型的正常额度。
+源模型判断是否联系，验收检查原接收方自己修改文件、完整业务含义和此前约定。
+这不是接入已有桌面聊天；沉默、provider 错误和错误结果都报告失败，不替换成模拟成功。
 
-1. 接收方先维护注册页文案，保留此前“按钮名称不要变”的约定。它完成第一轮，session 保持打开。
-2. 源 session 收到修改品牌与免费方案额度的普通任务。工具和通用协作提示可用，
-   但任务没有指定接收对象，也没有要求它必须发消息。
-3. 如果模型决定联系相关 session，原接收方可以继续任务并自己改文案。
-   验收检查文件修改、完整业务含义和此前约定，不只看收件回执。
-
-结果会报告通过或失败。**沉默、provider 错误和业务错误都不是成功**，
-也不会在真实模型失败后替换成模拟成功。这证明的是本次新 session 的上下文续接，
-**不是接入你已有的桌面聊天**。
-
-想看接口分页变化，可运行 `npx threadmesh try api --live`。
-只有需要覆盖 Pi 当前配置时，才传 provider/model：
+接口分页案例：
 
 ```sh
-npx threadmesh try preferences --live --provider zai --model glm-5.3
+npx threadmesh try api --agent pi --live
 ```
 
-这个覆盖示例需要自己的 ZAI 配置和额度，并不是要求已有可用 Pi 模型的用户再买订阅。
-不同模型可能表现不同或保持沉默。每次真实运行都会消耗正常额度；能找到可执行程序、
-检测到版本，不证明已登录、有额度或能成功协作。
+Pi 可按需添加 `--provider zai --model glm-5.3`，需要已有的对应账户配置。
+历史 Pi 成功案例使用 `zai/glm-5.3`，其他模型表现可能不同；历史通过不保证本次成功。
+不带 `--live` 只显示说明，不调用模型。
 
-### 查看结果和停止
-
-命令会打印临时结果目录，保留报告、案例文件和原始模型记录；其中可能有模型输出与
-原生标识，请留作私有。运行结束后停止本次案例的进程，Ctrl-C 也会停止它们，
-但结果目录保留供你检查。
-
-Pi 仍有正常的本地工具权限，**临时目录不是操作系统沙箱**。只在信任的 harness
-和模型上运行。命令不会接入、修改或读取你已有的私聊 session。
-
-遇到登录或额度错误，在 Pi 自己的配置中处理，或选择另一项已有配置且有额度的 provider。
-ThreadMesh 不提供凭证、不绕过额度，也不建议对耗尽的额度反复重试。
-模型沉默或业务错误时，保留失败记录，只分享审查脱敏后的首个失败步骤。
+Pi 保留正常的本地工具权限，临时目录不是操作系统沙箱。结束或 Ctrl-C 后停止进程，
+私有案例文件与原始模型记录保留在打印出的结果目录，分享前请审查脱敏。
+登录或额度错误应在 Pi 原生配置中处理，不要对耗尽的额度反复重试。
 
 ## 先看不消耗额度的预览
 
@@ -78,6 +96,9 @@ npx threadmesh preview preferences
 也可以试 `preview api` 和 `preview quota`。预览与真实 `try --live` 是分开的入口。
 
 ## 进阶：两个终端接入自己的项目
+
+以下是 **Pi 专用**的原生空闲续接示例，不是上方 Codex 首次体验的前置条件。
+Codex 的普通 launcher 当前提供任务时上下文，不提供原生后台空闲唤醒。
 
 此时才需要已有 API 契约和客户端的可丢弃项目；`run` 连接 Agent，不生成应用文件。
 
@@ -120,7 +141,7 @@ npx threadmesh run pi --workspace .threadmesh --name backend \
 ## 固定案例复现
 
 维护者需要复现历史验证时，可从仓库运行以下脚本；首次体验请用上方安装包中的
-`threadmesh try api --live`，不用 clone 仓库：
+`threadmesh try api --agent pi --live`，不用 clone 仓库：
 
 ```sh
 git clone https://github.com/fyaic/threadmesh.git

@@ -9,9 +9,9 @@ import { liveScenario } from "./live-scenarios.mjs";
 import { deliveredSends, nativeSendOutcomes, receiverContinuation, receiverArtifactWrites } from "./live-evidence.mjs";
 
 export const tryHelp = `A real collaboration in one terminal:
-  threadmesh try preferences --live
-  threadmesh try api --live
-  threadmesh try preferences --live --provider PROVIDER --model MODEL
+  threadmesh try preferences --agent pi --live
+  threadmesh try api --agent pi --live
+  threadmesh try preferences --agent pi --live --provider PROVIDER --model MODEL
 
 Requires installed, authenticated Pi. Uses your configured Pi model by default.
 This consumes model quota: two new disposable sessions and a possible follow-up.

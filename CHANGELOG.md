@@ -33,6 +33,12 @@ All notable changes will be documented here. The project follows Keep a Changelo
 
 ### Added
 
+- Unreleased Codex-first `try preferences --agent codex --live` candidate using
+  existing Codex login/model, two new App Server threads and bound native tool
+  callbacks. The candidate defaults to Codex; the published alpha.2 still uses
+  Pi. Native retry, quota/auth, cancellation, edit ownership and unsupported API
+  behavior have deterministic tests. The full live first-use gate has not
+  passed, so no new release or existing-desktop support is claimed.
 - M5.2 safety foundation with an isolated no-alternates Git fixture, persistent
   implementer and detached reviewer/verifier worktrees, a replay-verifiable
   four-stage evidence chain, and a preconfigured-key child verifier bound to
