@@ -23,6 +23,10 @@ CLI evidence is a developer baseline, not a pass for existing desktop chats.
 The [fresh same-product copy run](docs/09-reviews/2026-09-07-same-agent-first-use.md)
 confirmed model-selected handoff and same-session continuation, but failed
 the free-plan meaning check. Keep content correctness open alongside entry.
+The [bounded repair follow-up](docs/09-reviews/2026-09-07-handoff-meaning.md)
+subsequently passed one same-product copy run and a fresh no-contact control.
+Broader quality and the earlier cross-product copy failure remain open; return
+to existing-session desktop entry instead of further prompt tuning.
 
 - [x] Review official Codex/ZCode entry points; inspect local ZCode settings.
 - [x] Prepare a developer hook probe; no messaging or native pass claimed.
@@ -40,6 +44,43 @@ the free-plan meaning check. Keep content correctness open alongside entry.
 Native delivery remains unresolved. Do not substitute a new CLI session,
 unscoped remote control or a promotional UI for existing-conversation acceptance.
 Existing quality, quota and DeepSeek live gaps remain open.
+
+### Immediate delivery checkpoint — community feedback
+
+The independent [first-use report #158](https://github.com/fyaic/threadmesh/issues/158)
+was submitted on September 5 and acknowledged on September 7. It found a
+roughly five-minute, mostly quiet install and a Codex quota block before a model
+turn. Its public-API harness check is real external evidence, not a live agent
+collaboration pass. One report is not a community popularity ranking.
+
+The next delivery must address this first failed user journey:
+
+Implementation checkpoint: the packaged `try --live` entry, bounded failure
+handling and bilingual guides are implemented. Real copy and installed-package
+API cases passed; [records and limits](docs/09-reviews/2026-09-07-packaged-first-use.md)
+are retained. Independent first-user success and existing GUI conversations
+remain open; do not count maintainer samples as either gate.
+
+1. Package a self-contained real same-agent example through the public install.
+   No repository checkout, custom harness code, user-created fixture or second
+   agent account. Show setup progress and distinguish model/account failures
+   from successful installation. Label simulation separately; never fall back
+   to it while claiming live success.
+2. Show the model choosing a relevant peer, the same receiver continuing with
+   its earlier constraints, and a useful artifact change with visible source.
+   Measure setup steps, time to useful result and first failure. Existing Pi
+   users can validate this developer entry; it does not satisfy GUI acceptance.
+3. Keep existing same-client desktop adoption as the primary integration gate.
+   Use one supported host entry; if unavailable, record the exact missing host
+   capability instead of repeating diagnostics or advertising desktop support.
+4. Ship and test the version users will install, then invite two more willing
+   first users. Credit #158 without counting its quota-blocked run as a live
+   pass. Fix their first blocking step before wider promotion; publish one
+   short, truthful A-to-B case once the entry works independently.
+
+Do not add another protocol, harness matrix or promotional redesign to this
+checkpoint. Cross-product quota recovery remains an extension, not a second
+subscription requirement. No deadline or star count is guaranteed.
 
 ## Retained first-use alpha ledger (2026-09-05)
 

@@ -1,0 +1,135 @@
+{
+  "kind": "maintainer-live-run-projection",
+  "rawEventsSha256": "c2c19aa88800a0ab1cee1837bdb070501c6089c8b3524be24b5f0a3e38a898a1",
+  "initialReceiverCompletedMs": 97474,
+  "sourceTurnCompleted": true,
+  "pass": true,
+  "elapsedMs": 135824,
+  "source": "pi",
+  "receiver": "Pi",
+  "crossHarness": false,
+  "kickoffsPerSession": 1,
+  "sameNativeReceiverSession": true,
+  "nativeIdleWake": false,
+  "noContactObservationMs": 10000,
+  "businessAssertion": "internal backend note is written, API contract is unchanged, no other workstream is contacted and idle receiver does not resume",
+  "prompts": {
+    "client": "You maintain client.mjs. Inspect it and make sure it follows the current API contract in ../backend/contract.json (the shared source of truth). Keep the exported fetchAll(fetchPage) API returning a flat array. Leave the file ready for use. This task continues as the project evolves.",
+    "backend": "Write local-notes.md with a concise note that the backend team reviews its internal meeting agenda every Monday. Keep contract.json unchanged."
+  },
+  "caveat": "One controlled live negative control, not an initiative success rate.",
+  "scenario": "api-no-contact",
+  "sourceWorkstream": "backend",
+  "receiverWorkstream": "client",
+  "artifact": "client/client.mjs",
+  "models": [
+    "client: zai/glm-5.3",
+    "backend: zai/glm-5.3"
+  ],
+  "timeline": [
+    {
+      "session": "client",
+      "elapsedMs": 760,
+      "type": "agent_start"
+    },
+    {
+      "session": "client",
+      "elapsedMs": 9098,
+      "type": "tool_execution_start",
+      "tool": "read"
+    },
+    {
+      "session": "client",
+      "elapsedMs": 9101,
+      "type": "tool_execution_start",
+      "tool": "read"
+    },
+    {
+      "session": "client",
+      "elapsedMs": 25844,
+      "type": "tool_execution_start",
+      "tool": "bash"
+    },
+    {
+      "session": "client",
+      "elapsedMs": 44756,
+      "type": "tool_execution_start",
+      "tool": "write"
+    },
+    {
+      "session": "client",
+      "elapsedMs": 57197,
+      "type": "tool_execution_start",
+      "tool": "bash"
+    },
+    {
+      "session": "client",
+      "elapsedMs": 61195,
+      "type": "tool_execution_start",
+      "tool": "threadmesh_peers"
+    },
+    {
+      "session": "client",
+      "elapsedMs": 65038,
+      "type": "tool_execution_start",
+      "tool": "threadmesh_inbox"
+    },
+    {
+      "session": "client",
+      "elapsedMs": 72167,
+      "type": "tool_execution_start",
+      "tool": "threadmesh_send"
+    },
+    {
+      "session": "client",
+      "elapsedMs": 85255,
+      "type": "tool_execution_start",
+      "tool": "threadmesh_checkpoint"
+    },
+    {
+      "session": "client",
+      "elapsedMs": 97474,
+      "type": "agent_end"
+    },
+    {
+      "session": "backend",
+      "elapsedMs": 98569,
+      "type": "agent_start"
+    },
+    {
+      "session": "backend",
+      "elapsedMs": 113286,
+      "type": "tool_execution_start",
+      "tool": "bash"
+    },
+    {
+      "session": "backend",
+      "elapsedMs": 117923,
+      "type": "tool_execution_start",
+      "tool": "write"
+    },
+    {
+      "session": "backend",
+      "elapsedMs": 119719,
+      "type": "tool_execution_start",
+      "tool": "bash"
+    },
+    {
+      "session": "backend",
+      "elapsedMs": 125294,
+      "type": "agent_end"
+    }
+  ],
+  "sendOutcomes": [
+    {
+      "session": "client",
+      "elapsedMs": 72179,
+      "failed": false,
+      "queued": true
+    }
+  ],
+  "receiverArtifact": {
+    "path": "client/client.mjs",
+    "content": "// Conforms to ../backend/contract.json for /orders:\n//   request:  { page } — integer starting at 1\n//   response: { items: array of { id }, next_page: integer or null }\n// Exported API is unchanged: fetchAll(fetchPage) -> flat array of items.\nexport async function fetchAll(fetchPage) {\n  const items = [];\n  let page = 1;\n  do {\n    const data = await fetchPage({ page });\n    items.push(...(data.items ?? []));\n    page = data.next_page; // null terminates pagination (contract)\n  } while (page != null); // != also treats a missing next_page as terminal\n  return items;\n}\n"
+  }
+}

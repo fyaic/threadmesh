@@ -11,24 +11,75 @@
 
 - Node 22+；当前真实产品记录来自 macOS，Windows 尚未完整验证。
 - 安装 Pi，配置一个正常可用、有额度的模型账户。
-- 首例两边均实测使用 Pi `0.84.2` 的 `zai/glm-5.3`，需要已配置的 ZAI 账户。
-- 普通上手使用已有 API 契约和客户端的可丢弃项目；命令不会生成应用文件。
-  没有合适项目，可以直接用下方的[固定案例复现](#固定案例复现)。
+- 新的 `try` 入口沿用 Pi 当前配置；历史案例实测使用 Pi `0.84.2` 的 `zai/glm-5.3`。
+- 不用准备应用文件、clone 仓库或开两个终端；下面的真实体验会自动准备案例。
 
 ThreadMesh 不提供模型账户、API key 或额度。两个 session 都消耗同一账户的正常额度。
 换模型或产品版本需要各自验证，不保证同样表现。
 
+## 一条命令体验真实协作
+
+```sh
+npm install --foreground-scripts --loglevel=info \
+  https://github.com/fyaic/threadmesh/releases/download/v0.1.0-alpha.2/fyaic-threadmesh-0.1.0-alpha.2.tgz
+npx threadmesh try preferences --live
+```
+
+这里安装 GitHub Release 中固定的 **v0.1.0-alpha.2** 安装包，尚未发布到 npm registry。
+预先打包的文件省去 npm 准备 Git checkout 的步骤，参数会显示安装进度和安装脚本输出。
+原生依赖仍可能需要编译，安装时长取决于环境，不保证固定耗时。
+旧的 `v0.1.0-alpha.1` 标签不包含 `try`。不带 `--live` 只显示说明与额度提醒，**不调用模型**。
+默认场景是 `preferences`，因此 `npx threadmesh try --live` 等价。
+
+带上 `--live` 后，会准备临时案例文件，沿用 Pi 已配置的模型，
+启动**两个新的独立 session**：
+
+1. 接收方先维护注册页文案，保留此前“按钮名称不要变”的约定。它完成第一轮，session 保持打开。
+2. 源 session 收到修改品牌与免费方案额度的普通任务。工具和通用协作提示可用，
+   但任务没有指定接收对象，也没有要求它必须发消息。
+3. 如果模型决定联系相关 session，原接收方可以继续任务并自己改文案。
+   验收检查文件修改、完整业务含义和此前约定，不只看收件回执。
+
+结果会报告通过或失败。**沉默、provider 错误和业务错误都不是成功**，
+也不会在真实模型失败后替换成模拟成功。这证明的是本次新 session 的上下文续接，
+**不是接入你已有的桌面聊天**。
+
+想看接口分页变化，可运行 `npx threadmesh try api --live`。
+只有需要覆盖 Pi 当前配置时，才传 provider/model：
+
+```sh
+npx threadmesh try preferences --live --provider zai --model glm-5.3
+```
+
+这个覆盖示例需要自己的 ZAI 配置和额度，并不是要求已有可用 Pi 模型的用户再买订阅。
+不同模型可能表现不同或保持沉默。每次真实运行都会消耗正常额度；能找到可执行程序、
+检测到版本，不证明已登录、有额度或能成功协作。
+
+### 查看结果和停止
+
+命令会打印临时结果目录，保留报告、案例文件和原始模型记录；其中可能有模型输出与
+原生标识，请留作私有。运行结束后停止本次案例的进程，Ctrl-C 也会停止它们，
+但结果目录保留供你检查。
+
+Pi 仍有正常的本地工具权限，**临时目录不是操作系统沙箱**。只在信任的 harness
+和模型上运行。命令不会接入、修改或读取你已有的私聊 session。
+
+遇到登录或额度错误，在 Pi 自己的配置中处理，或选择另一项已有配置且有额度的 provider。
+ThreadMesh 不提供凭证、不绕过额度，也不建议对耗尽的额度反复重试。
+模型沉默或业务错误时，保留失败记录，只分享审查脱敏后的首个失败步骤。
+
 ## 先看不消耗额度的预览
 
 ```sh
-npm install github:fyaic/threadmesh
-npx threadmesh preview api
+npx threadmesh preview preferences
 ```
 
-当前从 GitHub 安装，尚未发布到 npm registry。预览经过真实本地协调器，
-但 Agent 是模拟的。也可以试 `preview preferences` 和 `preview quota`。
+预览经过真实本地协调器，但 Agent 是模拟的，不证明模型主动性。
+也可以试 `preview api` 和 `preview quota`。预览与真实 `try --live` 是分开的入口。
 
-## 两个终端，两个独立 session
+## 进阶：两个终端接入自己的项目
+
+此时才需要已有 API 契约和客户端的可丢弃项目；`run` 连接 Agent，不生成应用文件。
 
 在项目目录执行一次：
 
@@ -68,7 +119,8 @@ npx threadmesh run pi --workspace .threadmesh --name backend \
 
 ## 固定案例复现
 
-不想准备应用文件，可从仓库运行自包含的真实模型验证：
+维护者需要复现历史验证时，可从仓库运行以下脚本；首次体验请用上方安装包中的
+`threadmesh try api --live`，不用 clone 仓库：
 
 ```sh
 git clone https://github.com/fyaic/threadmesh.git
@@ -86,7 +138,7 @@ node scripts/validate-workspace-live.mjs pi api
 
 原始事件可能含模型输出与原生标识，请保留为私有。要分享时，先审查
 `node scripts/project-first-use-evidence.mjs PATH` 的精简投影。验证脚本只随源码提供，
-不是安装包中的用户命令。
+不是安装包中的用户命令；新的 `try` 用户入口不依赖这些仓库脚本。
 
 ## 加入到底授权了什么
 

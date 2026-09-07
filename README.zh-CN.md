@@ -51,6 +51,8 @@ ThreadMesh 提供目标发现、建议消息、持久收件箱和可携带的 ch
 
 [最新 Pi 双会话文案实测](docs/09-reviews/2026-09-07-same-agent-first-use.md)也发生了主动交接，
 并保留原按钮约定，但遗漏了“免费方案”条件，**业务验收失败**。
+[后续有界修正复测](docs/09-reviews/2026-09-07-handoff-meaning.md)保留了完整文案含义和旧约定，
+并通过无关修改不联系的对照。各通过一次，不代表普遍可靠；此前失败记录继续保留。
 
 **也能跨产品协作：** 另有 Codex → Pi 实测，既保留成功结果，也保留内容质量失败：
 
@@ -71,55 +73,58 @@ Codex 桌面端或其他图形客户端中已有的对话。[桌面接入](docs/
 仍处于实验阶段，还不是已发布功能。
 “共享工作空间”指共用 ThreadMesh 的本地存储，并不要求两个 Agent 编辑同一个代码目录。
 
-### 不调用模型，先理解流程
+### 一条命令，两个真实 session
 
-需要 **Node 22+**。目前从 GitHub 安装，**尚未发布到 npm registry**。
+需要 **Node 22+**。安装 GitHub Release 中固定的 **v0.1.0-alpha.2** 安装包，
+**尚未发布到 npm registry**。旧的 `v0.1.0-alpha.1` 标签不包含 `try` 命令。
 
 ```sh
-npm install github:fyaic/threadmesh
-npx threadmesh preview api
+npm install --foreground-scripts --loglevel=info \
+  https://github.com/fyaic/threadmesh/releases/download/v0.1.0-alpha.2/fyaic-threadmesh-0.1.0-alpha.2.tgz
+npx threadmesh try preferences --live
+```
+
+预先打包的文件省去 npm 准备 Git checkout 的步骤。安装参数显示进度，
+但原生依赖仍可能需要编译，不保证固定安装时长。
+
+**已经在用 Pi？** 沿用它现有的模型配置和登录状态即可。命令会准备案例文件，
+启动两个独立 Pi session；不用 clone 仓库、准备自己的测试项目、填写工作空间路径，
+也不用开两个终端。它使用 Pi 已配置的模型，**会消耗对应账户的正常额度**。
+如果还没用过 Pi，需要先安装并完成它自己的账户配置。
+
+案例是一个日常改动：一个 session 维护注册页文案，已有“按钮名称不要变”的约定；
+另一个修改品牌和免费方案额度。源模型自行判断是否联系相关 session，
+接收方可以在原任务中继续改文案，同时保留此前约定。
+验收看的是**接收方自己修改文件，而且业务含义正确**，不只是消息送达。
+模型沉默、执行错误或结果不正确都会报告失败，不会换成模拟成功。
+
+这里启动的是**两个新的临时 session**，不是你已有的桌面对话。接收方续接的是
+本次运行中先完成任务的同一个 session。结束后停止进程；打印出的临时结果目录
+会保留供你检查，请把其中的模型输出和记录留作私有。
+Pi 仍有正常的本地工具权限，临时案例目录不是操作系统沙箱。
+
+不带 `--live` 只显示使用说明，不调用模型。也可用 `try api --live` 体验接口分页
+改动。只有需要覆盖 Pi 当前配置时，才指定 provider 和 model：
+
+```sh
+npx threadmesh try preferences --live --provider zai --model glm-5.3
+```
+
+这个覆盖示例需要已配置且有额度的 ZAI 账户；并不要求已有可用 Pi 模型的用户
+再注册一家。不同模型表现可能不同，历史通过不保证本次成功。
+能检测到 Pi 安装或版本，不代表已经登录或还有额度。
+
+[运行结果、失败处理与手动接入说明 →](docs/zh-CN/first-workspace.md)
+
+### 不调用模型，先理解流程
+
+```sh
+npx threadmesh preview preferences
 ```
 
 模拟 Agent、真实本地协调器：不需要 API key，不消耗模型额度，不读取聊天。
-也可试 `preview preferences` 和 `preview quota`。预览解释流程，不证明模型主动性。
-
-### 接入真实 session
-
-准备一个**已有接口和客户端的可丢弃项目**。下面的命令只连接 Agent，不生成应用文件。
-先安装并登录 **Pi**，下面两个 session 都用它。实测模型是 **`zai/glm-5.3`**，
-需要它自己的已配置账户和可用额度。
-
-在项目目录执行：
-
-```sh
-npx threadmesh init --workspace .threadmesh
-npx threadmesh doctor
-```
-
-**终端 B — 客户端：**
-
-```sh
-npx threadmesh run pi --name client --goal "Maintain the /orders client" --wake-idle \
-  -- --provider zai --model glm-5.3
-```
-
-给它正常任务：“检查客户端是否符合当前接口契约，后端变化时保持可用。”
-等它完成这一轮，保持 session 打开。
-
-**终端 A — 后端：**
-
-```sh
-npx threadmesh run pi --name backend --goal "Maintain the /orders API" \
-  -- --provider zai --model glm-5.3
-```
-
-给它上游变更：“把契约从 `next_page` 改成 cursor 分页，保持 endpoint 和 item schema 不变。”
-
-观察 peer 消息、**同一个 Pi session 的自动续接**和正确的文件变化，不只是一句“已收到”。
-模型可能沉默，也可能做错。不同项目目录需要传同一个绝对 `--workspace` 路径。
-两种语言的命令参数一致；这里的中文任务是使用示例，精确实测提示见证据记录。
-
-[完整中文步骤、固定案例复现、静音与排错 →](docs/zh-CN/first-workspace.md)
+也可试 `preview api` 和 `preview quota`。预览解释流程，不证明模型主动性。
+要连接自己的项目，可再看[进阶双终端接入](docs/zh-CN/first-workspace.md#进阶两个终端接入自己的项目)。
 
 ## 支持哪些 Harness
 

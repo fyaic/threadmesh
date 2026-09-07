@@ -53,6 +53,9 @@ discovery of arbitrary chats.
 A [fresh Pi-pair product-copy run](docs/09-reviews/2026-09-07-same-agent-first-use.md)
 also handed off automatically and retained the earlier signup label, but dropped
 the free-plan qualifier. **That business check failed.**
+The [bounded repair follow-up](docs/09-reviews/2026-09-07-handoff-meaning.md)
+passed once with complete copy and the prior label, plus a no-contact control.
+This is not a general reliability claim; the earlier failure remains recorded.
 
 **Across products, too:** separate Codex → Pi experiments retain both useful
 results and a content-quality failure:
@@ -75,58 +78,65 @@ not attach existing Codex desktop or other GUI conversations.
 not a released integration. A shared workspace means shared ThreadMesh storage,
 not a requirement that both agents edit the same code folder.
 
-### Preview without a model
+### One command, two real sessions
 
-Requires **Node 22+**. Install from GitHub; the package is **not on npm yet**.
+Requires **Node 22+**. Install the fixed **v0.1.0-alpha.2** package from GitHub
+Releases; it is **not on the npm registry**. The older `v0.1.0-alpha.1` tag
+does not include `try`.
 
 ```sh
-npm install github:fyaic/threadmesh
-npx threadmesh preview api
+npm install --foreground-scripts --loglevel=info \
+  https://github.com/fyaic/threadmesh/releases/download/v0.1.0-alpha.2/fyaic-threadmesh-0.1.0-alpha.2.tgz
+npx threadmesh try preferences --live
+```
+
+The packed artifact avoids npm preparing a Git checkout. These flags show
+installation progress; native dependencies may still need to build, so there
+is no fixed installation-time guarantee.
+
+**Already use Pi?** Keep its existing model configuration and authentication.
+The command creates the sample files and starts two independent Pi sessions;
+you do not need a repository checkout, your own test project, workspace paths
+or two terminals. It uses your configured Pi model and **normal provider quota**.
+Install and authenticate Pi first if you do not already use it.
+
+The example is an everyday change: one session maintains signup copy with an
+earlier button-label decision; another updates the brand and free-plan allowance.
+The source model decides whether to contact its peer. The receiver can continue
+its earlier task and update the copy without losing the previous decision.
+The check looks for **the receiver's own edit and correct business meaning**,
+not just message delivery. A silent model, an error or an incorrect result is
+reported as a failure, never replaced with a simulated success.
+
+These are **two new disposable sessions**, not existing desktop chats. The
+receiver continues in the same session created by this run. Processes stop at
+the end; the printed temporary result directory remains private for inspection.
+Pi keeps its normal local permissions; the sample directory is not an OS sandbox.
+
+To see the instructions without calling a model, omit `--live`. To try API
+pagination instead, use `try api --live`. Provider/model overrides are optional:
+
+```sh
+npx threadmesh try preferences --live --provider zai --model glm-5.3
+```
+
+That override needs a configured ZAI account with quota; it is not required if
+your existing Pi model is suitable. Model choice affects behavior, and a prior
+passing run does not guarantee yours. Installing Pi or checking its version
+does not prove authentication or available quota.
+
+[What to expect, failures and manual session setup →](docs/06-guides/first-workspace.md)
+
+### Preview without a model
+
+```sh
+npx threadmesh preview preferences
 ```
 
 Simulated agents, real local coordinator. No API key, model quota or chat access.
-Also try `preview preferences` and `preview quota`. These explain the workflow;
-they are not evidence of model initiative.
-
-### Connect real sessions
-
-Use a disposable project **with an existing API and client**; these commands
-connect agents, not generate application files. First install and authenticate
-**Pi**; both sessions below use the same product. The tested model is
-**`zai/glm-5.3`**, requiring its own configured account and quota.
-
-From the project folder:
-
-```sh
-npx threadmesh init --workspace .threadmesh
-npx threadmesh doctor
-```
-
-**Terminal B — client:**
-
-```sh
-npx threadmesh run pi --name client --goal "Maintain the /orders client" --wake-idle \
-  -- --provider zai --model glm-5.3
-```
-
-Give it normal work: “Check the client against the current API contract.
-Keep it ready as the backend evolves.” Let it finish and leave it open.
-
-**Terminal A — backend:**
-
-```sh
-npx threadmesh run pi --name backend --goal "Maintain the /orders API" \
-  -- --provider zai --model glm-5.3
-```
-
-Ask for the upstream change: “Switch the contract from `next_page` to cursor
-pagination. Keep the endpoint and item schema unchanged.”
-
-Look for a peer message, a follow-up in **the same Pi session**, and a correct
-file change—not just an acknowledgement. Models can stay silent or make mistakes.
-Different project folders must share the same absolute `--workspace` path.
-
-[Full setup, fixed-fixture reproduction, mute controls and troubleshooting →](docs/06-guides/first-workspace.md)
+Also try `preview api` and `preview quota`. These explain the workflow;
+they are not evidence of model initiative. For your own projects, use the
+[advanced two-terminal workflow](docs/06-guides/first-workspace.md#advanced-connect-your-own-project-sessions).
 
 ## Supported harnesses
 

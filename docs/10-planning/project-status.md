@@ -2,6 +2,43 @@
 
 ## Current product update — 2026-09-07
 
+First-use delivery: `0.1.0-alpha.2` adds a self-contained public
+`threadmesh try [preferences|api] --live` command. A real Pi copy run passed in
+201.880 seconds; a real API run from a separately installed package passed in
+158.371 seconds. Both retained the receiver's native session and verified its
+own useful edit. See the [evidence and limits](../09-reviews/2026-09-07-packaged-first-use.md).
+The default uses existing Pi model configuration, not a forced second account.
+Setup progress, bounded failures and cancellation are explicit; the example
+requires no custom harness or application fixture. This is new-session CLI
+first use, not existing-desktop adoption or an independent user's live pass.
+
+Community correction: [#158](https://github.com/fyaic/threadmesh/issues/158)
+contains a completed independent fresh-consumer/public-API harness report from
+September 5, not merely an offer. Installation took about five minutes with
+little visible progress; the no-model preview took about 3.3 seconds. The real
+Codex attempt hit a usage limit before a model turn. Acceptance, a separately
+performed harness edit, and cleanup were checked; autonomous agent completion
+and an already-running receiver were not. Maintainer replies are now posted in
+[#158](https://github.com/fyaic/threadmesh/issues/158#issuecomment-5566227533) and
+[#79](https://github.com/fyaic/threadmesh/issues/79#issuecomment-5566230825).
+The September 7 snapshot is 3 stars, 0 forks and one independent report; this
+sample does not establish a statistically highest-demand feature.
+
+Management correction: first-user success, not additional internal benchmarks,
+is the delivery gate. Follow the [roadmap delivery checkpoint](../../ROADMAP.md#immediate-delivery-checkpoint--community-feedback).
+Same-product existing desktop conversations remain the main product goal; an
+easier developer entry is useful but must not be presented as desktop support.
+The earlier handoff repair at `613f5ca` is included in this delivery candidate.
+The prior Git TLS failure no longer blocks remote access. Release publication
+and the independent first-user outcome must still be tracked separately.
+
+Latest [handoff-meaning follow-up](../09-reviews/2026-09-07-handoff-meaning.md): the
+first generic-guidance attempt still failed; a clarified final version passed
+one real Pi-pair copy case with the free-project scope, earlier button label and
+protected price intact. Its fresh no-contact control also passed. Both outcomes
+and the failure are retained. This is bounded CLI evidence, not general quality
+assurance or an existing-desktop-session pass. Desktop activation remains open.
+
 Priority correction: same-product sessions are the main use case; cross-product
 support is an extension. English/Chinese first use now starts with two Pi
 sessions, using the retained real evidence, rather than requiring Codex + Pi.
@@ -80,9 +117,10 @@ tools, made zero send attempts and did not wake the same idle Pi receiver.
 The three-run result is pass / quality failure / no-contact pass, not an overall
 reliability score. The completed increment is [PR #155](https://github.com/fyaic/threadmesh/pull/155).
 
-GitHub snapshot: 2 stars, 0 forks, and one external offer of a fresh-consumer
+Earlier September 5 snapshot: 2 stars, 0 forks, and one external offer of a fresh-consumer
 review in [#79](https://github.com/fyaic/threadmesh/issues/79#issuecomment-5538796478).
-The offer is not a completed independent test. The package remains GitHub
+This was superseded by the completed report in #158 later that day; see the
+current update above. The package remains GitHub
 distributed, not npm published. README now leads with practical use and direct
 launch instructions; the old 76-second walkthrough is not promoted.
 

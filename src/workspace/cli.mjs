@@ -9,6 +9,7 @@ import { preview } from "./preview.mjs";
 const help = `ThreadMesh — connect your own agent sessions
 
   threadmesh preview [api|preferences|quota]  No-model walkthrough, clearly labelled
+  threadmesh try [preferences|api] --live     Self-contained real Pi pair; uses model quota
   threadmesh init --workspace DIR            Create an explicitly shared local room
   threadmesh run codex|pi|kimi|deepseek --name NAME --goal GOAL [-- native args]
   threadmesh join NAME --harness NAME --goal GOAL  Publish a goal before launching
@@ -37,6 +38,7 @@ export async function workspaceCli(argv) {
       goal: { type: "string" }, harness: { type: "string" }, agent: { type: "string" },
       profile: { type: "string", default: "web" }, file: { type: "string" }, out: { type: "string" },
       "wake-idle": { type: "boolean", default: false }, help: { type: "boolean", short: "h" },
+      live: { type: "boolean", default: false }, provider: { type: "string" }, model: { type: "string" },
     } });
   const [command, subject] = positionals;
   const directory = path.resolve(values.workspace);
@@ -45,6 +47,14 @@ export async function workspaceCli(argv) {
   if (!command || command === "help" || values.help) { print(help); return; }
   if (command === "doctor") { print(doctor()); return; }
   if (command === "preview") { await preview(subject); return; }
+  if (command === "try") {
+    if (positionals.length > 2 || extra.length) throw new Error("Usage: threadmesh try [preferences|api] --live [--provider NAME --model NAME]");
+    const { tryLive, tryHelp } = await import("./try-live.mjs");
+    if (!values.live) { print(tryHelp); return; }
+    const report = await tryLive({ scenarioName: subject || "preferences", provider: values.provider, model: values.model });
+    process.exitCode = report.pass ? 0 : report.cancelled ? 130 : 1;
+    return;
+  }
   if (command === "mcp") {
     await startWorkspaceMcp({ directory, name: required(values.name, "--name"),
       harness: required(values.harness, "--harness"), goal: required(values.goal, "--goal") }); return;
