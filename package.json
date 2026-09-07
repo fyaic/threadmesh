@@ -1,6 +1,6 @@
 {
   "name": "@fyaic/threadmesh",
-  "version": "0.1.0-alpha.2",
+  "version": "0.1.0-alpha.3",
   "description": "Local cross-agent workspaces, useful peer messages, and portable checkpoints",
   "type": "module",
   "license": "Apache-2.0",
@@ -42,6 +42,7 @@
     "src/state",
     "src/validation/independent-git-verifier.mjs",
     "examples",
+    "plugins/threadmesh-codex",
     "README.md",
     "LICENSE"
   ],

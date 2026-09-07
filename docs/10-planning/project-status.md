@@ -2,14 +2,20 @@
 
 ## Current product update — 2026-09-07
 
-**Latest audience correction:** Codex is primary; Pi is optional, not a required
-second product. The [Codex-first candidate](../09-reviews/2026-09-07-codex-first-use-candidate.md)
-adds a self-contained new-session copy entry, native retry handling and focused
-failure tests. A real Codex receiver volunteered a dependency, but the full run
-expired during source work. The release gate did **not** pass. `alpha.3` is not
-published; `alpha.2` below remains the available Pi release. The existing Codex
-desktop-conversation gate remains separate and unresolved. No additional model
-matrix or promotional asset replaces either acceptance.
+**Latest Codex-first delivery:** Codex is primary; Pi is optional, not a required
+second product. The [installed-package case](../09-reviews/2026-09-07-codex-first-use-release.md)
+now passes in 272.604 seconds with the default command and unchanged five-minute
+budget. It selects a newer installed desktop runtime when PATH is older, while
+preserving the user's model/login. `alpha.3` is the release target. Earlier
+retry, timeout and outdated-runtime failures remain recorded. This is new-session
+CLI acceptance, not a desktop-adoption or general reliability claim.
+
+The [native-task skill](../06-guides/codex-native-tasks.md) avoids a Node/MCP/hook
+prerequisite by using already exposed Codex task tools. Packaging and independent
+tabletop review passed; an explicitly authorized desktop test pair is pending.
+Native send still lacks an atomic idle-only condition. No new community reply
+was posted; the [latest contributor priorities](community-followup-2026-09-07.md)
+will be answered after additional actual improvements as requested.
 
 First-use delivery: `0.1.0-alpha.2` adds a self-contained public
 `threadmesh try [preferences|api] --live` command. A real Pi copy run passed in

@@ -3,6 +3,9 @@
 Date: 2026-09-07. Base: `0863f90`. Branch: `feat/codex-first-use`.
 Status: unreleased candidate; the published package remains `0.1.0-alpha.2`.
 
+Historical candidate checkpoint: the later [installed-package acceptance](2026-09-07-codex-first-use-release.md)
+supersedes the release stop below, not these failed attempts or their evidence.
+
 ## Product decision
 
 Codex is the primary audience, especially people with separate existing desktop

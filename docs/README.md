@@ -11,15 +11,21 @@ Start with the user guides; the protocol and historical benchmarks are optional.
 |---|---|
 | Understand the idea | [What ThreadMesh is](00-overview/product-guide.md) |
 | Connect Codex, Pi, Kimi or DeepSeek | [Your first workspace](06-guides/first-workspace.md) |
+| Explore existing Codex desktop tasks | [Experimental native-task workflow](06-guides/codex-native-tasks.md) |
 | See actual model behavior | [Everyday cases and evidence](06-guides/real-world-cases.md) |
 | Continue from saved context | [Portable checkpoints](06-guides/portable-checkpoints.md) |
 | Check compatibility before installing | [Versioned harness support](00-overview/harness-support.md) |
 | Integrate another harness | [MCP configuration](06-guides/first-workspace.md#kimi-and-custom-harnesses) · [SDK adapter guide](06-guides/implement-an-adapter.md) |
 | Understand permissions and privacy | [Threat model](04-safety/threat-model.md) · [Context sovereignty](01-concepts/context-sovereignty.md) |
 | Report an unsuccessful first run | [Operator report](https://github.com/fyaic/threadmesh/issues/new?template=operator.yml) |
-| Follow what ships next | [Roadmap](../ROADMAP.md) · [Active acceptance](10-planning/cross-harness-acceptance-2026-09-05.md) |
+| Follow what ships next | [Roadmap](../ROADMAP.md) · [Codex desktop priority](10-planning/desktop-entry-2026-09-07.md) |
 
 ## Current evidence, not just intent
+
+The [Codex-first installed-package case](09-reviews/2026-09-07-codex-first-use-release.md)
+passed with the default command in 272.604 seconds: model-selected advice,
+same receiver continuation, its own correct copy edit and preserved earlier
+decisions. Two new sessions, normal account quota; not existing desktop adoption.
 
 The [2026-09-05 cross-harness record](09-reviews/2026-09-05-workspace-awareness.md)
 retains three ordinary Codex → Pi runs: API collaboration **passed**, unrelated

@@ -4,7 +4,7 @@ import path from "node:path";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { LocalWorkspace } from "./local-workspace.mjs";
-import { executable } from "./launch.mjs";
+import { selectCodexRuntime } from "./codex-runtime.mjs";
 import { liveScenario } from "./live-scenarios.mjs";
 import { deliveredSends } from "./live-evidence.mjs";
 import { workspaceMcpInstructions } from "./mcp-server.mjs";
@@ -21,6 +21,8 @@ export function standaloneCodexEnv(parent = process.env) {
 
 export function codexFailureHint(reason) {
   const text = typeof reason === "string" ? reason : JSON.stringify(reason);
+  if (/requires? a newer version|upgrade.{0,35}(?:codex|app|cli)|(?:codex|cli).{0,35}(?:outdated|too old)/i.test(text ?? ""))
+    return "Your configured model requires a newer Codex runtime. Update Codex through its normal app or CLI update path, then retry. ThreadMesh did not change your model, account or global configuration; no collaboration is claimed.";
   if (/quota|usage.?limit|rate.?limit|429|credits|sessionBudgetExceeded/i.test(text ?? ""))
     return "Codex quota or rate limit blocked this run. Check your existing Codex account and reset time. ThreadMesh did not restart the run or switch harnesses; this run did not pass.";
   if (/unauthor|authenticat|credential|login|log.in|api.?key|401|403/i.test(text ?? ""))
@@ -49,7 +51,7 @@ export async function tryCodex({ scenarioName = "preferences", model,
   // separate execution boundary is supported; never silently switch harnesses.
   if (scenarioName !== "preferences") throw new Error("Codex first-use currently supports preferences only. The API sample remains available with --agent pi; no automatic fallback is performed.");
   if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) throw new Error("timeoutMs must be positive.");
-  const command = executable("codex");
+  const runtime = selectCodexRuntime(), command = runtime?.command;
   if (!command) throw new Error("Codex CLI is not installed. Install the Codex CLI and use your existing Codex sign-in; Pi and a second account are not required. No model was called.");
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "threadmesh-try-codex-")));
   fs.chmodSync(root, 0o700);
@@ -177,6 +179,7 @@ export async function tryCodex({ scenarioName = "preferences", model,
   }
   try {
     write(`REAL Codex run — ${scenarioName}. Uses your existing Codex configuration, sign-in and quota. No Pi or separate API key required.`);
+    write(`Codex runtime: ${runtime.command} (${runtime.version ?? "version not probed or unavailable"}). ${runtime.reason}`);
     write(`Two NEW disposable Codex sessions; not existing desktop chats. Private sample: ${root}\nOnly each session's sample directory is writable; Ctrl-C stops this run.`);
     for (const name of [sender, receiver]) fs.mkdirSync(path.join(root, name));
     scenario.setup(root);
@@ -261,7 +264,7 @@ export async function tryCodex({ scenarioName = "preferences", model,
     for (const disconnect of disconnects) disconnect();
     workspace.close();
     process.removeListener("SIGINT", onSignal); process.removeListener("SIGTERM", onSignal);
-    report = { ...report, elapsedMs: elapsed(), runtimeRetryReported, sampleProcessesStopped: stopped, artifacts: root };
+    report = { ...report, runtime, elapsedMs: elapsed(), runtimeRetryReported, sampleProcessesStopped: stopped, artifacts: root };
     if (!stopped) { report.pass = false; report.error = "A sample process did not stop. Inspect the retained private logs."; }
     fs.writeFileSync(path.join(root, "events.json"), JSON.stringify(events, null, 2), { mode: 0o600 });
     fs.writeFileSync(path.join(root, "report.json"), JSON.stringify(report, null, 2), { mode: 0o600 });

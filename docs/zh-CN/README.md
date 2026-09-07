@@ -11,15 +11,20 @@
 |---|---|
 | 快速理解项目有什么用 | [ThreadMesh 是什么](product-guide.md) |
 | 把自己的 Agent 接起来 | [第一次真实协作：中文上手](first-workspace.md) |
+| 尝试已有 Codex 桌面任务 | [实验性原生任务流程](codex-native-tasks.md) |
 | 看真正的模型主动行为 | [真实案例与证据](../06-guides/real-world-cases.md) |
 | 换一家 Agent 继续已保存的工作 | [Checkpoint 与额度边界](../06-guides/portable-checkpoints.md) |
 | 确认支持哪些产品和版本 | [Harness 支持矩阵](../00-overview/harness-support.md) |
 | 给自己的 harness 增加能力 | [MCP 接入](../06-guides/first-workspace.md#kimi-and-custom-harnesses) · [SDK 指南](../06-guides/implement-an-adapter.md) |
 | 了解权限和隐私 | [当前威胁模型](../04-safety/threat-model.md) · [上下文主权](../01-concepts/context-sovereignty.md) |
 | 报告安装失败或 Agent 沉默 | [首次使用反馈](https://github.com/fyaic/threadmesh/issues/new?template=operator.yml) |
-| 看下一步要做什么 | [Roadmap](../../ROADMAP.md) · [当前验收计划](../10-planning/cross-harness-acceptance-2026-09-05.md) |
+| 看下一步要做什么 | [Roadmap](../../ROADMAP.md) · [Codex 桌面主线](../10-planning/desktop-entry-2026-09-07.md) |
 
 ## 当前真实进度
+
+[Codex 默认安装包案例](../09-reviews/2026-09-07-codex-first-use-release.md)已在
+272.604 秒内通过：模型主动发出建议，同一个接收 session 继续，自己改对文案，
+保留此前约定。使用正常账户额度；两个 session 是新建的，不是已有桌面对话接入证明。
 
 [2026-09-05 验证记录](../09-reviews/2026-09-05-workspace-awareness.md)保留了三轮
 普通 Codex → Pi 任务：接口协作**通过**、无关变化不联系**通过**，品牌文案的

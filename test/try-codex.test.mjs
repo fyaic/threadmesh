@@ -70,6 +70,8 @@ test("Codex failure hints do not echo account or provider secrets", () => {
     assert.doesNotMatch(codexFailureHint(reason), /SECRET-TEST-CREDENTIAL/);
   assert.match(codexFailureHint("quota"), /Codex.*quota/);
   assert.match(codexFailureHint("401"), /existing Codex/);
+  assert.match(codexFailureHint("The gpt-6-astra model requires a newer version of Codex. SECRET-TEST-CREDENTIAL"), /newer Codex runtime/);
+  assert.doesNotMatch(codexFailureHint("The model requires a newer version of Codex. SECRET-TEST-CREDENTIAL"), /SECRET-TEST-CREDENTIAL/);
 });
 
 test("native artifact proof requires exact receiver, turn, path and successful patch", () => {

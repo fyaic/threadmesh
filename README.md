@@ -34,82 +34,85 @@ checkpoints—not a new model, shared chat history or a fixed sequence of handof
 
 ## A real handoff without the copy-paste
 
-In a retained **Pi → Pi** run—two sessions, one agent product:
+**Two Codex sessions. One remembers your earlier decision; the other changes the
+product facts. You don't relay the change.**
 
-1. **The client session checks the API** and volunteers its dependency.
-   Its initial task finishes; the session stays open.
-2. **You ask the backend session to change pagination.** It updates the contract
-   and chooses to send the relevant change to the client session.
-3. **That same client session continues on its own.** Its own tool updates the
-   client; an independent check confirms both cursor pages are fetched correctly.
+In a real installed-package run, the website session first volunteered its
+dependency. The brand session then chose to send the relevant update. After
+that actual message, the runner continued the **same native website session**;
+its model edited the landing copy itself.
 
-One ordinary kickoff per session. No later user relay or prescribed recipient.
-Generic collaboration guidance was enabled; the backend received the client's
-earlier dependency message. This is reciprocal model-selected cooperation, not blind
-discovery of arbitrary chats.
+| Website copy | Before | After |
+|---|---|---|
+| Product and spelling | Organise work with Team Hub | Organize work with Member Portal |
+| Free allowance | Unlimited free projects | Free tier includes up to 5 projects |
+| Earlier button decision | Create my workspace | **Unchanged** |
+| Paid price | $12/month | **Unchanged** |
 
-[Read the prompts, timeline and final client →](docs/09-reviews/2026-09-05-first-use-validation.md#the-actual-initiative-case)
+These compact descriptions summarize the checked artifact, not a screenshot.
+Each model received an ordinary task with generic opt-in collaboration guidance,
+not an instruction naming the recipient or requiring a send. The runner checks
+the receiver's own edit, complete business meaning and retained constraints.
 
-A [fresh Pi-pair product-copy run](docs/09-reviews/2026-09-07-same-agent-first-use.md)
-also handed off automatically and retained the earlier signup label, but dropped
-the free-plan qualifier. **That business check failed.**
-The [bounded repair follow-up](docs/09-reviews/2026-09-07-handoff-meaning.md)
-passed once with complete copy and the prior label, plus a no-contact control.
-This is not a general reliability claim; the earlier failure remains recorded.
+Two maintainer runs passed from installed packages: about **273 seconds** with
+the default 300-second limit, and **184 seconds** in an earlier extended-budget
+diagnostic. Neither changed the configured model or account. These are two
+observations, not a reliability rate or a time-to-success promise.
+[Exact prompts, artifacts and timing →](docs/09-reviews/2026-09-07-codex-first-use-release.md)
 
-**Across products, too:** separate Codex → Pi experiments retain both useful
-results and a content-quality failure:
-
-| Real Codex → Pi scenario | Observed result |
-|---|---|
-| API pagination changes | **Pass:** same receiver resumes, edits its client and passes the business check. |
-| Unrelated internal note | **Pass:** Codex reads peers/inbox but makes no send attempt; Pi has no follow-up. |
-| Approved brand/free-tier changes | **Quality failure:** delivery and continuation work, but copy drops the “free plan” qualifier. |
-
-Each ran once. These are maintainer experiments, not a reliability score or
-independent adoption. **Delivered does not mean done correctly.**
-[All results, including the failure →](docs/09-reviews/2026-09-05-workspace-awareness.md)
+**The boundary:** these are two new disposable Codex sessions. The runner
+triggers continuation after delivery; this is not native desktop background wake
+or attachment to old chats. Earlier [Codex connection failures](docs/09-reviews/2026-09-07-codex-first-use-candidate.md)
+and [cross-product business failures](docs/09-reviews/2026-09-05-workspace-awareness.md)
+remain recorded. Delivered still does not mean done correctly.
 
 ## Try it
 
-**Desktop-app user?** The current alpha below is a developer/CLI path. It does
-not attach existing Codex desktop or other GUI conversations.
-[Desktop adoption](docs/10-planning/desktop-entry-2026-09-07.md) remains experimental,
-not a released integration. A shared workspace means shared ThreadMesh storage,
-not a requirement that both agents edit the same code folder.
+### Already use Codex? Keep your account
 
-### Codex is the priority—not an extra Pi prerequisite
-
-The self-contained **Codex → Codex** copy example is an **unreleased candidate**.
-Its latest full run did not finish within 300 seconds after repeated model-connection
-timeouts, so we are not presenting it as ready. It targets two new sessions with
-your existing Codex configuration—not attachment to existing desktop conversations.
-[Partial initiative and the retained failure →](docs/09-reviews/2026-09-07-codex-first-use-candidate.md)
-[Candidate setup and exact limits →](docs/06-guides/first-workspace.md#codex-candidate-unreleased)
-
-### Already use Pi? Try the published alpha
-
-This optional path is available now; **Codex users are not expected to install Pi**
-to get around the unfinished Codex entry. Requires Node 22+ and your existing,
-authenticated Pi configuration with quota:
+Requires **Node 22+** and a working, authenticated Codex installation.
+Install the version-pinned **v0.1.0-alpha.3** package from GitHub Releases;
+it is not on the npm registry:
 
 ```sh
 npm install --foreground-scripts --loglevel=info \
-  https://github.com/fyaic/threadmesh/releases/download/v0.1.0-alpha.2/fyaic-threadmesh-0.1.0-alpha.2.tgz
-npx threadmesh try preferences --agent pi --live
+  https://github.com/fyaic/threadmesh/releases/download/v0.1.0-alpha.3/fyaic-threadmesh-0.1.0-alpha.3.tgz
+npx threadmesh try --live
 ```
 
-The packed release avoids preparing a Git checkout; installation progress is
-visible, though native dependencies can still take time to build. It is not
-published on the npm registry. The command prepares sample files and runs two
-new Pi sessions in one terminal, using your normal model quota. The source
-chooses whether to message; the same receiver must make its own correct edit
-while retaining an earlier decision. Silence, errors and wrong work are failures,
-not simulated successes. Existing private chats are not attached.
+The default is the **Codex → Codex copy example**. No Pi, second subscription,
+API key change, custom harness, test project or two-terminal setup is required.
+It uses your existing Codex configuration and normal quota. On macOS, ThreadMesh
+can choose a newer desktop-bundled runtime over an older PATH installation;
+you do not always need a separate CLI install.
 
-Try `try api --agent pi --live` for API pagination. Omit `--live` for instructions
-without a model call. Processes stop at the end; private result files remain.
-[Results, permissions and failure handling →](docs/06-guides/first-workspace.md#published-alpha-optional-pi-example)
+Installation progress and runtime stages are visible. Native builds, network
+conditions and model behavior affect timing. The live run has a **300-second
+overall limit**; unfinished or wrong work fails instead of becoming a preview.
+Omit `--live` to read instructions without a model call. Processes stop at the
+end; private results remain for inspection.
+[Permissions, results and failures →](docs/06-guides/first-workspace.md)
+
+### Want to connect your existing desktop tasks?
+
+There is an [experimental no-terminal workflow](docs/06-guides/codex-native-tasks.md)
+using a skill and Codex's already-exposed native task tools—no Node, MCP or hook
+setup for that route. **It has not passed native desktop adoption validation.**
+The skill cannot create missing host tools or enforce privacy boundaries and
+busy-user race protection. This remains separate from the verified new-session
+example above.
+
+### Already use Pi instead?
+
+Keep its existing configuration and select it explicitly:
+
+```sh
+npx threadmesh try preferences --agent pi --live
+npx threadmesh try api --agent pi --live
+```
+
+The API example currently requires Pi; Codex first use supports copy only.
+Neither path requires the other product. [Pi options and limits](docs/06-guides/first-workspace.md#optional-pi-example).
 
 ### Preview without a model
 
@@ -126,14 +129,15 @@ they are not evidence of model initiative. For your own projects, use the
 
 | Harness | How it connects | Automatic idle follow-up |
 |---|---|---|
-| **Codex** | Invocation-scoped MCP + task-time hooks on macOS/Linux | No; context refreshes during model work |
+| **Codex** | `try`: native App Server pair; project launcher: scoped MCP + hooks | `try` runner continues its own idle receiver after delivery; no general native idle wake |
 | **Pi** | Native extension; four tools and turn-start context | Opt-in `--wake-idle`; busy-turn guard, not universal typing-race proof |
 | **Kimi Code** | Project MCP configuration; other servers retained | No |
 | **DeepSeek Harness** | Official `dsh` MCP plugin via a Cordis patch | Not claimed |
 | **Other harnesses** | Standard MCP configuration or JavaScript SDK | Requires host integration |
 
-Versions checked: Codex `0.145.0`, Pi `0.84.2`, Kimi `0.39.1`, DeepSeek
-`0.1.2-rc.1`. DeepSeek passed **no-model** native tool/delivery checks; live
+Versions checked: Codex `0.153.1` for the new-pair example, `0.145.0` for the
+earlier project launcher; Pi `0.84.2`, Kimi `0.39.1`, DeepSeek `0.1.2-rc.1`.
+DeepSeek passed **no-model** native tool/delivery checks; live
 initiative is pending credentials. Kimi's latest attempt hit weekly quota.
 Earlier Codex→Kimi and Pi→Kimi passes used a more constrained adapter path.
 
