@@ -1,6 +1,6 @@
 # Codex-first installed-package acceptance
 
-Date: 2026-09-07. Release target: `0.1.0-alpha.3`.
+Date: 2026-09-07. Published prerelease: [v0.1.0-alpha.3](https://github.com/fyaic/threadmesh/releases/tag/v0.1.0-alpha.3).
 
 ## Outcome
 
@@ -94,6 +94,16 @@ loads its instructions without calling a model. The native skill is included.
 
 Final tarball SHA-256:
 `b8150ef2b9052b34cd0fb69841992f6a90cc9bc4446bceea172189424ad5ae89`.
+
+[PR #164](https://github.com/fyaic/threadmesh/pull/164) merged after both CI jobs
+passed. The public release asset was then installed by the documented GitHub URL
+into another empty consumer. npm recovered from one connection reset and finished
+in about 37 seconds, using an existing dependency cache; this is not a cold-install
+benchmark. Its runtime sources again match the live-pass consumer byte for byte.
+The public package's no-model `try` and simulated `preview preferences` both passed.
+A separately downloaded public asset and GitHub's asset digest match the SHA-256
+above. These publication checks did not spend additional model quota or establish
+an independent-user live pass.
 
 Regression: 455 tests passed, one optional native test skipped; 55 schema cases
 and seven transition cases passed. Runtime-selection fixtures cover newer/equal/

@@ -6,7 +6,8 @@
 second product. The [installed-package case](../09-reviews/2026-09-07-codex-first-use-release.md)
 now passes in 272.604 seconds with the default command and unchanged five-minute
 budget. It selects a newer installed desktop runtime when PATH is older, while
-preserving the user's model/login. `alpha.3` is the release target. Earlier
+preserving the user's model/login. [Alpha.3 is published](https://github.com/fyaic/threadmesh/releases/tag/v0.1.0-alpha.3);
+the public URL install, runtime parity and no-model commands passed. Earlier
 retry, timeout and outdated-runtime failures remain recorded. This is new-session
 CLI acceptance, not a desktop-adoption or general reliability claim.
 
@@ -17,12 +18,13 @@ Native send still lacks an atomic idle-only condition. No new community reply
 was posted; the [latest contributor priorities](community-followup-2026-09-07.md)
 will be answered after additional actual improvements as requested.
 
-First-use delivery: `0.1.0-alpha.2` adds a self-contained public
+Earlier first-use delivery: `0.1.0-alpha.2` added a self-contained public
 `threadmesh try [preferences|api] --live` command. A real Pi copy run passed in
 201.880 seconds; a real API run from a separately installed package passed in
 158.371 seconds. Both retained the receiver's native session and verified its
 own useful edit. See the [evidence and limits](../09-reviews/2026-09-07-packaged-first-use.md).
-The default uses existing Pi model configuration, not a forced second account.
+That older release defaulted to existing Pi model configuration; alpha.3 defaults
+to Codex and keeps Pi explicit, without requiring a second account.
 Setup progress, bounded failures and cancellation are explicit; the example
 requires no custom harness or application fixture. This is new-session CLI
 first use, not existing-desktop adoption or an independent user's live pass.
