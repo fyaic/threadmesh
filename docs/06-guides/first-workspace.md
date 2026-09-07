@@ -6,6 +6,10 @@ ThreadMesh connects **sessions you deliberately join to one local workspace**.
 It does not search private chats or connect every agent on your machine.
 Use Node 22+, an installed/authenticated harness, and trusted local processes.
 Model calls use that harness's normal account and quota.
+Start with **two independent Pi sessions using one configured harness account**.
+Each keeps its own conversation context; ThreadMesh exchanges selected advice,
+not a merged transcript. This CLI is a developer entry path, not attachment to
+existing GUI conversations.
 
 ## See the idea before spending quota
 
@@ -47,34 +51,18 @@ contract. Keep it ready as the backend evolves.” Leave this session open.
 In terminal A:
 
 ```sh
-npx threadmesh run codex --workspace .threadmesh --name backend \
-  --goal "Maintain the /orders backend API contract"
+npx threadmesh run pi --workspace .threadmesh --name backend \
+  --goal "Maintain the /orders backend API contract" \
+  -- --provider zai --model glm-5.3
 ```
 
-This example pins the tested Pi model (`zai/glm-5.3`), requiring your own
-configured ZAI account. The local default vision-model attempt stayed silent.
-You can choose other tool-capable models, but their behavior is not guaranteed.
-The source also needs an authenticated Codex installation. This ordinary-task
-Codex → Pi path has [one real passing API case](../09-reviews/2026-09-05-workspace-awareness.md#ordinary-codex--pi-api-case-pass),
-including the same native receiver continuing its earlier work. It does not
-attach an arbitrary old chat. For the earlier Pi → Pi setup, replace the source
-with `threadmesh run pi` and the same provider/model flags used above.
-
-The Codex launcher preapproves only the four local ThreadMesh tools for that
-invocation: joining the room opts into goal discovery, advisory mail, inbox
-decisions and explicit checkpoints. Shell/file permissions and other MCP
-servers are unchanged. This avoids a headless MCP approval being reported as a
-user cancellation. Preapproval does not force the model to use the tools.
-
-On macOS/Linux, the launcher also adds invocation-scoped Codex `SessionStart`
-and `UserPromptSubmit` hooks. They provide current published goals and a bounded,
-non-consuming inbox preview before model work. They do not select a recipient,
-send messages, read native transcripts or replace your existing instructions.
-Only these two exact hook definitions are trusted for this invocation; other
-user/project hooks retain their own trust. No global configuration is written.
-Native execution was checked against Codex `0.145.0`; a later version needs
-revalidation. Disabled hooks are not re-enabled. Windows currently gets MCP
-only. This adds task-time awareness, **not background Codex idle wake**.
+Both sessions pin the tested Pi model (`zai/glm-5.3`) and use your configured
+ZAI account; no second product subscription or Codex installation is needed.
+Both consume that account's normal quota. The local default vision-model
+attempt stayed silent. Other tool-capable models need their own validation.
+The [retained Pi → Pi case](../09-reviews/2026-09-05-first-use-validation.md#the-actual-initiative-case)
+shows model-selected messages and the idle receiver continuing its earlier
+work, not attachment to an arbitrary old chat.
 
 Give A a real upstream task, such as changing pagination from `next_page` to
 `next_cursor`. ThreadMesh exposes the published peer goals; A decides whether
@@ -102,20 +90,54 @@ model quota and does not attach to existing private chats.
 git clone https://github.com/fyaic/threadmesh.git
 cd threadmesh
 npm ci
-node scripts/validate-workspace-live.mjs codex api
+node scripts/validate-workspace-live.mjs pi api
 ```
 
-Install/authenticate Codex and Pi with `zai/glm-5.3` first. The script prints its
-artifact directory and `report.json`; the historical pass is not a guarantee
-your run will pass. Other scenarios are `codex preferences` and
-`codex api-no-contact`. The retained copy run **failed business correctness**,
-while the unrelated-change control passed. No need to run all three to learn
-the first-use path. [Results and exact prompts](../09-reviews/2026-09-05-workspace-awareness.md).
+Install Pi and configure your account for `zai/glm-5.3` first. Both sessions use
+that same account with independent contexts. The script prints its artifact
+directory and `report.json`; the historical pass is not a guarantee your run
+will pass. In that run, the client first volunteered its dependency, so the
+case demonstrates two-way initiative rather than blind discovery.
+[Results and exact prompts](../09-reviews/2026-09-05-first-use-validation.md#the-actual-initiative-case).
 
 Raw events may contain native identifiers and model output. Keep them private;
 review the output of `node scripts/project-first-use-evidence.mjs PATH` before
 sharing a reduced projection. When using the installed package in your own
 project, return to the terminal commands above; test scripts are repo-only.
+
+## Optional next step: Codex → Pi
+
+To try a different source harness after the Pi pair, install/authenticate Codex
+separately. End the Pi source in terminal A, mute its old workstream, then use
+a new name: `backend` remains bound to Pi and cannot be reused for Codex.
+
+```sh
+npx threadmesh mute backend --workspace .threadmesh
+npx threadmesh run codex --workspace .threadmesh --name backend-codex \
+  --goal "Maintain the /orders backend API contract"
+```
+
+For the repository fixture, use `node scripts/validate-workspace-live.mjs codex api`.
+This path has [one real passing API case](../09-reviews/2026-09-05-workspace-awareness.md#ordinary-codex--pi-api-case-pass).
+The separate `codex preferences` case **failed business correctness**;
+`codex api-no-contact` passed. These are optional follow-up checks, not
+requirements for the first Pi pair or a claim that every combination works.
+
+The Codex launcher preapproves only the four local ThreadMesh tools for that
+invocation: joining the room opts into goal discovery, advisory mail, inbox
+decisions and explicit checkpoints. Shell/file permissions and other MCP
+servers are unchanged. This avoids a headless MCP approval being reported as a
+user cancellation. Preapproval does not force the model to use the tools.
+
+On macOS/Linux, the launcher also adds invocation-scoped Codex `SessionStart`
+and `UserPromptSubmit` hooks. They provide current published goals and a bounded,
+non-consuming inbox preview before model work. They do not select a recipient,
+send messages, read native transcripts or replace your existing instructions.
+Only these two exact hook definitions are trusted for this invocation; other
+user/project hooks retain their own trust. No global configuration is written.
+Native execution was checked against Codex `0.145.0`; a later version needs
+revalidation. Disabled hooks are not re-enabled. Windows currently gets MCP
+only. This adds task-time awareness, **not background Codex idle wake**.
 
 ## DeepSeek Harness
 

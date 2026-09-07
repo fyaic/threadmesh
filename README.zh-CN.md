@@ -1,8 +1,8 @@
 <h1 align="center">ThreadMesh</h1>
 
-<p align="center"><strong>让 Agent 之间自己沟通。<br>你不用再当消息中转站。</strong></p>
+<p align="center"><strong>让你的不同对话主动协作。<br>你不用再当消息中转站。</strong></p>
 
-<p align="center">把独立的 Agent session 接到同一个本地工作空间。<br>让它们发现相关工作、分享变化、带着上下文继续。</p>
+<p align="center">可以是同一个 Agent 的不同 session，也可以来自不同产品。<br>让它们发现相关工作、分享变化、带着上下文继续。</p>
 
 <p align="center">
   <a href="https://github.com/fyaic/threadmesh/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/fyaic/threadmesh/actions/workflows/ci.yml/badge.svg"></a>
@@ -19,8 +19,9 @@
   <a href="README.md">English</a>
 </p>
 
-一个 Agent 改了接口，另一个还在按旧接口写客户端。
+一个对话改了接口，另一个还在按旧接口写客户端。
 你不该再负责发现变化、切换聊天、复制粘贴，然后重新解释一遍。
+不必换两种产品：同一个 Agent 的两个 session 就能协作。
 
 **你决定哪些 session 加入，模型判断什么时候值得联系。**
 ThreadMesh 提供目标发现、建议消息、持久收件箱和可携带的 checkpoint。
@@ -33,20 +34,25 @@ ThreadMesh 提供目标发现、建议消息、持久收件箱和可携带的 ch
 
 ## 一次不用你转述的真实协作
 
-在保留了验证记录的 **Codex → Pi** 案例中：
+在保留了验证记录的 **Pi → Pi** 案例中，两个 session 使用同一个 Agent 产品：
 
-1. **Pi 负责客户端。** 它检查当前接口，并自主说明依赖关系。
+1. **客户端 session 检查接口，** 并自主说明依赖关系。
    初始任务结束，session 保持打开。
-2. **你让 Codex 改分页。** Codex 更新接口契约，
-   自己决定把相关变化发给 Pi。
-3. **原来的 Pi session 自己继续了。** 它用自己的工具更新客户端，
+2. **你让后端 session 改分页。** 它更新接口契约，
+   自己决定把相关变化发给客户端 session。
+3. **原来的客户端 session 自己继续了。** 它用自己的工具更新客户端，
    独立检查确认能正确获取两页 cursor 分页数据。
 
-每个 session 只有一次普通任务输入，之后没有用户转述，也没有“给 Pi 发消息”的
-任务指令。接入时启用了通用协作提示；Codex 回复了 Pi 先前自主发出的依赖说明。
+每个 session 只有一次普通任务输入，之后没有用户转述，也没有指定接收对象的
+任务指令。接入时启用了通用协作提示；后端收到了客户端先前自主发出的依赖说明。
 这是模型选择的双向协作，不是对任意私聊的盲发现。
 
-[查看任务提示、时间线与最终客户端 →](docs/09-reviews/2026-09-05-workspace-awareness.md#ordinary-codex--pi-api-case-pass)
+[查看任务提示、时间线与最终客户端 →](docs/09-reviews/2026-09-05-first-use-validation.md#the-actual-initiative-case)
+
+[最新 Pi 双会话文案实测](docs/09-reviews/2026-09-07-same-agent-first-use.md)也发生了主动交接，
+并保留原按钮约定，但遗漏了“免费方案”条件，**业务验收失败**。
+
+**也能跨产品协作：** 另有 Codex → Pi 实测，既保留成功结果，也保留内容质量失败：
 
 | 真实 Codex → Pi 场景 | 观察结果 |
 |---|---|
@@ -61,8 +67,8 @@ ThreadMesh 提供目标发现、建议消息、持久收件箱和可携带的 ch
 ## 开始体验
 
 **只用桌面客户端？** 当前 alpha 的以下入口面向开发者和 CLI，不能直接接入
-Codex 桌面端或其他图形客户端中已有的对话。桌面端开箱即用是
-[下一优先级](docs/10-planning/desktop-entry-2026-09-07.md)，还不是已发布功能。
+Codex 桌面端或其他图形客户端中已有的对话。[桌面接入](docs/10-planning/desktop-entry-2026-09-07.md)
+仍处于实验阶段，还不是已发布功能。
 “共享工作空间”指共用 ThreadMesh 的本地存储，并不要求两个 Agent 编辑同一个代码目录。
 
 ### 不调用模型，先理解流程
@@ -80,7 +86,7 @@ npx threadmesh preview api
 ### 接入真实 session
 
 准备一个**已有接口和客户端的可丢弃项目**。下面的命令只连接 Agent，不生成应用文件。
-先安装并登录 **Codex 和 Pi**。实测 Pi 模型是 **`zai/glm-5.3`**，
+先安装并登录 **Pi**，下面两个 session 都用它。实测模型是 **`zai/glm-5.3`**，
 需要它自己的已配置账户和可用额度。
 
 在项目目录执行：
@@ -103,7 +109,8 @@ npx threadmesh run pi --name client --goal "Maintain the /orders client" --wake-
 **终端 A — 后端：**
 
 ```sh
-npx threadmesh run codex --name backend --goal "Maintain the /orders API"
+npx threadmesh run pi --name backend --goal "Maintain the /orders API" \
+  -- --provider zai --model glm-5.3
 ```
 
 给它上游变更：“把契约从 `next_page` 改成 cursor 分页，保持 endpoint 和 item schema 不变。”
@@ -168,7 +175,8 @@ npx threadmesh continue backend --agent kimi --name recovery
 
 ## 一起把它做得真正有用
 
-下一步：保留完整业务约束、验证真实历史 session 的连续性，让独立用户顺利上手。
+下一步：先让同一产品的多 session 协作容易上手，保留完整业务约束，
+验证真实历史 session 的连续性与独立用户体验。
 [当前聚焦事项](https://github.com/fyaic/threadmesh/issues/156) · [路线图](ROADMAP.md)
 
 欢迎报告**第一个失败步骤**、沉默的 Agent、无关消息，或一次真正有用的协作。

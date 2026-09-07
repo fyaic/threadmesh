@@ -2,6 +2,19 @@
 
 ## Current product update — 2026-09-07
 
+Priority correction: same-product sessions are the main use case; cross-product
+support is an extension. English/Chinese first use now starts with two Pi
+sessions, using the retained real evidence, rather than requiring Codex + Pi.
+The next desktop gate is two existing conversations **inside one client**.
+This changes positioning and acceptance order, not the unresolved desktop
+capability. See the [active plan](desktop-entry-2026-09-07.md).
+
+Fresh [Pi-pair copy run](../09-reviews/2026-09-07-same-agent-first-use.md): model-selected
+delivery, same native receiver continuation and its own write were observed;
+the page retained its signup label but dropped the free-plan qualifier.
+Business acceptance failed. This is same-product CLI evidence, not a desktop
+pass, a fresh no-contact pass, or a fix for the earlier copy failure.
+
 Native follow-up: [two disposable desktop conversations were tested](../09-reviews/2026-09-07-desktop-native-adoption.md).
 Both retained their prior decision, but neither exposed the diagnostic on the
 tested post-installation turn. Codex exact-hook trust remains incomplete;

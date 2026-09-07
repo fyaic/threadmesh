@@ -1,0 +1,304 @@
+{
+  "kind": "maintainer-live-run-projection",
+  "rawEventsSha256": "c69e8b66ab24099ddbf8b1faf7c28120c5504cb7c62b28382851c0b1df2a126a",
+  "initialReceiverCompletedMs": 238781,
+  "sourceTurnCompleted": true,
+  "successfulDeliveryMs": 279318,
+  "sameNativeReceiverSession": true,
+  "receiverContinuation": {
+    "startedMs": 280752,
+    "completedMs": 373470
+  },
+  "receiverArtifactWrites": [
+    {
+      "tool": "write",
+      "startedMs": 326188,
+      "completedMs": 326189
+    }
+  ],
+  "pass": false,
+  "failedStage": "business-artifact",
+  "elapsedMs": 373739,
+  "source": "pi",
+  "receiver": "Pi",
+  "crossHarness": false,
+  "error": "The input did not match the regular expression /free/i. Input:\n\n'Organize work with Member Portal\\nUp to 5 projects for your team.'\n",
+  "prompts": {
+    "website": "Review landing.json against ../brand/brief.json, our shared source of approved terminology and claims. Keep a short customer-facing headline and description, with the product name in the headline. Our agreed signupButton label is Create my workspace; keep that exact label in landing.json. Keep the page ready as our approved brief evolves.",
+    "brand": "Update brief.json with the final product decision: the product is now named Member Portal, the free tier is limited to 5 projects, and all customer-facing copy must use US spelling. Remove the old product name and unlimited-free claim from the approved brief. Keep the brief concise."
+  },
+  "scenario": "preferences",
+  "sourceWorkstream": "brand",
+  "receiverWorkstream": "website",
+  "artifact": "website/landing.json",
+  "models": [
+    "website: zai/glm-5.3",
+    "brand: zai/glm-5.3"
+  ],
+  "timeline": [
+    {
+      "session": "website",
+      "elapsedMs": 758,
+      "type": "agent_start"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 11601,
+      "type": "tool_execution_start",
+      "tool": "read"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 11603,
+      "type": "tool_execution_start",
+      "tool": "read"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 18432,
+      "type": "tool_execution_start",
+      "tool": "bash"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 24497,
+      "type": "tool_execution_start",
+      "tool": "bash"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 104296,
+      "type": "tool_execution_start",
+      "tool": "threadmesh_inbox"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 104297,
+      "type": "tool_execution_start",
+      "tool": "threadmesh_peers"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 116536,
+      "type": "tool_execution_start",
+      "tool": "write"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 126151,
+      "type": "tool_execution_start",
+      "tool": "write"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 133895,
+      "type": "tool_execution_start",
+      "tool": "edit"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 139809,
+      "type": "tool_execution_start",
+      "tool": "bash"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 143062,
+      "type": "tool_execution_start",
+      "tool": "bash"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 147800,
+      "type": "tool_execution_start",
+      "tool": "bash"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 156972,
+      "type": "tool_execution_start",
+      "tool": "bash"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 177575,
+      "type": "tool_execution_start",
+      "tool": "write"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 189859,
+      "type": "tool_execution_start",
+      "tool": "bash"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 197192,
+      "type": "tool_execution_start",
+      "tool": "edit"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 203384,
+      "type": "tool_execution_start",
+      "tool": "bash"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 214099,
+      "type": "tool_execution_start",
+      "tool": "threadmesh_send"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 225463,
+      "type": "tool_execution_start",
+      "tool": "threadmesh_checkpoint"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 238781,
+      "type": "agent_end"
+    },
+    {
+      "session": "brand",
+      "elapsedMs": 239939,
+      "type": "agent_start"
+    },
+    {
+      "session": "brand",
+      "elapsedMs": 250967,
+      "type": "tool_execution_start",
+      "tool": "bash"
+    },
+    {
+      "session": "brand",
+      "elapsedMs": 250969,
+      "type": "tool_execution_start",
+      "tool": "threadmesh_peers"
+    },
+    {
+      "session": "brand",
+      "elapsedMs": 264649,
+      "type": "tool_execution_start",
+      "tool": "write"
+    },
+    {
+      "session": "brand",
+      "elapsedMs": 269843,
+      "type": "tool_execution_start",
+      "tool": "bash"
+    },
+    {
+      "session": "brand",
+      "elapsedMs": 279310,
+      "type": "tool_execution_start",
+      "tool": "threadmesh_inbox"
+    },
+    {
+      "session": "brand",
+      "elapsedMs": 279311,
+      "type": "tool_execution_start",
+      "tool": "threadmesh_send"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 280752,
+      "type": "agent_start"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 285765,
+      "type": "tool_execution_start",
+      "tool": "threadmesh_inbox"
+    },
+    {
+      "session": "brand",
+      "elapsedMs": 289514,
+      "type": "tool_execution_start",
+      "tool": "threadmesh_checkpoint"
+    },
+    {
+      "session": "brand",
+      "elapsedMs": 296537,
+      "type": "agent_end"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 314888,
+      "type": "tool_execution_start",
+      "tool": "bash"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 326188,
+      "type": "tool_execution_start",
+      "tool": "write"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 334897,
+      "type": "tool_execution_start",
+      "tool": "edit"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 337417,
+      "type": "tool_execution_start",
+      "tool": "bash"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 344142,
+      "type": "tool_execution_start",
+      "tool": "threadmesh_inbox"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 350275,
+      "type": "tool_execution_start",
+      "tool": "threadmesh_peers"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 357517,
+      "type": "tool_execution_start",
+      "tool": "threadmesh_send"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 364898,
+      "type": "tool_execution_start",
+      "tool": "threadmesh_checkpoint"
+    },
+    {
+      "session": "website",
+      "elapsedMs": 373470,
+      "type": "agent_end"
+    }
+  ],
+  "sendOutcomes": [
+    {
+      "session": "website",
+      "elapsedMs": 214109,
+      "failed": false,
+      "queued": true
+    },
+    {
+      "session": "brand",
+      "elapsedMs": 279324,
+      "failed": false,
+      "queued": true
+    },
+    {
+      "session": "website",
+      "elapsedMs": 357518,
+      "failed": false,
+      "queued": true
+    }
+  ],
+  "receiverArtifact": {
+    "path": "website/landing.json",
+    "content": "{\n  \"headline\": \"Organize work with Member Portal\",\n  \"description\": \"Up to 5 projects for your team.\",\n  \"signupButton\": \"Create my workspace\"\n}\n"
+  }
+}
