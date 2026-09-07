@@ -21,6 +21,8 @@ the ordering below. CLI integration is not no-terminal first use.
 - [x] Add dual-host MCP/hook identity correlation diagnostics and passive Codex
   endpoint checks; keep native receipt and desktop ownership unverified.
 - [ ] Verify plugin loading, native identity and adoption of a prior conversation.
+  [Native attempt](docs/09-reviews/2026-09-07-desktop-native-adoption.md): installation
+  succeeded, but neither prior conversation exposed the diagnostic; keep open.
 - [ ] Connect one explicitly selected pair without shared-path or JSON setup.
 - [ ] Prove model-selected advice, same-receiver work and visible provenance.
 - [ ] Verify full business constraints, unrelated silence and user-input priority.

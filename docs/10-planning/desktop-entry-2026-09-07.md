@@ -26,6 +26,14 @@ cross-machine service today.
 
 ## Evidence checked
 
+Latest: the [authorized native attempt](../09-reviews/2026-09-07-desktop-native-adoption.md)
+installed the probe in both clients and tested two pre-installation conversations.
+Both retained the prior decision but reported the diagnostic unavailable.
+ZCode was now 3.11.2. Codex hook trust remained incomplete; the follow-up used a
+native task message rather than manual input. Both probes were then uninstalled.
+This supersedes the installation-pending status of the earlier inventory below,
+not the unresolved identity, delivery and first-use gates.
+
 Local read-only inventory: ChatGPT desktop `26.901.31953`, bundled Codex
 `0.153.1`, and ZCode `3.10.2`. ZCode's settings expose Plugins, MCP Servers and
 Hooks; its Plugins screen was inspected. No client was restarted, plugin
@@ -74,8 +82,9 @@ The [independent internal review](../09-reviews/2026-09-07-desktop-independent-r
 accepts checkpoint delivery as the first useful slice, not a replacement for
 the original automatic-wake goal. No crypto framework or global conversation
 scan is needed: the local alpha requires trusted host-owned transport, observed
-native correlation and explicit opt-in. Native installation/trust awaits the
-operator's specific confirmation; do not silently affect business conversations.
+native correlation and explicit opt-in. Native installation/trust awaited the
+operator's specific confirmation at that review. The subsequent authorized
+attempt is linked above; business conversations remain out of scope.
 
 1. **Native entry probe:** install in a test context, observe two native IDs and
    checkpoint injection. Test a pre-installation conversation separately.
@@ -106,10 +115,12 @@ A dependency-free [developer probe](../../experiments/desktop/threadmesh-desktop
 has two manifests and five fixture tests. It emits only event type and a session
 fingerprint, performs no file/network I/O and grants no sharing. It still needs
 Node: **not an installer, native live pass or desktop collaboration feature**.
-No marketplace or global configuration was changed. Native install/trust remains
-pending and must not disrupt active user tasks.
+The initial preparation changed no marketplace or global configuration. The
+subsequent native attempt created local catalogs, installed and then removed the
+probe; exact Codex hook trust remains pending. Do not disrupt active user tasks.
 [Preflight results](../09-reviews/2026-09-07-desktop-entry-preflight.md) separate
-the passing fixtures from the unexecuted native acceptance.
+the passing fixtures from native acceptance; the attempt above records the
+subsequent negative adoption result.
 
 This order supersedes [first use](first-use-2026-09-05.md) and
 [cross-harness acceptance](cross-harness-acceptance-2026-09-05.md). Existing

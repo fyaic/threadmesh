@@ -5,6 +5,11 @@ Scope: [desktop-first entry](../10-planning/desktop-entry-2026-09-07.md).
 
 ## Result: developer preparation passed; native desktop acceptance pending
 
+Subsequent evidence: [native installation and old-conversation attempt](2026-09-07-desktop-native-adoption.md).
+Installation was exercised after specific authorization, then cleaned up.
+Neither tested old conversation exposed the diagnostic; adoption remains open.
+The no-installation statements below describe this earlier preflight only.
+
 ### Delegated integration follow-up
 
 Three bounded lanes completed: [Codex](2026-09-07-codex-desktop-lane.md),

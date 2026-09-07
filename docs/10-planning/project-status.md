@@ -2,11 +2,17 @@
 
 ## Current product update — 2026-09-07
 
+Native follow-up: [two disposable desktop conversations were tested](../09-reviews/2026-09-07-desktop-native-adoption.md).
+Both retained their prior decision, but neither exposed the diagnostic on the
+tested post-installation turn. Codex exact-hook trust remains incomplete;
+ZCode catalog compatibility was corrected, not session adoption. Both temporary
+installations were removed. Keep desktop adoption and delivery gates open.
+
 The [desktop-first plan](desktop-entry-2026-09-07.md) now governs implementation.
 The CLI alpha is not plug-and-play for existing GUI conversations. Official
 Codex/ZCode extension seams were reviewed; ZCode settings inspected locally.
-A developer-only hook probe is prepared. Desktop installation, native session
-binding, directed delivery and user-input priority are **not yet verified**.
+A developer-only hook probe has now been installed and removed locally. Native
+session binding, directed delivery and user-input priority are **not yet verified**.
 No shipped desktop integration is claimed. Earlier live passes and the
 copy-quality failure below remain unchanged.
 
