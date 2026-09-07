@@ -83,13 +83,16 @@ not a screenshot. Simultaneous typing races and plugin hot-loading remain unveri
 
 ### Want to connect your existing desktop tasks?
 
-[Follow the native-task guide](docs/06-guides/codex-native-tasks.md) to give each
-chosen task the workflow and its peer's reference, authorize a narrow scope,
-then work normally. No terminal setup is needed for that route.
+[Copy the native-task setup prompt](docs/06-guides/codex-native-tasks.md#1-paste-this-into-each-chosen-task)
+into each chosen task: fill in the other task's name and the allowed topic.
+It uses a pinned public workflow, not a local path or manually copied internal ID.
+Setup sends no peer messages; wait for both confirmations, then work normally.
+No terminal setup is needed for that route.
 
 **Experimental:** the successful case used manager-supplied task references and
-a local skill path. Novice pair selection, remote-link retrieval and normal
-plugin onboarding remain open. The skill cannot add absent host tools or enforce
+a local skill path. The [public-entry check](docs/09-reviews/2026-09-07-native-public-entry.md)
+records the newer entry's tested boundary; novice onboarding and normal plugin
+installation remain open. The skill cannot add absent host tools or enforce
 privacy and race-free sending. If native Codex already meets your needs, use it
 directly; no measured advantage over native-only use is claimed.
 

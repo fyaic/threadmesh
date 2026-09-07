@@ -2,6 +2,13 @@
 
 ## Current product update — 2026-09-07
 
+**Current onboarding increment:** both languages now provide a copyable
+title-and-topic prompt with a pinned public workflow. Anonymous retrieval and
+source parity passed; readiness checking is separate from activation. The
+[entry record](../09-reviews/2026-09-07-native-public-entry.md) keeps title-only
+desktop matching and end-to-end activation open. The earlier test pair remains
+stopped; no peer probe or reactivation was dispatched for this checkpoint.
+
 **Value and evidence correction:** the native demo uses Codex's own communication
 and continuation; the skill adds guidance, not transport. [English responsibility
 map](../00-overview/native-capabilities-and-value.md) / [中文](../zh-CN/native-capabilities-and-value.md)

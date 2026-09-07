@@ -45,8 +45,10 @@ is new-session CLI acceptance, not the primary existing-desktop gate.
 Next native slice: the [skill-only workflow](docs/06-guides/codex-native-tasks.md)
 uses task tools already exposed by Codex, with an explicitly selected pair.
 It needs no Node/MCP/hook setup. [One controlled opted-in desktop pair passed](docs/09-reviews/2026-09-07-native-desktop-acceptance.md),
-including prior context, B's own edit and busy/stop checks. Novice task selection,
-remote skill retrieval and normal plugin activation remain open; sending is not race-free. External adapter/hook adoption is
+including prior context, B's own edit and busy/stop checks. A new
+[public-entry checkpoint](docs/09-reviews/2026-09-07-native-public-entry.md) verifies
+anonymous workflow retrieval; title-based activation, novice task selection and
+normal plugin activation remain open. Sending is not race-free. External adapter/hook adoption is
 a separate portability route, not a prerequisite for trying native guidance.
 
 The [desktop-first plan](docs/10-planning/desktop-entry-2026-09-07.md) supersedes

@@ -9,6 +9,18 @@ Use the host's existing task tools, not a new model, MCP server or background
 daemon. This skill is model guidance, not an enforced access-control layer.
 It does not provide cross-harness transport or transplant private chat history.
 
+## Check without enabling
+
+A request to check readiness or preview pairing is not consent to enable or
+resume collaboration. Retrieve the full workflow when the user provides its
+public URL; a search snippet or a local copy does not verify that public entry.
+If retrieval fails, report it without installing anything or inventing the rules.
+Use the selected reference, or one user-authorized name inventory, to resolve
+the peer. Inspect native tool availability and report: workflow read, peer
+uniquely identified, required tools available, and collaboration still off.
+Missing or ambiguous results are not ready. Do not send a probe to the peer,
+read its conversation, change artifacts or restore cancelled suggestions.
+
 ## Establish the selected pair
 
 Require the user's authorization covering the two specific tasks, their goals,
@@ -21,11 +33,16 @@ host IDs, preserving the host ID when present. Do not ask users to find IDs in
 files. If names alone are provided, explain that the host's task-list operation
 also exposes other task titles/summaries; obtain permission for one inventory.
 Never read unrelated task turns. Confirm ambiguous names instead of guessing.
+If the authorized inventory does not contain the target, ask for an app-provided
+reference or a more specific selection; do not repeatedly expand the inventory.
 
 Keep a concise visible agreement in this conversation: selected task references,
 their goals, allowed topics and send mode. Prefer native mentions in the UI;
 never publish private identifiers to a repository. An old or missing agreement
 after context loss means no automatic sends until the scope is confirmed again.
+The setup turn establishes only this task's agreement: no peer messages or
+business edits. Tell the user to complete setup in the other task too. Do not
+assume that naming a peer has installed the workflow or activated it there.
 
 Check the actual tool catalog for native read/status, send and wait operations
 (for example `read_thread`, `send_message_to_thread`, `wait_threads`, possibly

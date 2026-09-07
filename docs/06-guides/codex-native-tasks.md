@@ -15,15 +15,48 @@ has the instruction to keep the signup label **Create my workspace**. Keep
 unrelated business tasks outside the test and don't type into the receiver
 while the test is running. Normal Codex quota is required.
 
-In each chosen task, provide a native reference to the other task and ask:
+### 1. Paste this into each chosen task
 
-> Read and follow the ThreadMesh for Codex workflow at
-> [ThreadMesh workflow](../../plugins/threadmesh-codex/skills/threadmesh-codex/SKILL.md).
-> I authorize only this task and the task I selected to share relevant product
-> facts automatically. This task handles [its responsibility]; the other handles
-> [its responsibility]. Do not read other conversations. Explain the sending
-> limits before enabling it; I understand that an idle check cannot eliminate
-> concurrent user-input races. Don't change tool permissions or install anything.
+Replace **OTHER TASK TITLE** with the other task's exact sidebar title and
+**SHARED TOPIC** with the limited subject they may exchange, such as approved
+product names, spelling and free-plan limits. No internal ID, local path, clone
+or terminal command is needed in this prompt.
+
+```text
+Use the ThreadMesh workflow at this pinned public URL. Read the complete file:
+https://raw.githubusercontent.com/fyaic/threadmesh/592014782d10a8c4b88f46ea23b7cf588ff78355/plugins/threadmesh-codex/skills/threadmesh-codex/SKILL.md
+
+Pair only this task with "OTHER TASK TITLE". Each keeps its own current job and
+earlier decisions. Allowed shared topic: SHARED TOPIC.
+I allow one task-list lookup to resolve that title, understanding that the list
+also exposes other task titles/summaries. Do not read unrelated conversations.
+If the title is missing or ambiguous, ask me; do not guess or scan more history.
+
+I authorize automatic, relevant peer advice after setup. I understand an idle
+check cannot guarantee that sending never races with new user input.
+This setup turn must not send any peer messages or change any business files.
+Do not install software, change permissions or create tasks.
+Confirm the selected peer by title, allowed topic, available native tools and
+whether this task is enabled. If anything is unavailable, leave collaboration off.
+```
+
+If your app has already attached a native task reference, use that instead of
+the title and remove the task-list permission paragraph. Do not hunt for IDs
+in local files. A native reference picker is host-dependent; this guide does
+not assume a particular desktop `@` menu.
+
+Want to check first without enabling? Replace the two automatic-advice
+authorization sentences with:
+“Only check readiness. Keep collaboration off, including any previous stop;
+do not send messages, edit files or restore pending advice.” Readiness is not
+activation and does not verify the peer's quota.
+
+### 2. Wait for both setup confirmations, then work normally
+
+Each task must confirm its own setup. Naming the other task does not activate
+it. A missing workflow, missing tools or unresolved title is a stopped setup,
+not a successful connection. You can say **Stop ThreadMesh collaboration** in
+each task to cancel it; no separate control panel is required.
 
 This is an explicit workflow request in the existing conversation, **not proof
 that installing a plugin hot-loads old tasks**. The model must actually retrieve
@@ -33,7 +66,7 @@ thread or a private endpoint as a substitute. The skill is also packaged under
 `plugins/threadmesh-codex` for normal plugin distribution testing; no global
 plugin installation or marketplace registration is performed by this guide.
 
-Then work normally. In the brand task, for example:
+In the brand task, for example:
 
 > Rename the product to Member Portal and limit the free plan to five projects.
 > Use US spelling and keep the paid-plan price unchanged.
@@ -70,8 +103,11 @@ The [September 7 controlled run](../09-reviews/2026-09-07-native-desktop-accepta
 passed this source-read workflow with two disposable tasks that had completed
 prior context, original B's own correct edit, and busy/stop checks. The manager
 supplied task references and a local skill path through native task messages;
-remote-link retrieval, a novice's task selection and manual GUI onboarding remain
-unverified. Native source attribution was read from turn data, not a screenshot.
+it did not validate the title-based prompt above. The public source is pinned
+so readers can inspect the same workflow rather than a maintainer-local file.
+See the [public-entry check](../09-reviews/2026-09-07-native-public-entry.md) for
+the exact tested boundary. A novice's manual GUI onboarding remains unverified.
+Native source attribution was read from turn data, not a screenshot.
 
 Packaging validation and a behavioral tabletop review alone are not live proof.
 The earlier [hook/MCP adoption attempt](../09-reviews/2026-09-07-desktop-native-adoption.md)

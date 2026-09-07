@@ -92,6 +92,14 @@ scheduled follow-up is configured by this document.
 
 ### Proposed reply to #158 — not sent
 
+Public-entry checkpoint: the bilingual title-and-topic prompt now uses a pinned
+public workflow; anonymous retrieval and byte parity passed. The readiness-only
+mode preserves previous stops. Title matching in the dedicated desktop pair has
+not been dispatched pending scoped permission; do not claim the new entry has
+passed merely because HTTP retrieval did. See the
+[record](../09-reviews/2026-09-07-native-public-entry.md). The draft below remains
+unsent, with no scheduled posting.
+
 > Thank you, Andrei. We followed the three concrete priorities in your report.
 >
 > [v0.1.0-alpha.3](https://github.com/fyaic/threadmesh/releases/tag/v0.1.0-alpha.3)
