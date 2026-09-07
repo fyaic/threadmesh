@@ -32,6 +32,12 @@ Resolve targets from user-provided native task references or already observed
 host IDs, preserving the host ID when present. Do not ask users to find IDs in
 files. If names alone are provided, explain that the host's task-list operation
 also exposes other task titles/summaries; obtain permission for one inventory.
+For this Codex desktop host, call `list_threads` with `limit: 50` at most
+(or a smaller documented host limit), never 100. The observed tool rejects
+values above 50 even when its displayed schema omits that bound. Include both
+pinned and unpinned results when matching. This is a bounded inventory, not a
+complete search of every stored task; a missing title does not mean no such
+task exists. Do not spend a one-call authorization retrying rejected parameters.
 Never read unrelated task turns. Confirm ambiguous names instead of guessing.
 If the authorized inventory does not contain the target, ask for an app-provided
 reference or a more specific selection; do not repeatedly expand the inventory.

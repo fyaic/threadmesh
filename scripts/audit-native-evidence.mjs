@@ -9,7 +9,7 @@ export function auditNativeEvidence(a, b) {
   const reject = () => { throw new Error("Native evidence is incomplete or does not establish one attributed receiver-owned handoff."); };
   for (const d of [a, b]) {
     if (!d?.thread?.id || !d.thread.cwd || !d.thread.hostId || d.page?.hasMore !== false || !Array.isArray(d.turns) ||
-        d.turns.some(t => t.status !== "completed" || !Array.isArray(t.items) ||
+        d.turns.some(t => t.status !== "completed" || !Array.isArray(t.items) || t.items.length === 0 ||
           t.items.some(i => i.output?.truncated || i.changes?.some(c => c.diff?.truncated)))) reject();
   }
   if (a.thread.id === b.thread.id) reject();

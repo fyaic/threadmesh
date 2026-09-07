@@ -30,7 +30,7 @@ not count as live-product or independent external-verifier evidence.
 
 ## Live attempt audits
 
-- [Native desktop public entry: retrieval checked, live readiness evidence unavailable](2026-09-07-native-public-entry.md)
+- [Native desktop public entry: recovered readiness results and invalid-limit repair](2026-09-07-native-public-entry.md)
 - [Codex-first installed-package acceptance and retained failures](2026-09-07-codex-first-use-release.md)
 - [Codex native desktop: prior context, original receiver edit and busy/stop checks](2026-09-07-native-desktop-acceptance.md)
 - [Codex native-task skill: earlier packaging/tabletop checkpoint](2026-09-07-codex-native-skill.md)

@@ -9,8 +9,12 @@ source parity passed; readiness checking is separate from activation. The
 desktop matching and end-to-end activation open. Two user-authorized read-only
 checks were dispatched: both host-reported completed, but current-turn histories
 were empty while preceding turns were readable. Sample hashes were unchanged;
-readiness and absence of peer sends cannot be verified. No enable command or
-repeat dispatch was issued. Resolve result visibility before another live gate.
+readiness and absence of peer sends could not initially be verified. A subsequent
+official App Server read recovered five items per original turn: both models
+reported not ready because `list_threads(limit: 100)` exceeds the host's maximum
+of 50. The skill now caps it at 50 and the evidence auditor rejects empty turns.
+A valid manager inventory still omitted the selected pair, so name resolution
+remains open. No enable command or repeat model dispatch was issued.
 
 **Value and evidence correction:** the native demo uses Codex's own communication
 and continuation; the skill adds guidance, not transport. [English responsibility

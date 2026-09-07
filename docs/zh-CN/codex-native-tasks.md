@@ -19,11 +19,12 @@ clone 仓库或终端命令。
 
 ```text
 使用这个固定版本公开链接中的 ThreadMesh 工作流，请完整读取文件：
-https://raw.githubusercontent.com/fyaic/threadmesh/592014782d10a8c4b88f46ea23b7cf588ff78355/plugins/threadmesh-codex/skills/threadmesh-codex/SKILL.md
+https://raw.githubusercontent.com/fyaic/threadmesh/7ea4d407b719f0241f1eccbe2e5d95c15a72c72c/plugins/threadmesh-codex/skills/threadmesh-codex/SKILL.md
 
 只把当前任务与“对方任务名称”配对。双方保留自己正在做的工作和此前约定。
 允许交流的话题：允许交流的话题。
 我允许读取一次任务列表来匹配这个名称，理解列表也会显示其他任务的标题和摘要。
+list_threads 的 limit 不超过 50，宿主会拒绝 100。
 不要读取无关对话正文。找不到或遇到重名就问我，不猜测、不继续扫描历史。
 
 我授权设置完成后自动发送相关的同伴建议，理解空闲检查不能保证绝不与新输入竞争。
@@ -48,8 +49,10 @@ https://raw.githubusercontent.com/fyaic/threadmesh/592014782d10a8c4b88f46ea23b7c
 要取消，可以分别在两个任务里说“停止 ThreadMesh 协作”，不需要额外控制面板。
 
 如果应用显示“已完成”，却没有可读的设置确认，请保持协作关闭，不要当作配对成功，
-也不要反复重跑。这是我们在[只读就绪检查](../09-reviews/2026-09-07-native-public-entry.md#authorized-live-readiness-attempt)
-中实际遇到的问题，原因尚未确定；“已完成”的状态不能代替验收结果。
+也不要反复重跑。我们在[只读诊断](../09-reviews/2026-09-07-native-public-entry.md#read-only-diagnosis-and-correction)
+中通过另一条官方读取接口取回了结果，实际错误是列表参数超限。修正参数仍不等于
+完整搜索：后续有限列表里依然没有选中的两个任务。找不到名称时，需要应用提供的
+任务引用或进一步确认选择，不能猜测目标。
 
 这是在已有对话中明确请求使用流程，**不是证明安装插件能热加载旧任务**。
 模型应实际读取流程，核对已有原生工具，并确认选择范围。若读取失败或缺少工具，

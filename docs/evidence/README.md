@@ -6,7 +6,7 @@ adoption or proof of incremental value over the host's native capability.
 | Recent case | Public record | Retained private originals |
 |---|---|---|
 | Codex desktop prior-context pair | [Actual exchange, B's diff and reduced audit](codex-native-2026-09-07/README.md) | Complete A/B native exports, original tasks and files |
-| Codex public-entry readiness attempt, not accepted | [Empty current-turn evidence and unchanged artifacts](../09-reviews/2026-09-07-native-public-entry.md) | Native read responses retained separately; not full execution traces |
+| Codex public-entry readiness attempt, not accepted | [Recovered results, rejected inventory limits and unchanged artifacts](../09-reviews/2026-09-07-native-public-entry.md) | Empty desktop reads and recovered official App Server turn records retained separately |
 | Codex default installed-package pass, 272.604 s | [Acceptance](../09-reviews/2026-09-07-codex-first-use-release.md) | Events, report, transcripts and sample artifacts copied to a dated non-temporary archive |
 | Codex diagnostic pass, 184.050 s | [Same record, separate budget](../09-reviews/2026-09-07-codex-first-use-release.md) | Same archive categories; not counted as the default gate |
 | Codex old-runtime failure | [Failure retained alongside passes](../09-reviews/2026-09-07-codex-first-use-release.md#failures-that-changed-the-implementation) | Events and failed-run report copied to the dated archive |

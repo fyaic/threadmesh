@@ -24,12 +24,13 @@ or terminal command is needed in this prompt.
 
 ```text
 Use the ThreadMesh workflow at this pinned public URL. Read the complete file:
-https://raw.githubusercontent.com/fyaic/threadmesh/592014782d10a8c4b88f46ea23b7cf588ff78355/plugins/threadmesh-codex/skills/threadmesh-codex/SKILL.md
+https://raw.githubusercontent.com/fyaic/threadmesh/7ea4d407b719f0241f1eccbe2e5d95c15a72c72c/plugins/threadmesh-codex/skills/threadmesh-codex/SKILL.md
 
 Pair only this task with "OTHER TASK TITLE". Each keeps its own current job and
 earlier decisions. Allowed shared topic: SHARED TOPIC.
 I allow one task-list lookup to resolve that title, understanding that the list
 also exposes other task titles/summaries. Do not read unrelated conversations.
+Use list_threads with limit: 50 at most; the host rejects 100.
 If the title is missing or ambiguous, ask me; do not guess or scan more history.
 
 I authorize automatic, relevant peer advice after setup. I understand an idle
@@ -60,8 +61,11 @@ each task to cancel it; no separate control panel is required.
 
 If the app shows “completed” but supplies no readable setup confirmation, keep
 collaboration off. Do not assume pairing worked or repeatedly rerun it. This
-occurred in our [readiness attempt](../09-reviews/2026-09-07-native-public-entry.md#authorized-live-readiness-attempt);
-its cause is unresolved, and a completed indicator alone is not acceptance.
+occurred in our [readiness attempt](../09-reviews/2026-09-07-native-public-entry.md#read-only-diagnosis-and-correction):
+a separate official read recovered the results, which reported a rejected list
+limit. The corrected limit is not a complete task search: our subsequent bounded
+inventory still did not contain the selected pair. Missing titles require an
+app-provided reference or a clearer selection, not a guessed destination.
 
 This is an explicit workflow request in the existing conversation, **not proof
 that installing a plugin hot-loads old tasks**. The model must actually retrieve
