@@ -37,9 +37,11 @@ tabletop review passed. The user authorized two dedicated desktop tasks, and the
 passed after both completed prior context. A chose to send; original B applied
 its own correct edit, and busy/stop negatives passed. This resolves the pending
 controlled-pair test, not the plugin hot-loading or independent-onboarding gaps.
-Native send still lacks an atomic idle-only condition. No new community reply
-was posted; the [latest contributor priorities](community-followup-2026-09-07.md)
-will be answered after additional actual improvements as requested.
+Native send still lacks an atomic idle-only condition. The
+[consolidated community reply](https://github.com/fyaic/threadmesh/issues/158#issuecomment-5570614068)
+now reports the released Codex example and actual evidence, including the failed
+readiness acceptance. [Follow-up status](community-followup-2026-09-07.md) keeps
+the issue open without requesting exhausted-quota retries.
 
 Earlier first-use delivery: `0.1.0-alpha.2` added a self-contained public
 `threadmesh try [preferences|api] --live` command. A real Pi copy run passed in
