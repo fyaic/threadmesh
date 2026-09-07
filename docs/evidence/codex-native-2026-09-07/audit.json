@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "kind": "structural-audit-of-retained-native-exports",
+  "transport": "Codex native task tools, not ThreadMesh coordinator",
+  "sourceTurns": 6,
+  "receiverTurns": 5,
+  "outgoingPeerMessages": {
+    "A": 1,
+    "B": 0
+  },
+  "originalReceiverHasPriorCompletedContext": true,
+  "sourceAttributedReceiverTurn": true,
+  "completedReceiverOwnedFileChanges": 1,
+  "modelOrThinkingOverride": false,
+  "businessCorrectness": "requires separate artifact assertions and human review",
+  "busyAndStopBehavior": "requires separate turn-history review",
+  "authenticity": "not cryptographically attested; hashes commit only to supplied files",
+  "privacy": "no task IDs, paths, prompts, diffs or account data are emitted",
+  "sourceHashes": {
+    "A": "8290dc075b8d19d55a79d11c77a3e11a6d80964cb77ec4cf106c5deb33b6fc9a",
+    "B": "e36eba79b79365ad8bd1058d8d064afdf47de885c75db808b2759abb3482d94f"
+  }
+}

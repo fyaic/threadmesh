@@ -67,6 +67,13 @@ goal because the smaller new-session example is easier to validate.
 
 ## Deferred reply and execution discipline
 
+Subsequent native desktop evidence is now retained as [actual excerpts and diff](../evidence/codex-native-2026-09-07/README.md).
+That controlled prior-context pair passed; it is not this contributor's independent
+live result. The [native-value correction](../00-overview/native-capabilities-and-value.md)
+credits Codex's existing transport and discloses that the skill has no measured
+advantage over native-only use. These are material clarifications to include when
+a reply is authorized, not reasons to post another immediate acknowledgement.
+
 The user explicitly asked us to make several real improvements before replying
 again. Therefore do not post another acknowledgement, roadmap promise, test
 request or issue closure now. Continue implementation, review and verification

@@ -10,6 +10,8 @@ Start with the user guides; the protocol and historical benchmarks are optional.
 | I want to… | Start here |
 |---|---|
 | Understand the idea | [What ThreadMesh is](00-overview/product-guide.md) |
+| Know whether native Codex is enough | [Native capabilities and added value](00-overview/native-capabilities-and-value.md) |
+| Inspect the actual desktop exchange | [Retained messages, diff and audit](evidence/codex-native-2026-09-07/README.md) |
 | Connect Codex, Pi, Kimi or DeepSeek | [Your first workspace](06-guides/first-workspace.md) |
 | Explore existing Codex desktop tasks | [Experimental native-task workflow](06-guides/codex-native-tasks.md) |
 | See actual model behavior | [Everyday cases and evidence](06-guides/real-world-cases.md) |

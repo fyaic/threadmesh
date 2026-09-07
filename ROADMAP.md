@@ -13,6 +13,24 @@ policy layer; A2A, Cotal, ACP, or harness-native APIs may supply transport.
 
 ## Active priority — existing desktop clients (2026-09-07)
 
+**Native-value checkpoint:** Codex already supplies the tested native messaging
+and continuation. The skill is optional guidance, not new transport. Read the
+[responsibility map and when not to install](docs/00-overview/native-capabilities-and-value.md).
+The [retained desktop evidence](docs/evidence/codex-native-2026-09-07/README.md)
+shows feasibility, not improvement over native Codex alone.
+
+The next product slice must reduce a real user's setup/relay burden: simple
+explicit pair selection, retained decisions, and clear pending/applied outcomes.
+Then compare a small matched native-only workflow with the added guidance;
+record setup actions, manual relays, correct receiver edits and unwanted contact.
+Do not build a benchmark platform or add harnesses for this comparison. If no
+gain is observed, retain a lightweight optional recipe rather than a new platform.
+
+For community growth, first make one independent Codex user's own pair succeed;
+fix their first blocker, then prepare a consented real recording and a concise
+case study. Existing issue replies remain deferred as requested. No fabricated
+video, unsolicited promotion or guaranteed star count.
+
 Primary audience: **Codex users**, especially separate existing conversations
 inside Codex desktop. Pi is a supported option, not a prerequisite or replacement.
 A Codex-only first-use entry must reuse the user's own Codex login/model, never

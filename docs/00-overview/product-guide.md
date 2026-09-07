@@ -1,8 +1,12 @@
 # What ThreadMesh is
 
-ThreadMesh connects independent agent sessions to an explicitly shared local
-workspace. The aim is simple: **you should not have to relay every useful change
-between agents yourself**.
+ThreadMesh offers an explicit local workspace for supported integrations and an
+optional skill workflow over Codex's native task tools. The aim is simple:
+**you should not have to relay every useful change between agents yourself**.
+
+Codex already supplies native cross-task communication on the tested host. The
+skill did not invent it, and may be unnecessary if native use meets your needs.
+[Native capabilities versus ThreadMesh's current value](native-capabilities-and-value.md).
 
 A session is one agent conversation with its own task and context. A harness
 is the application running it, such as Codex or Pi. ThreadMesh connects opted-in
@@ -43,8 +47,9 @@ it is not a production service or an npm-published release.
 ## What the “intelligence” means
 
 Models choose relevance and message content under configured collaboration
-guidance. ThreadMesh supplies discovery, persistence, provenance and lifecycle
-integration. It does not hard-code every handoff or guarantee useful choices.
+guidance. In the workspace route, ThreadMesh supplies discovery, persistence and
+adapter integration. In the native skill route, Codex supplies the transport,
+source attribution and continuation. Neither route guarantees useful choices.
 
 A real unrelated-change control stayed quiet despite available peer/inbox tools.
 A second copy case delivered and resumed correctly but lost a free-plan qualifier.

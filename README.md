@@ -24,8 +24,15 @@ You shouldn't have to notice, switch chats, and explain the change again.
 You don't need two different products: two sessions of the same agent can collaborate.
 
 **You choose which sessions join. The models choose when a message is useful.**
-ThreadMesh supplies discovery, advisory messages, a persistent inbox and portable
-checkpoints—not a new model, shared chat history or a fixed sequence of handoffs.
+The workspace supplies discovery, advisory messages, a persistent inbox and portable
+checkpoints—not a new model or shared chat history. The optional Codex desktop
+skill instead uses **Codex's native task tools**; it does not add that transport.
+
+**Doesn't Codex already do this? Yes, on the tested host.** If its native task
+tools meet your needs, use them directly. The skill adds reusable collaboration
+guidance; the workspace adds coordination for supported integrations. We have
+not proved the skill outperforms native Codex alone.
+[What is native, what we add, and when not to install →](docs/00-overview/native-capabilities-and-value.md)
 
 <p align="center">
   <img src="docs/assets/threadmesh-session-initiative.jpg" width="100%" alt="Concept: Agent A sends advice from another task to Agent B while unrelated work stays quiet">
@@ -33,6 +40,10 @@ checkpoints—not a new model, shared chat history or a fixed sequence of handof
 </p>
 
 ## A real handoff without the copy-paste
+
+[Read the actual desktop exchange and B's own diff →](docs/evidence/codex-native-2026-09-07/README.md)
+Retained native records, with busy/stop checks; not a screenshot or reenactment.
+The separate installed-package example below is also retained.
 
 **Two Codex sessions. One remembers your earlier decision; the other changes the
 product facts. You don't relay the change.**
