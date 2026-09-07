@@ -28,7 +28,8 @@ gain is observed, retain a lightweight optional recipe rather than a new platfor
 
 For community growth, first make one independent Codex user's own pair succeed;
 fix their first blocker, then prepare a consented real recording and a concise
-case study. Existing issue replies remain deferred as requested. No fabricated
+case study. A [consolidated evidence-backed reply](https://github.com/fyaic/threadmesh/issues/158#issuecomment-5570614068)
+has been posted; further updates need new results or actionable feedback. No fabricated
 video, unsolicited promotion or guaranteed star count.
 
 Primary audience: **Codex users**, especially separate existing conversations

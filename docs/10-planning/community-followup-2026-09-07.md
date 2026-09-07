@@ -1,7 +1,7 @@
 # Community follow-up: improve first, reply with evidence later
 
-Date: 2026-09-07. Owner: maintainers. Status: internal delivery reference;
-no new external reply is authorized until several concrete improvements are ready.
+Date: 2026-09-07. Owner: maintainers. Status: consolidated reply posted;
+remaining desktop onboarding and independent live acceptance stay open.
 
 ## What the contributor actually requested
 
@@ -90,7 +90,15 @@ increment, recheck the comment and send one consolidated update; do not wait for
 every adapter, perfect reliability or a marketing video. No automatic posting or
 scheduled follow-up is configured by this document.
 
-### Proposed reply to #158 — not sent
+### Consolidated reply to #158 — posted
+
+Posted once on September 7 at 12:26:36 UTC, after the evidence update merged in
+[#170](https://github.com/fyaic/threadmesh/pull/170) with both CI checks passing.
+The [published reply](https://github.com/fyaic/threadmesh/issues/158#issuecomment-5570614068)
+was read back and verified. It covers the released Codex-only example, visible
+installation/failure guidance, original receiver-owned checked edit, native Codex
+attribution and the unsuccessful readiness acceptance below. It does not ask for
+an exhausted-quota retry or private transcripts. #158 and #79 remain open.
 
 Public-entry checkpoint: the bilingual title-and-topic prompt now uses a pinned
 public workflow; anonymous retrieval and byte parity passed. The readiness-only
@@ -100,55 +108,30 @@ but the current-turn native reads returned no items; preceding turns remained
 readable, and sample artifact hashes were unchanged. This cannot prove title
 matching or zero peer sends. See the
 [record](../09-reviews/2026-09-07-native-public-entry.md). The bounded attempt is
-complete, not passed. After this record merges, post the consolidated released
-Codex example update with this explicit desktop limitation; do not delay the
-contributor's already-delivered priorities behind repeated native retries.
+complete, not passed. The reply explicitly retained that limitation rather than
+delaying the contributor's already-delivered priorities behind native retries.
+The earlier draft is superseded by the linked posted text and remains in Git history.
 
-> Thank you, Andrei. We followed the three concrete priorities in your report.
->
-> [v0.1.0-alpha.3](https://github.com/fyaic/threadmesh/releases/tag/v0.1.0-alpha.3)
-> now defaults to a self-contained Codex → Codex example using the existing login
-> and model. `threadmesh try --live` prepares the sample and runs both sessions;
-> no custom harness, application fixture, Pi installation or second subscription
-> is required. The [install/run guide](https://github.com/fyaic/threadmesh/blob/main/docs/06-guides/first-workspace.md)
-> shows installation progress and explains quota, runtime and timeout failures.
-> We do not bypass exhausted quota or silently switch products.
->
-> The installed-package default run completed in 272.604 seconds within its
-> 300-second cap. The original receiver made its own checked edit, preserving
-> the earlier button decision and paid price. We retained the failed attempts
-> as well as the [passing evidence](https://github.com/fyaic/threadmesh/blob/main/docs/09-reviews/2026-09-07-codex-first-use-release.md).
->
-> Separately, a controlled desktop pair with completed prior context produced
-> native advice and the original receiver's own edit; the [actual exchange and diff](https://github.com/fyaic/threadmesh/blob/main/docs/evidence/codex-native-2026-09-07/README.md)
-> are public. Codex supplies that route's native transport. Its synthetic busy
-> and stop checks are not proof of race-free delivery or general desktop onboarding.
->
-> These are maintainer results, not an independent live pass or a reliability
-> rate. We are keeping this issue open for the remaining onboarding gaps. No need
-> to retry with exhausted quota or share private transcripts. Your report changed
-> the first-use path and what we require before calling a handoff useful.
-
-Before posting, add only the actual outcome of the next entry-path increment,
-recheck release links and claims, and remove anything superseded by a new comment.
-Do not copy an unverified planned result into this draft.
+### Next work, not another status-only reply
 
 Subsequent native desktop evidence is now retained as [actual excerpts and diff](../evidence/codex-native-2026-09-07/README.md).
 That controlled prior-context pair passed; it is not this contributor's independent
 live result. The [native-value correction](../00-overview/native-capabilities-and-value.md)
 credits Codex's existing transport and discloses that the skill has no measured
-advantage over native-only use. These are material clarifications to include when
-a reply is authorized, not reasons to post another immediate acknowledgement.
+advantage over native-only use. Those clarifications are now in the reply; do not
+post them again as if they were a fresh release.
 
 The user explicitly asked us to make several real improvements before replying
 again. Do not post another acknowledgement-only message, roadmap promise, test
 request or issue closure. Continue implementation, review and verification
 inside the authorized task rather than stopping after each small step.
 
-The next reply should contain the actual released install/run entry, a short
-account of the improvements against the three checks, a retained useful result
-and precise remaining limits. If Codex is still blocked, do not describe the
-Pi pass as resolving that gap or request repeated quota-consuming retries.
+Next resolve why the supported native read path exposes no current-turn result
+in the readiness attempt, without private storage or unauthorized UI workarounds.
+Then validate the public-source name-based entry with a readable confirmation
+before claiming activation. Keep the original goals: a user's existing Codex
+pair, retained decisions, useful receiver-owned work and less manual relaying.
+Do not add harnesses or a benchmark platform to avoid this first-use blocker.
 Do not promise a release date, desktop support, reliability rate or star count
 without corresponding evidence. Leave #158 and the broader #79 gates open until
 their remaining outcomes are met; this note itself is not delivery.
