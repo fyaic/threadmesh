@@ -80,7 +80,7 @@ from the 273-second packaged example and removes the global Node badge: Node is
 a package requirement, not a requirement of the native skill workflow. Native
 attribution and the absence of measured incremental benefit remain explicit.
 
-**Decision: draft only; do not post this turn.** The three requested maintainer
+**Previous checkpoint decision: draft only.** The three requested maintainer
 example/progress/receiver-evidence improvements have shipped. Another README
 rearrangement is not a new functional release. The next useful increment is the
 remaining Codex desktop pairing/activation friction: test a publicly retrievable
@@ -95,10 +95,14 @@ scheduled follow-up is configured by this document.
 Public-entry checkpoint: the bilingual title-and-topic prompt now uses a pinned
 public workflow; anonymous retrieval and byte parity passed. The readiness-only
 mode preserves previous stops. Title matching in the dedicated desktop pair has
-not been dispatched pending scoped permission; do not claim the new entry has
-passed merely because HTTP retrieval did. See the
-[record](../09-reviews/2026-09-07-native-public-entry.md). The draft below remains
-unsent, with no scheduled posting.
+now been attempted with scoped user permission. Both host-reported completed,
+but the current-turn native reads returned no items; preceding turns remained
+readable, and sample artifact hashes were unchanged. This cannot prove title
+matching or zero peer sends. See the
+[record](../09-reviews/2026-09-07-native-public-entry.md). The bounded attempt is
+complete, not passed. After this record merges, post the consolidated released
+Codex example update with this explicit desktop limitation; do not delay the
+contributor's already-delivered priorities behind repeated native retries.
 
 > Thank you, Andrei. We followed the three concrete priorities in your report.
 >
@@ -137,8 +141,8 @@ advantage over native-only use. These are material clarifications to include whe
 a reply is authorized, not reasons to post another immediate acknowledgement.
 
 The user explicitly asked us to make several real improvements before replying
-again. Therefore do not post another acknowledgement, roadmap promise, test
-request or issue closure now. Continue implementation, review and verification
+again. Do not post another acknowledgement-only message, roadmap promise, test
+request or issue closure. Continue implementation, review and verification
 inside the authorized task rather than stopping after each small step.
 
 The next reply should contain the actual released install/run entry, a short
