@@ -1,16 +1,18 @@
 # Desktop hook probe — developers only
 
 **Not a ThreadMesh desktop integration.** Sends no peer messages, joins no workspace,
-and cannot wake another session. Not installed in any client or included in the
-package file list. Still requires Node on the host PATH; this does not satisfy
+and cannot wake another session. Not included in the package file list. A local
+native attempt installed and then removed it in both clients; existing-session
+adoption did not pass. Still requires Node on the host PATH; this does not satisfy
 no-terminal onboarding. Initial target: local macOS desktop clients.
 
 The two manifests target Codex desktop and ZCode. Hooks use the documented
 `CLAUDE_PLUGIN_ROOT` compatibility variable. For MCP, Codex uses plugin-relative
 `cwd` and arguments; ZCode's manifest overrides the server with its supported
 plugin-root substitution. Do not assume MCP and hook variable handling match.
-Native loading is **unverified**.
+Native diagnostic loading in the tested old conversations is **unverified**.
 Manifest validation and fixture execution are not native-host evidence.
+See the [native attempt and cleanup](../../../docs/09-reviews/2026-09-07-desktop-native-adoption.md).
 
 ## Measurement and privacy
 
@@ -48,7 +50,7 @@ From the repository root:
 node --test test/desktop-probe.test.mjs test/desktop-identity-probe.test.mjs
 ```
 
-## Native procedure — not yet executed
+## Native procedure — partial attempt recorded, acceptance still open
 
 1. Review the hooks and script. Install via the host's official local plugin
    mechanism. No marketplace entry or global settings change is shipped here.
