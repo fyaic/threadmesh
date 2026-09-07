@@ -11,20 +11,91 @@ Each keeps its own conversation context; ThreadMesh exchanges selected advice,
 not a merged transcript. This CLI is a developer entry path, not attachment to
 existing GUI conversations.
 
-## See the idea before spending quota
+## Run a self-contained real example
+
+Keep your existing Pi authentication and model configuration. You do not need
+a second agent product or account, your own API/client project, a repository
+checkout, workspace paths or two terminals.
 
 ```sh
-npm install github:fyaic/threadmesh
-npx threadmesh preview api
+npm install --foreground-scripts --loglevel=info \
+  https://github.com/fyaic/threadmesh/releases/download/v0.1.0-alpha.2/fyaic-threadmesh-0.1.0-alpha.2.tgz
+npx threadmesh try preferences --live
+```
+
+This installs the fixed **v0.1.0-alpha.2** packed artifact from GitHub Releases,
+not the public npm registry. It avoids npm preparing a Git checkout; the flags
+show install progress and lifecycle-script output. Native dependencies may
+still need compilation, so installation time varies by environment.
+The older `v0.1.0-alpha.1` release does not include `try`. Omit `--live` to read
+the usage and quota notice **without starting a model**. The default case is
+`preferences`, so `npx threadmesh try --live` runs the same example.
+
+With `--live`, ThreadMesh prepares disposable sample files and starts **two
+new independent Pi sessions** using Pi's configured model:
+
+1. The receiver works on signup copy with an earlier button-label constraint.
+   Its first task finishes, and the session remains open.
+2. The source receives an ordinary task to update the brand and free-plan
+   allowance. Collaboration tools and generic guidance are available; the
+   prompt does not prescribe a recipient or require a message.
+3. If the model chooses to contact its peer, the same receiver session can
+   continue and edit its copy. The check verifies the receiver's own edit,
+   the new business meaning and the earlier constraint.
+
+The command reports pass or failure. **Silence, provider errors and incorrect
+business results are not success**, and no simulated fallback replaces a
+failed live run. A message receipt alone is not enough to pass. This demonstrates
+continuity within a new pair, **not attachment to your existing GUI chats**.
+
+For an API-pagination example:
+
+```sh
+npx threadmesh try api --live
+```
+
+To override Pi's configured provider/model:
+
+```sh
+npx threadmesh try preferences --live --provider zai --model glm-5.3
+```
+
+The override is optional, not a requirement to buy another subscription. It
+requires your own configured ZAI account if used. Historical Pi runs used
+`zai/glm-5.3`; other models may behave differently or stay silent. Every live
+run consumes normal provider quota. A detected executable/version is not proof
+of authentication, available quota or a successful collaboration.
+
+### Inspect the result and stop
+
+The command prints a temporary result directory with the report, sample files
+and raw model records. Keep these private: model output and native identifiers
+may be present. The directory remains available after the run, while its
+sample agent processes stop. Ctrl-C stops the sample processes too.
+
+Pi retains its normal local tool permissions. **A temporary sample directory
+is not an OS sandbox**; only run this with a harness and model you trust.
+The command does not attach, modify or read existing private chat sessions.
+
+If the run hits an authentication or quota error, fix that in Pi's normal
+configuration or select an already configured provider with available quota.
+ThreadMesh does not supply credentials or bypass limits. Do not keep retrying
+against exhausted quota. For a silent model or wrong result, keep the failure
+report and share only a reviewed, redacted summary of the first failed step.
+
+## See the idea without spending quota
+
+```sh
 npx threadmesh preview preferences
+npx threadmesh preview api
 npx threadmesh preview quota
 ```
 
 These are clearly labelled **simulated-agent previews** through the actual
-coordinator. They demonstrate the experience, not model intelligence. The
-package is distributed through GitHub, not the public npm registry.
+coordinator. They demonstrate the experience, not model intelligence, and
+are separate commands from the real `try --live` example.
 
-## Connect two real sessions
+## Advanced: connect your own project sessions
 
 Create a room once. Run these commands from your project folder:
 
@@ -80,7 +151,8 @@ native tab. Do not reuse it for unrelated work.
 
 ## Reproduce the retained case
 
-For a self-contained test project, use a repository checkout. This script
+Maintainers reproducing a historical validation can use a repository checkout.
+First-time users should use `threadmesh try api --live` above instead. This script
 creates the API/client files and room in a temporary directory, gives each
 real session one ordinary kickoff, and checks native sends, same-session
 continuation, receiver edits and the final business result. It spends normal
@@ -102,8 +174,8 @@ case demonstrates two-way initiative rather than blind discovery.
 
 Raw events may contain native identifiers and model output. Keep them private;
 review the output of `node scripts/project-first-use-evidence.mjs PATH` before
-sharing a reduced projection. When using the installed package in your own
-project, return to the terminal commands above; test scripts are repo-only.
+sharing a reduced projection. Test scripts are repo-only; the installed
+package's `try` command does not require them.
 
 ## Optional next step: Codex → Pi
 

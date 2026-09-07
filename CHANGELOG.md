@@ -2,6 +2,33 @@
 
 All notable changes will be documented here. The project follows Keep a Changelog conventions once versioned releases begin.
 
+## [0.1.0-alpha.2] - 2026-09-07
+
+### Added
+
+- Installed-package `threadmesh try [preferences|api] --live` entry: prepares a
+  disposable example and starts two independent Pi sessions using the existing
+  Pi model configuration, with optional provider/model overrides.
+- Live progress, provider-failure guidance, checks for same-session continuation
+  and receiver-owned business changes, and retained private result files.
+- A version-pinned GitHub release tarball install path and bilingual first-use
+  guides; manual project setup remains available as an advanced workflow.
+
+### Changed
+
+- Peer handoff guidance preserves structured business meaning and earlier task
+  constraints; the copy-case check rejects incomplete free-plan meaning.
+
+### Limitations
+
+- `try --live` requires installed, authenticated Pi and normal provider quota.
+  It creates new sessions, not connections to existing desktop chats. Pi keeps
+  normal OS permissions; the sample directory is not a security sandbox.
+- Models may stay silent or produce incorrect work. A delivery receipt is not
+  business success, and failed live runs do not fall back to simulation.
+- The command without `--live` does not call a model. Simulated previews remain
+  separate; no model-wide reliability or independent-adoption claim is implied.
+
 ## [Unreleased]
 
 ### Added
