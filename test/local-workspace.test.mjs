@@ -77,3 +77,30 @@ test("workspace refuses missing consent, unsafe paths and duplicate live session
   workspace.connect("backend")();
   assert.throws(() => workspace.checkpoint("backend", { goal: "x", next: "y", secret: "z" }), /fields_invalid/);
 });
+
+test("same-harness sessions retain separate identities, mail, checkpoints and mute state", async t => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "threadmesh-same-harness-"));
+  const room = new LocalWorkspace(directory, { create: true });
+  const disconnects = [];
+  t.after(() => { disconnects.forEach(disconnect => disconnect()); room.close(); fs.rmSync(directory, { recursive: true, force: true }); });
+  for (const name of ["product", "website", "notes"]) room.join(name, "pi", `Maintain ${name}`);
+  disconnects.push(...["product", "website", "notes"].map(name => room.connect(name)));
+  assert.equal(new Set(["product", "website", "notes"].map(name => room.member(name).ref.taskId)).size, 3);
+  const source = room.tools("product");
+  assert.deepEqual((await source.call("threadmesh_peers")).peers.map(peer => peer.name).sort(), ["notes", "website"]);
+  const sent = await source.call("threadmesh_send", {
+    to: "website", content: "The free plan now allows five projects.", reason: "Keep pricing copy aligned.",
+  });
+  assert.equal(sent.queued, true);
+  assert.equal(room.inbox("website").length, 1);
+  assert.equal(room.inbox("product").length, 0);
+  assert.equal(room.inbox("notes").length, 0);
+  room.checkpoint("website", { goal: "Maintain website", constraints: "Keep signup label", next: "Review copy" });
+  assert.equal(room.checkpoint("product"), null);
+  assert.match(renderCheckpoint(room.checkpoint("website")), /Keep signup label/);
+  await source.call("threadmesh_peers");
+  room.mute("website", true);
+  await assert.rejects(source.call("threadmesh_send", { to: "website", content: "Update", reason: "Copy" }), /muted/);
+  assert.equal(room.member("product").muted, 0);
+  assert.equal(room.member("notes").muted, 0);
+});

@@ -3,7 +3,7 @@
 ThreadMesh uses milestone exit criteria rather than date promises. Priorities
 may change as the safety and adapter contracts become clearer. See the
 [current status](docs/10-planning/project-status.md) and
-[active acceptance](docs/10-planning/cross-harness-acceptance-2026-09-05.md) for the
+[active acceptance](docs/10-planning/desktop-entry-2026-09-07.md) for the
 evidence-backed snapshot, current product decision, and ordered workstreams.
 
 The roadmap now optimizes for one outcome: **parallel agent sessions hand off
@@ -16,6 +16,14 @@ policy layer; A2A, Cotal, ACP, or harness-native APIs may supply transport.
 The [desktop-first plan](docs/10-planning/desktop-entry-2026-09-07.md) supersedes
 the ordering below. CLI integration is not no-terminal first use.
 
+Priority: **same-product sessions first**, multiple related workstreams second,
+cross-product interoperability and quota recovery third. The first useful
+experience must not require a second agent product or account. The Pi-pair
+CLI evidence is a developer baseline, not a pass for existing desktop chats.
+The [fresh same-product copy run](docs/09-reviews/2026-09-07-same-agent-first-use.md)
+confirmed model-selected handoff and same-session continuation, but failed
+the free-plan meaning check. Keep content correctness open alongside entry.
+
 - [x] Review official Codex/ZCode entry points; inspect local ZCode settings.
 - [x] Prepare a developer hook probe; no messaging or native pass claimed.
 - [x] Add dual-host MCP/hook identity correlation diagnostics and passive Codex
@@ -23,7 +31,8 @@ the ordering below. CLI integration is not no-terminal first use.
 - [ ] Verify plugin loading, native identity and adoption of a prior conversation.
   [Native attempt](docs/09-reviews/2026-09-07-desktop-native-adoption.md): installation
   succeeded, but neither prior conversation exposed the diagnostic; keep open.
-- [ ] Connect one explicitly selected pair without shared-path or JSON setup.
+- [ ] Connect two existing conversations in one client, explicitly selected,
+  without shared-path or JSON setup; one conversation per product is not this test.
 - [ ] Prove model-selected advice, same-receiver work and visible provenance.
 - [ ] Verify full business constraints, unrelated silence and user-input priority.
 - [ ] Package without developer prerequisites; observe an independent GUI user.

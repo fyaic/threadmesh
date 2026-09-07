@@ -1,8 +1,8 @@
 <h1 align="center">ThreadMesh</h1>
 
-<p align="center"><strong>Your agents should talk to each other.<br>You shouldn't have to relay every message.</strong></p>
+<p align="center"><strong>Your agent conversations should talk to each other.<br>You shouldn't have to relay every message.</strong></p>
 
-<p align="center">Connect independent agent sessions in a shared local workspace.<br>Let them discover relevant work, share changes, and continue with context.</p>
+<p align="center">Connect separate sessions of the same agent—or different agents.<br>Let them discover relevant work, share changes, and continue with context.</p>
 
 <p align="center">
   <a href="https://github.com/fyaic/threadmesh/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/fyaic/threadmesh/actions/workflows/ci.yml/badge.svg"></a>
@@ -19,8 +19,9 @@
   <a href="README.zh-CN.md">简体中文</a>
 </p>
 
-One agent changes the API. Another is still building against the old contract.
+One conversation changes the API. Another is still building against the old contract.
 You shouldn't have to notice, switch chats, and explain the change again.
+You don't need two different products: two sessions of the same agent can collaborate.
 
 **You choose which sessions join. The models choose when a message is useful.**
 ThreadMesh supplies discovery, advisory messages, a persistent inbox and portable
@@ -33,21 +34,28 @@ checkpoints—not a new model, shared chat history or a fixed sequence of handof
 
 ## A real handoff without the copy-paste
 
-In a retained **Codex → Pi** run:
+In a retained **Pi → Pi** run—two sessions, one agent product:
 
-1. **Pi owns the client.** It checks the API and volunteers its dependency.
+1. **The client session checks the API** and volunteers its dependency.
    Its initial task finishes; the session stays open.
-2. **You ask Codex to change pagination.** Codex updates the contract and
-   chooses to send the relevant change to Pi.
-3. **That same Pi session continues on its own.** Its own tool updates the
+2. **You ask the backend session to change pagination.** It updates the contract
+   and chooses to send the relevant change to the client session.
+3. **That same client session continues on its own.** Its own tool updates the
    client; an independent check confirms both cursor pages are fetched correctly.
 
-One ordinary kickoff per session. No later user relay or “message Pi” instruction.
-Generic collaboration guidance was enabled; Codex replied to Pi's earlier
-dependency message. This is reciprocal model-selected cooperation, not blind
+One ordinary kickoff per session. No later user relay or prescribed recipient.
+Generic collaboration guidance was enabled; the backend received the client's
+earlier dependency message. This is reciprocal model-selected cooperation, not blind
 discovery of arbitrary chats.
 
-[Read the prompts, timeline and final client →](docs/09-reviews/2026-09-05-workspace-awareness.md#ordinary-codex--pi-api-case-pass)
+[Read the prompts, timeline and final client →](docs/09-reviews/2026-09-05-first-use-validation.md#the-actual-initiative-case)
+
+A [fresh Pi-pair product-copy run](docs/09-reviews/2026-09-07-same-agent-first-use.md)
+also handed off automatically and retained the earlier signup label, but dropped
+the free-plan qualifier. **That business check failed.**
+
+**Across products, too:** separate Codex → Pi experiments retain both useful
+results and a content-quality failure:
 
 | Real Codex → Pi scenario | Observed result |
 |---|---|
@@ -62,8 +70,8 @@ independent adoption. **Delivered does not mean done correctly.**
 ## Try it
 
 **Desktop-app user?** The current alpha below is a developer/CLI path. It does
-not attach existing Codex desktop or other GUI conversations. Desktop-first
-onboarding is [the next priority](docs/10-planning/desktop-entry-2026-09-07.md),
+not attach existing Codex desktop or other GUI conversations.
+[Desktop adoption](docs/10-planning/desktop-entry-2026-09-07.md) remains experimental,
 not a released integration. A shared workspace means shared ThreadMesh storage,
 not a requirement that both agents edit the same code folder.
 
@@ -84,8 +92,8 @@ they are not evidence of model initiative.
 
 Use a disposable project **with an existing API and client**; these commands
 connect agents, not generate application files. First install and authenticate
-**Codex and Pi**. The tested Pi model is **`zai/glm-5.3`**, requiring its own
-configured account and quota.
+**Pi**; both sessions below use the same product. The tested model is
+**`zai/glm-5.3`**, requiring its own configured account and quota.
 
 From the project folder:
 
@@ -107,7 +115,8 @@ Keep it ready as the backend evolves.” Let it finish and leave it open.
 **Terminal A — backend:**
 
 ```sh
-npx threadmesh run codex --name backend --goal "Maintain the /orders API"
+npx threadmesh run pi --name backend --goal "Maintain the /orders API" \
+  -- --provider zai --model glm-5.3
 ```
 
 Ask for the upstream change: “Switch the contract from `next_page` to cursor
@@ -176,8 +185,8 @@ every agent product or guarantee correct work. Host tool permissions still apply
 
 ## Build with us
 
-Next: complete business-constraint retention, real prior-session continuity,
-and independent first use.
+Next: make same-product session collaboration easy to adopt, preserve full
+business constraints, and verify prior-session continuity and independent first use.
 [Focused follow-up](https://github.com/fyaic/threadmesh/issues/156) · [Roadmap](ROADMAP.md)
 
 Report the **first failed step**, a silent agent, an irrelevant message or a

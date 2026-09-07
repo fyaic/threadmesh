@@ -52,7 +52,7 @@ export async function workspaceCli(argv) {
   const workspace = new LocalWorkspace(directory, { create: command === "init" });
   let launchOptions;
   try {
-    if (command === "init") print(`Workspace ready: ${directory}\nStart two agents with the same --workspace and different --name values.\nTry: threadmesh run pi --name client --goal "Maintain the orders client" --wake-idle`);
+    if (command === "init") print(`Workspace ready: ${directory}\nStart two sessions of the same agent (or different agents) with the same --workspace and different --name values.\nTry: threadmesh run pi --name client --goal "Maintain the orders client" --wake-idle`);
     else if (command === "join") print(workspace.join(required(subject, "NAME"), required(values.harness, "--harness"), required(values.goal, "--goal")));
     else if (command === "status") print(workspace.status());
     else if (["mute", "unmute"].includes(command)) print(workspace.mute(required(subject, "NAME"), command === "mute"));

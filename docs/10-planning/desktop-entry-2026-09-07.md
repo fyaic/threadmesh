@@ -4,10 +4,18 @@ Date: 2026-09-07. Starting revision: `19a9b13`.
 
 ## Decision and desired experience
 
-The CLI alpha is a developer integration, not plug-and-play for ordinary GUI
-users. The next critical path is **Codex desktop + ZCode**, already installed
-locally. ZCode is a feasibility target, not a supported-harness claim. Prove
-native session binding and delivery before building a companion dashboard.
+The primary job is **different conversations in the same agent product helping
+each other without user relaying**. Cross-product collaboration is an extension,
+not a first-use prerequisite. This is the user's priority, not a measured market
+share claim. The CLI alpha is a developer integration, not plug-and-play for
+ordinary GUI users.
+
+The next desktop acceptance requires **two existing conversations in one client**,
+not one Codex conversation plus one ZCode conversation. The installed clients
+remain feasibility candidates, not shipped integrations. First establish a
+supported activation/refresh path in one client, then validate its pair. The
+previous one-conversation-per-client probes do not satisfy that acceptance.
+Prove native session binding and delivery before building a companion dashboard.
 
 Install through normal client extension UI. Explicitly opt in chosen existing
 conversations with human-readable goals. No programming runtime installation,
@@ -86,9 +94,11 @@ native correlation and explicit opt-in. Native installation/trust awaited the
 operator's specific confirmation at that review. The subsequent authorized
 attempt is linked above; business conversations remain out of scope.
 
-1. **Native entry probe:** install in a test context, observe two native IDs and
-   checkpoint injection. Test a pre-installation conversation separately.
-2. **One opted-in pair:** bind MCP calls to native identity, join/leave without
+1. **Native entry probe in one client:** establish supported plugin activation
+   on an existing disposable conversation. Then test two distinct native
+   identities in that same client; do not equate two product installations
+   with two working sessions. Coordinate any restart; no business chats.
+2. **One same-client opted-in pair:** bind MCP calls to native identity, join/leave without
    paths, deliver attributed advice to the same receiver. If the public host
    interface is insufficient, record the precise gap and seek supported host
    integration; do not substitute a new session or automated UI typing.
@@ -98,12 +108,17 @@ attempt is linked above; business conversations remain out of scope.
 4. **Actual first use:** package away developer prerequisites; observe an
    independent GUI user without maintainer terminal assistance. Record every
    manual step and the first failure before promoting a desktop demo.
+5. **Extend, do not gate:** reuse the proven session workflow across products.
+   A second harness/account must not be required to experience the first value.
 
-Everyday acceptance scenario: the existing product conversation approves “the
+Everyday acceptance scenario within a single client: the existing product conversation approves “the
 free plan allows five projects”; the existing website conversation is updating
 copy. The first agent volunteers the change; the second retains both the
 free-plan qualifier and its earlier signup-button decision. An unrelated notes
-task stays untouched. **This desktop scenario has not passed yet.**
+task stays untouched. The model chooses whether and whom to contact; neither
+ordinary task says "send to the other session". Preserve the receiver's native
+identity and earlier decisions, show source provenance, and do not take over
+queued user work. **This desktop scenario has not passed yet.**
 
 Quota recovery follows with explicitly saved decisions and unfinished work,
 using the other agent's own authorized account. Do not promise lossless history
