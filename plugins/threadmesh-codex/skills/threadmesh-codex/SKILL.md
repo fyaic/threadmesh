@@ -93,8 +93,9 @@ archived, unavailable or unclear, retain a pending suggestion here; do not send,
 steer, interrupt or start a monitoring loop. Resume assessment on a later normal
 checkpoint. Do not install an automation without a separate user request.
 
-If the target is observed idle and the current authorization permits automatic
-advice, send once using the native send tool and the observed target reference.
+Only after the selected peer's setup is confirmed (see visible status below),
+the target is freshly observed idle and the current authorization permits
+automatic advice, send once using the native send tool and observed reference.
 Omit model/thinking overrides. The host supplies the source attribution. Keep
 the message human-readable and narrow:
 
@@ -122,6 +123,33 @@ send acceptance is not proof of a correct edit. Where appropriate, inspect the
 receiver's scoped result and its actual artifact/test before reporting success;
 don't call a re-created thread the original receiver.
 
+## Visible status in the original task
+
+Keep setup, delivery and outcome understandable in this conversation, not in a
+separate webpage. After setup say **this task is ready** (with peer title, scope
+and send mode), not **both tasks are connected**. Report the peer's setup as
+unknown unless its confirmation has actually been observed. An idle task is
+not necessarily configured. Before the first automatic advice, if confirmation
+is missing, use one bounded selected-peer read when authorized to check its
+agreement; if still unclear, keep the advice pending and say what is missing.
+A peer's reported agreement does not expand this task's user authorization.
+
+On a meaningful handoff or blocker, give a short outcome in the user's language:
+**not sent** and why; **sent, result unverified**; **receiver reports done**; or
+**verified** with the checked artifact/test. A send acknowledgement alone never
+advances to done. Pending here means retained in this conversation for a later
+normal checkpoint, not a durable ThreadMesh queue or scheduled retry. Avoid
+repeated status chatter when nothing relevant changes.
+
+When asked to **check ThreadMesh status**, report the current local agreement,
+selected peer, last advice/outcome and evidence freshness. This is read-only:
+do not enable, resume, resend, edit files or send a status request to the peer.
+Use at most one scoped native status snapshot and, only if needed and permitted,
+one bounded selected-peer read. Missing/empty observations mean unknown; don't
+infer setup, completion or available quota. Do not start a polling loop.
+
+## Stop this task's collaboration
+
 On user stop/mute, stop initiating sends from this conversation immediately,
 mark existing pending suggestions cancelled and retain no new pending sends.
 Re-enabling does not automatically dispatch cancelled suggestions. Do not send
@@ -129,3 +157,6 @@ a final stop broadcast without explicit
 authorization. A skill cannot recall submitted messages or atomically revoke a
 peer's separate permission: explain that limitation, and ask the user to stop
 the other task too if needed. Never claim global revocation or race-free queues.
+Confirm **this task stopped; pending advice cancelled**. Report the other side
+as unknown unless its stop is observed. A later status check keeps this stop in
+effect and must not reconstruct or reactivate cancelled advice.

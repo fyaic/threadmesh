@@ -1,5 +1,5 @@
 // Pure browser/Node generator. No I/O: pasted links and topics stay with the caller.
-export const WORKFLOW_URL = "https://raw.githubusercontent.com/fyaic/threadmesh/93da0c6fc9814c1a28e95eaf34d287e11a4331f7/plugins/threadmesh-codex/skills/threadmesh-codex/SKILL.md";
+export const WORKFLOW_URL = "https://raw.githubusercontent.com/fyaic/threadmesh/c0a0a913439732229a2bb811d23cc790c2dd0408/plugins/threadmesh-codex/skills/threadmesh-codex/SKILL.md";
 
 export const EXAMPLES = {
   en: [

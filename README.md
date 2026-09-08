@@ -83,14 +83,21 @@ not a screenshot. Simultaneous typing races and plugin hot-loading remain unveri
 
 ### Want to connect your existing desktop tasks?
 
-[**Open the pairing helper →**](https://fyaic.github.io/threadmesh/)
+[**Start in your existing Codex tasks →**](docs/06-guides/codex-native-tasks.md)
 
-Paste two copied **chat links**, choose what they may share, and copy the setup
-prepared for each task. No terminal, installation, account or hand-editing long
-prompts. Inputs stay in the browser page; the helper does not read chats or send
-messages. In Codex, **Copy chat deep link** is **⌘⌥L** on macOS or **Ctrl+Alt+L**
-on Windows. Paste and send each setup yourself; wait for both confirmations,
-then work normally. [Manual entry and limits](docs/06-guides/codex-native-tasks.md).
+Set the selected peer and shared topic in each original task, wait for both
+setup confirmations, then give one task your ordinary business request. The
+effect to look for is **the other original task acting correctly**, not a
+generated prompt or a sent badge. Ask **“Check ThreadMesh status”** in the task
+to distinguish setup, pending advice and observed results; stop in both tasks
+to stop both directions. These are natural-language requests, not slash commands
+or a separate control service.
+
+No browser is required for collaboration. The optional
+[setup-text helper](https://fyaic.github.io/threadmesh/) saves manual template
+editing only: it does not run agents, connect tasks, show live status or stop
+them. You still paste/send both setups in Codex. It is neither a demo nor a
+hosted version of ThreadMesh.
 
 Another real case: A changed an API contract; original B updated its own client
 and tests, retaining the earlier timeout and cursor-encoding decisions.

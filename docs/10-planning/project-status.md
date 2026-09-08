@@ -2,6 +2,23 @@
 
 ## Current product update — 2026-09-08
 
+**Local native work is the product entry; the website is optional template
+assistance.** Follow the [new ordered acceptance](../../ROADMAP.md#active-priority--existing-desktop-clients-2026-09-08):
+independent first use → visible local status/stop → measured relay savings →
+real user case → DeepSeek and quota continuation. No independent GUI success,
+persistent desktop control service or native-only advantage is claimed.
+The native skill now explicitly distinguishes local readiness, peer confirmation,
+pending advice, sent/unverified, receiver-reported completion and checked result.
+Status requests do not reactivate stopped collaboration. These are agent
+instructions, not a new host-enforced state machine.
+Internal behavior review and regressions passed. The original-task read-only
+status check then passed: local stop preserved, unloaded peer kept unknown,
+historical evidence distinguished from current verification, zero sends/edits.
+It took 141.667 seconds; incomplete early host observations are retained, so
+this is not an instant or generally reliable state service. [Result and limits](../09-reviews/2026-09-08-pairing-helper-acceptance.md#later-correction-local-tasks-first-not-a-website-demo).
+
+### Last completed evidence
+
 **The no-install pairing helper is now public:** [open it](https://fyaic.github.io/threadmesh/),
 paste two chat links and choose a topic; copy the separately generated setups.
 Chinese/English, browser interaction and clipboard-failure handling were tested.
