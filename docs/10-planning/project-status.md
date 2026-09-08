@@ -2,6 +2,15 @@
 
 ## Current product update — 2026-09-08
 
+**The no-install pairing helper is now public:** [open it](https://fyaic.github.io/threadmesh/),
+paste two chat links and choose a topic; copy the separately generated setups.
+Chinese/English, browser interaction and clipboard-failure handling were tested.
+Users still paste/send both setups themselves. The page neither reads chats nor
+connects tasks. Its exact generated prompts also passed a second original-task
+case: A chose to send an API change; B updated its own client and tests while
+retaining timeout/encoding decisions. Business handoff: about 70 seconds;
+setup separately 31/23 seconds. Both stopped. [Screenshot, tests and case evidence](../09-reviews/2026-09-08-pairing-helper-acceptance.md).
+
 **The controlled public-entry gate is complete.** The
 [public-workflow + chat-link run](../09-reviews/2026-09-08-native-deep-link-acceptance.md)
 reused the original two Codex validation tasks: both resolved the selected peer,

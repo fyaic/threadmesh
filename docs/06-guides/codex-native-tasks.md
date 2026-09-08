@@ -9,6 +9,13 @@ a new model, an MCP server or a polling daemon.
 
 ## No-terminal workflow
 
+Prefer the [browser pairing helper](https://fyaic.github.io/threadmesh/) if you
+do not want to edit the template below. Paste two local chat links, choose a
+shared topic and advice mode, confirm, then copy each prepared setup and open
+its original task. Inputs are not uploaded or saved by the page. It generates
+text, not a connection: you still paste/send in both tasks and wait for their
+confirmations. [Browser and generated-prompt acceptance](../09-reviews/2026-09-08-pairing-helper-acceptance.md).
+
 Choose two disposable existing Codex tasks with useful prior context. For
 example, a brand task maintains approved product facts; a website task already
 has the instruction to keep the signup label **Create my workspace**. Keep
