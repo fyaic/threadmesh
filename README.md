@@ -93,11 +93,11 @@ to distinguish setup, pending advice and observed results; stop in both tasks
 to stop both directions. These are natural-language requests, not slash commands
 or a separate control service.
 
-No browser is required for collaboration. The optional
-[setup-text helper](https://fyaic.github.io/threadmesh/) saves manual template
-editing only: it does not run agents, connect tasks, show live status or stop
-them. You still paste/send both setups in Codex. It is neither a demo nor a
-hosted version of ThreadMesh.
+The website helper has been removed. The product target is **install once,
+choose which tasks may collaborate, then work normally in your agent**. The
+manual workflow above is an experimental fallback, not that finished install
+experience. Desktop plugin installation and adoption by existing tasks remain
+unverified; a working CLI sample does not close this gap.
 
 Another real case: A changed an API contract; original B updated its own client
 and tests, retaining the earlier timeout and cursor-encoding decisions.
