@@ -30,6 +30,8 @@ not count as live-product or independent external-verifier evidence.
 
 ## Live attempt audits
 
+- [Public workflow + chat link: original receiver-owned handoff and final stop passed](2026-09-08-native-deep-link-acceptance.md)
+- [Why the agent-created native pair was omitted from task lists](2026-09-08-native-task-discovery.md)
 - [Native desktop public entry: recovered readiness results and invalid-limit repair](2026-09-07-native-public-entry.md)
 - [Codex-first installed-package acceptance and retained failures](2026-09-07-codex-first-use-release.md)
 - [Codex native desktop: prior context, original receiver edit and busy/stop checks](2026-09-07-native-desktop-acceptance.md)

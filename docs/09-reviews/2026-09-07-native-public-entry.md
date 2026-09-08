@@ -1,5 +1,9 @@
 # Native desktop public entry: retrieval and readiness boundary
 
+Historical failed title-based attempt. The current entry uses copied chat links;
+its [September 8 complete controlled run passed](2026-09-08-native-deep-link-acceptance.md).
+The findings below remain evidence of this earlier attempt, not today's setup instructions.
+
 Date: 2026-09-07. Status: **readiness failure recovered through official App Server
 read: both inventory calls used an invalid limit; pairing still not accepted**.
 The earlier empty desktop-read observations are retained below, not erased.

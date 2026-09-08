@@ -22,9 +22,12 @@ The [controlled native run](../09-reviews/2026-09-07-native-desktop-acceptance.m
 now passes: two authorized disposable desktop tasks completed prior work, then
 adopted the skill. A chose advice; original B edited correctly; busy/stop checks
 passed. Setup used manager-supplied native references and a local skill path.
-Next validate simple task selection and source retrieval with an independent
-desktop user. Plugin hot-loading and the external adapter sequence below remain
-separate open work, not prerequisites for this native workflow.
+The current delivery gate is public workflow retrieval, supported task selection,
+explicit activation, an ordinary request, original receiver-owned useful work
+and a final stop in the same run. Independent desktop-user onboarding follows;
+it is not a reason to stop before completing this maintainer-run gate. Plugin
+hot-loading and the external adapter sequence below remain separate open work,
+not prerequisites for this native workflow.
 
 The primary job is **different conversations in the same agent product helping
 each other without user relaying**. Cross-product collaboration is an extension,
@@ -34,13 +37,15 @@ ordinary GUI users.
 
 The next desktop acceptance requires **two existing conversations in one client**,
 not one Codex conversation plus one ZCode conversation. The installed clients
-remain feasibility candidates, not shipped integrations. First establish a
-supported activation/refresh path in one client, then validate its pair. The
-previous one-conversation-per-client probes do not satisfy that acceptance.
-Prove native session binding and delivery before building a companion dashboard.
+remain feasibility candidates, not shipped integrations. For the selected native
+skill route, activation means each existing task reads the public workflow and
+confirms its own scoped agreement; it does not require plugin refresh or MCP
+binding. The previous one-conversation-per-client probes do not satisfy pair
+acceptance. Do not build a companion dashboard before this useful pair works.
 
-Install through normal client extension UI. Explicitly opt in chosen existing
-conversations with human-readable goals. No programming runtime installation,
+Normal client extension installation remains a separate distribution goal, not
+a prerequisite for the direct public-workflow route. Explicitly opt in chosen
+existing conversations with human-readable goals. No programming runtime installation,
 JSON editing, session-ID lookup, shared-directory management or relaunch under
 a ThreadMesh CLI should be required of the user.
 
@@ -49,14 +54,16 @@ decisions and sees the source. Unrelated sessions stay quiet, user work takes
 priority, and mute/revoke prevents new delivery. Advertise idle wake only after
 a native host API passes it; otherwise show **pending until next checkpoint**.
 
-Today, processes must address the same local ThreadMesh database, not necessarily
-the same code directory. The intended product hides storage without removing
+For the separate workspace route, processes must address the same local
+ThreadMesh database, not necessarily the same code directory. The native skill
+route instead uses host task references and has no shared-directory requirement.
+The intended product hides storage without removing
 explicit sharing boundaries. It does not broadcast all chats or provide a
 cross-machine service today.
 
 ## Evidence checked
 
-Latest: the [authorized native attempt](../09-reviews/2026-09-07-desktop-native-adoption.md)
+Historical external-plugin attempt: the [authorized native attempt](../09-reviews/2026-09-07-desktop-native-adoption.md)
 installed the probe in both clients and tested two pre-installation conversations.
 Both retained the prior decision but reported the diagnostic unavailable.
 ZCode was now 3.11.2. Codex hook trust remained incomplete; the follow-up used a
@@ -98,6 +105,27 @@ plugin API through that feature was established here. Do not repurpose those
 tokens, private IPC or desktop database writes as a ThreadMesh adapter.
 
 ## Ordered implementation and acceptance
+
+### Current native skill delivery gate
+
+1. Retrieve the pinned public workflow and resolve only the selected existing
+   peer through a supported app-provided reference, such as a copied chat deep
+   link. Do not require a local source path or manually extracted internal ID.
+2. Obtain readable setup confirmations from both original tasks under the
+   user's authorization. Setup itself sends no peer advice or business edits.
+3. Give A an ordinary business request without a send instruction. Verify A's
+   model-selected advice and original B's own correct edit with earlier decisions
+   intact; no manager relay, replacement receiver or manager-written result.
+4. Stop the test collaboration and retain the actual steps, result and limits.
+   Update both language guides from that result. An independent novice GUI run
+   and recording are later external acceptance, not substitutes for or blockers
+   to finishing this controlled public-entry run.
+
+### Historical external-plugin / portable-adapter sequence
+
+The probe findings and numbered sequence below belong to the separate external
+plugin/MCP route. They are retained for future portable integration work, not
+the critical path or prerequisites for the native skill gate above.
 
 Delegated follow-up: the [Codex lane](../09-reviews/2026-09-07-codex-desktop-lane.md)
 and [ZCode lane](../09-reviews/2026-09-07-zcode-desktop-lane.md) found native MCP
@@ -147,7 +175,7 @@ Quota recovery follows with explicitly saved decisions and unfinished work,
 using the other agent's own authorized account. Do not promise lossless history
 or recovery of unsaved context after the source can no longer run.
 
-## This increment and stop line
+## Deferred external probe and current stop line
 
 A dependency-free [developer probe](../../experiments/desktop/threadmesh-desktop-probe/README.md)
 has two manifests and five fixture tests. It emits only event type and a session
@@ -160,7 +188,8 @@ probe; exact Codex hook trust remains pending. Do not disrupt active user tasks.
 the passing fixtures from native acceptance; the attempt above records the
 subsequent negative adoption result.
 
-This order supersedes [first use](first-use-2026-09-05.md) and
+The current native skill gate above supersedes the external-plugin sequence and
+the earlier [first use](first-use-2026-09-05.md) and
 [cross-harness acceptance](cross-harness-acceptance-2026-09-05.md). Existing
 copy-quality failure, DeepSeek live, quota recovery and native input-race gaps
 remain open, not new prerequisites for trying desktop entry. Track under

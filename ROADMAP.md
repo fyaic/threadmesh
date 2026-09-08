@@ -11,7 +11,14 @@ completion, blockers, review findings, and dependency-ready state without the
 user acting as their message bus**. ThreadMesh is the attention and admission
 policy layer; A2A, Cotal, ACP, or harness-native APIs may supply transport.
 
-## Active priority — existing desktop clients (2026-09-07)
+## Active priority — existing desktop clients (2026-09-08)
+
+**Completed this slice:** [public workflow + chat-link pairing](docs/09-reviews/2026-09-08-native-deep-link-acceptance.md),
+both original tasks enabled, ordinary request triggering A's chosen advice,
+original B's correct own edit with prior decisions preserved, and both stopped.
+The bilingual no-terminal entry uses the official copied local-chat link, not
+a global task list or maintainer-local skill path. This is a controlled
+maintainer link-input pass; manually copying links in the GUI is not yet verified.
 
 **Native-value checkpoint:** Codex already supplies the tested native messaging
 and continuation. The skill is optional guidance, not new transport. Read the
@@ -46,15 +53,13 @@ is new-session CLI acceptance, not the primary existing-desktop gate.
 Next native slice: the [skill-only workflow](docs/06-guides/codex-native-tasks.md)
 uses task tools already exposed by Codex, with an explicitly selected pair.
 It needs no Node/MCP/hook setup. [One controlled opted-in desktop pair passed](docs/09-reviews/2026-09-07-native-desktop-acceptance.md),
-including prior context, B's own edit and busy/stop checks. A new
-[public-entry checkpoint](docs/09-reviews/2026-09-07-native-public-entry.md) verifies
-anonymous workflow retrieval; title-based activation, novice task selection and
-normal plugin activation remain open. The live readiness attempt returned empty
-current-turn evidence despite host-reported completion; an official App Server
-read recovered the original results and identified invalid inventory limits.
-That parameter is corrected, but a valid bounded inventory still omitted the
-pair. Resolve selected-task lookup before claiming entry success. Sending is
-not race-free. External adapter/hook adoption is
+including prior context, B's own edit and busy/stop checks. The subsequent
+[failed title-based entry](docs/09-reviews/2026-09-07-native-public-entry.md) and
+[empty-preview diagnosis](docs/09-reviews/2026-09-08-native-task-discovery.md)
+are retained. The September 8 deep-link run above completes selected-task lookup
+and the full controlled public-source handoff without a list operation.
+Independent manual onboarding and normal plugin activation remain open. Sending
+is not race-free. External adapter/hook adoption is
 a separate portability route, not a prerequisite for trying native guidance.
 
 The [desktop-first plan](docs/10-planning/desktop-entry-2026-09-07.md) supersedes
