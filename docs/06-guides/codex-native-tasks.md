@@ -2,7 +2,7 @@
 
 [简体中文](../zh-CN/codex-native-tasks.md)
 
-**Experimental workflow with one controlled native pair pass.** This entry uses
+**Experimental workflow with controlled native passes.** This entry uses
 Codex's own task tools when they are already available. The bundled skill adds
 opt-in scope and collaboration guidance; it does not add a private desktop API,
 a new model, an MCP server or a polling daemon.
@@ -17,21 +17,27 @@ while the test is running. Normal Codex quota is required.
 
 ### 1. Paste this into each chosen task
 
-Replace **OTHER TASK TITLE** with the other task's exact sidebar title and
-**SHARED TOPIC** with the limited subject they may exchange, such as approved
-product names, spelling and free-plan limits. No internal ID, local path, clone
-or terminal command is needed in this prompt.
+Open the other task and use **Copy chat deep link**: **⌘⌥L** on macOS or
+**Ctrl+Alt+L** on Windows. If your shortcuts differ, find the command in
+**Settings → Keyboard Shortcuts**. These are
+[official app commands](https://learn.chatgpt.com/docs/reference/commands).
+
+Paste that link in place of **OTHER TASK LINK** below, then fill in **SHARED
+TOPIC**—for example, approved product names, spelling and free-plan limits.
+Repeat in the other direction. The link has the form `codex://threads/<thread-id>`
+and identifies an existing **local** task. You copy the whole link; you do not
+need to find or type an internal ID, share a conversation snapshot, clone a
+repository or open a terminal.
 
 ```text
 Use the ThreadMesh workflow at this pinned public URL. Read the complete file:
-https://raw.githubusercontent.com/fyaic/threadmesh/7ea4d407b719f0241f1eccbe2e5d95c15a72c72c/plugins/threadmesh-codex/skills/threadmesh-codex/SKILL.md
+https://raw.githubusercontent.com/fyaic/threadmesh/93da0c6fc9814c1a28e95eaf34d287e11a4331f7/plugins/threadmesh-codex/skills/threadmesh-codex/SKILL.md
 
-Pair only this task with "OTHER TASK TITLE". Each keeps its own current job and
+Pair only this task with OTHER TASK LINK. Each keeps its own current job and
 earlier decisions. Allowed shared topic: SHARED TOPIC.
-I allow one task-list lookup to resolve that title, understanding that the list
-also exposes other task titles/summaries. Do not read unrelated conversations.
-Use list_threads with limit: 50 at most; the host rejects 100.
-If the title is missing or ambiguous, ask me; do not guess or scan more history.
+Use the supplied local chat link to identify the peer and verify only that
+task with native read/status tools. Do not list all tasks or read unrelated
+conversations. If the link or target cannot be verified, leave collaboration off.
 
 I authorize automatic, relevant peer advice after setup. I understand an idle
 check cannot guarantee that sending never races with new user input.
@@ -41,31 +47,23 @@ Confirm the selected peer by title, allowed topic, available native tools and
 whether this task is enabled. If anything is unavailable, leave collaboration off.
 ```
 
-If your app has already attached a native task reference, use that instead of
-the title and remove the task-list permission paragraph. Do not hunt for IDs
-in local files. A native reference picker is host-dependent; this guide does
-not assume a particular desktop `@` menu.
-
-Want to check first without enabling? Replace the two automatic-advice
-authorization sentences with:
+Want to check first without enabling? Replace the automatic-advice
+authorization paragraph with:
 “Only check readiness. Keep collaboration off, including any previous stop;
 do not send messages, edit files or restore pending advice.” Readiness is not
 activation and does not verify the peer's quota.
 
 ### 2. Wait for both setup confirmations, then work normally
 
-Each task must confirm its own setup. Naming the other task does not activate
-it. A missing workflow, missing tools or unresolved title is a stopped setup,
+Each task must confirm its own setup. Linking the other task does not activate
+it. A missing workflow, missing tools or unverified target is a stopped setup,
 not a successful connection. You can say **Stop ThreadMesh collaboration** in
 each task to cancel it; no separate control panel is required.
 
-If the app shows “completed” but supplies no readable setup confirmation, keep
-collaboration off. Do not assume pairing worked or repeatedly rerun it. This
-occurred in our [readiness attempt](../09-reviews/2026-09-07-native-public-entry.md#read-only-diagnosis-and-correction):
-a separate official read recovered the results, which reported a rejected list
-limit. The corrected limit is not a complete task search: our subsequent bounded
-inventory still did not contain the selected pair. Missing titles require an
-app-provided reference or a clearer selection, not a guessed destination.
+No readable confirmation means no verified setup, even if the app says
+“completed.” Keep collaboration off; see the
+[retained failed entry checks](../09-reviews/2026-09-07-native-public-entry.md#read-only-diagnosis-and-correction)
+instead of treating a delivery or empty result as success.
 
 This is an explicit workflow request in the existing conversation, **not proof
 that installing a plugin hot-loads old tasks**. The model must actually retrieve
@@ -86,6 +84,15 @@ result is an attributed native message, followed by that **same** website task
 updating its own copy while keeping its earlier button decision and price.
 Read the receiver's actual result; a delivery notification alone is insufficient.
 
+### Optional: use a task name instead
+
+An already attached native task reference also works. If you prefer an exact
+task title, explicitly allow one native task-list lookup, understanding that it
+also exposes other task titles/summaries. The current host accepts `limit: 50`
+at most. Its pinned and unpinned results are not a complete search. If the title
+is missing or ambiguous, use **Copy chat deep link** rather than expanding the
+scan or guessing. No particular desktop `@` picker is assumed.
+
 ## Limits that matter
 
 - Requires native read/status/send tools to be exposed by this Codex host.
@@ -93,7 +100,8 @@ Read the receiver's actual result; a delivery notification alone is insufficient
 - Native send lacks an atomic idle-only condition. The skill skips busy,
   unknown or unloaded targets, but cannot guarantee non-interruption. If that
   guarantee is required, retain a suggestion for review instead of auto-sending.
-- A task reference avoids listing every task. Name lookup needs permission
+- A local chat link avoids listing every task; it does not grant permission or
+  establish cross-host support. Name lookup needs permission
   because the native list also returns other task titles/summaries. Ambiguous
   titles need clarification, not a guessed destination.
 - Stop in **both** tasks to stop both directions. Stopping one task doesn't
@@ -108,15 +116,28 @@ native send and source attribution, the receiver's own artifact change and
 business check. Record human setup actions, a busy-target no-send check and a
 stop/no-further-send check. Do not publish private IDs or transcripts.
 
-The [September 7 controlled run](../09-reviews/2026-09-07-native-desktop-acceptance.md)
-passed this source-read workflow with two disposable tasks that had completed
-prior context, original B's own correct edit, and busy/stop checks. The manager
-supplied task references and a local skill path through native task messages;
-it did not validate the title-based prompt above. The public source is pinned
-so readers can inspect the same workflow rather than a maintainer-local file.
-See the [public-entry check](../09-reviews/2026-09-07-native-public-entry.md) for
-the exact tested boundary. A novice's manual GUI onboarding remains unverified.
-Native source attribution was read from turn data, not a screenshot.
+The [September 8 deep-link run](../09-reviews/2026-09-08-native-deep-link-acceptance.md)
+passed public workflow retrieval, scoped setup and the useful handoff using the
+same two existing test tasks. Setup took about 137 and 141 seconds respectively,
+with no global task listing, peer messages or business edits. After both
+confirmations, the manager asked only A to change the approved product to
+**Member Studio**, limit the free plan to **three projects**, use US spelling
+and retain paid pricing. A checked B's current idle status and chose one native
+send. Original B made its own correct copy edit while preserving the signup
+button and price. The business request to B's completed result took about
+**61 seconds, excluding setup**; this is one observed run, not a timing promise.
+
+The manager constructed official-format deep links from already known native
+IDs and sent setup through native tools. This verifies the **public workflow
+and link-input path**, not someone pressing the copy shortcut or a novice's
+manual GUI onboarding. The pair was retained from an earlier dedicated test,
+not newly recreated or adopted from ordinary long-running user work. Native
+source attribution was read from turn data, not a screenshot.
+
+The [September 7 run](../09-reviews/2026-09-07-native-desktop-acceptance.md)
+retains the earlier busy/stop controls and local-source case. The failed
+[title-based entry checks](../09-reviews/2026-09-07-native-public-entry.md)
+remain available; the deep-link pass does not establish complete title search.
 
 Packaging validation and a behavioral tabletop review alone are not live proof.
 The earlier [hook/MCP adoption attempt](../09-reviews/2026-09-07-desktop-native-adoption.md)

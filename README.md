@@ -84,15 +84,17 @@ not a screenshot. Simultaneous typing races and plugin hot-loading remain unveri
 ### Want to connect your existing desktop tasks?
 
 [Copy the native-task setup prompt](docs/06-guides/codex-native-tasks.md#1-paste-this-into-each-chosen-task)
-into each chosen task: fill in the other task's name and the allowed topic.
+into each chosen task: paste the other task's **chat link** and the allowed topic.
+In Codex, **Copy chat deep link** is **⌘⌥L** on macOS or **Ctrl+Alt+L** on Windows.
 It uses a pinned public workflow, not a local path or manually copied internal ID.
 Setup sends no peer messages; wait for both confirmations, then work normally.
 No terminal setup is needed for that route.
 
-**Experimental:** the successful case used manager-supplied task references and
-a local skill path. The [public-entry check](docs/09-reviews/2026-09-07-native-public-entry.md)
-records the newer entry's tested boundary; novice onboarding and normal plugin
-installation remain open. The skill cannot add absent host tools or enforce
+**Tested, still experimental:** the [public-workflow + chat-link run](docs/09-reviews/2026-09-08-native-deep-link-acceptance.md)
+resolved the original two tasks without a global task list. A chose to send;
+original B updated its own copy and preserved its button and price. The manager
+supplied the documented link format through native tools; manual GUI onboarding
+and normal plugin installation remain unverified. The skill cannot add absent host tools or enforce
 privacy and race-free sending. If native Codex already meets your needs, use it
 directly; no measured advantage over native-only use is claimed.
 

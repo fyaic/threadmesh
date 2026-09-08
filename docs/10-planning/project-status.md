@@ -1,20 +1,32 @@
 # Project status
 
-## Current product update — 2026-09-07
+## Current product update — 2026-09-08
 
-**Current onboarding increment:** both languages now provide a copyable
-title-and-topic prompt with a pinned public workflow. Anonymous retrieval and
-source parity passed; readiness checking is separate from activation. The
-[entry record](../09-reviews/2026-09-07-native-public-entry.md) keeps title-only
-desktop matching and end-to-end activation open. Two user-authorized read-only
-checks were dispatched: both host-reported completed, but current-turn histories
-were empty while preceding turns were readable. Sample hashes were unchanged;
-readiness and absence of peer sends could not initially be verified. A subsequent
-official App Server read recovered five items per original turn: both models
-reported not ready because `list_threads(limit: 100)` exceeds the host's maximum
-of 50. The skill now caps it at 50 and the evidence auditor rejects empty turns.
-A valid manager inventory still omitted the selected pair, so name resolution
-remains open. No enable command or repeat model dispatch was issued.
+**The controlled public-entry gate is complete.** The
+[public-workflow + chat-link run](../09-reviews/2026-09-08-native-deep-link-acceptance.md)
+reused the original two Codex validation tasks: both resolved the selected peer,
+confirmed setup without sends/edits, then A chose to send after an ordinary
+business request and original B made its own correct edit. Earlier button and
+price decisions survived. Both were stopped and evidence retained. Independent
+subagent review passed; business handoff took about 61 seconds, setup separately
+about 137/141 seconds in parallel. No replacement CLI pair was used.
+
+The bilingual entry now uses **Copy chat deep link + shared topic**. No global
+task inventory, local skill path, new runtime or shared database is required.
+The former title-only blocker was diagnosed as
+[empty-preview filtering in the host](../09-reviews/2026-09-08-native-task-discovery.md),
+not solved by repeated manager messages or a wider scan. The failed
+[readiness attempt](../09-reviews/2026-09-07-native-public-entry.md) remains recorded.
+
+**Still open, not claimed complete:** independent manual GUI onboarding, measured
+benefit over native-only Codex, plugin hot-loading, cross-host portability and
+quota recovery. The current run used manager-supplied official-format links, not
+recorded keyboard-copy gestures. This is source-workflow delivery; the immutable
+alpha.3 CLI release was not repacked. Subsequent work should test actual user
+setup and useful outcomes, not reopen this completed maintainer gate or add
+adapters as substitutes.
+
+## Prior deliveries and evidence — through 2026-09-07
 
 **Value and evidence correction:** the native demo uses Codex's own communication
 and continuation; the skill adds guidance, not transport. [English responsibility
