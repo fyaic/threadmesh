@@ -2,8 +2,10 @@
 
 ## Current product update — 2026-09-08
 
-**Local native work is the product entry; the website is optional template
-assistance.** Follow the [new ordered acceptance](../../ROADMAP.md#active-priority--existing-desktop-clients-2026-09-08):
+**Install-and-use local collaboration is the product target; the website helper
+has been removed from source and deployment.** The manual recipe remains only
+an experimental fallback. Plugin installation and existing-task adoption are
+still unverified, not replaced by a form or CLI sample. Follow the [new ordered acceptance](../../ROADMAP.md#active-priority--existing-desktop-clients-2026-09-08):
 independent first use → visible local status/stop → measured relay savings →
 real user case → DeepSeek and quota continuation. No independent GUI success,
 persistent desktop control service or native-only advantage is claimed.
@@ -19,11 +21,9 @@ this is not an instant or generally reliable state service. [Result and limits](
 
 ### Last completed evidence
 
-**The no-install pairing helper is now public:** [open it](https://fyaic.github.io/threadmesh/),
-paste two chat links and choose a topic; copy the separately generated setups.
-Chinese/English, browser interaction and clipboard-failure handling were tested.
-Users still paste/send both setups themselves. The page neither reads chats nor
-connects tasks. Its exact generated prompts also passed a second original-task
+**Retired website experiment:** its source/deployment and website-only tests are
+removed at the user's request. Historical browser evidence is retained, not
+offered as a current entry. Its exact generated prompts passed a second original-task
 case: A chose to send an API change; B updated its own client and tests while
 retaining timeout/encoding decisions. Business handoff: about 70 seconds;
 setup separately 31/23 seconds. Both stopped. [Screenshot, tests and case evidence](../09-reviews/2026-09-08-pairing-helper-acceptance.md).

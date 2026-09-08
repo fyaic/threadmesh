@@ -9,12 +9,11 @@ a new model, an MCP server or a polling daemon.
 
 ## No-terminal workflow
 
-**Work in the original Codex tasks. No website needs to stay open.** The setup
-below is an instruction to each task, not registration with a hosted service.
-If editing the template is inconvenient, the optional
-[setup-text helper](https://fyaic.github.io/threadmesh/) prepares the two strings
-locally in your browser. It cannot observe or control collaboration and is not
-a live demo. [What the helper was actually tested for](../09-reviews/2026-09-08-pairing-helper-acceptance.md).
+**Work in the original Codex tasks.** The website helper has been removed from
+the product and source. The manual setup below remains an experimental fallback,
+not the intended install-once experience. The skill-only plugin is packaged,
+but installation followed by adoption in existing tasks is not yet validated.
+No website, form, hosted registration or new account is required.
 
 Choose two disposable existing Codex tasks with useful prior context. For
 example, a brand task maintains approved product facts; a website task already

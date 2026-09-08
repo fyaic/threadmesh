@@ -8,8 +8,10 @@ Date: 2026-09-07. Starting revision: `19a9b13`.
 The controlled public-source original-pair gate below is **complete**, including
 the [API/client case](../09-reviews/2026-09-08-pairing-helper-acceptance.md).
 Remaining immediate work is independent first use and understandable status/
-stop in original Codex tasks. The website is optional template assistance,
-not a local agent demonstration or a control service. No new website platform.
+stop in original Codex tasks. The website experiment is removed from source
+and deployment. The current first-use target is installation, explicit task
+selection and ordinary work without a web form or long setup-prompt relay.
+The manual recipe remains a fallback, not the installation acceptance.
 
 Audience correction: Codex is the primary client. Do not split the critical path
 equally across Codex and ZCode, or require Codex users to install Pi. A Codex-only

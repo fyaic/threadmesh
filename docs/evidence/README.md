@@ -5,7 +5,7 @@ adoption or proof of incremental value over the host's native capability.
 
 | Recent case | Public record | Retained private originals |
 |---|---|---|
-| Browser pairing helper + original Codex API receiver, passed | [Actual helper screenshot, generated setup and 70-second API handoff](../09-reviews/2026-09-08-pairing-helper-acceptance.md) | Generated prompts and selected original setup/business/stop turn items |
+| Original Codex API receiver, passed; website helper since removed | [Historical setup screenshot and 70-second API handoff](../09-reviews/2026-09-08-pairing-helper-acceptance.md) | Generated prompts and selected original setup/business/stop turn items |
 | Codex public workflow + chat-link pair, passed | [Actual setup, 61-second business handoff, B's own diff and final stop](../09-reviews/2026-09-08-native-deep-link-acceptance.md) | Original selected setup/business/stop App Server turn items and verified artifacts |
 | Codex desktop prior-context pair | [Actual exchange, B's diff and reduced audit](codex-native-2026-09-07/README.md) | Complete A/B native exports, original tasks and files |
 | Codex public-entry readiness attempt, not accepted | [Recovered results, rejected inventory limits and unchanged artifacts](../09-reviews/2026-09-07-native-public-entry.md) | Empty desktop reads and recovered official App Server turn records retained separately |

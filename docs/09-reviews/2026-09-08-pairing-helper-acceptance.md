@@ -1,7 +1,13 @@
 # Pairing helper and original-task API handoff
 
-**Outcome:** the [no-install pairing helper](https://fyaic.github.io/threadmesh/)
-is live. Its generated setup was used in the original two Codex validation
+**Retired experiment:** the website was removed from source and deployment on
+September 8 at the user's request. It only generated setup text and did not meet
+the install-and-use product goal. This record preserves the tests as history,
+not instructions to visit a live service. The removed source is recoverable at
+[the pre-removal revision](https://github.com/fyaic/threadmesh/tree/a8c66e2472fd78db447ee4c8eed17c4453ca76a2/web/connect).
+The native skill, original-task results and private evidence are retained.
+
+**Original outcome:** its generated setup was used in the original two Codex validation
 tasks. After an ordinary API change request, A chose to contact original B;
 B updated its own client and tests while preserving earlier decisions.
 
@@ -13,7 +19,7 @@ native messaging and continuation; ThreadMesh supplies optional scoped guidance.
 
 ![Actual published pairing helper, Chinese desktop view](../assets/pairing-helper-public.png)
 
-This is an actual screenshot of the published helper with empty inputs, not a
+This is a historical screenshot of the then-published helper with empty inputs, not a
 native handoff screenshot or a staged conversation. The page accepts two copied
 local chat links, a limited topic, advice mode and explicit consent. Three topic
 presets cover product facts/copy, API/client changes and retained preferences.

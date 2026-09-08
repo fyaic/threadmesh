@@ -16,12 +16,13 @@ policy layer; A2A, Cotal, ACP, or harness-native APIs may supply transport.
 **Current order, confirmed by the user:** independent first use → visible local
 status and stop → demonstrated relay savings → a real user case → DeepSeek and
 quota handoff. Work happens in original local agent conversations. The website
-is an optional setup-text utility, not the product runtime, control plane or
-demonstration. Do not expand it into a dashboard to substitute for native value.
+helper is removed, including its code, browser-only tests and deployment workflow.
+**Install once → select allowed tasks → ordinary work → useful receiver result**
+is the first-use target. Manual prompt setup is a fallback, not completion.
 
 | Order | User outcome | Remaining acceptance |
 |---|---|---|
-| 1 | An ordinary Codex desktop user gets a useful result without maintainer help | One independent user's original pair, using the public guide; record actual setup steps, first blocker and B's own correct result. Maintainer and subagent runs do not count. |
+| 1 | Install ThreadMesh and get a useful result inside Codex without maintainer help | A supported installation path, readable activation and explicit task selection, with no website/form, source checkout, hand-edited JSON or long setup-prompt relay. Then verify an independent user's pair and B's own correct result. Existing-task adoption must be tested separately from new-task pickup. |
 | 2 | Know what happened and stop safely | In-task readiness/pending/result/stop explanations; never confuse idle with configured or sent with done. Guidance is being improved; persistent receipt/control and simultaneous-input safety remain open (#135/#136). |
 | 3 | Less relaying than native-only use | A small matched case counts setup actions, manual relays, correct edits and unwanted contact. No new benchmark framework; keep optional guidance small if it adds no benefit. |
 | 4 | Others can understand and reproduce the value | A consented real native recording and independent case, followed by relevant community sharing. No recreated conversation or promised star count. |
@@ -34,11 +35,10 @@ separate open tracks, not new prerequisites for this desktop-first alpha.
 
 ### Completed evidence — do not repeat as a new gate
 
-**Setup simplification shipped:** the bilingual [no-install pairing helper](https://fyaic.github.io/threadmesh/)
-generates separate setups from two chat links and a chosen topic. Users still
-paste/send and wait for both confirmations; it is not an automatic connection.
-Browser checks and a second original-task API/client case passed with the
-generated prompts. [Actual screenshot and receiver-owned results](docs/09-reviews/2026-09-08-pairing-helper-acceptance.md).
+**Retired experiment:** the website generated setup text but did not meet the
+installation-first requirement. Its source and deployment are removed; the
+[historical API/client result](docs/09-reviews/2026-09-08-pairing-helper-acceptance.md)
+remains valid bounded evidence, not a current website feature.
 
 **Completed this slice:** [public workflow + chat-link pairing](docs/09-reviews/2026-09-08-native-deep-link-acceptance.md),
 both original tasks enabled, ordinary request triggering A's chosen advice,
