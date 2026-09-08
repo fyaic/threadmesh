@@ -83,12 +83,18 @@ not a screenshot. Simultaneous typing races and plugin hot-loading remain unveri
 
 ### Want to connect your existing desktop tasks?
 
-[Copy the native-task setup prompt](docs/06-guides/codex-native-tasks.md#1-paste-this-into-each-chosen-task)
-into each chosen task: paste the other task's **chat link** and the allowed topic.
-In Codex, **Copy chat deep link** is **⌘⌥L** on macOS or **Ctrl+Alt+L** on Windows.
-It uses a pinned public workflow, not a local path or manually copied internal ID.
-Setup sends no peer messages; wait for both confirmations, then work normally.
-No terminal setup is needed for that route.
+[**Open the pairing helper →**](https://fyaic.github.io/threadmesh/)
+
+Paste two copied **chat links**, choose what they may share, and copy the setup
+prepared for each task. No terminal, installation, account or hand-editing long
+prompts. Inputs stay in the browser page; the helper does not read chats or send
+messages. In Codex, **Copy chat deep link** is **⌘⌥L** on macOS or **Ctrl+Alt+L**
+on Windows. Paste and send each setup yourself; wait for both confirmations,
+then work normally. [Manual entry and limits](docs/06-guides/codex-native-tasks.md).
+
+Another real case: A changed an API contract; original B updated its own client
+and tests, retaining the earlier timeout and cursor-encoding decisions.
+[Browser checks and the actual API handoff →](docs/09-reviews/2026-09-08-pairing-helper-acceptance.md)
 
 **Tested, still experimental:** the [public-workflow + chat-link run](docs/09-reviews/2026-09-08-native-deep-link-acceptance.md)
 resolved the original two tasks without a global task list. A chose to send;

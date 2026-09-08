@@ -30,6 +30,7 @@ not count as live-product or independent external-verifier evidence.
 
 ## Live attempt audits
 
+- [Published pairing helper, browser checks and original-task API handoff](2026-09-08-pairing-helper-acceptance.md)
 - [Public workflow + chat link: original receiver-owned handoff and final stop passed](2026-09-08-native-deep-link-acceptance.md)
 - [Why the agent-created native pair was omitted from task lists](2026-09-08-native-task-discovery.md)
 - [Native desktop public entry: recovered readiness results and invalid-limit repair](2026-09-07-native-public-entry.md)

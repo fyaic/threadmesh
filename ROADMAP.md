@@ -13,6 +13,12 @@ policy layer; A2A, Cotal, ACP, or harness-native APIs may supply transport.
 
 ## Active priority — existing desktop clients (2026-09-08)
 
+**Setup simplification shipped:** the bilingual [no-install pairing helper](https://fyaic.github.io/threadmesh/)
+generates separate setups from two chat links and a chosen topic. Users still
+paste/send and wait for both confirmations; it is not an automatic connection.
+Browser checks and a second original-task API/client case passed with the
+generated prompts. [Actual screenshot and receiver-owned results](docs/09-reviews/2026-09-08-pairing-helper-acceptance.md).
+
 **Completed this slice:** [public workflow + chat-link pairing](docs/09-reviews/2026-09-08-native-deep-link-acceptance.md),
 both original tasks enabled, ordinary request triggering A's chosen advice,
 original B's correct own edit with prior decisions preserved, and both stopped.
