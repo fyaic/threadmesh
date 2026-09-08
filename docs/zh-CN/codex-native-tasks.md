@@ -90,8 +90,8 @@ https://raw.githubusercontent.com/fyaic/threadmesh/c0a0a913439732229a2bb811d23cc
 这些是 Agent 的自然语言说明，不是持久状态服务或宿主强制的状态机。读取为空时应
 保持“未知”。要停止双向协作，在两个任务中分别说**“停止 ThreadMesh 协作”**；
 之后查询状态不得恢复取消的建议。Skill 不能撤回此前已提交的消息。
-这些状态说明规则通过了内部评审；最近一次原生状态尝试没有取得可核实结果，
-不能声称实测通过。[验证边界](../09-reviews/2026-09-08-pairing-helper-acceptance.md#later-correction-local-tasks-first-not-a-website-demo)。
+一次原任务只读检查保留了停止状态，并正确报告对方状态未知。耗时约 142 秒，
+不是即时查询；早期不完整的观察也已保留。[验证边界](../09-reviews/2026-09-08-pairing-helper-acceptance.md#later-correction-local-tasks-first-not-a-website-demo)。
 
 ### 可选：按任务名称查找
 

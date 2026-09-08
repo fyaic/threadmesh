@@ -129,17 +129,32 @@ helper regression tests, the full 474-pass/one-skip suite and documentation lint
 passed. The system Python lacked PyYAML; the validator passed in an isolated
 `uv --with pyyaml` environment without changing project dependencies.
 
-One read-only status request was also dispatched to the original, previously
-stopped receiver using the new public workflow. **No live status pass is
-claimed.** The desktop wait surface reported an active turn with no readable
-result, while the official read-only App Server capture marked that selected
-turn interrupted and retained only the incoming request. Neither proves a
-completed check. There were no outgoing sends or file changes in the captured
-items, and the four checked receiver files retained their pre-request hashes.
-This is a bounded negative observation, not proof that no later activity can
-occur. No retry or additional business request was dispatched. Its selected-turn
-capture is retained privately with SHA-256
+One read-only status request was dispatched to the original, previously stopped
+receiver using the new public workflow. **The completed check passed narrowly:**
+the receiver fetched the complete pinned workflow, made one native status
+snapshot of its selected peer, and reported:
+
+- local collaboration remains stopped and pending advice cancelled;
+- the peer is `notLoaded`, not proof of peer stop or readiness;
+- the earlier client edit and five tests have historical evidence, but files
+  were not rechecked in this turn; later file changes remain unknown.
+
+The full completed turn contains the workflow fetch and one read-only native
+snapshot, zero outgoing peer sends and zero file changes. The four checked
+receiver files retained their pre-request hashes. The desktop returned to idle.
+The turn took **141.667 seconds**, including workflow retrieval and model work:
+this is not an instant status service. No retry or second business request was
+dispatched. Private completed-turn SHA-256:
+`a35cf89921c8039b39ef91694ae279e67d9d4c7749cb854c87d7b18bcc20999f`.
+
+The earlier in-progress read is retained, not discarded: desktop wait reported
+active with no readable result while an App Server capture marked interrupted
+and contained only the request. It was **not** accepted as completion. After
+the terminal event, the full original items were recovered with the official
+read-only App Server. Early-capture SHA-256:
 `b87454bfb173bb6c113c5d534efb7aad1bbcb9e8935ee028aeea54fefa901ead`.
+This exposes a host observation limitation, not a diagnosed root cause. The
+public record separates the incomplete observation from the final outcome.
 
 Independent GUI first use, persistent desktop control, simultaneous-input
 safety and measured native-only advantage remain open. The reordered

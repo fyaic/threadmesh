@@ -112,8 +112,9 @@ or guaranteed host-enforced state machine. Empty reads remain unknown. Say
 **“Stop ThreadMesh collaboration”** in both tasks to stop both directions;
 checking status afterward must not resume cancelled advice. Previously submitted
 messages cannot be recalled by this skill.
-These reporting rules passed internal review; the latest native status attempt
-did not produce a verifiable result. [Validation boundary](../09-reviews/2026-09-08-pairing-helper-acceptance.md#later-correction-local-tasks-first-not-a-website-demo).
+One original-task read-only check preserved the stop and reported unknown peer
+state correctly. It took about 142 seconds, not an instant lookup; incomplete
+early observations are retained. [Validation boundary](../09-reviews/2026-09-08-pairing-helper-acceptance.md#later-correction-local-tasks-first-not-a-website-demo).
 
 ### Optional: use a task name instead
 

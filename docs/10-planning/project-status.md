@@ -11,9 +11,11 @@ The native skill now explicitly distinguishes local readiness, peer confirmation
 pending advice, sent/unverified, receiver-reported completion and checked result.
 Status requests do not reactivate stopped collaboration. These are agent
 instructions, not a new host-enforced state machine.
-Read-only internal behavior review and regressions passed; the new original-task
-status attempt produced inconsistent host observations and no readable result,
-so it is **not** a native status pass. [Result and limits](../09-reviews/2026-09-08-pairing-helper-acceptance.md#later-correction-local-tasks-first-not-a-website-demo).
+Internal behavior review and regressions passed. The original-task read-only
+status check then passed: local stop preserved, unloaded peer kept unknown,
+historical evidence distinguished from current verification, zero sends/edits.
+It took 141.667 seconds; incomplete early host observations are retained, so
+this is not an instant or generally reliable state service. [Result and limits](../09-reviews/2026-09-08-pairing-helper-acceptance.md#later-correction-local-tasks-first-not-a-website-demo).
 
 ### Last completed evidence
 
