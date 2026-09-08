@@ -4,6 +4,13 @@ Date: 2026-09-07. Starting revision: `19a9b13`.
 
 ## Decision and desired experience
 
+**September 8 current decision:** follow the [ordered product acceptance](../../ROADMAP.md#active-priority--existing-desktop-clients-2026-09-08).
+The controlled public-source original-pair gate below is **complete**, including
+the [API/client case](../09-reviews/2026-09-08-pairing-helper-acceptance.md).
+Remaining immediate work is independent first use and understandable status/
+stop in original Codex tasks. The website is optional template assistance,
+not a local agent demonstration or a control service. No new website platform.
+
 Audience correction: Codex is the primary client. Do not split the critical path
 equally across Codex and ZCode, or require Codex users to install Pi. A Codex-only
 sample can remove that immediate first-use barrier but does not close the existing
@@ -22,10 +29,10 @@ The [controlled native run](../09-reviews/2026-09-07-native-desktop-acceptance.m
 now passes: two authorized disposable desktop tasks completed prior work, then
 adopted the skill. A chose advice; original B edited correctly; busy/stop checks
 passed. Setup used manager-supplied native references and a local skill path.
-The current delivery gate is public workflow retrieval, supported task selection,
+The now-completed controlled delivery gate was public workflow retrieval, supported task selection,
 explicit activation, an ordinary request, original receiver-owned useful work
-and a final stop in the same run. Independent desktop-user onboarding follows;
-it is not a reason to stop before completing this maintainer-run gate. Plugin
+and a final stop in the same run. Independent desktop-user onboarding remains;
+do not repeat the completed maintainer gate as a substitute. Plugin
 hot-loading and the external adapter sequence below remain separate open work,
 not prerequisites for this native workflow.
 
@@ -106,7 +113,7 @@ tokens, private IPC or desktop database writes as a ThreadMesh adapter.
 
 ## Ordered implementation and acceptance
 
-### Current native skill delivery gate
+### Completed controlled native skill gate — retained criteria
 
 1. Retrieve the pinned public workflow and resolve only the selected existing
    peer through a supported app-provided reference, such as a copied chat deep

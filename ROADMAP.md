@@ -13,6 +13,27 @@ policy layer; A2A, Cotal, ACP, or harness-native APIs may supply transport.
 
 ## Active priority — existing desktop clients (2026-09-08)
 
+**Current order, confirmed by the user:** independent first use → visible local
+status and stop → demonstrated relay savings → a real user case → DeepSeek and
+quota handoff. Work happens in original local agent conversations. The website
+is an optional setup-text utility, not the product runtime, control plane or
+demonstration. Do not expand it into a dashboard to substitute for native value.
+
+| Order | User outcome | Remaining acceptance |
+|---|---|---|
+| 1 | An ordinary Codex desktop user gets a useful result without maintainer help | One independent user's original pair, using the public guide; record actual setup steps, first blocker and B's own correct result. Maintainer and subagent runs do not count. |
+| 2 | Know what happened and stop safely | In-task readiness/pending/result/stop explanations; never confuse idle with configured or sent with done. Guidance is being improved; persistent receipt/control and simultaneous-input safety remain open (#135/#136). |
+| 3 | Less relaying than native-only use | A small matched case counts setup actions, manual relays, correct edits and unwanted contact. No new benchmark framework; keep optional guidance small if it adds no benefit. |
+| 4 | Others can understand and reproduce the value | A consented real native recording and independent case, followed by relevant community sharing. No recreated conversation or promised star count. |
+| 5 | Extend a proven useful workflow | Provider-configured DeepSeek initiative, then continuation from an actual quota-blocked task's already saved checkpoint. Neither has a completed live acceptance. |
+
+Orders 1 and 2 form the immediate product work: fix observed local usability
+while seeking an independent participant, without pretending an internal test
+is that participant. The old #91/#93 multi-role loop and #7 formal review remain
+separate open tracks, not new prerequisites for this desktop-first alpha.
+
+### Completed evidence — do not repeat as a new gate
+
 **Setup simplification shipped:** the bilingual [no-install pairing helper](https://fyaic.github.io/threadmesh/)
 generates separate setups from two chat links and a chosen topic. Users still
 paste/send and wait for both confirmations; it is not an automatic connection.
@@ -32,13 +53,6 @@ and continuation. The skill is optional guidance, not new transport. Read the
 The [retained desktop evidence](docs/evidence/codex-native-2026-09-07/README.md)
 shows feasibility, not improvement over native Codex alone.
 
-The next product slice must reduce a real user's setup/relay burden: simple
-explicit pair selection, retained decisions, and clear pending/applied outcomes.
-Then compare a small matched native-only workflow with the added guidance;
-record setup actions, manual relays, correct receiver edits and unwanted contact.
-Do not build a benchmark platform or add harnesses for this comparison. If no
-gain is observed, retain a lightweight optional recipe rather than a new platform.
-
 For community growth, first make one independent Codex user's own pair succeed;
 fix their first blocker, then prepare a consented real recording and a concise
 case study. A [consolidated evidence-backed reply](https://github.com/fyaic/threadmesh/issues/158#issuecomment-5570614068)
@@ -56,7 +70,7 @@ now passes with the default command in 272.604 seconds; [alpha.3 is published](h
 and its public install was checked. Earlier timeout and outdated-runtime failures remain recorded. This
 is new-session CLI acceptance, not the primary existing-desktop gate.
 
-Next native slice: the [skill-only workflow](docs/06-guides/codex-native-tasks.md)
+Completed native slice: the [skill-only workflow](docs/06-guides/codex-native-tasks.md)
 uses task tools already exposed by Codex, with an explicitly selected pair.
 It needs no Node/MCP/hook setup. [One controlled opted-in desktop pair passed](docs/09-reviews/2026-09-07-native-desktop-acceptance.md),
 including prior context, B's own edit and busy/stop checks. The subsequent
@@ -90,8 +104,9 @@ to existing-session desktop entry instead of further prompt tuning.
 - [ ] Verify plugin loading, native identity and adoption of a prior conversation.
   [Native attempt](docs/09-reviews/2026-09-07-desktop-native-adoption.md): installation
   succeeded, but neither prior conversation exposed the diagnostic; keep open.
-- [ ] Connect two existing conversations in one client, explicitly selected,
-  without shared-path or JSON setup; one conversation per product is not this test.
+- [x] Controlled native-skill pair: two original same-client tasks with explicit
+  links and scope, without a shared path or JSON setup. Independent user setup
+  and the separate external-plugin adapter are not covered by this pass.
 - [x] Prove one controlled model-selected native advice and same-receiver edit;
   source attribution verified in turn data, not a rendered UI recording.
 - [ ] Verify full business constraints, unrelated silence and user-input priority.
@@ -102,7 +117,7 @@ The controlled skill route does not close those gates. Do not substitute a new C
 unscoped remote control or a promotional UI for existing-conversation acceptance.
 Existing quality, quota and DeepSeek live gaps remain open.
 
-### Immediate delivery checkpoint — community feedback
+### Earlier delivery checkpoint — community feedback
 
 The independent [first-use report #158](https://github.com/fyaic/threadmesh/issues/158)
 was submitted on September 5 and acknowledged on September 7. It found a
@@ -110,7 +125,8 @@ roughly five-minute, mostly quiet install and a Codex quota block before a model
 turn. Its public-API harness check is real external evidence, not a live agent
 collaboration pass. One report is not a community popularity ranking.
 
-The next delivery must address this first failed user journey:
+The following delivered work addressed that first failed user journey; the
+current ordered acceptance above supersedes its implementation sequence:
 
 Implementation checkpoint: the packaged `try --live` entry, bounded failure
 handling and bilingual guides are implemented. Real copy and installed-package

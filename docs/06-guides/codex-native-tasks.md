@@ -9,12 +9,12 @@ a new model, an MCP server or a polling daemon.
 
 ## No-terminal workflow
 
-Prefer the [browser pairing helper](https://fyaic.github.io/threadmesh/) if you
-do not want to edit the template below. Paste two local chat links, choose a
-shared topic and advice mode, confirm, then copy each prepared setup and open
-its original task. Inputs are not uploaded or saved by the page. It generates
-text, not a connection: you still paste/send in both tasks and wait for their
-confirmations. [Browser and generated-prompt acceptance](../09-reviews/2026-09-08-pairing-helper-acceptance.md).
+**Work in the original Codex tasks. No website needs to stay open.** The setup
+below is an instruction to each task, not registration with a hosted service.
+If editing the template is inconvenient, the optional
+[setup-text helper](https://fyaic.github.io/threadmesh/) prepares the two strings
+locally in your browser. It cannot observe or control collaboration and is not
+a live demo. [What the helper was actually tested for](../09-reviews/2026-09-08-pairing-helper-acceptance.md).
 
 Choose two disposable existing Codex tasks with useful prior context. For
 example, a brand task maintains approved product facts; a website task already
@@ -38,7 +38,7 @@ repository or open a terminal.
 
 ```text
 Use the ThreadMesh workflow at this pinned public URL. Read the complete file:
-https://raw.githubusercontent.com/fyaic/threadmesh/93da0c6fc9814c1a28e95eaf34d287e11a4331f7/plugins/threadmesh-codex/skills/threadmesh-codex/SKILL.md
+https://raw.githubusercontent.com/fyaic/threadmesh/c0a0a913439732229a2bb811d23cc790c2dd0408/plugins/threadmesh-codex/skills/threadmesh-codex/SKILL.md
 
 Pair only this task with OTHER TASK LINK. Each keeps its own current job and
 earlier decisions. Allowed shared topic: SHARED TOPIC.
@@ -46,12 +46,13 @@ Use the supplied local chat link to identify the peer and verify only that
 task with native read/status tools. Do not list all tasks or read unrelated
 conversations. If the link or target cannot be verified, leave collaboration off.
 
-I authorize automatic, relevant peer advice after setup. I understand an idle
+I authorize automatic, relevant peer advice after both tasks complete setup. I understand an idle
 check cannot guarantee that sending never races with new user input.
 This setup turn must not send any peer messages or change any business files.
 Do not install software, change permissions or create tasks.
 Confirm the selected peer by title, allowed topic, available native tools and
-whether this task is enabled. If anything is unavailable, leave collaboration off.
+whether this task is ready. Do not claim both are connected from this setup alone.
+If anything is unavailable, leave collaboration off.
 ```
 
 Want to check first without enabling? Replace the automatic-advice
@@ -90,6 +91,29 @@ model decides whether the selected website task needs the change. A useful
 result is an attributed native message, followed by that **same** website task
 updating its own copy while keeping its earlier button decision and price.
 Read the receiver's actual result; a delivery notification alone is insufficient.
+
+### 3. Check the result and stop, in the same conversations
+
+Ask **“Check ThreadMesh status”** when unclear. This read-only request must not
+enable collaboration or resend anything. Expect a concise account of the local
+scope/mode, selected peer, last observed result and what remains unknown:
+
+| Task says | What it establishes |
+|---|---|
+| This task is ready | Only this end completed setup; the peer's agreement still needs confirmation |
+| Not sent: receiver busy / setup unknown | Advice stays in this conversation; no automatic retry or durable queue is implied |
+| Sent, result unverified | A message was submitted, not proof of a useful edit |
+| Receiver reports done | A completion report exists; check the artifact before treating it as verified |
+| Verified + artifact/test | The stated business result was actually checked |
+| This task stopped | Local pending advice is cancelled; it does not prove the other side stopped |
+
+These are plain-language reports from the agent, not a persistent status service
+or guaranteed host-enforced state machine. Empty reads remain unknown. Say
+**“Stop ThreadMesh collaboration”** in both tasks to stop both directions;
+checking status afterward must not resume cancelled advice. Previously submitted
+messages cannot be recalled by this skill.
+These reporting rules passed internal review; the latest native status attempt
+did not produce a verifiable result. [Validation boundary](../09-reviews/2026-09-08-pairing-helper-acceptance.md#later-correction-local-tasks-first-not-a-website-demo).
 
 ### Optional: use a task name instead
 

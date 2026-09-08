@@ -103,3 +103,46 @@ recovery, or an incremental advantage over native-only Codex. An idle check
 does not make the following send atomic. Review-only mode drafts advice; it is
 not permission to send. Agent guidance is not a hard host-enforced security
 boundary. Neither this case nor the helper repacks the alpha.3 CLI release.
+
+## Later correction: local tasks first, not a website demo
+
+Following user feedback on September 8, the helper was demoted to an optional
+setup-text utility. The bilingual README/guide now start in the original Codex
+tasks. The webpage explicitly states that it neither runs agents nor shows live
+progress and that closing the page does not stop collaboration. Its revised
+Chinese heading and boundary text were inspected in actual Chrome. This is a
+positioning correction, not a new integration or native demonstration.
+
+The skill at `c0a0a913439732229a2bb811d23cc790c2dd0408` adds concise in-task
+status guidance: local readiness is not peer readiness, idle is not configured,
+sent is not done, unknown observations stay unknown, and read-only status must
+not reactivate a stop. Both guide templates and the optional generator pin this
+revision. Earlier successful cases above used the earlier pinned workflow;
+their outcomes are not retroactive live validation of this revision.
+
+An independent internal subagent performed a read-only behavioral review of
+three cases: idle peer with unknown setup, accepted send with empty result, and
+status after stop. It passed; the suggested explicit peer-confirmation condition
+was incorporated into the send rule. This was a tabletop review, not a real
+agent exchange or an independent user's onboarding. Skill validation, all 14
+helper regression tests, the full 474-pass/one-skip suite and documentation lint
+passed. The system Python lacked PyYAML; the validator passed in an isolated
+`uv --with pyyaml` environment without changing project dependencies.
+
+One read-only status request was also dispatched to the original, previously
+stopped receiver using the new public workflow. **No live status pass is
+claimed.** The desktop wait surface reported an active turn with no readable
+result, while the official read-only App Server capture marked that selected
+turn interrupted and retained only the incoming request. Neither proves a
+completed check. There were no outgoing sends or file changes in the captured
+items, and the four checked receiver files retained their pre-request hashes.
+This is a bounded negative observation, not proof that no later activity can
+occur. No retry or additional business request was dispatched. Its selected-turn
+capture is retained privately with SHA-256
+`b87454bfb173bb6c113c5d534efb7aad1bbcb9e8935ee028aeea54fefa901ead`.
+
+Independent GUI first use, persistent desktop control, simultaneous-input
+safety and measured native-only advantage remain open. The reordered
+[roadmap](../../ROADMAP.md#active-priority--existing-desktop-clients-2026-09-08)
+is the active acceptance plan; old completed pairing gates must not be restarted
+as substitutes for these outcomes.

@@ -2,10 +2,10 @@ import { buildPair, EXAMPLES } from "./pairing.mjs";
 
 const copy = {
   en: {
-    pageTitle: "Set up two Codex tasks · ThreadMesh", skip: "Skip to setup", language: "Language",
-    title: "Let two tasks keep each other informed.",
-    intro: "Prepare two setup prompts. Paste one into each existing Codex task, then continue your work.",
-    scope: "This page only prepares text. It does not connect tasks, read chats or send messages.",
+    pageTitle: "Optional setup-text helper · ThreadMesh", skip: "Skip to setup", language: "Language",
+    title: "Prepare setup text for your local tasks.",
+    intro: "Optional template helper—not an agent demo. Paste the results into your original Codex tasks; collaboration happens there, not on this website.",
+    scope: "This page cannot run agents, connect tasks, show live progress or stop collaboration. It only prepares text; closing it does not stop your tasks.",
     tasksTitle: "Choose your two tasks", taskA: "Task A link", taskB: "Task B link",
     linkHelp: "Open each task in Codex and copy its chat deep link: ⌘⌥L on macOS, Ctrl+Alt+L on Windows.",
     official: "Official shortcuts", localOnly: "Use two different local Codex tasks. Copy the whole link, not a shared-chat snapshot. You do not need to find an ID.",
@@ -36,10 +36,10 @@ const copy = {
     consent_required: "Review the scope and select the confirmation checkbox before preparing prompts.",
   },
   zh: {
-    pageTitle: "设置两个 Codex 任务 · ThreadMesh", skip: "跳到设置", language: "语言",
-    title: "让两个任务主动交流，不再靠你转述。",
-    intro: "生成两份设置提示，分别粘贴到已有的 Codex 任务中，然后正常工作。",
-    scope: "这个页面只生成文字，不会连接任务、读取聊天或发送消息。",
+    pageTitle: "可选设置提示词工具 · ThreadMesh", skip: "跳到设置", language: "语言",
+    title: "为本地任务准备设置文字。",
+    intro: "这是可选的模板辅助工具，不是 Agent 演示。将结果粘贴到原来的 Codex 任务中；协作发生在那里，不在这个网页上。",
+    scope: "页面不运行 Agent、不连接任务、不显示实时进度，也不能停止协作。它只生成文字；关闭页面不会停止你的任务。",
     tasksTitle: "选择你的两个任务", taskA: "任务 A 的链接", taskB: "任务 B 的链接",
     linkHelp: "在 Codex 中分别打开任务，复制聊天深链：macOS 按 ⌘⌥L，Windows 按 Ctrl+Alt+L。",
     official: "官方快捷键说明", localOnly: "请选择两个不同的本地 Codex 任务。复制完整聊天深链，不是分享聊天快照，无需查找 ID。",
