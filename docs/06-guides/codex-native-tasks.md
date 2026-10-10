@@ -9,12 +9,20 @@ a new model, an MCP server or a polling daemon.
 
 ## Candidate plugin entry
 
-The repository now provides a Codex marketplace and a skill-only plugin. See
-[installation instructions](../../plugins/threadmesh-codex/README.md) for the
-local candidate and the Git installation command pinned to this candidate
-snapshot. It is not listed in the public directory; do not assume an older
-release or public `main` contains its marketplace.
-No ThreadMesh npm package or Node runtime is needed for this path.
+The repository provides a Codex marketplace and a skill-only candidate plugin.
+With a Codex CLI that supports `codex plugin`, register the pinned candidate and
+install it:
+
+```sh
+codex plugin marketplace add fyaic/threadmesh --ref a8a02a0101143d6033de855597e0d7ce291bc5e1
+codex plugin add threadmesh-codex@threadmesh
+```
+
+These commands change Codex's plugin configuration and cache. This is a pinned
+candidate, not a stable release or a public-directory listing. No manual source
+checkout, JSON editing, ThreadMesh npm package or Node runtime is required.
+The [package README](../../plugins/threadmesh-codex/README.md) contains standalone
+usage instructions; it does not depend on files outside the installed package.
 
 The current supported distribution instructions require the Codex CLI. We have
 not established an ordinary-user GUI add-from-GitHub flow. This is progress
@@ -211,3 +219,19 @@ remain available; the deep-link pass does not establish complete title search.
 Packaging validation and a behavioral tabletop review alone are not live proof.
 The earlier [hook/MCP adoption attempt](../09-reviews/2026-09-07-desktop-native-adoption.md)
 did not pass. A passing new App Server sample would still be a different path.
+
+## Maintainer package discovery check
+
+For a local checkout, this command only supplies overrides for that invocation;
+it does not persistently register or install the marketplace. Replace the path
+with the checkout location:
+
+```sh
+codex plugin list --marketplace threadmesh --available --json \
+  -c 'marketplaces.threadmesh.source_type="local"' \
+  -c 'marketplaces.threadmesh.source="/absolute/path/to/threadmesh"'
+```
+
+On Codex 0.154.0, running the list command without these overrides did not
+find an unregistered checkout. Successful listing proves discovery and manifest
+parsing, not installation or existing-task adoption.

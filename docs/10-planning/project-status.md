@@ -4,7 +4,7 @@
 
 The current increment packages the native Codex skill for marketplace discovery
 and short activation, with one concrete API-to-client workflow. Its supported
-installation entry is documented in the [plugin guide](../../plugins/threadmesh-codex/README.md).
+installation entry is documented in the [desktop guide](../06-guides/codex-native-tasks.md).
 Plugin discovery, installation, new-chat loading and existing-chat adoption are
 separate observations; none establishes the others. The desktop skill still
 uses Codex's native transport and supplies behavioral guidance.

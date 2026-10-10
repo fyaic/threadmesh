@@ -4,46 +4,9 @@ A skill-only plugin for relevant advice between explicitly selected Codex tasks.
 It uses the desktop host's native task tools. It adds no model, MCP server,
 hooks, background service or credentials. It cannot add missing host tools.
 
-## Install the candidate
-
-This checkout includes a repository marketplace. It is a development candidate,
-not a plugin published in the public directory. From the repository root, a
-maintainer can inspect it without installing, substituting the checkout path:
-
-```sh
-codex plugin list --marketplace threadmesh --available --json \
-  -c 'marketplaces.threadmesh.source_type="local"' \
-  -c 'marketplaces.threadmesh.source="/absolute/path/to/threadmesh"'
-```
-
-The per-command overrides do not register the marketplace persistently. On
-Codex 0.154.0, running the list command without them did not discover the
-unregistered repository marketplace, even from the repository root.
-
-To install this local candidate deliberately:
-
-```sh
-codex plugin marketplace add /absolute/path/to/threadmesh
-codex plugin add threadmesh-codex@threadmesh
-```
-
-These installation commands change your Codex plugin configuration and cache.
-They are not run by the inspection command. Restart the desktop app after
-changing a local plugin. The CLI must provide `codex plugin`; no Node runtime
-or ThreadMesh npm package is required for this skill-only path.
-
-The candidate snapshot can be registered without a manual source checkout or
-JSON editing, then installed:
-
-```sh
-codex plugin marketplace add fyaic/threadmesh --ref a8a02a0101143d6033de855597e0d7ce291bc5e1
-codex plugin add threadmesh-codex@threadmesh
-```
-
-This command pins the reviewed source candidate, not a stable release. Do not
-assume `main` or an earlier alpha release contains this marketplace. This
-candidate has not established a GUI add-from-GitHub path for ordinary users, so distribution still requires the
-Codex CLI. It does not yet meet the no-terminal first-use goal.
+This package contains the workflow and its UI metadata. Installation alone does
+not activate collaboration or grant permission to send. The instructions below
+are self-contained and apply once the installed skill is available.
 
 ## Use it with selected tasks
 
@@ -71,10 +34,6 @@ linking a peer does not activate it. For suggestions without sending, request
 Work normally after both ends are ready. Ask **Check ThreadMesh status** for a
 read-only result. Say **Stop ThreadMesh collaboration** in each task to stop
 both directions. Delivery alone does not establish a correct client edit.
-
-The [desktop guide](https://github.com/fyaic/threadmesh/blob/feat/codex-install-first/docs/06-guides/codex-native-tasks.md) retains the manual
-fallback and historical evidence. Loading the package, applying the workflow
-manually, and useful original-task collaboration are different checks.
 
 ## Sources and validation boundary
 

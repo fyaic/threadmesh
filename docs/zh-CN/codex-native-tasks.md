@@ -7,11 +7,18 @@
 
 ## 候选插件入口
 
-仓库现在提供 Codex marketplace 和 Skill-only 插件。请看
-[安装说明](../../plugins/threadmesh-codex/README.md)：本地候选可供维护者测试，
-远程 Git 安装命令固定到本轮候选源码快照。
-候选尚未进入公共插件目录，不要假定旧版 release 或公开 `main` 已有此入口。
-这条路径不需要 ThreadMesh npm 包或 Node 运行时。
+仓库提供 Codex marketplace 和 Skill-only 候选插件。在支持 `codex plugin`
+的 Codex CLI 中，注册固定版本并安装：
+
+```sh
+codex plugin marketplace add fyaic/threadmesh --ref a8a02a0101143d6033de855597e0d7ce291bc5e1
+codex plugin add threadmesh-codex@threadmesh
+```
+
+这两条命令会修改 Codex 插件配置和缓存。安装的是固定候选版，不是稳定版或公共
+插件目录条目。不需要手动拉取源码、修改 JSON、安装 ThreadMesh npm 包或 Node
+运行时。[包内 README](../../plugins/threadmesh-codex/README.md)独立提供使用说明，
+不依赖安装目录之外的文档。
 
 目前有依据的分发步骤仍需 Codex CLI；尚未确认普通用户从 GUI 添加 GitHub
 仓库的路径。这改善了安装分发，但还没有达到免终端上手目标。
