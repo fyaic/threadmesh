@@ -36,8 +36,8 @@ A single-direction setup also remains valid: A may send while B uses review-only
 for outgoing advice, completes its own authorized work and reports locally.
 
 The reviewer found that the manual guide still fetched the September workflow,
-so its stop/reply behavior would lag behind the new plugin. Both guide URLs and
-the Git marketplace command now pin candidate `a8a02a0101143d6033de855597e0d7ce291bc5e1`.
+so its stop/reply behavior would lag behind the new plugin. At that review, both guide URLs and
+the Git marketplace command were pinned to candidate `a8a02a0101143d6033de855597e0d7ce291bc5e1`.
 The candidate branch was pushed; GitHub returned byte-identical skill,
 marketplace and plugin manifests at that revision. The guide-pin fix is a
 separate commit so its source reference is real and immutable. This closes the
@@ -54,3 +54,22 @@ Installation itself, existing-task pickup, a real API/client comparison and an
 independent user's original-receiver result remain unverified. No new messages
 were sent to business tasks. No claimed improvement comes from Codex's native
 transport, a repeated historical fixture or these regression tests.
+
+## Merge-readiness follow-up
+
+A fresh review found a further delivery mismatch: the installed candidate still
+contained an older package README with a placeholder installation ref and a
+relative link outside the plugin, while the current README linked to the feature
+branch that could be deleted after merge.
+
+The package README now contains standalone activation, status, stop and limit
+instructions. Installation commands live only in the repository's bilingual
+desktop guides. They pin the corrected package snapshot `3206c00f5b28b6e9b6a00abc13a23ea78c9dd617`.
+No package documentation depends on the feature branch or files outside the
+installed directory. The manual workflow remains pinned to the earlier skill
+snapshot because the skill bytes did not change in this documentation repair.
+
+The independent reviewer verified the corrected package snapshot, both guide
+pins and byte-identical skill content. No remaining merge blocker was found.
+This fixes a package/documentation issue. It does not establish actual
+installation, old-chat skill availability or business benefit.

@@ -11,7 +11,7 @@
 的 Codex CLI 中，注册固定版本并安装：
 
 ```sh
-codex plugin marketplace add fyaic/threadmesh --ref a8a02a0101143d6033de855597e0d7ce291bc5e1
+codex plugin marketplace add fyaic/threadmesh --ref 3206c00f5b28b6e9b6a00abc13a23ea78c9dd617
 codex plugin add threadmesh-codex@threadmesh
 ```
 
@@ -98,7 +98,7 @@ https://raw.githubusercontent.com/fyaic/threadmesh/a8a02a0101143d6033de855597e0d
 模型应实际读取流程，核对已有原生工具，并确认选择范围。若读取失败或缺少工具，
 就停在能力检查，不能用新 CLI 会话或私有接口冒充成功。
 仓库也在 `plugins/threadmesh-codex` 中提供了 Skill-only 插件包供正常分发测试；
-本指南不会替用户修改全局插件安装或 marketplace 配置。
+这个手动备用流程不会修改全局插件安装或 marketplace 配置。
 
 例如，在品牌任务中提出：
 

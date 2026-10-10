@@ -14,7 +14,7 @@ With a Codex CLI that supports `codex plugin`, register the pinned candidate and
 install it:
 
 ```sh
-codex plugin marketplace add fyaic/threadmesh --ref a8a02a0101143d6033de855597e0d7ce291bc5e1
+codex plugin marketplace add fyaic/threadmesh --ref 3206c00f5b28b6e9b6a00abc13a23ea78c9dd617
 codex plugin add threadmesh-codex@threadmesh
 ```
 
@@ -124,7 +124,7 @@ the workflow, inspect available native tools and confirm the selected scope.
 If retrieval or native tools are unavailable, stop there; don't use a fresh CLI
 thread or a private endpoint as a substitute. The skill is also packaged under
 `plugins/threadmesh-codex` for normal plugin distribution testing; no global
-plugin installation or marketplace registration is performed by this guide.
+plugin installation or marketplace registration is performed by this manual fallback.
 
 In the brand task, for example:
 
