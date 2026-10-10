@@ -1,6 +1,42 @@
 # Changelog
 
-All notable changes will be documented here. The project follows Keep a Changelog conventions once versioned releases begin.
+User-visible changes are listed below. The CLI package and the Codex plugin
+have separate versions. Changes on the default branch do not modify an existing
+release tarball.
+
+## [Unreleased]
+
+The following source and Codex plugin changes are not included in the published
+CLI `0.1.0-alpha.3` tarball. The Codex plugin manifest is now `0.1.0-alpha.2`;
+that version is separate from the earlier CLI release with the same number.
+
+### Added
+
+- Codex plugin marketplace entry, pinned installation instructions, and shorter
+  activation guidance for explicitly selected tasks ([#183](https://github.com/fyaic/threadmesh/pull/183)).
+- API-to-client handoff guidance that asks the receiver to preserve its own
+  existing constraints, plus a matched native-only comparison plan.
+
+### Changed
+
+- Native Codex guidance now makes reply authorization and stopped-receiver
+  handling explicit. It distinguishes local readiness, peer confirmation,
+  pending advice, sent but unverified work, and checked results.
+- Manual native-task onboarding uses selected chat links and a shared topic.
+  Guides distinguish historical controlled runs from current plugin validation.
+
+### Removed
+
+- The website pairing helper and its deployment. Local installation and selected
+  existing tasks remain the intended entry ([#177](https://github.com/fyaic/threadmesh/pull/177)).
+
+### Limitations
+
+- Marketplace discovery was checked; actual plugin installation, existing-task
+  loading, independent first use, and comparative business benefit remain
+  unverified. No new live business validation is claimed for this increment.
+- The native skill uses Codex's own task tools. Its instructions do not provide
+  a durable inbox, atomic idle-only delivery, or host-enforced revocation.
 
 ## [0.1.0-alpha.3] - 2026-09-07
 
@@ -61,7 +97,11 @@ All notable changes will be documented here. The project follows Keep a Changelo
 - The command without `--live` does not call a model. Simulated previews remain
   separate; no model-wide reliability or independent-adoption claim is implied.
 
-## [Unreleased]
+## Historical development notes
+
+These notes were recorded before the versioned entries above and were not mapped
+to individual releases. They are retained as development history, not a list of
+pending changes or a claim that each feature is available through the Codex plugin.
 
 ### Added
 

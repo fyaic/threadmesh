@@ -6,17 +6,22 @@ body:
   - type: input
     id: environment
     attributes:
-      label: Harness, OS, and Node version
-      placeholder: Codex CLI, macOS, Node 22 (do not include local paths)
+      label: Harness and operating system
+      description: Include the harness version if known. Node version is only relevant for CLI or source-based use.
+      placeholder: Codex desktop on macOS (do not include local paths)
     validations:
       required: true
   - type: dropdown
     id: install
     attributes:
-      label: Installation path
+      label: Entry used
       options:
-        - One-command GitHub package
-        - Fresh clone and npm ci
+        - Codex marketplace plugin
+        - Manual native Codex workflow
+        - CLI example (installed package)
+        - Local workspace or harness integration
+        - Source checkout
+        - Other or unsure
     validations:
       required: true
   - type: input
@@ -27,37 +32,38 @@ body:
     validations:
       required: true
   - type: textarea
-    id: explanation
-    attributes:
-      label: What does ThreadMesh do?
-      description: Explain it in your own words after using only the README.
-    validations:
-      required: true
-  - type: textarea
     id: friction
     attributes:
-      label: First confusing or failed step
+      label: What did you try, and what happened?
+      description: Include the expected result and the first confusing or failed step. A failed or unknown outcome is useful feedback.
     validations:
       required: true
+  - type: dropdown
+    id: outcome
+    attributes:
+      label: Receiver outcome, if a handoff was attempted
+      options:
+        - Not attempted
+        - Sent, but receiver result unknown
+        - Receiver acted, but result was incorrect or incomplete
+        - Useful result checked
+        - Failed or blocked before delivery
+        - Other or unsure
+    validations:
+      required: false
   - type: textarea
     id: workflow
     attributes:
-      label: Would you use it?
-      description: Name a real workflow, or explain why the capability is not useful.
+      label: Would you use it? (optional)
+      description: Name a workflow, explain what you expected it to help with, or tell us why it was not useful.
     validations:
-      required: true
+      required: false
   - type: checkboxes
     id: evidence
     attributes:
-      label: Evidence checks
+      label: Report context
       options:
-        - label: I found why delivery alone did not unlock the dependent task.
-          required: false
-        - label: I found what happened when the receiver was already running.
-          required: false
-        - label: The demo reported cleanup complete.
-          required: false
         - label: I am independent of the ThreadMesh maintainer organization.
           required: false
-        - label: I removed credentials, transcripts, IDs, and local paths.
+        - label: I removed credentials, private transcripts, IDs, and local paths from this report.
           required: true

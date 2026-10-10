@@ -1,41 +1,35 @@
 # Roadmap
 
-ThreadMesh uses milestone exit criteria rather than date promises. Priorities
-may change as the safety and adapter contracts become clearer. See the
-[current status](docs/10-planning/project-status.md) and
-[active acceptance](docs/10-planning/desktop-entry-2026-09-07.md) for the
-evidence-backed snapshot, current product decision, and ordered workstreams.
+ThreadMesh aims to help selected agent tasks share useful changes while keeping
+their own context and decisions. The Codex skill uses native task tools; the
+local workspace provides a separate persistent inbox and checkpoint path.
+See [current status](docs/10-planning/project-status.md) for capability and
+evidence boundaries. Milestones below are historical plans, not delivery dates.
 
-The roadmap now optimizes for one outcome: **parallel agent sessions hand off
-completion, blockers, review findings, and dependency-ready state without the
-user acting as their message bus**. ThreadMesh is the attention and admission
-policy layer; A2A, Cotal, ACP, or harness-native APIs may supply transport.
+## Current increment — repository clarity (2026-10-10)
 
-## Current increment — install and measured value (2026-10-10)
+[PR #183](https://github.com/fyaic/threadmesh/pull/183) is merged: it adds the
+Codex marketplace entry and tightens scoped collaboration guidance. Actual
+installation, existing-task loading and independent first use remain unverified.
+The skill has no measured advantage over native Codex alone.
 
-Keep the existing-task product target below. The next bounded use case is a real
-API contract change reaching its dependent client task, preserving that task's
-prior decisions. Work on the supported plugin entry and the native-only value
-comparison together, before extending adapters or coordination infrastructure.
+**Real-project validation is paused at the owner's request.** Current work is
+repository maintenance: clear bilingual descriptions, usable documentation
+navigation and accurate contribution/reporting instructions. Do not begin a
+live business comparison or recruit participants as part of this increment.
 
-- Provide a discoverable plugin package and short scoped activation. Check
-  installation, new-chat availability and existing-chat adoption separately.
-- Make return-message permission, stopped-receiver behavior and API constraints
-  explicit in the native skill. Guidance does not create a durable queue or an
-  atomic idle-only send operation.
-- Use the [small matched acceptance](docs/10-planning/native-value-acceptance-2026-10-10.md).
-  Native-only Codex gets the same tools and user permission; installation and
-  setup count toward ThreadMesh's cost. Keep unrun results unfilled.
-- Continue only if useful outcomes justify the added setup. If both routes need
-  no relaying and the skill adds no observable benefit, retain a small optional
-  skill. Independent first-user success remains a separate gate.
+The [small matched comparison](docs/10-planning/native-value-acceptance-2026-10-10.md)
+is retained for a later decision to resume. Its result cells remain unfilled.
+No new adapter, coordination platform or website is needed for this work.
 
-The September 8 controlled API case is already complete. Repeating it, adding a
-website, or running a new CLI pair does not close these remaining gates.
+<a id="active-priority--existing-desktop-clients-2026-09-08"></a>
 
-## Active priority — existing desktop clients (2026-09-08)
+## Prior priority — existing desktop clients (2026-09-08)
 
-**Current order, confirmed by the user:** independent first use → visible local
+The ordering below records the September plan. The October maintenance scope
+and validation pause above take precedence; open acceptance criteria remain open.
+
+**September order:** independent first use → visible local
 status and stop → demonstrated relay savings → a real user case → DeepSeek and
 quota handoff. Work happens in original local agent conversations. The website
 helper is removed, including its code, browser-only tests and deployment workflow.
@@ -50,9 +44,9 @@ is the first-use target. Manual prompt setup is a fallback, not completion.
 | 4 | Others can understand and reproduce the value | A consented real native recording and independent case, followed by relevant community sharing. No recreated conversation or promised star count. |
 | 5 | Extend a proven useful workflow | Provider-configured DeepSeek initiative, then continuation from an actual quota-blocked task's already saved checkpoint. Neither has a completed live acceptance. |
 
-Orders 1 and 2 form the immediate product work: fix observed local usability
-while seeking an independent participant, without pretending an internal test
-is that participant. The old #91/#93 multi-role loop and #7 formal review remain
+Orders 1 and 2 defined the next validation work in September. Independent
+participant recruitment is now deferred along with real-project validation;
+an internal test cannot replace independent first use. The old #91/#93 multi-role loop and #7 formal review remain
 separate open tracks, not new prerequisites for this desktop-first alpha.
 
 ### Completed evidence — do not repeat as a new gate
@@ -486,5 +480,5 @@ prototype inference.
 - Kimi flagship-loop parity, new harnesses, external verifier service design,
   and further Git-evidence generalization until the real Codex chain is
   retained. Existing foundations remain available for reuse after that gate.
-- Inspector and README presentation polish that does not record new product
-  evidence.
+- Cosmetic inspector work without a concrete usability need. Repository copy
+  and navigation maintenance are explicitly in scope for the October increment.
