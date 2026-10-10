@@ -32,18 +32,17 @@ They are not run by the inspection command. Restart the desktop app after
 changing a local plugin. The CLI must provide `codex plugin`; no Node runtime
 or ThreadMesh npm package is required for this skill-only path.
 
-After a ref containing this marketplace has been published, users can register
-that ref without a manual source checkout or JSON editing, then install:
+The candidate snapshot can be registered without a manual source checkout or
+JSON editing, then installed:
 
 ```sh
-codex plugin marketplace add fyaic/threadmesh --ref <published-ref>
+codex plugin marketplace add fyaic/threadmesh --ref a8a02a0101143d6033de855597e0d7ce291bc5e1
 codex plugin add threadmesh-codex@threadmesh
 ```
 
-Replace `<published-ref>` with the actual published branch, tag or commit; it is
-not a command to paste unchanged. Do not assume `main` or an earlier alpha
-release contains this marketplace. This candidate has not established a GUI
-add-from-GitHub path for ordinary users, so distribution still requires the
+This command pins the reviewed source candidate, not a stable release. Do not
+assume `main` or an earlier alpha release contains this marketplace. This
+candidate has not established a GUI add-from-GitHub path for ordinary users, so distribution still requires the
 Codex CLI. It does not yet meet the no-terminal first-use goal.
 
 ## Use it with selected tasks
@@ -73,7 +72,7 @@ Work normally after both ends are ready. Ask **Check ThreadMesh status** for a
 read-only result. Say **Stop ThreadMesh collaboration** in each task to stop
 both directions. Delivery alone does not establish a correct client edit.
 
-The [desktop guide](../../docs/06-guides/codex-native-tasks.md) retains the manual
+The [desktop guide](https://github.com/fyaic/threadmesh/blob/feat/codex-install-first/docs/06-guides/codex-native-tasks.md) retains the manual
 fallback and historical evidence. Loading the package, applying the workflow
 manually, and useful original-task collaboration are different checks.
 

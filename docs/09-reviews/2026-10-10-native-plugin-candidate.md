@@ -36,10 +36,12 @@ A single-direction setup also remains valid: A may send while B uses review-only
 for outgoing advice, completes its own authorized work and reports locally.
 
 The reviewer found that the manual guide still fetched the September workflow,
-so its stop/reply behavior would lag behind the new plugin. The release step
-must pin both guide URLs to the actual candidate commit and verify their remote
-bytes before this finding is closed. A source snapshot and a final guide-pin
-commit are deliberately separate to avoid inventing a self-referential SHA.
+so its stop/reply behavior would lag behind the new plugin. Both guide URLs and
+the Git marketplace command now pin candidate `a8a02a0101143d6033de855597e0d7ce291bc5e1`.
+The candidate branch was pushed; GitHub returned byte-identical skill,
+marketplace and plugin manifests at that revision. The guide-pin fix is a
+separate commit so its source reference is real and immutable. This closes the
+stale-workflow finding; it is not a live behavioral pass.
 
 ## Remaining product gates
 

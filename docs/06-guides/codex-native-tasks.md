@@ -11,9 +11,9 @@ a new model, an MCP server or a polling daemon.
 
 The repository now provides a Codex marketplace and a skill-only plugin. See
 [installation instructions](../../plugins/threadmesh-codex/README.md) for the
-local candidate and the Git installation command to use **after a containing
-ref is published**. The candidate is not yet listed in the public directory;
-do not assume the commands work against an older release or public `main`.
+local candidate and the Git installation command pinned to this candidate
+snapshot. It is not listed in the public directory; do not assume an older
+release or public `main` contains its marketplace.
 No ThreadMesh npm package or Node runtime is needed for this path.
 
 The current supported distribution instructions require the Codex CLI. We have
@@ -75,7 +75,7 @@ repository or open a terminal.
 
 ```text
 Use the ThreadMesh workflow at this pinned public URL. Read the complete file:
-https://raw.githubusercontent.com/fyaic/threadmesh/c0a0a913439732229a2bb811d23cc790c2dd0408/plugins/threadmesh-codex/skills/threadmesh-codex/SKILL.md
+https://raw.githubusercontent.com/fyaic/threadmesh/a8a02a0101143d6033de855597e0d7ce291bc5e1/plugins/threadmesh-codex/skills/threadmesh-codex/SKILL.md
 
 Pair only this task with OTHER TASK LINK. Each keeps its own current job and
 earlier decisions. Allowed shared topic: SHARED TOPIC.

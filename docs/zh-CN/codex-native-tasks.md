@@ -9,7 +9,7 @@
 
 仓库现在提供 Codex marketplace 和 Skill-only 插件。请看
 [安装说明](../../plugins/threadmesh-codex/README.md)：本地候选可供维护者测试，
-远程 Git 安装命令须在**包含 marketplace 的版本发布后**使用。
+远程 Git 安装命令固定到本轮候选源码快照。
 候选尚未进入公共插件目录，不要假定旧版 release 或公开 `main` 已有此入口。
 这条路径不需要 ThreadMesh npm 包或 Node 运行时。
 
@@ -58,7 +58,7 @@
 
 ```text
 使用这个固定版本公开链接中的 ThreadMesh 工作流，请完整读取文件：
-https://raw.githubusercontent.com/fyaic/threadmesh/c0a0a913439732229a2bb811d23cc790c2dd0408/plugins/threadmesh-codex/skills/threadmesh-codex/SKILL.md
+https://raw.githubusercontent.com/fyaic/threadmesh/a8a02a0101143d6033de855597e0d7ce291bc5e1/plugins/threadmesh-codex/skills/threadmesh-codex/SKILL.md
 
 只把当前任务与“对方任务链接”配对。双方保留自己正在做的工作和此前约定。
 允许交流的话题：允许交流的话题。
