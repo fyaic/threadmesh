@@ -1,91 +1,83 @@
 # What ThreadMesh is
 
-ThreadMesh offers an explicit local workspace for supported integrations and an
-optional skill workflow over Codex's native task tools. The aim is simple:
-**you should not have to relay every useful change between agents yourself**.
+ThreadMesh helps independent agent tasks share relevant changes while keeping
+their own context and decisions, reducing the information you carry between chats.
 
-Codex already supplies native cross-task communication on the tested host. The
-skill did not invent it, and may be unnecessary if native use meets your needs.
-[Native capabilities versus ThreadMesh's current value](native-capabilities-and-value.md).
+For example, one agent changes an API while another maintains its client.
+The client needs the new pagination rules, but must keep its existing timeout
+and retry behavior. Useful collaboration means the receiving agent makes the
+right change in its own task—not merely that a message arrives.
 
-A session is one agent conversation with its own task and context. A harness
-is the application running it, such as Codex or Pi. ThreadMesh connects opted-in
-workstreams; it does not merge their conversations or become their model.
+## Two ways to use it
 
-## The concrete problem
+| Path | What it provides | Entry and status |
+|---|---|---|
+| Codex native-task skill | Sharing scope and handoff guidance using Codex's own task tools | [Candidate plugin](../06-guides/codex-native-tasks.md); installed use and old-task loading unverified |
+| Local workspace | Peer discovery, persistent advice inboxes and portable checkpoints for supported agent applications | [CLI v0.1.0-alpha.3](../06-guides/first-workspace.md); distributed as a GitHub package |
 
-You have Codex changing an API and Pi maintaining its client. When pagination
-changes, the client needs that information. Normally you notice the dependency,
-copy the change and explain it in the other session.
+The skill is optional when Codex already meets your needs. It does not supply
+native messaging or the workspace's storage. Its added value over using Codex
+directly has not been measured. See [native capabilities and current value](native-capabilities-and-value.md).
 
-With the workspace integration:
+The CLI sample starts new sessions, not existing desktop chats. Codex, Pi, Kimi
+and DeepSeek have different [capabilities and evidence](harness-support.md).
+A “session” is a conversation; a “harness” is the application running it.
 
-1. You publish each session's work goal once.
-2. The agents receive collaboration tools and generic task-time guidance.
-3. A model decides whether a discovered peer needs useful information.
-4. Advice enters a persistent inbox. The recipient judges it against its task.
-5. An opted-in idle Pi can continue in its same session and act on the advice.
+## How workspace collaboration works
 
-The [real Codex → Pi API case](../09-reviews/2026-09-05-workspace-awareness.md#ordinary-codex--pi-api-case-pass)
-completed that path and passed a client behavior check. Pi had first volunteered
+1. You publish a work goal for each participating session.
+2. Agents receive peer tools and task-time collaboration guidance.
+3. A model decides whether another task needs a relevant change or question.
+4. Advice enters a persistent inbox. The recipient checks it against its own task.
+5. Where supported and explicitly enabled, an idle recipient continues in the
+   same session and works on the advice.
+
+The [Codex → Pi API case](../09-reviews/2026-09-05-workspace-awareness.md#ordinary-codex--pi-api-case-pass)
+completed this path and passed a client behavior check. Pi first volunteered
 its dependency; Codex replied after its ordinary API task. No human relayed it.
+Automatic continuation is integration-specific, not a property of every inbox.
 
-## What exists today
+## What is available
 
-- A local CLI to initialize a room, launch named workstreams, inspect and mute.
-- Four model tools: discover peers, send advice, read/decide inbox messages,
-  and save a portable checkpoint.
-- Pi native integration and Codex/Kimi/official DeepSeek launch paths, with
-  different evidence levels and wake capabilities.
-- An explicit checkpoint command for starting a new harness with saved context.
-- A reusable core coordinator, MCP entry point and lower-level JavaScript SDK.
+The CLI creates a local room, launches named tasks and lets you inspect or mute
+them. Four model tools cover discovery, advice, inbox decisions and checkpoints.
+Checkpoints supply saved context to a new session in a supported application.
 
-See the [versioned support matrix](harness-support.md), not just a product logo.
-The current package has runtime dependencies and is GitHub-distributed alpha;
-it is not a production service or an npm-published release.
+Developers can use [MCP](../06-guides/first-workspace.md#kimi-and-custom-harnesses)
+or the [SDK](../06-guides/implement-an-adapter.md). The CLI requires Node and
+runtime dependencies; it is not an npm-registry release.
 
-## What the “intelligence” means
+## Evidence and limitations
 
-Models choose relevance and message content under configured collaboration
-guidance. In the workspace route, ThreadMesh supplies discovery, persistence and
-adapter integration. In the native skill route, Codex supplies the transport,
-source attribution and continuation. Neither route guarantees useful choices.
+Models choose relevance and message content under collaboration guidance.
+ThreadMesh does not guarantee those choices. An unrelated-change control stayed
+quiet, while a copy case delivered and resumed but omitted a free-plan qualifier.
+**Successful delivery is not a verified business result.**
+[Read the successes and failures](../09-reviews/2026-09-05-workspace-awareness.md).
 
-A real unrelated-change control stayed quiet despite available peer/inbox tools.
-A second copy case delivered and resumed correctly but lost a free-plan qualifier.
-**A successful message is not a verified business result.**
-[Successes and failures](../09-reviews/2026-09-05-workspace-awareness.md).
-
-## Who it helps—and who it does not
-
-Try it if you already run parallel agent tasks and repeatedly copy API decisions,
-approved constraints or research findings between them. Harness developers can
-use the [MCP surface](../06-guides/first-workspace.md#kimi-and-custom-harnesses)
-or [SDK adapter contract](../06-guides/implement-an-adapter.md).
-
-For a single conversation or a fully predetermined workflow, the extra
-coordination may be unnecessary. This alpha is a same-owner local setup, not an
-open agent network, multi-tenant security boundary or arbitrary-tab connector.
+Controlled native-task and CLI samples produced useful edits. Desktop-plugin
+adoption, old-task loading, independent first use and gains over native Codex
+remain unverified. Preview agents are simulated; DeepSeek lacks live initiative
+evidence. See the [case portfolio](../06-guides/real-world-cases.md).
 
 ## Context and control
 
-Published goals and peer advice are shared; private histories are not scanned.
-Inbox reads do not consume messages. Acceptance is a separate disposition, not
-proof that work passed tests; workspace advice may be shown to the model so it
-can decide what to do. Pi idle follow-up requires explicit opt-in.
+Each route uses explicit participation and sharing scope, without merging chats
+or globally scanning or broadcasting their histories. Native task reads stay
+within the selected, authorized scope. The workspace shares published goals and
+advice. Reading an inbox does not consume a message;
+acceptance is a separate decision and is not proof that the resulting work passed.
+Pi idle follow-up requires explicit opt-in.
 
-Portable checkpoints carry selected working context, not hidden state, tool
-permissions or a lossless transcript. Actual quota-blocked long-session recovery
-and native prior-session adoption remain open checks.
+The native skill relies on the host's tools and permissions. Its guidance does
+not enforce isolation or eliminate races with new user input. The workspace
+alpha is a same-owner local setup, not a multi-tenant security boundary.
+[Permissions and threats](../04-safety/threat-model.md).
 
-## Start here
+Checkpoints carry explicitly saved context, not hidden state, tool permissions
+or a lossless transcript. Recovery of a real quota-blocked long conversation
+remains unverified. [Checkpoint guide](../06-guides/portable-checkpoints.md).
 
-[First workspace](../06-guides/first-workspace.md) ·
-[Real cases](../06-guides/real-world-cases.md) ·
-[Checkpoint guide](../06-guides/portable-checkpoints.md) ·
-[Safety model](../04-safety/threat-model.md) ·
-[Roadmap](../../ROADMAP.md)
-
-For implementation details, read the [reference architecture](../02-architecture/reference-architecture.md)
-and [protocol](../03-protocol/README.md). Historical benchmark records remain
-available, but are not prerequisites for trying the current workspace.
+For a single conversation, or when native tools already cover coordination,
+extra setup may not help. Implementation and history are linked from the
+[documentation index](../README.md#explore-the-implementation).

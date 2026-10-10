@@ -1,75 +1,73 @@
 # ThreadMesh 是什么
 
-ThreadMesh 提供明确共享的本地 workspace，以及基于 Codex 原生任务工具的可选 Skill 流程。
-目的很直接：**不再由你负责把每个有用变化转述给另一个 Agent。**
+ThreadMesh 帮助独立 Agent 任务分享相关变化，保留各自上下文与约定，
+减少你在聊天之间搬运信息的工作。
 
-Session 是一段有自己的任务和上下文的 Agent 会话；harness 是运行它的应用，
-例如 Codex 或 Pi。ThreadMesh 连接明确加入的工作流，不合并聊天，也不是新模型。
+例如，一个 Agent 修改接口，另一个维护客户端。客户端需要新的分页规则，
+但还要保留原有的超时与重试行为。有效协作意味着接收方在自己的任务里做出
+正确修改，而不只是收到一条消息。
 
-实测 Codex 宿主本来就能跨任务通信，Skill 并没有创造这项能力。
-原生功能够用就不必安装。[原生能力与项目当前价值](native-capabilities-and-value.md)。
+## 两种使用路径
 
-## 一个具体问题
+| 路径 | 提供什么 | 入口与状态 |
+|---|---|---|
+| Codex 原生任务 Skill | 使用 Codex 自带任务工具，约定共享范围与交接方式 | [候选插件](codex-native-tasks.md)；安装后使用与旧任务加载尚未验证 |
+| 本地工作空间 | 为支持的 Agent 应用提供任务发现、持久建议收件箱和可携带的工作快照 | [CLI v0.1.0-alpha.3](first-workspace.md)；通过 GitHub 安装包分发 |
 
-你让 Codex 改接口，Pi 维护客户端。分页方式变了，客户端也需要知道。
-通常你得自己发现依赖、复制变化、切换 session，再讲一遍。
+如果原生 Codex 已满足需要，Skill 是可选的。它不提供底层原生通信，也不包含
+工作空间的存储。相较直接使用 Codex，它的增量收益尚未测量。
+详见[原生能力与当前价值](native-capabilities-and-value.md)。
 
-接入后的路径是：
+CLI 示例创建新会话，不接入已有桌面聊天。Codex、Pi、Kimi 和 DeepSeek 的
+能力与证据不同，详见[支持矩阵](../00-overview/harness-support.md)。
+文档中的 session 指一段 Agent 会话，harness 指运行它的应用。
 
-1. 你为每个 session 公布一次工作目标。
+## 工作空间如何协作
+
+1. 你为每个参与会话公布工作目标。
 2. Agent 获得协作工具和通用的任务起始提示。
-3. 模型判断哪个 peer 真正需要当前信息，决定是否发送。
+3. 模型判断哪个任务需要相关变化或问题，决定是否发送。
 4. 建议进入持久收件箱，接收方结合自己的任务判断。
-5. 明确开启空闲续接的 Pi 可以在同一个 session 中继续处理。
+5. 在支持且明确开启续接的接入方式中，空闲接收方在同一个会话继续工作。
 
-[真实 Codex → Pi 接口案例](../09-reviews/2026-09-05-workspace-awareness.md#ordinary-codex--pi-api-case-pass)
-跑通了这个路径，并通过客户端行为检查。Pi 先自主说明依赖，Codex 完成普通接口
-任务后回复变化。用户没有转述消息。
+[Codex → Pi 接口案例](../09-reviews/2026-09-05-workspace-awareness.md#ordinary-codex--pi-api-case-pass)
+跑通了这个路径，并通过客户端行为检查。Pi 先自主说明依赖，Codex 完成普通
+接口任务后回复，用户没有转述消息。能否自动续接取决于具体接入，
+并不是每个收件箱都能唤醒任务。
 
-## 当前有哪些能力
+## 当前可用的部分
 
-- 本地 CLI：创建工作空间，启动有名字的工作流，查看状态和静音。
-- 四个模型工具：发现 peer、发送建议、读取与处置 inbox、保存 checkpoint。
-- Pi 原生扩展，以及 Codex/Kimi/官方 DeepSeek 启动路径；验证程度与唤醒能力不同。
-- 用明确保存的 checkpoint 启动另一家 harness，携带选定的工作上下文。
-- 可复用的核心协调器、MCP 入口和更底层的 JavaScript SDK。
+CLI 可创建本地协作空间、启动任务、查看状态和静音。四个模型工具支持
+任务发现、建议、收件箱处置和快照；快照可向受支持应用的新会话提供保存的上下文。
 
-接入名称不等于效果保证，请看[按版本区分的支持矩阵](../00-overview/harness-support.md)。
-当前是有运行时依赖、从 GitHub 分发的 alpha，不是已发布到 npm 的生产服务。
+开发者可使用 [MCP](../06-guides/first-workspace.md#kimi-and-custom-harnesses)
+或 [SDK](../06-guides/implement-an-adapter.md)。CLI 需要 Node 和运行时依赖，
+并未发布到 npm 仓库。
 
-## “主动智能”在哪里
+## 证据与局限
 
-模型在配置好的协作提示下判断相关性和消息内容。Workspace 路径由 ThreadMesh 提供
-发现、持久化和适配器接入；原生 Skill 路径的通信、来源标记和续跑来自 Codex。
-两条路径都不保证模型每次选择正确。
-
-一次真实无关修改在工具可用时保持安静。另一条文案案例虽成功送达并续接，
-却丢了“免费方案”的限制。**消息成功，不等于业务结果正确。**
+模型在协作提示下选择消息内容并判断相关性，ThreadMesh 不保证这些选择总是正确。
+一次无关修改对照保持安静；另一条文案案例成功送达并续接，却漏了“免费方案”条件。
+**消息送达不等于业务结果正确。**
 [成功与失败记录](../09-reviews/2026-09-05-workspace-awareness.md)。
 
-## 适合谁，不适合谁
-
-如果你同时运行多个 Agent，不断复制接口决策、批准的约束或调研发现，值得试用。
-Harness 开发者可接 [MCP](../06-guides/first-workspace.md#kimi-and-custom-harnesses)
-或 [SDK adapter](../06-guides/implement-an-adapter.md)。
-
-如果只有一个聊天，或全部交接步骤已固定，这层协作可能没有必要。
-当前是同一所有者的本地设置，不是开放 Agent 网络、多租户安全边界或任意旧 tab 连接器。
+受控原生任务和 CLI 样例产生过有效修改，但桌面插件使用、旧任务加载、独立用户
+上手和相较原生 Codex 的收益仍未验证。Preview 使用模拟 Agent；DeepSeek
+缺少真实模型主动协作证据。详见[案例汇总](../06-guides/real-world-cases.md)。
 
 ## 上下文和控制权
 
-共享的是公布的目标与建议，不扫描全部私聊。读 inbox 不会消耗消息；
-是否接受是单独的处置，也不是业务检查通过的证明。Workspace 可以先把建议作为
-非权威上下文给模型判断。Pi 空闲续接需要明确开启。
+两条路径都要求明确参与和共享范围，不合并聊天、不全局扫描或广播聊天历史。
+原生任务读取限于选定且获授权的范围；工作空间共享公布的目标与建议。
+读取收件箱不会消耗消息；是否接受是单独的
+决定，也不是后续工作已通过检查的证明。Pi 空闲续接需要明确开启。
 
-Checkpoint 携带选定的工作上下文，不携带隐藏状态、工具权限或无损聊天历史。
-真正的额度耗尽长任务恢复、原生历史 session 接入仍待验收。
+原生 Skill 依赖宿主提供的工具与权限，其提示不能强制隔离，也不能消除发送
+与用户新输入之间的竞争。工作空间 alpha 面向同一所有者的本地使用，
+不构成多租户安全边界。详见[权限与威胁模型](../04-safety/threat-model.md)。
 
-## 从哪里开始
+工作快照携带明确保存的上下文，不携带隐藏状态、工具权限或完整聊天历史。
+真实额度耗尽后的长会话恢复仍未验证。[Checkpoint 指南](../06-guides/portable-checkpoints.md)。
 
-[中文上手](first-workspace.md) · [真实案例](../06-guides/real-world-cases.md) ·
-[Checkpoint 指南](../06-guides/portable-checkpoints.md) ·
-[安全模型](../04-safety/threat-model.md) · [Roadmap](../../ROADMAP.md)
-
-实现细节见[参考架构](../02-architecture/reference-architecture.md)和
-[协议](../03-protocol/README.md)。历史 benchmark 继续保留，但不是当前上手的前置条件。
+只有一个聊天，或原生工具已能完成协调时，额外设置可能没有收益。
+实现与历史记录入口见[文档导航](README.md#实现研究与历史记录)。

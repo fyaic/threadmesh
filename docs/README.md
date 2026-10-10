@@ -1,44 +1,56 @@
 # ThreadMesh documentation
 
-Connect independent agent sessions without relaying every useful change yourself.
-Start with the user guides; the protocol and historical benchmarks are optional.
+Help independent agent tasks share relevant changes while keeping their own
+context. Choose the path that matches how you work.
 
 [Project overview](../README.md) · [中文文档](zh-CN/README.md)
 
-## Choose your next step
+## Choose a path
 
-| I want to… | Start here |
+| Your setup | What ThreadMesh adds | Start here |
+|---|---|---|
+| Selected Codex desktop tasks | An optional skill using Codex's own task tools | [Candidate plugin and native-task guide](06-guides/codex-native-tasks.md) |
+| Locally launched agent sessions | A workspace with peer discovery, persistent advice inboxes and saved checkpoints | [CLI alpha.3: first workspace](06-guides/first-workspace.md) |
+
+These are separate entry points. The Codex skill does not provide the CLI's
+persistent inbox or checkpoint storage. The CLI example starts new sessions;
+it does not attach to your existing desktop chats. If native Codex already
+meets your needs, the skill may add little. See [the capability comparison](00-overview/native-capabilities-and-value.md).
+
+## Find an answer
+
+| I want to… | Read this |
 |---|---|
-| Understand the idea | [What ThreadMesh is](00-overview/product-guide.md) |
-| Know whether native Codex is enough | [Native capabilities and added value](00-overview/native-capabilities-and-value.md) |
-| Inspect the actual desktop exchange | [Retained messages, diff and audit](evidence/codex-native-2026-09-07/README.md) |
-| Connect Codex, Pi, Kimi or DeepSeek | [Your first workspace](06-guides/first-workspace.md) |
-| Explore existing Codex desktop tasks | [Experimental native-task workflow](06-guides/codex-native-tasks.md) |
-| See actual model behavior | [Everyday cases and evidence](06-guides/real-world-cases.md) |
-| Continue from saved context | [Portable checkpoints](06-guides/portable-checkpoints.md) |
-| Check compatibility before installing | [Versioned harness support](00-overview/harness-support.md) |
-| Integrate another harness | [MCP configuration](06-guides/first-workspace.md#kimi-and-custom-harnesses) · [SDK adapter guide](06-guides/implement-an-adapter.md) |
-| Understand permissions and privacy | [Threat model](04-safety/threat-model.md) · [Context sovereignty](01-concepts/context-sovereignty.md) |
-| Report an unsuccessful first run | [Operator report](https://github.com/fyaic/threadmesh/issues/new?template=operator.yml) |
-| Follow what ships next | [Roadmap](../ROADMAP.md) · [Codex desktop priority](10-planning/desktop-entry-2026-09-07.md) |
+| Understand the use case and limits | [What ThreadMesh is](00-overview/product-guide.md) |
+| Check supported products and versions | [Integration support matrix](00-overview/harness-support.md) |
+| Continue from explicitly saved context | [Portable checkpoints](06-guides/portable-checkpoints.md) |
+| Inspect actual model behavior | [Cases and evidence](06-guides/real-world-cases.md) · [Desktop messages and diffs](evidence/codex-native-2026-09-07/README.md) |
+| Understand permissions and privacy | [Threat model](04-safety/threat-model.md) · [Context ownership](01-concepts/context-sovereignty.md) |
+| Add another agent application | [MCP configuration](06-guides/first-workspace.md#kimi-and-custom-harnesses) · [SDK adapter guide](06-guides/implement-an-adapter.md) |
+| Share an installation or collaboration problem | [Operator report](https://github.com/fyaic/threadmesh/issues/new?template=operator.yml) |
+| Follow project priorities | [Roadmap](../ROADMAP.md) · [Current status](10-planning/project-status.md) |
 
-## Current evidence, not just intent
+Real-project validation is currently paused; see [project status](10-planning/project-status.md).
 
-The [Codex-first installed-package case](09-reviews/2026-09-07-codex-first-use-release.md)
-passed with the default command in 272.604 seconds: model-selected advice,
-same receiver continuation, its own correct copy edit and preserved earlier
-decisions. Two new sessions, normal account quota; not existing desktop adoption.
+## What has been demonstrated
 
-The [2026-09-05 cross-harness record](09-reviews/2026-09-05-workspace-awareness.md)
-retains three ordinary Codex → Pi runs: API collaboration **passed**, unrelated
-work stayed quiet, and brand-copy correctness **failed** despite successful
-delivery and same-session continuation. Exact prompts, timelines and final
-files are linked. Generic collaboration guidance and the initial Pi dependency
-message are disclosed.
+Controlled Codex native-task exchanges produced receiver edits. Installed-plugin
+use, old-task loading, independent first use and savings over native Codex remain
+unverified. See the [desktop guide](06-guides/codex-native-tasks.md).
 
-Preview commands use simulated agents. DeepSeek's new integration has no-model
-native evidence, not a live initiative pass. Checkpoint continuation has a
-seeded-context test, not a lossless quota-blocked chat migration.
+A [CLI installed-package case](09-reviews/2026-09-07-codex-first-use-release.md)
+used two new Codex sessions. The receiver correctly edited copy and preserved
+earlier decisions. This does not establish existing desktop adoption or general
+reliability.
+
+The [Codex → Pi record](09-reviews/2026-09-05-workspace-awareness.md) includes
+an API collaboration pass, an unrelated-change case that stayed quiet and a
+copy case that delivered successfully but omitted a required free-plan detail.
+**Delivery alone is not a correct result.**
+
+Preview commands use simulated agents. DeepSeek has no-model integration checks,
+not a live initiative pass. Checkpoint continuation has a seeded-context test,
+not verified recovery of a quota-blocked long conversation.
 
 ## Explore the implementation
 
@@ -49,13 +61,13 @@ seeded-context test, not a lossless quota-blocked chat migration.
 | [02-architecture](02-architecture/reference-architecture.md) | Reference components and lifecycle |
 | [03-protocol](03-protocol/README.md) | Draft protocol requirements |
 | [04-safety](04-safety/threat-model.md) | Threats, permissions and boundaries |
-| [05-adapters](05-adapters/adapter-contract.md) | Harness integration contracts |
+| [05-adapters](05-adapters/adapter-contract.md) | Integration contracts |
 | [06-guides](06-guides/first-workspace.md) | User and developer walkthroughs |
 | [07-research](07-research/research-synthesis.md) | Codex research, community signals and prior art |
 | [08-decisions](08-decisions/README.md) | Architecture decisions |
 | [09-reviews](09-reviews/README.md) | Dated evidence, failures and reviews |
 | [10-planning](10-planning/project-status.md) | Current status and historical milestone ledger |
-| [zh-CN](zh-CN/README.md) | Chinese orientation and first-use guide |
+| [zh-CN](zh-CN/README.md) | Chinese orientation and user guides |
 
 Machine-readable schemas live under [spec/schema](../spec/schema). Only
 documents explicitly labelled draft normative define protocol requirements;
@@ -65,10 +77,6 @@ English is canonical for those requirements.
 
 The [attention-router demo](06-guides/attention-router-demo.md),
 [manual-relay baseline](06-guides/manual-relay-baseline.md) and
-[non-interrupting handoff case](06-guides/non-interrupting-handoff.md) document
-earlier experiments. They are **not first-use prerequisites**, a current speed
-claim, or proof that every busy native session is safe to wake.
-
-For the deeper history, see the [case portfolio](06-guides/real-world-cases.md)
-and [review index](09-reviews/README.md). Evidence labels distinguish real model
-runs, deterministic fixtures, no-model preflights and unverified adapter targets.
+[non-interrupting handoff case](06-guides/non-interrupting-handoff.md) are historical
+experiments, not setup prerequisites, current speed claims or universal busy-session
+safety evidence. Their records remain in the [review index](09-reviews/README.md).

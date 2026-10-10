@@ -1,8 +1,11 @@
 # Native Codex value check
 
-Date: 2026-10-10. Status: **planned; no new live or independent-user result**.
+Date: 2026-10-10. Status: **paused at the owner’s request; no new live or independent-user result**.
 
-The next question is whether ThreadMesh makes a real API-to-client dependency
+This plan is retained for a later decision to resume. Do not begin business
+trials or recruit participants under the current repository-maintenance scope.
+
+The question for a future trial is whether ThreadMesh makes a real API-to-client dependency
 change easier than native Codex alone. Reuse ordinary work and a small record;
 do not build another runner or sample project. The
 [September 8 API/client handoff](../09-reviews/2026-09-08-pairing-helper-acceptance.md)

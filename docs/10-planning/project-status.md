@@ -2,9 +2,9 @@
 
 ## Current product update — 2026-10-10
 
-The current increment packages the native Codex skill for marketplace discovery
-and short activation, with one concrete API-to-client workflow. Its supported
-installation entry is documented in the [desktop guide](../06-guides/codex-native-tasks.md).
+[PR #183](https://github.com/fyaic/threadmesh/pull/183) is merged. It packages the
+native Codex skill for marketplace discovery and short activation, with
+API-to-client collaboration guidance. Its candidate installation entry is documented in the [desktop guide](../06-guides/codex-native-tasks.md).
 Plugin discovery, installation, new-chat loading and existing-chat adoption are
 separate observations; none establishes the others. The desktop skill still
 uses Codex's native transport and supplies behavioral guidance.
@@ -18,12 +18,18 @@ increment. The September 8 results below are historical, not validation of the
 changed skill. No new desktop success or comparative advantage is claimed.
 [Candidate checks and review](../09-reviews/2026-10-10-native-plugin-candidate.md).
 
+**Current scope:** real-project validation is paused at the owner's request.
+Repository maintenance now focuses on bilingual descriptions, documentation
+navigation and contribution/reporting guidance. The comparison plan is retained
+for later; no new business trial or independent-user recruitment is scheduled.
+This pause does not close any outstanding acceptance gate.
+
 ## Previous product update — 2026-09-08
 
 **Install-and-use local collaboration is the product target; the website helper
 has been removed from source and deployment.** The manual recipe remains only
 an experimental fallback. Plugin installation and existing-task adoption are
-still unverified, not replaced by a form or CLI sample. Follow the [new ordered acceptance](../../ROADMAP.md#active-priority--existing-desktop-clients-2026-09-08):
+still unverified, not replaced by a form or CLI sample. The September plan set the [ordered acceptance](../../ROADMAP.md#prior-priority--existing-desktop-clients-2026-09-08):
 independent first use → visible local status/stop → measured relay savings →
 real user case → DeepSeek and quota continuation. No independent GUI success,
 persistent desktop control service or native-only advantage is claimed.
@@ -127,7 +133,7 @@ The September 7 snapshot is 3 stars, 0 forks and one independent report; this
 sample does not establish a statistically highest-demand feature.
 
 Management correction: first-user success, not additional internal benchmarks,
-is the delivery gate. Follow the [roadmap delivery checkpoint](../../ROADMAP.md#immediate-delivery-checkpoint--community-feedback).
+is the delivery gate. Follow the [roadmap delivery checkpoint](../../ROADMAP.md#earlier-delivery-checkpoint--community-feedback).
 Same-product existing desktop conversations remain the main product goal; an
 easier developer entry is useful but must not be presented as desktop support.
 The earlier handoff repair at `613f5ca` is included in this delivery candidate.
