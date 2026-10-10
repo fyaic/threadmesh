@@ -226,8 +226,9 @@ transport between agents:
   file leases through MCP.
 - [Aerial](https://github.com/dcdeniz/aerial) combines durable pull mailboxes
   with lossy wake notifications and can supervise Codex workers.
-- [agent-inbox](https://github.com/salimfadhley/agent-inbox) supplies a local
-  SQLite mailbox and harness-specific wake hooks.
+- Historical research described `salimfadhley/agent-inbox` as a local SQLite
+  mailbox with harness-specific wake hooks. Its public GitHub URL returned 404
+  on 2026-10-10; no replacement location was verified.
 - [MAGI](https://github.com/kent8192/magi-system) uses Redis Streams for durable
   history, Pub/Sub for wake-up, and an App Server bridge for Codex injection.
 - [AAMP](https://github.com/larksuite/aamp) standardizes asynchronous task

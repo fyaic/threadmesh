@@ -148,9 +148,11 @@ Apache-2.0 ThreadMesh repository without a separate license review.
 
 ### agent-inbox, MAGI, and AIPass: useful implementation experiments
 
-- [agent-inbox](https://github.com/salimfadhley/agent-inbox) distinguishes
-  peek from read/handle, issues identity rather than deriving it from mutable
-  agent attributes, and uses optional hooks to wake supported harnesses.
+- Historical research described `salimfadhley/agent-inbox` as distinguishing
+  peek from read/handle, issuing identity rather than deriving it from mutable
+  agent attributes, and using optional hooks to wake supported harnesses. Its
+  public GitHub URL returned 404 on 2026-10-10; no replacement location was
+  verified. These observations remain historical, not a current adoption option.
 - [MAGI](https://github.com/kent8192/magi-system) uses Redis Streams as durable
   history and Pub/Sub as the low-latency wake path; its Codex bridge injects
   into App Server and advances inbox state only after successful delivery.
@@ -204,7 +206,8 @@ have extensive prior art; the integration and safety contract remain open.
 - [MCP Agent Mail repository](https://github.com/Dicklesworthstone/mcp_agent_mail)
 - [Repowire repository](https://github.com/prassanna-ravishankar/repowire)
 - [Aerial repository](https://github.com/dcdeniz/aerial)
-- [agent-inbox repository](https://github.com/salimfadhley/agent-inbox)
+- Historical repository: `salimfadhley/agent-inbox` (public GitHub URL returned
+  404 on 2026-10-10; replacement location unverified).
 - [MAGI repository](https://github.com/kent8192/magi-system)
 - [AIPass repository](https://github.com/AIOSAI/AIPass)
 - [OpenAI Agents SDK orchestration](https://openai.github.io/openai-agents-python/multi_agent/)
