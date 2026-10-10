@@ -1,6 +1,24 @@
 # Project status
 
-## Current product update — 2026-09-08
+## Current product update — 2026-10-10
+
+The current increment packages the native Codex skill for marketplace discovery
+and short activation, with one concrete API-to-client workflow. Its supported
+installation entry is documented in the [plugin guide](../../plugins/threadmesh-codex/README.md).
+Plugin discovery, installation, new-chat loading and existing-chat adoption are
+separate observations; none establishes the others. The desktop skill still
+uses Codex's native transport and supplies behavioral guidance.
+
+The skill now makes return-message authorization and stopped-receiver handling
+explicit, and asks the receiver to preserve its own API/client constraints.
+The [matched native-only acceptance](native-value-acceptance-2026-10-10.md) counts
+setup and actual human intervention without weakening the native baseline.
+Real business comparison and independent-user onboarding remain unrun for this
+increment. The September 8 results below are historical, not validation of the
+changed skill. No new desktop success or comparative advantage is claimed.
+[Candidate checks and review](../09-reviews/2026-10-10-native-plugin-candidate.md).
+
+## Previous product update — 2026-09-08
 
 **Install-and-use local collaboration is the product target; the website helper
 has been removed from source and deployment.** The manual recipe remains only

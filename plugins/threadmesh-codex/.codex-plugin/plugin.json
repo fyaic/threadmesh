@@ -1,6 +1,6 @@
 {
   "name": "threadmesh-codex",
-  "version": "0.1.0-alpha.1",
+  "version": "0.1.0-alpha.2",
   "description": "Experimental opt-in cooperation between selected Codex tasks using native host tools.",
   "author": {
     "name": "fyaic",
@@ -16,6 +16,6 @@
     "developerName": "fyaic",
     "category": "Productivity",
     "capabilities": [],
-    "defaultPrompt": "Use ThreadMesh with the Codex task I select; explain the send boundaries first."
+    "defaultPrompt": "Check ThreadMesh readiness for the Codex task I select. Keep collaboration off until I authorize a scope and send mode."
   }
 }

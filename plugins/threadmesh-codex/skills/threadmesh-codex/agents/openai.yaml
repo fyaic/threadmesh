@@ -1,4 +1,4 @@
 interface:
   display_name: "ThreadMesh for Codex"
   short_description: "Let opted-in Codex tasks share useful context"
-  default_prompt: "Use $threadmesh-codex to connect this task with the Codex task I select."
+  default_prompt: "Use $threadmesh-codex for the peer, shared topic and send mode I select. Ask only for missing details, then confirm this task’s setup."

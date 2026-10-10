@@ -1,0 +1,54 @@
+# Native plugin candidate review
+
+Date: 2026-10-10. Scope: distribution and native-workflow instructions.
+This is not a live collaboration or independent-user acceptance report.
+
+## Delivered increment
+
+- Repository marketplace entry for `threadmesh-codex@threadmesh`.
+- Skill plugin version `0.1.0-alpha.2`; the CLI package remains alpha.3.
+- Short activation with explicit peer/topic/send scope; existing authorization
+  is reused. The plugin's default action only checks readiness.
+- Directional reply authorization, stopped-receiver handling, and an API/client
+  workflow that preserves the receiver's existing constraints.
+- [Matched value acceptance](../10-planning/native-value-acceptance-2026-10-10.md)
+  with an unrestricted native baseline and all live result fields unfilled.
+
+## Validation
+
+The maintainer and installation agent each ran Codex 0.154.0's actual plugin
+listing with per-command local marketplace overrides. It discovered exactly
+`threadmesh-codex@threadmesh`, version `0.1.0-alpha.2`, with `installed: false`
+and `enabled: false`. No persistent registration, installation or chat action
+was performed. Listing without those overrides did not discover an unregistered
+checkout; the guide was corrected accordingly.
+
+`npm test` passed: 14 schemas, 55 schema cases, 7 transitions; 460 passing tests
+and one optional skipped test; documentation lint passed. The plugin skill and
+UI YAML were parsed and linted separately because the normal docs glob excludes
+plugin files. These checks establish package readability and existing code
+regression status, not model compliance with the new skill.
+
+An independent internal reviewer walked through missing reply authorization,
+new advice after stop, review-only reception, unavailable skill in an old chat,
+unpublished installation instructions and the fairness of the native baseline.
+A single-direction setup also remains valid: A may send while B uses review-only
+for outgoing advice, completes its own authorized work and reports locally.
+
+The reviewer found that the manual guide still fetched the September workflow,
+so its stop/reply behavior would lag behind the new plugin. The release step
+must pin both guide URLs to the actual candidate commit and verify their remote
+bytes before this finding is closed. A source snapshot and a final guide-pin
+commit are deliberately separate to avoid inventing a self-referential SHA.
+
+## Remaining product gates
+
+[Official plugin documentation](https://learn.chatgpt.com/docs/plugins) describes
+skill availability in new chats or CLI sessions after installation. It does not
+establish existing-chat hot-loading. The candidate's documented distribution
+requires the Codex CLI; an ordinary-user GUI install has not been demonstrated.
+
+Installation itself, existing-task pickup, a real API/client comparison and an
+independent user's original-receiver result remain unverified. No new messages
+were sent to business tasks. No claimed improvement comes from Codex's native
+transport, a repeated historical fixture or these regression tests.

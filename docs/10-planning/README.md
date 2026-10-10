@@ -6,6 +6,8 @@ where the repository is now and what work should happen next.
 
 - [Project status](project-status.md) — evidence-backed snapshot of shipped,
   experimental, blocked, and unstarted work.
+- [Native value acceptance](native-value-acceptance-2026-10-10.md) — small matched
+  API-to-client comparison, separate installation gates and unrun result table.
 - [Product mainline](product-mainline-2026-08-28.md) — current product thesis,
   community evidence, Now/Next/Later priorities, metrics, and stop conditions.
 - [M5 sprint 1](m5-sprint-1.md) — bounded parallel workstreams, dependencies,

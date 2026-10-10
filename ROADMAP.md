@@ -11,6 +11,28 @@ completion, blockers, review findings, and dependency-ready state without the
 user acting as their message bus**. ThreadMesh is the attention and admission
 policy layer; A2A, Cotal, ACP, or harness-native APIs may supply transport.
 
+## Current increment — install and measured value (2026-10-10)
+
+Keep the existing-task product target below. The next bounded use case is a real
+API contract change reaching its dependent client task, preserving that task's
+prior decisions. Work on the supported plugin entry and the native-only value
+comparison together, before extending adapters or coordination infrastructure.
+
+- Provide a discoverable plugin package and short scoped activation. Check
+  installation, new-chat availability and existing-chat adoption separately.
+- Make return-message permission, stopped-receiver behavior and API constraints
+  explicit in the native skill. Guidance does not create a durable queue or an
+  atomic idle-only send operation.
+- Use the [small matched acceptance](docs/10-planning/native-value-acceptance-2026-10-10.md).
+  Native-only Codex gets the same tools and user permission; installation and
+  setup count toward ThreadMesh's cost. Keep unrun results unfilled.
+- Continue only if useful outcomes justify the added setup. If both routes need
+  no relaying and the skill adds no observable benefit, retain a small optional
+  skill. Independent first-user success remains a separate gate.
+
+The September 8 controlled API case is already complete. Repeating it, adding a
+website, or running a new CLI pair does not close these remaining gates.
+
 ## Active priority — existing desktop clients (2026-09-08)
 
 **Current order, confirmed by the user:** independent first use → visible local

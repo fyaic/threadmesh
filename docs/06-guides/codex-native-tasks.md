@@ -7,13 +7,51 @@ Codex's own task tools when they are already available. The bundled skill adds
 opt-in scope and collaboration guidance; it does not add a private desktop API,
 a new model, an MCP server or a polling daemon.
 
-## No-terminal workflow
+## Candidate plugin entry
+
+The repository now provides a Codex marketplace and a skill-only plugin. See
+[installation instructions](../../plugins/threadmesh-codex/README.md) for the
+local candidate and the Git installation command to use **after a containing
+ref is published**. The candidate is not yet listed in the public directory;
+do not assume the commands work against an older release or public `main`.
+No ThreadMesh npm package or Node runtime is needed for this path.
+
+The current supported distribution instructions require the Codex CLI. We have
+not established an ordinary-user GUI add-from-GitHub flow. This is progress
+toward installation, not completion of the no-terminal first-use goal.
+
+[Official plugin documentation](https://learn.chatgpt.com/docs/plugins) says
+bundled skills become available in **new chats or CLI sessions** after
+installation. Existing-task hot-loading is not established. In each original
+selected task, verify that the installed `threadmesh-codex` skill is available;
+if it is missing, keep collaboration off. Do not create a replacement receiver
+to pass the existing-task gate. A new-chat discovery check is only a packaging
+check.
+
+When the installed skill is actually available, use this short request in each
+direction, filling in the peer's chat deep link:
+
+> Use $threadmesh-codex with [selected chat link] for API/client changes. I
+> authorize relevant automatic advice to that task; keep our existing decisions.
+
+Each task checks its own setup and explains the idle/send race before enabling
+automatic advice. Installing the package or naming a peer does not activate the
+other task. Request **review-only** mode if you want draft suggestions instead
+of sends. If the selected task, topic and mode are already clear, the skill
+should reuse them rather than ask you to copy a configuration block.
+
+After both ends confirm readiness, make an ordinary API change request. The
+receiver should update its own client and test while retaining prior decisions,
+for example its existing timeout and retry behavior. Check its actual result.
+The status and stop commands below apply to both the installed skill and the
+manual fallback.
+
+## Manual fallback (experimental)
 
 **Work in the original Codex tasks.** The website helper has been removed from
 the product and source. The manual setup below remains an experimental fallback,
-not the intended install-once experience. The skill-only plugin is packaged,
-but installation followed by adoption in existing tasks is not yet validated.
-No website, form, hosted registration or new account is required.
+not the intended install-once experience and not proof of installed-plugin
+adoption. It requires no website, form, hosted registration or new account.
 
 Choose two disposable existing Codex tasks with useful prior context. For
 example, a brand task maintains approved product facts; a website task already
