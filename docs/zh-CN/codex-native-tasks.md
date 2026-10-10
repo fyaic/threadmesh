@@ -5,12 +5,47 @@
 **实验入口，已通过受控原生验证。** 这条路径利用 Codex 已经提供的原生任务
 工具。Skill 提供选择范围和协作规则，不新增模型、MCP、后台轮询或私有桌面接口。
 
-## 免终端工作流
+## 候选插件入口
+
+仓库提供 Codex marketplace 和 Skill-only 候选插件。在支持 `codex plugin`
+的 Codex CLI 中，注册固定版本并安装：
+
+```sh
+codex plugin marketplace add fyaic/threadmesh --ref 3206c00f5b28b6e9b6a00abc13a23ea78c9dd617
+codex plugin add threadmesh-codex@threadmesh
+```
+
+这两条命令会修改 Codex 插件配置和缓存。安装的是固定候选版，不是稳定版或公共
+插件目录条目。不需要手动拉取源码、修改 JSON、安装 ThreadMesh npm 包或 Node
+运行时。[包内 README](../../plugins/threadmesh-codex/README.md)独立提供使用说明，
+不依赖安装目录之外的文档。
+
+目前有依据的分发步骤仍需 Codex CLI；尚未确认普通用户从 GUI 添加 GitHub
+仓库的路径。这改善了安装分发，但还没有达到免终端上手目标。
+
+[官方插件文档](https://learn.chatgpt.com/docs/plugins)说明：安装后的 Skill 在
+**新聊天或新 CLI 会话**中可用，没有确立旧任务热加载。请在选定的每个原任务中
+核对已安装的 `threadmesh-codex` Skill 是否实际可用；缺失时保持协作关闭。
+不能新建一个接收任务来冒充原任务接入成功。新聊天能够识别插件，只是打包检查。
+
+已安装 Skill 确实可用后，在双方各发一句，填入对方的聊天深链：
+
+> 用 $threadmesh-codex 与 [选定聊天链接] 协作 API/客户端变更。我授权向该任务
+> 自动发送相关建议，并保留各自已有约定。
+
+每个任务会核对本端设置，并在启用自动发送前说明空闲检查与发送之间仍可能发生
+输入竞争。安装插件或提供对方链接，不等于对方已经启用。只想审阅建议、不自动
+发送时，改用 **review-only** 模式。对象、话题、模式已经清楚时，Skill 应复用
+这些信息，而不是要求你再复制一整段配置。
+
+双方就绪后，提出正常的 API 变更需求。接收任务应自行更新客户端和测试，并保留
+已有超时、重试等约定。请核对实际结果；下方的状态和停止指令适用于插件与手动流程。
+
+## 手动备用流程（实验性）
 
 **直接在原来的 Codex 任务中工作。** 网页辅助工具已从产品和源码中移除。
-下面的手动设置只保留为实验性备用路径，不是目标中的“一次安装即可使用”。
-Skill-only 插件已有打包结构，但安装后接入已有任务仍未完成验证。
-不需要网页、填表、云端注册或新账号。
+下面的手动设置只保留为实验性备用路径，不是目标中的“一次安装即可使用”，
+也不能证明已安装插件接入了旧任务。不需要网页、填表、云端注册或新账号。
 
 选择两个已有上下文、没有业务副作用的 Codex 测试任务。例如，一个维护品牌信息，
 另一个维护网页，且已经约定按钮名称必须保留 **Create my workspace**。
@@ -30,7 +65,7 @@ Skill-only 插件已有打包结构，但安装后接入已有任务仍未完成
 
 ```text
 使用这个固定版本公开链接中的 ThreadMesh 工作流，请完整读取文件：
-https://raw.githubusercontent.com/fyaic/threadmesh/c0a0a913439732229a2bb811d23cc790c2dd0408/plugins/threadmesh-codex/skills/threadmesh-codex/SKILL.md
+https://raw.githubusercontent.com/fyaic/threadmesh/a8a02a0101143d6033de855597e0d7ce291bc5e1/plugins/threadmesh-codex/skills/threadmesh-codex/SKILL.md
 
 只把当前任务与“对方任务链接”配对。双方保留自己正在做的工作和此前约定。
 允许交流的话题：允许交流的话题。
@@ -63,7 +98,7 @@ https://raw.githubusercontent.com/fyaic/threadmesh/c0a0a913439732229a2bb811d23cc
 模型应实际读取流程，核对已有原生工具，并确认选择范围。若读取失败或缺少工具，
 就停在能力检查，不能用新 CLI 会话或私有接口冒充成功。
 仓库也在 `plugins/threadmesh-codex` 中提供了 Skill-only 插件包供正常分发测试；
-本指南不会替用户修改全局插件安装或 marketplace 配置。
+这个手动备用流程不会修改全局插件安装或 marketplace 配置。
 
 例如，在品牌任务中提出：
 

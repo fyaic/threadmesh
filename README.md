@@ -83,21 +83,27 @@ not a screenshot. Simultaneous typing races and plugin hot-loading remain unveri
 
 ### Want to connect your existing desktop tasks?
 
-[**Start in your existing Codex tasks →**](docs/06-guides/codex-native-tasks.md)
+[**Plugin installation and task activation →**](docs/06-guides/codex-native-tasks.md)
 
-Set the selected peer and shared topic in each original task, wait for both
-setup confirmations, then give one task your ordinary business request. The
-effect to look for is **the other original task acting correctly**, not a
-generated prompt or a sent badge. Ask **“Check ThreadMesh status”** in the task
-to distinguish setup, pending advice and observed results; stop in both tasks
-to stop both directions. These are natural-language requests, not slash commands
-or a separate control service.
+The repository now includes a marketplace entry for the optional Codex skill.
+See the guide for candidate installation and a short activation request naming
+one peer, one shared topic and a send mode. A useful first case is an API change
+reaching the task that maintains its client, with the client's earlier decisions
+preserved. Check the receiver's own diff and tests, not just a sent badge.
 
-The website helper has been removed. The product target is **install once,
-choose which tasks may collaborate, then work normally in your agent**. The
-manual workflow above is an experimental fallback, not that finished install
-experience. Desktop plugin installation and adoption by existing tasks remain
-unverified; a working CLI sample does not close this gap.
+**Existing-task adoption remains unverified.** Official plugin documentation
+promises bundled skills in new chats or CLI sessions after installation; it does
+not establish hot-loading in old chats. Marketplace discovery alone is not an
+installation or original-task success. The source-read manual workflow remains
+an experimental fallback. The product target is still **install once, choose
+allowed existing tasks, then work normally**.
+
+Ask **“Check ThreadMesh status”** for pending advice and observed results. Say
+**“Stop ThreadMesh collaboration”** in both tasks to stop both directions.
+These are in-task requests, not an instant control service. The
+[small native-only comparison](docs/10-planning/native-value-acceptance-2026-10-10.md)
+will count setup, manual relays, correct receiver edits and unwanted contact;
+its real-business results are not yet available.
 
 Another real case: A changed an API contract; original B updated its own client
 and tests, retaining the earlier timeout and cursor-encoding decisions.

@@ -1,0 +1,20 @@
+{
+  "name": "threadmesh",
+  "interface": {
+    "displayName": "ThreadMesh"
+  },
+  "plugins": [
+    {
+      "name": "threadmesh-codex",
+      "source": {
+        "source": "local",
+        "path": "./plugins/threadmesh-codex"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}
